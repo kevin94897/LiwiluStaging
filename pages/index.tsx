@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { GetServerSideProps } from 'next';
@@ -11,14 +10,6 @@ interface HomeProps {
 }
 
 export default function Home({ featuredProducts, error }: HomeProps) {
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % 3);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
 
   return (
     <>
@@ -94,7 +85,12 @@ export default function Home({ featuredProducts, error }: HomeProps) {
             ].map((cat, i) => (
               <Link href={`/productos?categoria=${cat.name}`} key={i}>
                 <div className="relative rounded-xl overflow-hidden h-32 cursor-pointer hover:scale-105 transition">
-                  <img src={cat.img} alt={cat.name} className="w-full h-full object-cover" />
+                  <Image 
+                    src={cat.img} 
+                    alt={cat.name} 
+                    fill
+                    className="object-cover"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
                     <h3 className="text-white font-bold text-lg">{cat.name}</h3>
                   </div>
@@ -134,11 +130,14 @@ export default function Home({ featuredProducts, error }: HomeProps) {
                       <span className="absolute top-2 left-2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold z-10">
                         OFERTA
                       </span>
-                      <img
-                        src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop"
-                        alt={product.name?.[0]?.value || "Producto"}
-                        className="w-full h-48 object-cover"
-                      />
+                      <div className="relative w-full h-48">
+                        <Image
+                          src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop"
+                          alt={product.name?.[0]?.value || "Producto"}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
                       <button className="absolute top-2 right-2 bg-white rounded-full p-2 hover:bg-gray-100 z-10">
                         ❤️
                       </button>
@@ -221,12 +220,13 @@ export const getServerSideProps: GetServerSideProps = async () => {
         featuredProducts,
       },
     };
-  } catch (error: any) {
-    console.error('💥 Error al cargar productos:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    console.error('💥 Error al cargar productos:', errorMessage);
     return {
       props: {
         featuredProducts: [],
-        error: error.message || 'Error desconocido al cargar productos',
+        error: errorMessage,
       },
     };
   }
