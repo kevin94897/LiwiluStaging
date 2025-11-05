@@ -96,7 +96,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
 
 // URL de imagen del producto
 export function getProductImageUrl(productId: string, imageId: string): string {
-  return `${PRESTASHOP_URL}/api/images/products/${productId}/${imageId}`;
+  return `${PRESTASHOP_URL}/api/images/products/${productId}/${imageId}?ws_key=${API_KEY}`;
 }
 
 // Formatear precio
