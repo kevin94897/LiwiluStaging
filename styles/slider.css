@@ -1,0 +1,39 @@
+.product-slider {
+  margin: 0 -15px;
+  padding: 0 15px;
+}
+
+.product-slider .slick-slide {
+  padding: 0 15px;
+}
+
+.product-slider .slick-list {
+  margin: 0 -15px;
+}
+
+.product-slider .slick-prev:before,
+.product-slider .slick-next:before {
+  width: 40px;
+  height: 40px;
+  color: #10B981;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.product-slider .slick-dots {
+  bottom: -30px;
+}
+
+.product-slider .slick-dots li button:before {
+  font-size: 8px;
+}
+
+@media (max-width: 768px) {
+  .product-slider .slick-prev {
+    left: 0;
+  }
+  
+  .product-slider .slick-next {
+    right: 0;
+  }
+}

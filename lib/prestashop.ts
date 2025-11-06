@@ -32,11 +32,17 @@ export async function getProducts(limit: number = 20): Promise<Product[]> {
   try {
     console.log('🔄 Obteniendo productos...');
     
+    const timestamp = Date.now();
+
     const response = await fetch(
-      `${PRESTASHOP_URL}/api/products?display=full&limit=${limit}`,
+      `${PRESTASHOP_URL}/api/products?display=full&limit=${limit}&_t=${timestamp}`,
       { 
         headers: getHeaders(),
-        cache: 'no-store' // No cachear para desarrollo
+        cache: 'no-store',
+        next: { 
+          revalidate: 0, // Fuerza revalidación inmediata
+          tags: ['products'] // Para revalidación manual si la necesitas
+        }
       }
     );
     

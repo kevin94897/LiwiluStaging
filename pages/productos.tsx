@@ -4,6 +4,8 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Layout from '@/components/Layout';
 
+export const revalidate = 0;
+
 export default function Productos() {
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -20,8 +22,12 @@ export default function Productos() {
                         <p className="text-gray-600 mb-6">
                             Estamos conectando con PrestaShop para mostrarte todos nuestros productos
                         </p>
+
+                        <div className="card card-xl">
+                            {/* contenido */}
+                        </div>
                         <Link href="/">
-                            <button className="bg-teal-800 hover:bg-teal-900 text-white px-8 py-3 rounded-lg font-semibold">
+                            <button className="btn btn-primary">
                                 ← Volver al inicio
                             </button>
                         </Link>
