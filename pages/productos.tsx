@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { GetServerSideProps } from 'next';
 import Layout from '@/components/Layout';
 import { useState } from 'react';
+import Contacto from '@/components/Contacto';
 import {
 	getProducts,
 	getCategories,
@@ -11,7 +12,7 @@ import {
 	Category,
 	getProductImageUrl,
 } from '@/lib/prestashop';
-import { FaHeart, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaRegHeart, FaPlus, FaMinus } from 'react-icons/fa';
 
 interface TiendaProps {
 	products: Product[];
@@ -83,38 +84,83 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 		<Layout title="Tienda - Liwilu" description="Productos al por mayor">
 			{/* Banner Hero */}
 			<section className="relative text-white overflow-hidden">
-				<div className="absolute inset-0 bg-gradient-to-r from-teal-700 to-teal-500">
-					<div className="absolute inset-0 opacity-20">
-						<div className="absolute top-10 right-20 w-64 h-64 bg-white/10 rounded-full"></div>
-						<div className="absolute bottom-10 right-40 w-32 h-32 bg-white/10 rounded-full"></div>
-					</div>
+				<div className="absolute inset-0">
+					<Image
+						src="/images/productos/liwilu_banner_productos.png"
+						alt="Banner Productos"
+						fill
+						className="object-cover"
+						priority
+					/>
 				</div>
-				<div className="relative max-w-7xl mx-auto px-6 py-12 flex items-center justify-between">
-					<div className="w-1/2">
-						<span className="text-sm font-semibold mb-2 block">NUEVO</span>
-						<h1 className="text-4xl md:text-5xl font-bold mb-2">MacBook Pro</h1>
-						<p className="text-2xl md:text-3xl mb-6">de 14 pulgadas M4</p>
-					</div>
-					<div className="w-1/2 relative h-48">
+
+				<div className="relative max-w-4xl mx-auto px-6 py-6 md:py-8 flex items-center justify-between relative">
+					{/* Vector flotante */}
+					<div className="absolute -right-10 md:-right-20 -top-10 md:-top-28 w-32 md:w-56 floating">
 						<Image
-							src="/images/liwilu_home_laptop_img.png"
+							src="/images/vectores/liwilu_banner_productos_vector_02.png"
 							alt="MacBook Pro"
-							fill
-							className="object-contain"
+							width={295}
+							height={218}
+							quality={100}
+							className="h-auto"
+							priority
 						/>
+					</div>
+					<div className="w-1/2">
+						<span className="text-[12px] md:text-sm font-light mb-2 block ">
+							NUEVO
+						</span>
+						<h1 className="text-2xl md:text-5xl font-bold mb-2 text-primary-light">
+							MacBook Pro de 14 pulgadas M4
+						</h1>
+						<p className="text-[12px] md:text-sm font-light text-secondary">
+							<span>SKU: MW2U3E/A</span>
+							<span className="ml-2">Barcode: 195949704796</span>
+						</p>
+					</div>
+					<div className="w-1/2 flex items-center justify-center">
+						<div className="absolute md:-bottom-10">
+							<Image
+								src="/images/productos/liwilu_productos_laptop_img.png"
+								alt="MacBook Pro"
+								width={305}
+								height={246}
+								quality={100}
+								className="h-auto md:block hidden"
+								priority
+							/>
+							<Image
+								src="/images/productos/liwilu_productos_laptop_img_mob.png"
+								alt="MacBook Pro"
+								width={148}
+								height={121}
+								quality={100}
+								className="h-auto md:hidden"
+								priority
+							/>
+						</div>
 					</div>
 				</div>
 			</section>
 
 			{/* Breadcrumb y categorías circulares */}
-			<section className="bg-gradient-to-r from-green-500 to-green-400 py-6">
+			<section className="py-6 relative overflow-hidden bg-gradient-to-r from-primary to-primary-light">
+				<div className="absolute -left-10 md:-left-60 -bottom-18 md:-bottom-80 w-32 md:w-full z-0 pointer-events-none">
+					<Image
+						src="/images/vectores/liwilu_banner_productos_vector_03.png"
+						alt="MacBook Pro"
+						width={654}
+						height={499}
+						quality={100}
+						className="h-auto"
+						priority
+					/>
+				</div>
+
 				<div className="max-w-7xl mx-auto px-6">
 					{/* Breadcrumb */}
 					<div className="text-white text-sm mb-6">
-						<Link href="/" className="hover:underline">
-							Tienda virtual
-						</Link>
-						<span className="mx-2">/</span>
 						<Link href="/" className="hover:underline">
 							Inicio
 						</Link>
@@ -123,7 +169,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 					</div>
 
 					{/* Categorías circulares - usando categorías de PrestaShop */}
-					<div className="flex gap-6 overflow-x-auto pb-2">
+					<div className="flex gap-6 overflow-x-auto pb-2 max-w-5xl mx-auto justify-center">
 						{categories.slice(0, 6).map((cat) => (
 							<div
 								key={cat.id}
@@ -157,128 +203,112 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 
 			{/* Contenido principal */}
 			<div className="max-w-7xl mx-auto px-6 py-8">
-				<div className="flex flex-col md:flex-row gap-6">
+				<div className="flex flex-col md:flex-row gap-20">
 					{/* Sidebar */}
-					<aside className="w-full md:w-64 flex-shrink-0">
-						<div className="bg-white rounded-lg shadow-md p-4">
+					<aside className="w-full md:w-64 flex-shrink-0 font-sans">
+						<div className="bg-white rounded-2xl shadow-lg p-5">
 							{/* Categorías */}
-							<div className="mb-6">
+							<div className="mb-4">
 								<button
 									onClick={() => toggleCategory('Categorías')}
-									className="w-full flex justify-between items-center font-bold text-lg mb-3"
+									className="w-full flex justify-between items-center font-bold text-sm text-gray-800 pb-5 border-b border-gray-200"
 								>
 									<span>Categorías</span>
-									{openCategories.includes('Categorías') ? (
-										<FaChevronUp />
-									) : (
-										<FaChevronDown />
-									)}
+									<span className="text-2xl font-light text-gray-600">
+										{openCategories.includes('Categorías') ? (
+											<FaMinus className="w-3 h-3 text-black transition" />
+										) : (
+											<FaPlus className="w-3 h-3 text-black transition" />
+										)}
+									</span>
 								</button>
 								{openCategories.includes('Categorías') && (
-									<ul className="space-y-2">
-										<li>
-											<button
-												onClick={() => {
-													setSelectedCategory('all');
-													setCurrentPage(1);
-												}}
-												className={`w-full text-left py-2 px-3 rounded hover:bg-gray-100 ${
-													selectedCategory === 'all'
-														? 'bg-green-100 text-green-700 font-semibold'
-														: ''
-												}`}
-											>
-												Todos ({products.length})
-											</button>
-										</li>
-										{categories.map((cat) => {
-											const productCount = products.filter(
-												(p) => p.id_category_default === cat.id
-											).length;
-											if (productCount === 0) return null;
-
-											return (
-												<li key={cat.id}>
-													<button
-														onClick={() => {
-															setSelectedCategory(cat.id);
-															setCurrentPage(1);
-														}}
-														className={`w-full text-left py-2 px-3 rounded hover:bg-gray-100 flex items-center justify-between ${
-															selectedCategory === cat.id
-																? 'bg-green-100 text-green-700 font-semibold'
-																: ''
-														}`}
-													>
-														<span className="text-sm">
-															{cat.name?.[0]?.value || 'Categoría'}
-														</span>
-														<span className="text-xs text-gray-500">
-															({productCount})
-														</span>
-													</button>
-												</li>
-											);
-										})}
+									<ul className="space-y-3 my-5">
+										{[
+											{ id: '1', name: 'Laptops' },
+											{ id: '2', name: 'Monitores' },
+											{ id: '3', name: 'Accesorios' },
+											{ id: '4', name: 'Sillas' },
+											{ id: '5', name: 'Periféricos' },
+										].map((cat) => (
+											<li key={cat.id}>
+												<button
+													onClick={() => {
+														setSelectedCategory(cat.id);
+														setCurrentPage(1);
+													}}
+													className="w-full text-left text-gray-500 font-bold hover:text-gray-900 transition-colors flex items-center justify-between group"
+												>
+													<span className="text-sm">{cat.name}</span>
+													<FaPlus className="w-3 h-3 text-black transition" />
+												</button>
+											</li>
+										))}
 									</ul>
 								)}
 							</div>
 
 							{/* Tallas */}
-							<div className="mb-6 pb-6 border-b">
+							<div className="mb-4 pb-5 border-b border-gray-200">
 								<button
 									onClick={() => toggleCategory('Tallas')}
-									className="w-full flex justify-between items-center font-bold mb-3"
+									className="w-full flex justify-between items-center font-bold text-sm text-gray-800"
 								>
 									<span>Tallas</span>
-									{openCategories.includes('Tallas') ? (
-										<FaChevronUp />
-									) : (
-										<FaChevronDown />
-									)}
+									<span className="text-2xl font-light text-gray-600">
+										{openCategories.includes('Tallas') ? (
+											<FaMinus className="w-3 h-3 text-black transition" />
+										) : (
+											<FaPlus className="w-3 h-3 text-black transition" />
+										)}
+									</span>
 								</button>
 								{openCategories.includes('Tallas') && (
-									<div className="text-sm text-gray-500">
+									<div className="mt-3 text-sm text-gray-500">
 										Filtro próximamente
 									</div>
 								)}
 							</div>
 
 							{/* Material */}
-							<div className="mb-6 pb-6 border-b">
+							<div className="mb-4 pb-5 border-b border-gray-200">
 								<button
 									onClick={() => toggleCategory('Material')}
-									className="w-full flex justify-between items-center font-bold mb-3"
+									className="w-full flex justify-between items-center font-bold text-sm text-gray-800"
 								>
 									<span>Material</span>
-									{openCategories.includes('Material') ? (
-										<FaChevronUp />
-									) : (
-										<FaChevronDown />
-									)}
+									<span className="text-2xl font-light text-gray-600">
+										{openCategories.includes('Material') ? (
+											<FaMinus className="w-3 h-3 text-black transition" />
+										) : (
+											<FaPlus className="w-3 h-3 text-black transition" />
+										)}
+									</span>
 								</button>
 								{openCategories.includes('Material') && (
-									<div className="text-sm text-gray-500">
+									<div className="mt-3 text-sm text-gray-500">
 										Filtro próximamente
 									</div>
 								)}
 							</div>
 
 							{/* Marca */}
-							<div>
+							<div className="mb-0">
 								<button
 									onClick={() => toggleCategory('Marca')}
-									className="w-full flex justify-between items-center font-bold mb-3"
+									className="w-full flex justify-between items-center font-bold text-sm text-gray-800"
 								>
 									<span>Marca</span>
-									{openCategories.includes('Marca') ? (
-										<FaChevronUp />
-									) : (
-										<FaChevronDown />
-									)}
+									<span className="text-2xl font-light text-gray-600">
+										{openCategories.includes('Marca') ? (
+											<FaMinus className="w-3 h-3 text-black transition" />
+										) : (
+											<FaPlus className="w-3 h-3 text-black transition" />
+										)}
+									</span>
 								</button>
 								{openCategories.includes('Marca') && (
-									<div className="text-sm text-gray-500">
+									<div className="mt-3 text-sm text-gray-500">
 										Filtro próximamente
 									</div>
 								)}
@@ -294,7 +324,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 									fill
 									className="object-cover"
 								/>
-								<div className="absolute top-4 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+								<div className="absolute top-4 left-4 bg-primary-light text-white px-3 py-1 rounded-full text-xs font-bold">
 									Nuevo
 								</div>
 							</div>
@@ -304,22 +334,15 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 					{/* Grid de productos */}
 					<main className="flex-1">
 						{/* Banner destacado */}
-						<div className="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
-							<div className="relative h-64 md:h-80">
+						<div className="bg-white rounded-sm shadow-md mb-14 overflow-hidden">
+							<div className="relative h-32 md:h-40">
 								<Image
-									src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1200&h=400&fit=crop"
+									src="/images/productos/liwilu_banner_productos_grid.png"
 									alt="Banner productos"
 									fill
-									className="object-cover"
+									className="object-cover [object-position:50%_20%] md:[object-position:50%_80%]"
+									priority
 								/>
-								<div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent flex items-center px-8">
-									<div className="text-white">
-										<h2 className="text-3xl font-bold mb-2">
-											Productos de calidad
-										</h2>
-										<p className="text-lg">Al mejor precio del mercado</p>
-									</div>
-								</div>
 							</div>
 						</div>
 
@@ -377,57 +400,71 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 											: '/no-image.png';
 
 										return (
-											<div
+											<Link
 												key={product.id}
-												className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition"
+												href={`/tienda/${product.id}`}
+												className="block" // Esto hace que todo el card sea clickeable
 											>
-												<div className="relative">
-													<span className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold z-10">
-														Liwilu
-													</span>
-													<button className="absolute top-3 right-3 bg-white rounded-full p-2 hover:bg-gray-100 z-10 shadow-md">
-														<FaHeart className="w-5 h-5 text-gray-400 hover:text-red-500 transition" />
-													</button>
-													<div className="relative w-full h-56 bg-gray-100">
-														<Image
-															src={imageUrl}
-															alt={product.name?.[0]?.value || 'Producto'}
-															fill
-															unoptimized
-															className="object-cover"
-														/>
-													</div>
-												</div>
-
-												<div className="p-4">
-													<div className="mb-2">
-														<span className="text-green-600 text-xs font-semibold">
+												<div className="bg-primary-light rounded-md shadow-md overflow-hidden hover:shadow-xl transition">
+													<div className="relative">
+														{/* <span className="absolute top-3 left-3 bg-primary-light text-white px-3 py-1 rounded-full text-xs font-bold z-10">
 															Liwilu
-														</span>
-													</div>
-													<h3 className="font-semibold text-sm mb-2 line-clamp-2 h-10">
-														{product.name?.[0]?.value || 'Producto sin nombre'}
-													</h3>
-													<div className="flex items-center gap-1 mb-3">
-														<div className="flex text-yellow-400 text-sm">
-															{'★'.repeat(5)}
+														</span> */}
+														<button
+															className="absolute top-3 left-3 bg-white rounded-full p-2 hover:bg-gray-100 z-10 shadow-md"
+															onClick={(e) => e.preventDefault()} // evita que el clic en el corazón abra el link
+														>
+															<FaRegHeart className="w-5 h-5 text-gray-400 hover:text-red-500 transition" />
+														</button>
+														<div className="relative w-full h-56 bg-gray-100">
+															<Image
+																src={imageUrl}
+																alt={product.name?.[0]?.value || 'Producto'}
+																fill
+																unoptimized
+																className="object-cover"
+															/>
 														</div>
 													</div>
-													<div className="flex items-center gap-2 mb-3">
-														<span className="text-green-600 font-bold text-xl">
-															{formatPrice(product.price || '0')}
-														</span>
-														<span className="text-gray-400 text-sm line-through">
-															{formatPrice(
-																parseFloat(product.price || '0') * 1.5
-															)}
-														</span>
+
+													<div className="p-4">
+														<div className="mb-2">
+															<span className="text-white text-xs font-semibold">
+																Liwilu
+															</span>
+														</div>
+
+														<h3 className="font-semibold text-sm mb-2 line-clamp-2 h-10 text-white">
+															{product.name?.[0]?.value ||
+																'Producto sin nombre'}
+														</h3>
+
+														<div className="flex items-center gap-1 mb-3">
+															<div className="flex text-yellow-400 text-sm">
+																{'★'.repeat(5)}
+															</div>
+														</div>
+
+														<div className="flex items-center gap-2 mb-3">
+															<span className="text-white font-bold text-xl">
+																{formatPrice(product.price || '0')}
+															</span>
+															<span className="text-white text-sm line-through">
+																{formatPrice(
+																	parseFloat(product.price || '0') * 1.5
+																)}
+															</span>
+														</div>
+
+														<button
+															className="w-full bg-white hover:bg-green-600 text-primary-light font-semibold py-2 rounded-xl transition"
+															onClick={(e) => e.preventDefault()} // evita navegar al hacer clic en el botón
+														>
+															Agregar al carrito
+														</button>
 													</div>
-													<button className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 rounded-lg transition">
-														Agregar al carrito
-													</button>
 												</div>
-											</div>
+											</Link>
 										);
 									})}
 								</div>
@@ -458,7 +495,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 														onClick={() => setCurrentPage(page)}
 														className={`px-4 py-2 rounded-lg transition ${
 															currentPage === page
-																? 'bg-green-500 text-white font-semibold'
+																? 'bg-primary-light text-white font-semibold'
 																: 'border hover:bg-gray-100'
 														}`}
 													>
@@ -494,6 +531,8 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 					</main>
 				</div>
 			</div>
+
+			<Contacto />
 		</Layout>
 	);
 }

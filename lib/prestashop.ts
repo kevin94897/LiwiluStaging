@@ -2,111 +2,155 @@ const PRESTASHOP_URL = 'https://prestaliwilu.nerdstudiolab.com';
 const API_KEY = 'UHYQHJRLSVS48ESSFANPDHA1EZ8HATYB';
 
 export interface Product {
-  id: string;
-  name?: Array<{ value: string }>;
-  price?: string;
-  quantity?: number;
-  reference?: string;
-  id_category_default?: string;
-  associations?: {
-    images?: Array<{ id: string }>;
-  };
+	id: string;
+	name?: Array<{ value: string }>;
+	description?: Array<{ value: string }>;
+	price?: string;
+	quantity?: number;
+	reference?: string;
+	id_category_default?: string;
+	category_name?: string;
+	associations?: {
+		images?: Array<{ id: string }>;
+		categories?: Array<{ id: string }>;
+	};
 }
 
 export interface Category {
-  id: string;
-  name?: Array<{ value: string }>;
+	id: string;
+	name?: Array<{ value: string }>;
 }
 
 // Headers con autenticación
 const getHeaders = () => {
-  const auth = Buffer.from(`${API_KEY}:`).toString('base64');
-  return {
-    'Authorization': `Basic ${auth}`,
-    'Output-Format': 'JSON',
-  };
+	const auth = Buffer.from(`${API_KEY}:`).toString('base64');
+	return {
+		Authorization: `Basic ${auth}`,
+		'Output-Format': 'JSON',
+	};
 };
 
 // Obtener productos (versión para servidor)
 export async function getProducts(limit: number = 20): Promise<Product[]> {
-  try {
-    console.log('🔄 Obteniendo productos...');
-    
-    const timestamp = Date.now();
+	try {
+		console.log('🔄 Obteniendo productos...');
 
-    const response = await fetch(
-      `${PRESTASHOP_URL}/api/products?display=full&limit=${limit}&_t=${timestamp}`,
-      { 
-        headers: getHeaders(),
-        cache: 'no-store',
-        next: { 
-          revalidate: 0, // Fuerza revalidación inmediata
-          tags: ['products'] // Para revalidación manual si la necesitas
-        }
-      }
-    );
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Error de PrestaShop:', response.status, errorText);
-      throw new Error(`Error ${response.status}: ${errorText}`);
-    }
-    
-    const data = await response.json();
-    console.log('✅ Productos recibidos:', data.products?.length || 0);
-    
-    return data.products || [];
-  } catch (error) {
-    console.error('💥 Error al obtener productos:', error);
-    return [];
-  }
+		const timestamp = Date.now();
+
+		const response = await fetch(
+			`${PRESTASHOP_URL}/api/products?display=full&limit=${limit}&_t=${timestamp}`,
+			{
+				headers: getHeaders(),
+				cache: 'no-store',
+				next: {
+					revalidate: 0, // Fuerza revalidación inmediata
+					tags: ['products'], // Para revalidación manual si la necesitas
+				},
+			}
+		);
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.error('❌ Error de PrestaShop:', response.status, errorText);
+			throw new Error(`Error ${response.status}: ${errorText}`);
+		}
+
+		const data = await response.json();
+		console.log('✅ Productos recibidos:', data.products?.length || 0);
+
+		return data.products || [];
+	} catch (error) {
+		console.error('💥 Error al obtener productos:', error);
+		return [];
+	}
 }
 
 // Obtener categorías
 export async function getCategories(): Promise<Category[]> {
-  try {
-    console.log('🔄 Obteniendo categorías...');
-    
-    const response = await fetch(
-      `${PRESTASHOP_URL}/api/categories?display=full`,
-      { 
-        headers: getHeaders(),
-        cache: 'no-store'
-      }
-    );
-    
-    if (!response.ok) {
-      throw new Error(`Error al obtener categorías: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log('✅ Categorías recibidas:', data.categories?.length || 0);
-    
-    return data.categories || [];
-  } catch (error) {
-    console.error('💥 Error al obtener categorías:', error);
-    return [];
-  }
+	try {
+		console.log('🔄 Obteniendo categorías...');
+		const timestamp = Date.now();
+		const response = await fetch(
+			`${PRESTASHOP_URL}/api/categories?display=full&output_format=JSON&ws_key=${process.env.PRESTASHOP_API_KEY}&_t=${timestamp}`,
+			{
+				headers: getHeaders(),
+				cache: 'no-store',
+			}
+		);
+
+		if (!response.ok) {
+			throw new Error(`Error al obtener categorías: ${response.status}`);
+		}
+
+		const data = await response.json();
+		console.log('✅ Categorías recibidas:', data.categories?.length || 0);
+
+		return data.categories || [];
+	} catch (error) {
+		console.error('💥 Error al obtener categorías:', error);
+		return [];
+	}
 }
 
 // Obtener productos destacados
 export async function getFeaturedProducts(): Promise<Product[]> {
-  try {
-    const products = await getProducts(8);
-    return products.slice(0, 8);
-  } catch (error) {
-    console.error('Error:', error);
-    return [];
-  }
+	try {
+		const products = await getProducts(8);
+		return products.slice(0, 8);
+	} catch (error) {
+		console.error('Error:', error);
+		return [];
+	}
 }
 
 // URL de imagen del producto
 export function getProductImageUrl(productId: string, imageId: string): string {
-  return `${PRESTASHOP_URL}/api/images/products/${productId}/${imageId}?ws_key=${API_KEY}`;
+	return `${PRESTASHOP_URL}/api/images/products/${productId}/${imageId}?ws_key=${API_KEY}`;
+}
+
+// Obtener un producto específico por ID
+export async function getProduct(id: string): Promise<Product> {
+	try {
+		const timestamp = Date.now();
+		const response = await fetch(
+			`${PRESTASHOP_URL}/api/products/${id}?output_format=JSON&ws_key=${process.env.PRESTASHOP_API_KEY}&_t=${timestamp}`,
+			{
+				headers: getHeaders(),
+				cache: 'no-store',
+				next: { revalidate: 0 },
+			}
+		);
+
+		if (!response.ok) {
+			throw new Error(`Error al obtener producto: ${response.status}`);
+		}
+
+		const data = await response.json();
+		return data.product;
+	} catch (error) {
+		console.error('💥 Error al obtener producto:', error);
+		throw error;
+	}
 }
 
 // Formatear precio
-export function formatPrice(price: string | number, currency: string = 'S/'): string {
-  const numPrice = typeof price === 'string' ? parseFloat(price) : price;
-  return `${currency} ${numPrice.toFixed(2)}`;
+export function formatPrice(
+	price: string | number,
+	currency: string = 'S/'
+): string {
+	const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+	return `${currency} ${numPrice.toFixed(2)}`;
 }
+
+// export async function getProductById(id: string) {
+// 	const response = await fetch(
+// 		`${process.env.PRESTASHOP_API_URL}/products/${id}?output_format=JSON&ws_key=${process.env.PRESTASHOP_API_KEY}`
+// 	);
+
+// 	if (!response.ok) {
+// 		throw new Error('No se pudo obtener el producto');
+// 	}
+
+// 	const data = await response.json();
+// 	return data.product;
+// }

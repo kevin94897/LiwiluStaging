@@ -5,6 +5,10 @@ import Layout from '@/components/Layout';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
+
+import Contacto from '@/components/Contacto';
+import Aptitudes from '@/components/Aptitudes';
+
 import {
 	getFeaturedProducts,
 	formatPrice,
@@ -46,23 +50,45 @@ export default function Home({ featuredProducts, error }: HomeProps) {
 						className="object-cover"
 						priority
 					/>
-					<div className="absolute inset-0 bg-black/50"></div>
 				</div>
-				<div className="relative max-w-7xl mx-auto px-6 py-16 flex items-center justify-between">
-					<div className="w-1/2">
-						<h1 className="text-5xl font-bold mb-4">Macbook PRO</h1>
-						<p className="text-3xl mb-2">de 14 pulgadas M4</p>
-						<p className="text-xl mb-6">
-							Compra desde: <span className="text-3xl font-bold">S/ 3,500</span>
+				<div className="absolute -right-10 md:-right-20 bottom-28 md:top-10 w-32 md:w-auto floating">
+					<Image
+						src="/images/vectores/liwilu_banner_productos_vector.png"
+						alt="MacBook Pro"
+						width={295}
+						height={218}
+						quality={100}
+						className="h-auto"
+						priority
+					/>
+				</div>
+				<div className="relative max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-16 flex items-center justify-between md:flex-row flex-col">
+					<div className="w-full md:w-1/2">
+						<span className="text-[12px] md:text-sm font-light mb-2 block ">
+							NUEVO
+						</span>
+						<h1 className="md:text-5xl text-2xl font-bold mb-4 text-primary-light">
+							Macbook PRO <br /> de 14 pulgadas M4
+						</h1>
+						<p className="text-[12px] md:text-sm font-light text-secondary">
+							<span>SKU: MW2U3E/A</span>
+							<span className="ml-2">Barcode: 195949704796</span>
 						</p>
-						<button className="btn btn-primary">Comprar ahora</button>
+						<p className="text-xl my-6">
+							Compra desde:{' '}
+							<span className="text-3xl font-bold border-2 p-2 rounded-lg border-primary-light whitespace-nowrap leading-[65px]">
+								S/ 3,500
+							</span>
+						</p>
+						{/* <button className="btn btn-primary">Comprar ahora</button> */}
 					</div>
-					<div className="w-1/2">
+					<div className="w-full md:w-1/2">
 						<Image
 							src="/images/liwilu_home_laptop_img.png"
 							alt="Laptop"
-							width={500}
-							height={300}
+							width={692}
+							height={509}
+							className="w-full h-auto"
 						/>
 					</div>
 				</div>
@@ -176,7 +202,7 @@ export default function Home({ featuredProducts, error }: HomeProps) {
 										className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition"
 									>
 										<div className="relative">
-											<span className="absolute top-2 left-2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold z-10">
+											<span className="absolute top-2 left-2 bg-primary-light text-white px-3 py-1 rounded-full text-xs font-bold z-10">
 												OFERTA
 											</span>
 											<div className="relative w-full h-48">
@@ -228,6 +254,10 @@ export default function Home({ featuredProducts, error }: HomeProps) {
 					</>
 				)}
 			</section>
+
+			<Contacto />
+
+			<Aptitudes />
 		</Layout>
 	);
 }
