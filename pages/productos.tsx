@@ -111,7 +111,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 						<span className="text-[12px] md:text-sm font-light mb-2 block ">
 							NUEVO
 						</span>
-						<h1 className="text-2xl md:text-5xl font-bold mb-2 text-primary-light">
+						<h1 className="text-2xl md:text-5xl font-bold mb-2 text-primary-light leading-tight">
 							MacBook Pro de 14 pulgadas M4
 						</h1>
 						<p className="text-[12px] md:text-sm font-light text-secondary">
@@ -145,7 +145,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 			</section>
 
 			{/* Breadcrumb y categorías circulares */}
-			<section className="py-6 relative overflow-hidden bg-gradient-to-r from-primary to-primary-light">
+			<section className="py-6 relative overflow-hidden bg-gradient-to-r from-primary to-primary">
 				<div className="absolute -left-10 md:-left-60 -bottom-18 md:-bottom-80 w-32 md:w-full z-0 pointer-events-none">
 					<Image
 						src="/images/vectores/liwilu_banner_productos_vector_03.png"
@@ -169,7 +169,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 					</div>
 
 					{/* Categorías circulares - usando categorías de PrestaShop */}
-					<div className="flex gap-6 overflow-x-auto pb-2 max-w-5xl mx-auto justify-center">
+					<div className="flex gap-6 overflow-x-auto pb-2 max-w-5xl mx-auto">
 						{categories.slice(0, 6).map((cat) => (
 							<div
 								key={cat.id}
@@ -205,7 +205,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 			<div className="max-w-7xl mx-auto px-6 py-8">
 				<div className="flex flex-col md:flex-row gap-20">
 					{/* Sidebar */}
-					<aside className="w-full md:w-64 flex-shrink-0 font-sans">
+					<aside className="w-full md:w-64 flex-shrink-0 font-sans md:block hidden">
 						<div className="bg-white rounded-2xl shadow-lg p-5">
 							{/* Categorías */}
 							<div className="mb-4">
@@ -324,7 +324,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 									fill
 									className="object-cover"
 								/>
-								<div className="absolute top-4 left-4 bg-primary-light text-white px-3 py-1 rounded-full text-xs font-bold">
+								<div className="absolute top-4 left-4 bg-primary text-white px-3 py-1 rounded-full text-xs font-bold">
 									Nuevo
 								</div>
 							</div>
@@ -405,9 +405,9 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 												href={`/tienda/${product.id}`}
 												className="block" // Esto hace que todo el card sea clickeable
 											>
-												<div className="bg-primary-light rounded-md shadow-md overflow-hidden hover:shadow-xl transition">
+												<div className="bg-primary rounded-md shadow-md overflow-hidden hover:shadow-xl transition">
 													<div className="relative">
-														{/* <span className="absolute top-3 left-3 bg-primary-light text-white px-3 py-1 rounded-full text-xs font-bold z-10">
+														{/* <span className="absolute top-3 left-3 bg-primary text-white px-3 py-1 rounded-full text-xs font-bold z-10">
 															Liwilu
 														</span> */}
 														<button
@@ -428,24 +428,24 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 													</div>
 
 													<div className="p-4">
-														<div className="mb-2">
-															<span className="text-white text-xs font-semibold">
+														<div className="mb-0">
+															<span className="text-white text-sm font-normal">
 																Liwilu
 															</span>
 														</div>
 
-														<h3 className="font-semibold text-sm mb-2 line-clamp-2 h-10 text-white">
+														<h3 className="font-normal text-lg mb-2 line-clamp-2 h-10 text-white leading-5">
 															{product.name?.[0]?.value ||
 																'Producto sin nombre'}
 														</h3>
 
-														<div className="flex items-center gap-1 mb-3">
+														<div className="flex items-center gap-1 mb-0">
 															<div className="flex text-yellow-400 text-sm">
 																{'★'.repeat(5)}
 															</div>
 														</div>
 
-														<div className="flex items-center gap-2 mb-3">
+														<div className="flex items-center gap-2 mb-6">
 															<span className="text-white font-bold text-xl">
 																{formatPrice(product.price || '0')}
 															</span>
@@ -457,7 +457,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 														</div>
 
 														<button
-															className="w-full bg-white hover:bg-green-600 text-primary-light font-semibold py-2 rounded-xl transition"
+															className="w-full bg-white text-primary text-primary font-semibold py-2 rounded-xl transition"
 															onClick={(e) => e.preventDefault()} // evita navegar al hacer clic en el botón
 														>
 															Agregar al carrito
@@ -495,7 +495,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 														onClick={() => setCurrentPage(page)}
 														className={`px-4 py-2 rounded-lg transition ${
 															currentPage === page
-																? 'bg-primary-light text-white font-semibold'
+																? 'bg-primary text-white font-semibold'
 																: 'border hover:bg-gray-100'
 														}`}
 													>

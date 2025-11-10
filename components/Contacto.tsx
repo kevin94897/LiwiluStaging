@@ -33,7 +33,7 @@ export default function Contacto() {
 				</div>
 			</div>
 
-			<div className="w-full md:w-1/2 bg-primary-light flex items-center justify-center p-10">
+			<div className="w-full md:w-1/2 bg-primary flex items-center justify-center p-10">
 				<form className="w-full max-w-md text-white space-y-6">
 					<h2 className="text-3xl md:text-5xl font-bold text-white text-left md:text-left max-w-44">
 						¿Estás interesado(a)?
@@ -79,7 +79,7 @@ export default function Contacto() {
 					<div className="text-center">
 						<button
 							type="submit"
-							className="mt-6 bg-white text-primary-light px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition-all w-full md:w-auto"
+							className="mt-6 bg-white text-primary px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition-all w-full md:w-auto"
 						>
 							Solicite un asesor
 						</button>

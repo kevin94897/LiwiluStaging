@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { FaInstagram, FaFacebook, FaYoutube, FaTiktok } from 'react-icons/fa';
+import Visa from '@/public/images/vectores/payments/visa.svg';
+import { FaInstagram, FaFacebook, FaTiktok } from 'react-icons/fa';
 
 export default function Footer() {
 	return (
@@ -88,7 +89,7 @@ export default function Footer() {
 								/>
 								<button
 									type="submit"
-									className="bg-primary-light hover:bg-green-600 px-4 rounded-r-md text-sm font-semibold"
+									className="bg-primaryhover:bg-green-600 px-4 rounded-r-md text-sm font-semibold"
 								>
 									Registrarse
 								</button>
@@ -110,37 +111,25 @@ export default function Footer() {
 					</div>
 
 					{/* Medios de pago */}
-					<div className="flex gap-2 mt-4">
-						<Image
-							src="/images/payments/visa.svg"
-							alt="Visa"
-							width={40}
-							height={20}
-						/>
-						<Image
-							src="/images/payments/mastercard.svg"
-							alt="Mastercard"
-							width={40}
-							height={20}
-						/>
-						<Image
-							src="/images/payments/amex.svg"
-							alt="Amex"
-							width={40}
-							height={20}
-						/>
-						<Image
-							src="/images/payments/yape.svg"
-							alt="Yape"
-							width={40}
-							height={20}
-						/>
-						<Image
-							src="/images/payments/plin.svg"
-							alt="Plin"
-							width={40}
-							height={20}
-						/>
+					<div className="gap-3 mt-4">
+						{[
+							'apple-pay',
+							'google-pay',
+							'visa',
+							'mastercard',
+							'amex',
+							'yape',
+							'plin',
+						].map((brand) => (
+							<Image
+								key={brand}
+								src={`/images/vectores/payments/${brand}.svg`}
+								alt={brand}
+								width={120}
+								height={80}
+								className="h-5 w-auto object-contain inline-block ml-2"
+							/>
+						))}
 					</div>
 				</div>
 			</div>

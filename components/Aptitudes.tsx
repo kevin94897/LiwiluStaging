@@ -7,8 +7,8 @@ export default function Aptitudes() {
 				<Image
 					src="/images/vectores/liwilu_aptitud_01.svg"
 					alt="Liwilu"
-					width={654}
-					height={499}
+					width={120}
+					height={30}
 					className="w-32 h-32"
 					priority
 				/>
@@ -18,11 +18,11 @@ export default function Aptitudes() {
 		{
 			icon: (
 				<Image
-					src="/images/liwilu_logo.png"
+					src="/images/vectores/liwilu_aptitud_02.svg"
 					alt="Liwilu"
 					width={130}
 					height={40}
-					className="mb-6 mx-auto md:mx-0"
+					className="mx-auto md:mx-0"
 					priority
 				/>
 			),
@@ -31,11 +31,11 @@ export default function Aptitudes() {
 		{
 			icon: (
 				<Image
-					src="/images/liwilu_logo.png"
+					src="/images/vectores/liwilu_aptitud_03.svg"
 					alt="Liwilu"
-					width={130}
-					height={40}
-					className="mb-6 mx-auto md:mx-0"
+					width={150}
+					height={50}
+					className="mx-auto md:mx-0"
 					priority
 				/>
 			),
@@ -44,11 +44,11 @@ export default function Aptitudes() {
 		{
 			icon: (
 				<Image
-					src="/images/liwilu_logo.png"
+					src="/images/vectores/liwilu_aptitud_04.svg"
 					alt="Liwilu"
-					width={130}
+					width={150}
 					height={40}
-					className="mb-6 mx-auto md:mx-0"
+					className="mx-auto md:mx-0"
 					priority
 				/>
 			),
@@ -58,11 +58,14 @@ export default function Aptitudes() {
 
 	return (
 		<section className="bg-gray-50 py-12">
+			<h2 className="text-3xl font-bold text-center mb-8 text-primary">
+				Tu confianza, nuestro compromiso
+			</h2>
 			<div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
 				{features.map((feature, index) => (
 					<div key={index} className="flex flex-col items-center space-y-4">
 						{feature.icon}
-						<p className="text-gray-700 text-sm leading-relaxed max-w-[220px]">
+						<p className="text-gray-500 text-sm leading-normal max-w-[180px] font-bold">
 							{feature.text}
 						</p>
 					</div>

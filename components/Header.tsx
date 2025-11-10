@@ -91,7 +91,7 @@ function QuickActions({ isMobile = false, cartCount = 0 }) {
 				<Link href="/carrito" className="relative">
 					<FaShoppingCart size={18} />
 					{cartCount > 0 && (
-						<span className="absolute -top-2 -right-2 bg-primary-light text-[#0b2d2d] font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center">
+						<span className="absolute -top-2 -right-2 bg-primary text-[#0b2d2d] font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center">
 							{cartCount}
 						</span>
 					)}
@@ -115,7 +115,7 @@ function QuickActions({ isMobile = false, cartCount = 0 }) {
 				<FaTruck /> Sigue tu pedido
 			</Link>
 			<Link
-				href="/cuenta"
+				href="/mi-cuenta"
 				className="flex items-center gap-2 hover:text-green-400 transition"
 			>
 				<FaUser /> Mi cuenta
@@ -126,7 +126,7 @@ function QuickActions({ isMobile = false, cartCount = 0 }) {
 			>
 				<FaShoppingCart size={18} />
 				{cartCount > 0 && (
-					<span className="absolute -top-2 -right-2 bg-primary-light text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+					<span className="absolute -top-2 -right-2 bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
 						{cartCount}
 					</span>
 				)}
@@ -222,7 +222,7 @@ export default function Header() {
 													onClick={() => setMobileCatsOpen(false)}
 													className={`block px-4 py-3 text-white transition-colors ${
 														c.highlight
-															? 'bg-primary-light hover:bg-primary-light rounded-xl font-medium text-[#0b2d2d]'
+															? 'bg-primary hover:bg-primary rounded-xl font-medium text-[#0b2d2d]'
 															: c.highlightBottom
 															? 'text-white hover:bg-white/10 rounded-xl font-bold'
 															: 'text-white/90 hover:bg-white/10 rounded-lg'
@@ -261,7 +261,7 @@ export default function Header() {
 														onClick={() => setMobileCatsOpen(false)}
 														className={`flex items-center justify-between px-4 py-3 text-sm transition ${
 															c.highlight
-																? 'bg-primary-light text-white hover:bg-primary-light'
+																? 'bg-primary text-white hover:bg-primary-light'
 																: c.highlightBottom
 																? 'bg-gray-100 font-bold hover:bg-gray-200'
 																: 'hover:bg-gray-50'

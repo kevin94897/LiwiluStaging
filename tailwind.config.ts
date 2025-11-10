@@ -13,10 +13,10 @@ const config: Config = {
 			},
 			colors: {
 				primary: {
-					DEFAULT: '#10B981',
+					DEFAULT: '#45b171',
 					hover: '#059669',
-					light: '#45B171',
-					dark: '#047857',
+					light: '#4ded8c',
+					dark: '#0f2828',
 				},
 				secondary: {
 					DEFAULT: '#0F766E',
@@ -28,8 +28,8 @@ const config: Config = {
 				info: '#3B82F6',
 				neutral: {
 					black: '#1F2937',
-					'gray-dark': '#374151',
-					gray: '#6B7280',
+					'gray-dark': '#333',
+					gray: '#787D86',
 					'gray-light': '#D1D5DB',
 					'gray-lighter': '#F3F4F6',
 					white: '#FFFFFF',
