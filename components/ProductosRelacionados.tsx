@@ -77,7 +77,7 @@ export default function ProductosRelacionados({
 					return (
 						<div key={product.id}>
 							<div className="bg-primary rounded-md shadow-lg overflow-hidden hover:shadow-xl transition h-full">
-								<Link href={`/producto/${product.id}`}>
+								<Link href={`/tienda/${product.id}`}>
 									<div className="relative w-full h-48">
 										<Image
 											src={imageUrl}

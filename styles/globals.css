@@ -63,6 +63,10 @@
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
+body {
+  color: var(--color-primary-dark);
+}
+
 /* ============================================
    BOTONES BASE
    ============================================ */
@@ -466,4 +470,32 @@
     padding: 0.875rem 1.75rem;
     font-size: 1rem;
   }
+}
+
+.slick-next {
+  right: 0px !important;
+}
+
+.slick-prev {
+  left: 0px !important;
+}
+
+.slick-arrow.slick-prev::before {
+  content: "";
+  width: 15px !important;
+  height: 15px !important;
+  background-size: contain;
+  background-repeat: no-repeat;
+  display: block;
+  background-image: url("/images/vectores/arrow-left.svg");
+}
+
+.slick-arrow.slick-next::before {
+  content: "";
+  width: 15px !important;
+  height: 15px !important;
+  background-size: contain;
+  background-repeat: no-repeat;
+  display: block;
+  background-image: url("/images/vectores/arrow-right.svg");
 }

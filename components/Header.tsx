@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { IoMenu } from 'react-icons/io5';
 import { HiChevronRight } from 'react-icons/hi';
+import { useCart } from '@/context/CartContext';
 
 import {
 	FaRegHeart,
@@ -81,13 +82,18 @@ function SearchBar({ isMobile = false }) {
 	);
 }
 
-function QuickActions({ isMobile = false, cartCount = 0 }) {
+function QuickActions({ isMobile = false }) {
+	const { getCartCount } = useCart();
+	const cartCount = getCartCount();
+
 	if (isMobile) {
 		return (
 			<div className="flex items-center gap-4">
 				<FaBoxes size={20} />
 				<FaTruck size={20} />
-				<FaUser size={18} />
+				<Link href="/mi-cuenta">
+					<FaUser size={18} />
+				</Link>
 				<Link href="/carrito" className="relative">
 					<FaShoppingCart size={18} />
 					{cartCount > 0 && (
@@ -136,7 +142,6 @@ function QuickActions({ isMobile = false, cartCount = 0 }) {
 }
 
 export default function Header() {
-	const cartCount = 1;
 	const [mobileCatsOpen, setMobileCatsOpen] = useState(false);
 	const [isSticky, setIsSticky] = useState(false);
 
@@ -169,14 +174,14 @@ export default function Header() {
 							<Link
 								key={i}
 								href={link.href}
-								className="flex items-center gap-1 hover:underline shrink-0 text-black"
+								className="flex items-center gap-1 hover:underline shrink-0 text-primary-dark"
 							>
 								{link.icon && link.icon}
 								{link.label}
 							</Link>
 						))}
 					</div>
-					<span className="hidden lg:block text-black">
+					<span className="hidden lg:block text-primary-dark">
 						Contáctanos: (01) 7020868 - Anexo 2
 					</span>
 				</div>
@@ -193,7 +198,7 @@ export default function Header() {
 					<div className="lg:hidden space-y-3">
 						<div className="flex items-end md:items-center justify-between">
 							<Logo width={120} height={36} className="mr-5" />
-							<QuickActions isMobile cartCount={cartCount} />
+							<QuickActions isMobile />
 						</div>
 						<div className="flex items-center gap-1 md:gap-3">
 							<button
@@ -284,7 +289,7 @@ export default function Header() {
 							<SearchBar />
 						</div>
 						<Logo width={100} height={40} className="justify-center" />
-						<QuickActions cartCount={cartCount} />
+						<QuickActions />
 					</div>
 				</div>
 			</div>

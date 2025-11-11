@@ -38,6 +38,20 @@ export default function Footer() {
 							<strong>Opción 2:</strong> Compras y asesor de ventas
 						</p>
 					</div>
+					<ul>
+						<li>
+							<a href="#">Misión</a>
+						</li>
+						<li>
+							<a href="#">Visión</a>
+						</li>
+						<li>
+							<a href="#">Valores</a>
+						</li>
+						<li>
+							<a href="#">Trabaja con nosotros</a>
+						</li>
+					</ul>
 				</div>
 
 				{/* Columna 2: Enlaces */}
@@ -85,7 +99,7 @@ export default function Footer() {
 								<input
 									type="email"
 									placeholder="Dirección de correo electrónico"
-									className="px-4 py-2 rounded-l-md text-black text-sm w-full"
+									className="px-4 py-2 rounded-l-md text-primary-dark text-sm w-full"
 								/>
 								<button
 									type="submit"

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Layout from '@/components/Layout';
 import Link from 'next/link';
 import AccountSidebar from '@/components/AccountSidebar';
+import Image from 'next/image';
 
 export default function MisDatos() {
 	const [formData, setFormData] = useState({
@@ -33,25 +34,36 @@ export default function MisDatos() {
 			title="Mis datos - Liwilu"
 			description="Edita tu información personal"
 		>
-			<div className="bg-gray-50 min-h-screen py-8">
+			<div className="min-h-screen py-8">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="flex flex-col lg:flex-row gap-6">
+						<div className="absolute -right-60 md:-right-32 top-30 md:top-12 w-auto md:w-auto z-0 pointer-events-none hidden lg:block">
+							<Image
+								src="/images/vectores/liwilu_banner_productos_vector_04.png"
+								alt="MacBook Pro"
+								width={408}
+								height={427}
+								quality={100}
+								className="h-auto"
+								priority
+							/>
+						</div>
 						{/* Sidebar */}
 						<AccountSidebar activeSection="mis-datos" />
 
 						{/* Main Content */}
 						<main className="flex-1">
-							<div className="bg-white rounded-2xl shadow-sm p-8">
-								<h1 className="text-3xl font-bold mb-8 border-b pb-4">
+							<div className="md:px-8 z-10 relative">
+								<h1 className="text-xl md:text-4xl font-semibold mb-8 border-b pb-4">
 									Información de mi cuenta
 								</h1>
 
 								{/* Mis datos */}
 								<section>
 									<div className="flex items-center gap-3 mb-6">
-										<div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center">
+										<div className="w-8 h-8 md:w-10 md:h-10 bg-primary-dark rounded-full flex items-center justify-center">
 											<svg
-												className="w-6 h-6 text-white"
+												className="h-5 w-5 md:w-6 md:h-6 text-white"
 												fill="none"
 												stroke="currentColor"
 												viewBox="0 0 24 24"
@@ -64,7 +76,9 @@ export default function MisDatos() {
 												/>
 											</svg>
 										</div>
-										<h2 className="text-2xl font-bold">Mis datos</h2>
+										<h2 className="text-xl md:text-2xl font-semibold">
+											Mis datos
+										</h2>
 									</div>
 
 									<form onSubmit={handleSubmit} className="space-y-6">
@@ -83,7 +97,7 @@ export default function MisDatos() {
 													name="nombre"
 													value={formData.nombre}
 													onChange={handleChange}
-													className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+													className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition"
 													required
 												/>
 											</div>
@@ -101,7 +115,7 @@ export default function MisDatos() {
 													name="apellido"
 													value={formData.apellido}
 													onChange={handleChange}
-													className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+													className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition"
 													required
 												/>
 											</div>
@@ -121,7 +135,7 @@ export default function MisDatos() {
 													name="tipoDocumento"
 													value={formData.tipoDocumento}
 													onChange={handleChange}
-													className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition appearance-none bg-white"
+													className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition appearance-none bg-white"
 													required
 												>
 													<option value="DNI">DNI</option>
@@ -143,7 +157,7 @@ export default function MisDatos() {
 													name="numeroDocumento"
 													value={formData.numeroDocumento}
 													onChange={handleChange}
-													className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+													className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition"
 													required
 												/>
 											</div>
@@ -163,13 +177,13 @@ export default function MisDatos() {
 												name="celular"
 												value={formData.celular}
 												onChange={handleChange}
-												className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+												className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition"
 												required
 											/>
 										</div>
 
 										{/* Botones de acción */}
-										<div className="flex justify-between mt-8 pt-6 border-t">
+										<div className="flex flex-col-reverse md:flex-row justify-between mt-8 pt-6 border-t gap-6 text-center">
 											<Link
 												href="/mi-cuenta"
 												className="text-gray-500 hover:text-gray-700 font-medium"
@@ -178,7 +192,7 @@ export default function MisDatos() {
 											</Link>
 											<button
 												type="submit"
-												className="bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-3 rounded-xl transition"
+												className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-2 md:py-4 rounded-full transition"
 											>
 												Guardar
 											</button>

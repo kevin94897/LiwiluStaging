@@ -19,7 +19,7 @@ export default function Layout({ title, description, children }: LayoutProps) {
 				/>
 			</Head>
 
-			<div className="min-h-screen flex flex-col bg-white">
+			<div className="min-h-screen flex flex-col bg-gray-50">
 				<Header />
 				<main className="flex-grow mt-[135px] lg:mt-[92px] overflow-hidden relative">
 					{children}

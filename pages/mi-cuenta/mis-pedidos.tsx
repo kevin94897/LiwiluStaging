@@ -32,7 +32,7 @@ export default function MisPedidos() {
 			id: '1',
 			producto: {
 				nombre: 'Polo Sport Saco Oliveros',
-				imagen: '/productos/polo-sport.png',
+				imagen: '/images/productos/liwilu_producto_example.png',
 				talla: '12',
 				codigo: 'PD. 737474883',
 			},
@@ -49,7 +49,7 @@ export default function MisPedidos() {
 			id: '2',
 			producto: {
 				nombre: 'Polo Sport Saco Oliveros',
-				imagen: '/productos/polo-sport.png',
+				imagen: '/images/productos/liwilu_producto_example.png',
 				talla: '12',
 				codigo: 'PD. 737474883',
 			},
@@ -69,7 +69,7 @@ export default function MisPedidos() {
 
 	const getEstadoBadge = (estado: Pedido['estado']) => {
 		const badges = {
-			'en-proceso': 'bg-blue-100 text-blue-700',
+			'en-proceso': 'bg-green-100 text-primary',
 			finalizado: 'bg-gray-100 text-gray-700',
 			entregado: 'bg-gray-400 text-white',
 		};
@@ -84,9 +84,9 @@ export default function MisPedidos() {
 	const getIconoEstado = (estado: Pedido['estado']) => {
 		if (estado === 'en-proceso') {
 			return (
-				<div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+				<div className="h-5 w-5 md:w-8 md:h-8 min-w-5 bg-primary rounded-full flex items-center justify-center">
 					<svg
-						className="w-5 h-5 text-white"
+						className="w-3 h-3 md:w-5 md:h-5 text-white"
 						fill="currentColor"
 						viewBox="0 0 20 20"
 					>
@@ -96,9 +96,9 @@ export default function MisPedidos() {
 			);
 		}
 		return (
-			<div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
+			<div className="h-5 w-5 md:w-8 md:h-8 min-w-5 bg-gray-400 rounded-full flex items-center justify-center">
 				<svg
-					className="w-5 h-5 text-white"
+					className="w-3 h-3 md:w-5 md:h-5 text-white"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -116,14 +116,25 @@ export default function MisPedidos() {
 
 	return (
 		<Layout title="Mis pedidos - Liwilu" description="Consulta tus pedidos">
-			<div className="bg-gray-50 min-h-screen py-8">
+			<div className="min-h-screen py-8">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="flex flex-col lg:flex-row gap-6">
+						<div className="absolute -right-60 md:-right-32 top-30 md:top-12 w-auto md:w-auto z-0 pointer-events-none hidden lg:block">
+							<Image
+								src="/images/vectores/liwilu_banner_productos_vector_04.png"
+								alt="MacBook Pro"
+								width={408}
+								height={427}
+								quality={100}
+								className="h-auto"
+								priority
+							/>
+						</div>
 						<AccountSidebar activeSection="mis-pedidos" />
 
 						<main className="flex-1">
-							<div className="bg-white rounded-2xl shadow-sm p-8">
-								<h1 className="text-3xl font-bold mb-8 border-b pb-4">
+							<div className="md:px-8 z-10 relative">
+								<h1 className="text-xl md:text-4xl font-semibold mb-8 border-b pb-4">
 									Mis pedidos
 								</h1>
 
@@ -133,10 +144,10 @@ export default function MisPedidos() {
 										return (
 											<div
 												key={pedido.id}
-												className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition"
+												className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition bg-white"
 											>
 												{/* Header del pedido */}
-												<div className="bg-gray-50 px-6 py-4 flex items-center justify-between">
+												<div className="px-6 py-4 flex items-center justify-between">
 													<div className="flex items-center gap-4">
 														{getIconoEstado(pedido.estado)}
 														<div>
@@ -157,32 +168,60 @@ export default function MisPedidos() {
 														<p className="font-semibold">
 															{pedido.numeroRecibo}
 														</p>
+														{/* Botón seguir pedido */}
+														{pedido.estado === 'en-proceso' && (
+															<button className="mt-4 text-primary hover:text-primary-dark font-semibold text-sm">
+																Seguir pedido →
+															</button>
+														)}
+
+														{pedido.estado === 'entregado' && (
+															<p className="text-neutral-gray font-semibold py-1 md:py-3">
+																Finalizado
+															</p>
+														)}
 													</div>
 												</div>
 
 												{/* Contenido del pedido */}
 												<div className="p-6">
-													<div className="flex gap-6">
+													<div className="flex md:gap-6">
 														{/* Imagen del producto */}
-														<div className="relative w-32 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-															<Image
-																src={pedido.producto.imagen}
-																alt={pedido.producto.nombre}
-																fill
-																className="object-contain"
-																unoptimized
-															/>
+														<div className="flex flex-col justify-between">
+															<div className="relative w-32 h-32 rounded-lg overflow-hidden flex-shrink-0 hidden md:block">
+																<Image
+																	src={pedido.producto.imagen}
+																	alt={pedido.producto.nombre}
+																	fill
+																	className="object-contain"
+																	unoptimized
+																/>
+															</div>
+															{/* Info adicional */}
+															<div className="mt-4 text-sm text-neutral-gray hidden md:block">
+																<p>Talla {pedido.producto.talla}</p>
+																<p>{pedido.producto.codigo}</p>
+															</div>
 														</div>
 
 														{/* Info del producto */}
 														<div className="flex-1">
-															<div className="flex justify-between items-start mb-4">
+															<div className="flex gap-6 justify-between items-start mb-4">
+																<div className="relative w-32 h-32 rounded-lg overflow-hidden flex-shrink-0 md:hidden">
+																	<Image
+																		src={pedido.producto.imagen}
+																		alt={pedido.producto.nombre}
+																		fill
+																		className="object-contain"
+																		unoptimized
+																	/>
+																</div>
 																<div>
 																	<h4 className="font-semibold text-lg mb-2">
 																		{pedido.producto.nombre}
 																	</h4>
 																	<div className="flex items-baseline gap-3">
-																		<span className="text-2xl font-bold text-gray-900">
+																		<span className="text-xl md:text-2xl font-semibold text-gray-900">
 																			s/{pedido.precio.toFixed(2)}
 																		</span>
 																		<span className="text-gray-400 line-through">
@@ -193,63 +232,54 @@ export default function MisPedidos() {
 															</div>
 
 															{/* Timeline de estados */}
-															<div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm mt-6">
-																<div>
-																	<p className="font-semibold text-gray-900 mb-1">
-																		Pedido ingresado
-																	</p>
-																	<p className="text-gray-600 text-xs">
-																		{pedido.fechas.ingresado}
-																	</p>
+															<div className="flex md:flex-row flex-col-reverse justify-between items-end gap-4 text-sm mt-6 text-neutral-gray">
+																<div className="w-full md:basis-3/4 grid grid-cols-2 md:grid-cols-2 md:grid-rows-2 gap-4 text-sm mt-6">
+																	<div>
+																		<p className="font-semibold mb-1">
+																			Pedido ingresado
+																		</p>
+																		<p className="text-xs">
+																			{pedido.fechas.ingresado}
+																		</p>
+																	</div>
+																	<div>
+																		<p className="font-semibold mb-1">
+																			Pendiente de armado
+																		</p>
+																		<p className="text-xs">
+																			{pedido.fechas.pendiente || '-'}
+																		</p>
+																	</div>
+																	<div>
+																		<p className="font-semibold mb-1">
+																			Pedido confirmado
+																		</p>
+																		<p className="text-xs">
+																			{pedido.fechas.confirmado || '-'}
+																		</p>
+																	</div>
+																	<div>
+																		<p className="font-semibold mb-1">Ruta</p>
+																		<p className="text-xs">
+																			{pedido.fechas.ruta || '-'}
+																		</p>
+																	</div>
 																</div>
-																<div>
-																	<p className="font-semibold text-gray-900 mb-1">
-																		Pendiente de armado
-																	</p>
-																	<p className="text-gray-600 text-xs">
-																		{pedido.fechas.pendiente || '-'}
-																	</p>
-																</div>
-																<div>
-																	<p className="font-semibold text-gray-900 mb-1">
-																		Pedido confirmado
-																	</p>
-																	<p className="text-gray-600 text-xs">
-																		{pedido.fechas.confirmado || '-'}
-																	</p>
-																</div>
-																<div>
-																	<p className="font-semibold text-gray-900 mb-1">
-																		Ruta
-																	</p>
-																	<p className="text-gray-600 text-xs">
-																		{pedido.fechas.ruta || '-'}
-																	</p>
-																</div>
-																<div>
-																	<p className="font-semibold text-gray-900 mb-1">
-																		Entregado
-																	</p>
-																	<p className="text-gray-600 text-xs">
-																		{pedido.fechas.entregado || '-'}
-																	</p>
+																<div className="w-full md:basis-1/4 grid grid-cols-2 ">
+																	<div className="text-sm text-neutral-gray md:hidden">
+																		<p>Talla {pedido.producto.talla}</p>
+																		<p>{pedido.producto.codigo}</p>
+																	</div>
+																	<div>
+																		<p className="font-semibold mb-1">
+																			Entregado
+																		</p>
+																		<p className="text-xs">
+																			{pedido.fechas.entregado || '-'}
+																		</p>
+																	</div>
 																</div>
 															</div>
-
-															{/* Info adicional */}
-															<div className="mt-4 text-sm text-gray-600">
-																<p>
-																	Talla {pedido.producto.talla} •{' '}
-																	{pedido.producto.codigo}
-																</p>
-															</div>
-
-															{/* Botón seguir pedido */}
-															{pedido.estado === 'en-proceso' && (
-																<button className="mt-4 text-primary hover:text-primary-dark font-semibold text-sm">
-																	Seguir pedido →
-																</button>
-															)}
 														</div>
 													</div>
 												</div>
@@ -259,14 +289,14 @@ export default function MisPedidos() {
 								</div>
 
 								{/* Botones de acción */}
-								<div className="flex justify-between mt-8 pt-6 border-t">
+								<div className="flex flex-col-reverse md:flex-row justify-between mt-8 pt-6 border-t gap-6 text-center">
 									<Link
 										href="/mi-cuenta"
 										className="text-gray-500 hover:text-gray-700 font-medium"
 									>
 										Volver
 									</Link>
-									<button className="bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-3 rounded-xl transition">
+									<button className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-2 md:py-4 rounded-full transition">
 										Guardar
 									</button>
 								</div>

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Layout from '@/components/Layout';
 import Link from 'next/link';
 import AccountSidebar from '@/components/AccountSidebar';
+import Image from 'next/image';
 
 interface Direccion {
 	id: string;
@@ -67,14 +68,25 @@ export default function Direcciones() {
 			title="Direcciones - Liwilu"
 			description="Gestiona tus direcciones de envío"
 		>
-			<div className="bg-gray-50 min-h-screen py-8">
+			<div className="min-h-screen py-8">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="flex flex-col lg:flex-row gap-6">
+						<div className="absolute -right-60 md:-right-32 top-30 md:top-12 w-auto md:w-auto z-0 pointer-events-none hidden lg:block">
+							<Image
+								src="/images/vectores/liwilu_banner_productos_vector_04.png"
+								alt="MacBook Pro"
+								width={408}
+								height={427}
+								quality={100}
+								className="h-auto"
+								priority
+							/>
+						</div>
 						<AccountSidebar activeSection="direcciones" />
 
 						<main className="flex-1">
-							<div className="bg-white rounded-2xl shadow-sm p-8">
-								<h1 className="text-3xl font-bold mb-8 border-b pb-4">
+							<div className="md:px-8 z-10 relative">
+								<h1 className="text-xl md:text-4xl font-semibold mb-8 border-b pb-4">
 									Mi libreta de direcciones
 								</h1>
 
@@ -83,7 +95,7 @@ export default function Direcciones() {
 										{/* Grid de direcciones */}
 										<div className="grid md:grid-cols-2 gap-6">
 											{/* Dirección de entrega */}
-											<div className="bg-gray-50 rounded-xl p-6">
+											<div className="bg-white rounded-lg p-6">
 												<h3 className="font-semibold text-gray-900 mb-2 text-lg">
 													Dirección de entrega principal
 												</h3>
@@ -120,7 +132,7 @@ export default function Direcciones() {
 											</div>
 
 											{/* Dirección de facturación */}
-											<div className="bg-gray-50 rounded-xl p-6">
+											<div className="bg-white rounded-lg p-6">
 												<h3 className="font-semibold text-gray-900 mb-2 text-lg">
 													Dirección de facturación
 												</h3>
@@ -158,14 +170,14 @@ export default function Direcciones() {
 										</div>
 
 										{/* Botones de acción */}
-										<div className="flex justify-between mt-8 pt-6 border-t">
+										<div className="flex flex-col-reverse md:flex-row justify-between mt-8 pt-6 border-t gap-6 text-center">
 											<Link
 												href="/mi-cuenta"
 												className="text-gray-500 hover:text-gray-700 font-medium"
 											>
 												Volver
 											</Link>
-											<button className="bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-3 rounded-xl transition">
+											<button className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-2 md:py-4 rounded-full transition">
 												Guardar
 											</button>
 										</div>
@@ -375,7 +387,7 @@ export default function Direcciones() {
 												</button>
 												<button
 													type="submit"
-													className="bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-3 rounded-xl transition"
+													className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-2 md:py-4 rounded-full transition"
 												>
 													Guardar dirección
 												</button>

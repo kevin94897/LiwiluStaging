@@ -1,9 +1,13 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { GetServerSideProps } from 'next';
 import Layout from '@/components/Layout';
 import { useState } from 'react';
 import Contacto from '@/components/Contacto';
+
+import { useCart } from '@/context/CartContext';
 import {
 	getProducts,
 	getCategories,
@@ -12,7 +16,7 @@ import {
 	Category,
 	getProductImageUrl,
 } from '@/lib/prestashop';
-import { FaRegHeart, FaPlus, FaMinus } from 'react-icons/fa';
+import { FaRegHeart, FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
 
 interface TiendaProps {
 	products: Product[];
@@ -23,7 +27,7 @@ interface TiendaProps {
 export const getServerSideProps: GetServerSideProps = async () => {
 	try {
 		const [products, categories] = await Promise.all([
-			getProducts(50), // Obtener más productos
+			getProducts(50),
 			getCategories(),
 		]);
 
@@ -52,7 +56,11 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 	]);
 	const [selectedCategory, setSelectedCategory] = useState<string>('all');
 	const [currentPage, setCurrentPage] = useState(1);
+	const [loadingCart, setLoadingCart] = useState<string | null>(null);
+	const [favoritos, setFavoritos] = useState<string[]>([]);
 	const productsPerPage = 9;
+
+	const { addToCart } = useCart();
 
 	const toggleCategory = (category: string) => {
 		setOpenCategories((prev) =>
@@ -60,6 +68,39 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 				? prev.filter((c) => c !== category)
 				: [...prev, category]
 		);
+	};
+
+	const toggleFavorito = (e: React.MouseEvent, productId: string) => {
+		e.preventDefault();
+		e.stopPropagation();
+
+		setFavoritos((prev) =>
+			prev.includes(productId)
+				? prev.filter((id) => id !== productId)
+				: [...prev, productId]
+		);
+
+		// Guardar en localStorage
+		const updatedFavoritos = favoritos.includes(productId)
+			? favoritos.filter((id) => id !== productId)
+			: [...favoritos, productId];
+		localStorage.setItem('liwilu_favoritos', JSON.stringify(updatedFavoritos));
+	};
+
+	const handleAddToCart = async (e: React.MouseEvent, producto: Product) => {
+		e.preventDefault();
+		e.stopPropagation();
+
+		try {
+			setLoadingCart(producto.id);
+			addToCart(producto, 1);
+			alert(`✓ ${producto.name?.[0]?.value || 'Producto'} agregado al carrito`);
+		} catch (error) {
+			console.error('Error al agregar al carrito:', error);
+			alert('Error al agregar el producto al carrito');
+		} finally {
+			setLoadingCart(null);
+		}
 	};
 
 	const filteredProducts =
@@ -95,7 +136,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 				</div>
 
 				<div className="relative max-w-4xl mx-auto px-6 py-6 md:py-8 flex items-center justify-between relative">
-					{/* Vector flotante */}
 					<div className="absolute -right-10 md:-right-20 -top-10 md:-top-28 w-32 md:w-56 floating">
 						<Image
 							src="/images/vectores/liwilu_banner_productos_vector_02.png"
@@ -159,7 +199,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 				</div>
 
 				<div className="max-w-7xl mx-auto px-6">
-					{/* Breadcrumb */}
 					<div className="text-white text-sm mb-6">
 						<Link href="/" className="hover:underline">
 							Inicio
@@ -168,7 +207,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 						<span>Tienda virtual</span>
 					</div>
 
-					{/* Categorías circulares - usando categorías de PrestaShop */}
 					<div className="flex gap-6 overflow-x-auto pb-2 max-w-5xl mx-auto">
 						{categories.slice(0, 6).map((cat) => (
 							<div
@@ -207,7 +245,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 					{/* Sidebar */}
 					<aside className="w-full md:w-64 flex-shrink-0 font-sans md:block hidden">
 						<div className="bg-white rounded-2xl shadow-lg p-5">
-							{/* Categorías */}
 							<div className="mb-4">
 								<button
 									onClick={() => toggleCategory('Categorías')}
@@ -216,9 +253,9 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 									<span>Categorías</span>
 									<span className="text-2xl font-light text-gray-600">
 										{openCategories.includes('Categorías') ? (
-											<FaMinus className="w-3 h-3 text-black transition" />
+											<FaMinus className="w-3 h-3 text-primary-dark transition" />
 										) : (
-											<FaPlus className="w-3 h-3 text-black transition" />
+											<FaPlus className="w-3 h-3 text-primary-dark transition" />
 										)}
 									</span>
 								</button>
@@ -240,7 +277,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 													className="w-full text-left text-gray-500 font-bold hover:text-gray-900 transition-colors flex items-center justify-between group"
 												>
 													<span className="text-sm">{cat.name}</span>
-													<FaPlus className="w-3 h-3 text-black transition" />
+													<FaPlus className="w-3 h-3 text-primary-dark transition" />
 												</button>
 											</li>
 										))}
@@ -248,7 +285,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 								)}
 							</div>
 
-							{/* Tallas */}
 							<div className="mb-4 pb-5 border-b border-gray-200">
 								<button
 									onClick={() => toggleCategory('Tallas')}
@@ -257,9 +293,9 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 									<span>Tallas</span>
 									<span className="text-2xl font-light text-gray-600">
 										{openCategories.includes('Tallas') ? (
-											<FaMinus className="w-3 h-3 text-black transition" />
+											<FaMinus className="w-3 h-3 text-primary-dark transition" />
 										) : (
-											<FaPlus className="w-3 h-3 text-black transition" />
+											<FaPlus className="w-3 h-3 text-primary-dark transition" />
 										)}
 									</span>
 								</button>
@@ -270,7 +306,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 								)}
 							</div>
 
-							{/* Material */}
 							<div className="mb-4 pb-5 border-b border-gray-200">
 								<button
 									onClick={() => toggleCategory('Material')}
@@ -279,9 +314,9 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 									<span>Material</span>
 									<span className="text-2xl font-light text-gray-600">
 										{openCategories.includes('Material') ? (
-											<FaMinus className="w-3 h-3 text-black transition" />
+											<FaMinus className="w-3 h-3 text-primary-dark transition" />
 										) : (
-											<FaPlus className="w-3 h-3 text-black transition" />
+											<FaPlus className="w-3 h-3 text-primary-dark transition" />
 										)}
 									</span>
 								</button>
@@ -292,7 +327,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 								)}
 							</div>
 
-							{/* Marca */}
 							<div className="mb-0">
 								<button
 									onClick={() => toggleCategory('Marca')}
@@ -301,9 +335,9 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 									<span>Marca</span>
 									<span className="text-2xl font-light text-gray-600">
 										{openCategories.includes('Marca') ? (
-											<FaMinus className="w-3 h-3 text-black transition" />
+											<FaMinus className="w-3 h-3 text-primary-dark transition" />
 										) : (
-											<FaPlus className="w-3 h-3 text-black transition" />
+											<FaPlus className="w-3 h-3 text-primary-dark transition" />
 										)}
 									</span>
 								</button>
@@ -315,7 +349,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 							</div>
 						</div>
 
-						{/* Banner lateral - Solo visible en desktop */}
 						<div className="hidden md:block mt-6 bg-white rounded-lg shadow-md overflow-hidden">
 							<div className="relative h-64">
 								<Image
@@ -333,7 +366,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 
 					{/* Grid de productos */}
 					<main className="flex-1">
-						{/* Banner destacado */}
 						<div className="bg-white rounded-sm shadow-md mb-14 overflow-hidden">
 							<div className="relative h-32 md:h-40">
 								<Image
@@ -346,7 +378,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 							</div>
 						</div>
 
-						{/* Ordenar por y filtros */}
 						<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
 							<h2 className="text-xl font-semibold">
 								{selectedCategory === 'all'
@@ -367,7 +398,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 							</div>
 						</div>
 
-						{/* Grid de productos */}
 						{error && (
 							<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
 								<strong>Error:</strong> {error}
@@ -402,19 +432,22 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 										return (
 											<Link
 												key={product.id}
-												href={`/tienda/${product.id}`}
-												className="block" // Esto hace que todo el card sea clickeable
+												href={`/producto/${product.id}`}
+												className="block"
 											>
 												<div className="bg-primary rounded-md shadow-md overflow-hidden hover:shadow-xl transition">
 													<div className="relative">
-														{/* <span className="absolute top-3 left-3 bg-primary text-white px-3 py-1 rounded-full text-xs font-bold z-10">
-															Liwilu
-														</span> */}
 														<button
 															className="absolute top-3 left-3 bg-white rounded-full p-2 hover:bg-gray-100 z-10 shadow-md"
-															onClick={(e) => e.preventDefault()} // evita que el clic en el corazón abra el link
+															onClick={(e) => toggleFavorito(e, product.id)}
 														>
-															<FaRegHeart className="w-5 h-5 text-gray-400 hover:text-red-500 transition" />
+															<FaRegHeart
+																className={`w-5 h-5 transition ${
+																	favoritos.includes(product.id)
+																		? 'text-red-500 fill-current'
+																		: 'text-gray-400 hover:text-red-500'
+																}`}
+															/>
 														</button>
 														<div className="relative w-full h-56 bg-gray-100">
 															<Image
@@ -457,10 +490,40 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 														</div>
 
 														<button
-															className="w-full bg-white text-primary text-primary font-semibold py-2 rounded-xl transition"
-															onClick={(e) => e.preventDefault()} // evita navegar al hacer clic en el botón
+															className="w-full bg-white text-primary font-semibold py-2 rounded-xl transition hover:bg-gray-100 flex items-center justify-center gap-2"
+															onClick={(e) => handleAddToCart(e, product)}
+															disabled={loadingCart === product.id}
 														>
-															Agregar al carrito
+															{loadingCart === product.id ? (
+																<>
+																	<svg
+																		className="animate-spin h-5 w-5"
+																		xmlns="http://www.w3.org/2000/svg"
+																		fill="none"
+																		viewBox="0 0 24 24"
+																	>
+																		<circle
+																			className="opacity-25"
+																			cx="12"
+																			cy="12"
+																			r="10"
+																			stroke="currentColor"
+																			strokeWidth="4"
+																		/>
+																		<path
+																			className="opacity-75"
+																			fill="currentColor"
+																			d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+																		/>
+																	</svg>
+																	<span>Agregando...</span>
+																</>
+															) : (
+																<>
+																	<FaShoppingCart className="w-4 h-4" />
+																	<span>Agregar al carrito</span>
+																</>
+															)}
 														</button>
 													</div>
 												</div>

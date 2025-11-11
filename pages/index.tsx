@@ -182,14 +182,14 @@ export default function Home({
 			{/* Contacto */}
 			<Contacto />
 
-			{/* Aptitudes */}
-			<Aptitudes />
-
 			{/* 🆕 Cómo Comprar */}
 			<ComoComprar />
 
 			{/* 🆕 Nuestros Productos */}
 			<NuestrosProductos productos={allProducts} />
+
+			{/* Aptitudes */}
+			<Aptitudes />
 		</Layout>
 	);
 }

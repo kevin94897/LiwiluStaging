@@ -2,7 +2,9 @@
 import { useState } from 'react';
 import Layout from '@/components/Layout';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import Link from 'next/link';
+import AccountSidebar from '@/components/AccountSidebar';
 
 export default function MiCuenta() {
 	const router = useRouter();
@@ -23,55 +25,36 @@ export default function MiCuenta() {
 
 	return (
 		<Layout title="Mi cuenta - Liwilu" description="Gestiona tu cuenta">
-			<div className="bg-gray-50 min-h-screen py-8">
+			<div className="min-h-screen py-8">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="flex flex-col lg:flex-row gap-6">
+						<div className="absolute -right-60 md:-right-32 top-30 md:top-12 w-auto md:w-auto z-0 pointer-events-none hidden lg:block">
+							<Image
+								src="/images/vectores/liwilu_banner_productos_vector_04.png"
+								alt="MacBook Pro"
+								width={408}
+								height={427}
+								quality={100}
+								className="h-auto"
+								priority
+							/>
+						</div>
 						{/* Sidebar */}
-						<aside className="lg:w-80">
-							<nav className="bg-white rounded-2xl shadow-sm overflow-hidden">
-								{menuItems.map((item, index) => (
-									<Link
-										key={item.id}
-										href={item.href}
-										className={`
-											flex items-center justify-between px-6 py-4 
-											transition-colors duration-200
-											${index === 0 ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-50'}
-											${index !== menuItems.length - 1 ? 'border-b border-gray-100' : ''}
-										`}
-									>
-										<span className="font-medium">{item.label}</span>
-										<svg
-											className="w-5 h-5"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M9 5l7 7-7 7"
-											/>
-										</svg>
-									</Link>
-								))}
-							</nav>
-						</aside>
+						<AccountSidebar activeSection="mi-cuenta" />
 
 						{/* Main Content */}
 						<main className="flex-1">
-							<div className="bg-white rounded-2xl shadow-sm p-8">
-								<h1 className="text-3xl font-bold mb-8 border-b pb-4">
+							<div className="md:px-8 z-10 relative">
+								<h1 className="text-xl md:text-xl md:text-4xl font-semibold mb-8 border-b pb-4">
 									Información de mi cuenta
 								</h1>
 
 								{/* Mis datos */}
 								<section className="mb-8">
 									<div className="flex items-center gap-3 mb-6">
-										<div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center">
+										<div className="w-8 h-8 md:w-10 md:h-10 bg-primary-dark rounded-full flex items-center justify-center">
 											<svg
-												className="w-6 h-6 text-white"
+												className="h-5 w-5 md:w-6 md:h-6 text-white"
 												fill="none"
 												stroke="currentColor"
 												viewBox="0 0 24 24"
@@ -84,10 +67,12 @@ export default function MiCuenta() {
 												/>
 											</svg>
 										</div>
-										<h2 className="text-2xl font-bold">Mis datos</h2>
+										<h2 className="text-xl md:text-2xl font-semibold">
+											Mis datos
+										</h2>
 									</div>
 
-									<div className="bg-gray-50 rounded-xl p-6">
+									<div className="bg-white rounded-lg p-6">
 										<h3 className="font-semibold text-gray-900 mb-2">
 											Datos del comprador
 										</h3>
@@ -96,7 +81,7 @@ export default function MiCuenta() {
 											Gonzalo.vera.dlc@gmail.com
 										</p>
 
-										<div className="flex gap-4">
+										<div className="flex gap-4 justify-end">
 											<button className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
 												<svg
 													className="w-4 h-4"
@@ -136,9 +121,9 @@ export default function MiCuenta() {
 								{/* Mi libreta de direcciones */}
 								<section>
 									<div className="flex items-center gap-3 mb-6">
-										<div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center">
+										<div className="w-8 h-8 md:w-10 md:h-10 bg-primary-dark rounded-full flex items-center justify-center">
 											<svg
-												className="w-6 h-6 text-white"
+												className="h-5 w-5 md:w-6 md:h-6 text-white"
 												fill="none"
 												stroke="currentColor"
 												viewBox="0 0 24 24"
@@ -151,70 +136,74 @@ export default function MiCuenta() {
 												/>
 											</svg>
 										</div>
-										<h2 className="text-2xl font-bold">
+										<h2 className="text-xl md:text-2xl font-semibold">
 											Mi libreta de direcciones
 										</h2>
 									</div>
 
 									<div className="grid md:grid-cols-2 gap-6">
-										<div className="bg-gray-50 rounded-xl p-6">
+										<div className="bg-white rounded-lg p-6">
 											<h3 className="font-semibold text-gray-900 mb-2">
 												Dirección de entrega principal
 											</h3>
 											<p className="text-gray-600 mb-4">
 												Aún no guardaste una dirección de envío
 											</p>
-											<button className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
-												<svg
-													className="w-4 h-4"
-													fill="none"
-													stroke="currentColor"
-													viewBox="0 0 24 24"
-												>
-													<path
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth={2}
-														d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-													/>
-												</svg>
-												Editar
-											</button>
+											<div className="float-right">
+												<button className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
+													<svg
+														className="w-4 h-4"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															strokeLinecap="round"
+															strokeLinejoin="round"
+															strokeWidth={2}
+															d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+														/>
+													</svg>
+													Editar
+												</button>
+											</div>
 										</div>
 
-										<div className="bg-gray-50 rounded-xl p-6">
+										<div className="bg-white rounded-lg p-6">
 											<h3 className="font-semibold text-gray-900 mb-2">
 												Dirección de facturación
 											</h3>
 											<p className="text-gray-600 mb-4">
 												Aún no guardaste una dirección de envío
 											</p>
-											<button className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
-												<svg
-													className="w-4 h-4"
-													fill="none"
-													stroke="currentColor"
-													viewBox="0 0 24 24"
-												>
-													<path
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth={2}
-														d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-													/>
-												</svg>
-												Editar
-											</button>
+											<div className="float-right">
+												<button className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
+													<svg
+														className="w-4 h-4"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															strokeLinecap="round"
+															strokeLinejoin="round"
+															strokeWidth={2}
+															d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+														/>
+													</svg>
+													Editar
+												</button>
+											</div>
 										</div>
 									</div>
 								</section>
 
 								{/* Botones de acción */}
-								<div className="flex justify-between mt-8 pt-6 border-t">
+								<div className="flex flex-col-reverse md:flex-row justify-between mt-8 pt-6 border-t gap-6 text-center">
 									<button className="text-gray-500 hover:text-gray-700 font-medium">
 										Volver
 									</button>
-									<button className="bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-3 rounded-xl transition">
+									<button className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-2 md:py-4 rounded-full transition">
 										Guardar
 									</button>
 								</div>

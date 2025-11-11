@@ -8,7 +8,7 @@
 }
 
 .product-slider .slick-list {
-  margin: 0 -15px;
+  /* margin: 0 -15px; */
 }
 
 .product-slider .slick-prev:before,
@@ -32,7 +32,7 @@
   .product-slider .slick-prev {
     left: 0;
   }
-  
+
   .product-slider .slick-next {
     right: 0;
   }

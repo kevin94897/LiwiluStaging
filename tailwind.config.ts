@@ -35,6 +35,7 @@ const config: Config = {
 					white: '#FFFFFF',
 				},
 				bg: {
+					'primary-dark': '#0f2828',
 					success: '#D1FAE5',
 					error: '#FEE2E2',
 					disabled: '#F3F4F6',
