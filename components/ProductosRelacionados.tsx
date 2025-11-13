@@ -1,10 +1,16 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
+import { useState } from 'react';
+import { useCart } from '@/context/CartContext';
+import AddToCartModal from '@/components/AddToCartModal';
 
 import { Product, getProductImageUrl, formatPrice } from '@/lib/prestashop';
+import { FaShoppingCart } from 'react-icons/fa';
 
 interface ProductProps {
 	relatedProducts: Product[];
@@ -15,10 +21,32 @@ export default function ProductosRelacionados({
 	relatedProducts,
 	error,
 }: ProductProps) {
+	const [loadingCart, setLoadingCart] = useState<string | null>(null);
+	const [modalProduct, setModalProduct] = useState<Product | null>(null);
+	const { addToCart } = useCart();
+
 	// 🔹 Si no hay productos relacionados, no mostrar nada
 	if (!relatedProducts || relatedProducts.length === 0) {
 		return null;
 	}
+
+	const handleAddToCart = async (e: React.MouseEvent, producto: Product) => {
+		e.preventDefault();
+		e.stopPropagation();
+
+		try {
+			setLoadingCart(producto.id);
+			addToCart(producto, 1);
+			
+			// Abrir modal
+			setModalProduct(producto);
+		} catch (error) {
+			console.error('Error al agregar al carrito:', error);
+			alert('Error al agregar el producto al carrito');
+		} finally {
+			setLoadingCart(null);
+		}
+	};
 
 	return (
 		<section className="max-w-7xl mx-auto px-6 py-8">
@@ -75,7 +103,7 @@ export default function ProductosRelacionados({
 						: '/no-image.png';
 
 					return (
-						<div key={product.id}>
+						<div key={product.id} className="px-2">
 							<div className="bg-primary rounded-md shadow-lg overflow-hidden hover:shadow-xl transition h-full">
 								<Link href={`/tienda/${product.id}`}>
 									<div className="relative w-full h-48">
@@ -116,10 +144,40 @@ export default function ProductosRelacionados({
 									</div>
 
 									<button
-										className="w-full bg-white text-primary text-primary font-semibold py-2 rounded-xl transition"
-										onClick={(e) => e.preventDefault()} // evita navegar al hacer clic en el botón
+										className="w-full bg-white text-primary font-semibold py-2 rounded-xl transition hover:bg-gray-100 flex items-center justify-center gap-2"
+										onClick={(e) => handleAddToCart(e, product)}
+										disabled={loadingCart === product.id}
 									>
-										Agregar al carrito
+										{loadingCart === product.id ? (
+											<>
+												<svg
+													className="animate-spin h-5 w-5"
+													xmlns="http://www.w3.org/2000/svg"
+													fill="none"
+													viewBox="0 0 24 24"
+												>
+													<circle
+														className="opacity-25"
+														cx="12"
+														cy="12"
+														r="10"
+														stroke="currentColor"
+														strokeWidth="4"
+													/>
+													<path
+														className="opacity-75"
+														fill="currentColor"
+														d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+													/>
+												</svg>
+												<span>Agregando...</span>
+											</>
+										) : (
+											<>
+												<FaShoppingCart className="w-4 h-4" />
+												<span>Agregar al carrito</span>
+											</>
+										)}
 									</button>
 								</div>
 							</div>
@@ -127,6 +185,15 @@ export default function ProductosRelacionados({
 					);
 				})}
 			</Slider>
+
+			{/* Modal de confirmación */}
+			{modalProduct && (
+				<AddToCartModal
+					isOpen={!!modalProduct}
+					onClose={() => setModalProduct(null)}
+					product={modalProduct}
+				/>
+			)}
 		</section>
 	);
 }

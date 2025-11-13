@@ -7,6 +7,7 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { useState } from 'react';
 import { useCart } from '@/context/CartContext';
+import AddToCartModal from '@/components/AddToCartModal';
 
 import { FaHeart, FaShoppingCart } from 'react-icons/fa';
 import { Product, getProductImageUrl, formatPrice } from '@/lib/prestashop';
@@ -22,6 +23,7 @@ export default function ProductosDestacados({
 }: ProductProps) {
 	const [favoritos, setFavoritos] = useState<string[]>([]);
 	const [loadingCart, setLoadingCart] = useState<string | null>(null);
+	const [modalProduct, setModalProduct] = useState<Product | null>(null);
 	const { addToCart } = useCart();
 
 	const toggleFavorito = (e: React.MouseEvent, productId: string) => {
@@ -49,23 +51,8 @@ export default function ProductosDestacados({
 			setLoadingCart(producto.id);
 			addToCart(producto, 1);
 
-			// Notificación simple
-			const notification = document.createElement('div');
-			notification.className =
-				'fixed top-24 right-4 bg-primary text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in';
-			notification.innerHTML = `
-				<div class="flex items-center gap-2">
-					<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-					</svg>
-					<span>Producto agregado al carrito</span>
-				</div>
-			`;
-			document.body.appendChild(notification);
-
-			setTimeout(() => {
-				notification.remove();
-			}, 3000);
+			// Abrir modal
+			setModalProduct(producto);
 		} catch (error) {
 			console.error('Error al agregar al carrito:', error);
 			alert('Error al agregar el producto al carrito');
@@ -139,8 +126,8 @@ export default function ProductosDestacados({
 								: '/no-image.png';
 
 							return (
-								<div key={product.id} className="px-2">
-									<Link href={`/producto/${product.id}`}>
+								<div key={product.id}>
+									<Link href={`/tienda/${product.id}`}>
 										<div className="bg-white rounded-md shadow-lg overflow-hidden hover:shadow-xl transition">
 											<div className="relative">
 												<span className="absolute top-2 left-2 bg-primary text-white px-3 py-1 rounded-full text-xs font-bold z-10">
@@ -229,21 +216,14 @@ export default function ProductosDestacados({
 				</>
 			)}
 
-			<style jsx>{`
-				@keyframes fade-in {
-					from {
-						opacity: 0;
-						transform: translateY(-10px);
-					}
-					to {
-						opacity: 1;
-						transform: translateY(0);
-					}
-				}
-				.animate-fade-in {
-					animation: fade-in 0.3s ease-out;
-				}
-			`}</style>
+			{/* Modal de confirmación */}
+			{modalProduct && (
+				<AddToCartModal
+					isOpen={!!modalProduct}
+					onClose={() => setModalProduct(null)}
+					product={modalProduct}
+				/>
+			)}
 		</section>
 	);
 }

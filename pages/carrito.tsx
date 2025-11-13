@@ -90,7 +90,7 @@ export default function Carrito() {
 
 									{/* Info del producto */}
 									<div className="flex-1">
-										<Link href={`/producto/${item.product.id}`}>
+										<Link href={`/tienda/${item.product.id}`}>
 											<h3 className="font-semibold text-lg mb-2 hover:text-primary transition">
 												{item.product.name?.[0]?.value || 'Producto'}
 											</h3>

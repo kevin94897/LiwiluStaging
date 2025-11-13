@@ -6,6 +6,7 @@ import { GetServerSideProps } from 'next';
 import Layout from '@/components/Layout';
 import { useState } from 'react';
 import Contacto from '@/components/Contacto';
+import AddToCartModal from '@/components/AddToCartModal';
 
 import { useCart } from '@/context/CartContext';
 import {
@@ -51,13 +52,12 @@ export const getServerSideProps: GetServerSideProps = async () => {
 };
 
 export default function Tienda({ products, categories, error }: TiendaProps) {
-	const [openCategories, setOpenCategories] = useState<string[]>([
-		'Categorías',
-	]);
+	const [openCategories, setOpenCategories] = useState<string[]>(['Categorías']);
 	const [selectedCategory, setSelectedCategory] = useState<string>('all');
 	const [currentPage, setCurrentPage] = useState(1);
 	const [loadingCart, setLoadingCart] = useState<string | null>(null);
 	const [favoritos, setFavoritos] = useState<string[]>([]);
+	const [modalProduct, setModalProduct] = useState<Product | null>(null);
 	const productsPerPage = 9;
 
 	const { addToCart } = useCart();
@@ -94,7 +94,9 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 		try {
 			setLoadingCart(producto.id);
 			addToCart(producto, 1);
-			alert(`✓ ${producto.name?.[0]?.value || 'Producto'} agregado al carrito`);
+			
+			// Abrir modal
+			setModalProduct(producto);
 		} catch (error) {
 			console.error('Error al agregar al carrito:', error);
 			alert('Error al agregar el producto al carrito');
@@ -123,7 +125,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 
 	return (
 		<Layout title="Tienda - Liwilu" description="Productos al por mayor">
-			{/* Banner Hero */}
+			{/* Banner Hero - MISMO CÓDIGO */}
 			<section className="relative text-white overflow-hidden">
 				<div className="absolute inset-0">
 					<Image
@@ -432,7 +434,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 										return (
 											<Link
 												key={product.id}
-												href={`/producto/${product.id}`}
+												href={`/tienda/${product.id}`}
 												className="block"
 											>
 												<div className="bg-primary rounded-md shadow-md overflow-hidden hover:shadow-xl transition">
@@ -470,7 +472,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 														<h3 className="font-normal text-lg mb-2 line-clamp-2 h-10 text-white leading-5">
 															{product.name?.[0]?.value ||
 																'Producto sin nombre'}
-														</h3>
+													</h3>
 
 														<div className="flex items-center gap-1 mb-0">
 															<div className="flex text-yellow-400 text-sm">
@@ -533,61 +535,117 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 								</div>
 
 								{/* Paginación */}
+
 								{totalPages > 1 && (
+
 									<div className="flex justify-center items-center gap-2">
+
 										<button
+
 											onClick={() =>
+
 												setCurrentPage((prev) => Math.max(1, prev - 1))
+
 											}
+
 											disabled={currentPage === 1}
+
 											className="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+
 										>
+
 											‹
+
 										</button>
+
+
 
 										{[...Array(totalPages)].map((_, i) => {
+
 											const page = i + 1;
+
 											if (
+
 												page === 1 ||
+
 												page === totalPages ||
+
 												(page >= currentPage - 1 && page <= currentPage + 1)
+
 											) {
+
 												return (
+
 													<button
+
 														key={page}
+
 														onClick={() => setCurrentPage(page)}
+
 														className={`px-4 py-2 rounded-lg transition ${
+
 															currentPage === page
+
 																? 'bg-primary text-white font-semibold'
+
 																: 'border hover:bg-gray-100'
+
 														}`}
+
 													>
+
 														{page}
+
 													</button>
+
 												);
+
 											} else if (
+
 												page === currentPage - 2 ||
+
 												page === currentPage + 2
+
 											) {
+
 												return (
+
 													<span key={page} className="px-2">
+
 														...
+
 													</span>
+
 												);
+
 											}
+
 											return null;
+
 										})}
 
+
+
 										<button
+
 											onClick={() =>
+
 												setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+
 											}
+
 											disabled={currentPage === totalPages}
+
 											className="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+
 										>
+
 											›
+
 										</button>
+
 									</div>
+
 								)}
 							</>
 						)}
@@ -596,6 +654,15 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 			</div>
 
 			<Contacto />
+
+			{/* Modal de confirmación */}
+			{modalProduct && (
+				<AddToCartModal
+					isOpen={!!modalProduct}
+					onClose={() => setModalProduct(null)}
+					product={modalProduct}
+				/>
+			)}
 		</Layout>
 	);
 }
