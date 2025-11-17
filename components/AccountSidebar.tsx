@@ -29,7 +29,7 @@ export default function AccountSidebar({ activeSection }: AccountSidebarProps) {
 
 	return (
 		<aside className="lg:w-80 ">
-			<h2 className="text-xl md:text-2xl font-semibold pb-4 text-center block lg:hidden">
+			<h2 className="text-2xl md:text-4xl font-semibold pb-4 text-center block lg:hidden">
 				Mi cuenta
 			</h2>
 			<nav className="bg-white rounded-2xl shadow-sm overflow-hidden">

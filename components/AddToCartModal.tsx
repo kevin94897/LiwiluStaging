@@ -73,7 +73,7 @@ export default function AddToCartModal({
 								/>
 							</svg>
 						</div>
-						<h3 className="text-lg font-semibold text-gray-900">
+						<h3 className="text-lg font-semibold text-primary-dark">
 							Tu producto ha sido añadido al carrito
 						</h3>
 					</div>
@@ -94,11 +94,11 @@ export default function AddToCartModal({
 
 							{/* Info del producto */}
 							<div className="flex-1">
-								<h4 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+								<h4 className="font-semibold text-primary-dark mb-2 line-clamp-2">
 									{product.name?.[0]?.value || 'Producto'}
 								</h4>
 								<div className="flex items-baseline gap-2">
-									<span className="text-2xl font-bold text-gray-900">
+									<span className="text-2xl font-bold text-primary-dark">
 										{formatPrice(product.price || '0')}
 									</span>
 									<span className="text-sm text-gray-400 line-through">

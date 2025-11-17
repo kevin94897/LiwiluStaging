@@ -58,14 +58,14 @@ export default function Aptitudes() {
 
 	return (
 		<section className="bg-gray-50 py-12">
-			<h2 className="text-3xl font-bold text-center mb-8 text-primary">
+			<h2 className="text-2xl md:text-4xl font-semibold text-center mb-8 text-primary-dark">
 				Tu confianza, nuestro compromiso
 			</h2>
 			<div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
 				{features.map((feature, index) => (
 					<div key={index} className="flex flex-col items-center space-y-4">
 						{feature.icon}
-						<p className="text-gray-500 text-sm leading-normal max-w-[180px] font-bold">
+						<p className="text-gray-500 text-sm max-w-[180px] font-bold">
 							{feature.text}
 						</p>
 					</div>

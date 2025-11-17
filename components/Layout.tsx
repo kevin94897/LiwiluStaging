@@ -21,7 +21,7 @@ export default function Layout({ title, description, children }: LayoutProps) {
 
 			<div className="min-h-screen flex flex-col bg-gray-50">
 				<Header />
-				<main className="flex-grow mt-[135px] lg:mt-[92px] overflow-hidden relative">
+				<main className="flex-grow mt-[135px] lg:mt-[85px] overflow-hidden relative">
 					{children}
 				</main>
 				<Footer />

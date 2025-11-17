@@ -87,7 +87,7 @@ export default function MisDatos() {
 											<div>
 												<label
 													htmlFor="nombre"
-													className="block text-sm font-semibold text-gray-900 mb-2"
+													className="block text-sm font-semibold text-primary-dark mb-2"
 												>
 													Nombre
 												</label>
@@ -105,7 +105,7 @@ export default function MisDatos() {
 											<div>
 												<label
 													htmlFor="apellido"
-													className="block text-sm font-semibold text-gray-900 mb-2"
+													className="block text-sm font-semibold text-primary-dark mb-2"
 												>
 													Apellido
 												</label>
@@ -126,7 +126,7 @@ export default function MisDatos() {
 											<div>
 												<label
 													htmlFor="tipoDocumento"
-													className="block text-sm font-semibold text-gray-900 mb-2"
+													className="block text-sm font-semibold text-primary-dark mb-2"
 												>
 													Tipo de documento
 												</label>
@@ -147,7 +147,7 @@ export default function MisDatos() {
 											<div>
 												<label
 													htmlFor="numeroDocumento"
-													className="block text-sm font-semibold text-gray-900 mb-2"
+													className="block text-sm font-semibold text-primary-dark mb-2"
 												>
 													Número de Documento
 												</label>
@@ -167,7 +167,7 @@ export default function MisDatos() {
 										<div>
 											<label
 												htmlFor="celular"
-												className="block text-sm font-semibold text-gray-900 mb-2"
+												className="block text-sm font-semibold text-primary-dark mb-2"
 											>
 												Celular
 											</label>

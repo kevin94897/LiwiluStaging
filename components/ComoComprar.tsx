@@ -4,8 +4,8 @@ import Slider from 'react-slick';
 
 export default function ComoComprar() {
 	return (
-		<section className="max-w-7xl mx-auto px-6 py-16">
-			<h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-gray-900">
+		<section className="max-w-7xl mx-auto px-6 py-10 md:py-16">
+			<h2 className="text-2xl md:text-4xl font-semibold text-center mb-5 md:mb-12 text-primary-dark">
 				Elige cómo comprar
 			</h2>
 
@@ -55,7 +55,7 @@ export default function ComoComprar() {
 								className="object-cover"
 							/>
 						</div>
-						<h3 className="text-xl md:text-2xl font-bold text-neutral-gray mb-3 leading-6">
+						<h3 className="text-xl md:text-2xl font-semibold text-neutral-gray mb-3 leading-6">
 							DELIVERY
 						</h3>
 						<p className="text-neutral-gray text-center font-semibold">
@@ -73,7 +73,7 @@ export default function ComoComprar() {
 								className="object-cover"
 							/>
 						</div>
-						<h3 className="text-xl md:text-2xl font-bold text-neutral-gray mb-3 leading-6">
+						<h3 className="text-xl md:text-2xl font-semibold text-neutral-gray mb-3 leading-6">
 							ENTREGA EN TIENDA
 						</h3>
 						<p className="text-neutral-gray text-center font-semibold">
@@ -91,7 +91,7 @@ export default function ComoComprar() {
 								className="object-cover"
 							/>
 						</div>
-						<h3 className="text-xl md:text-2xl font-bold text-neutral-gray mb-3 leading-6">
+						<h3 className="text-xl md:text-2xl font-semibold text-neutral-gray mb-3 leading-6">
 							CALL CENTER
 						</h3>
 						<p className="text-neutral-gray text-center font-semibold">

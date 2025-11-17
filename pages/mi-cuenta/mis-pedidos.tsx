@@ -151,7 +151,7 @@ export default function MisPedidos() {
 													<div className="flex items-center gap-4">
 														{getIconoEstado(pedido.estado)}
 														<div>
-															<h3 className="font-semibold text-gray-900">
+															<h3 className="font-semibold text-primary-dark">
 																{pedido.producto.nombre}
 															</h3>
 															<span
@@ -221,7 +221,7 @@ export default function MisPedidos() {
 																		{pedido.producto.nombre}
 																	</h4>
 																	<div className="flex items-baseline gap-3">
-																		<span className="text-xl md:text-2xl font-semibold text-gray-900">
+																		<span className="text-xl md:text-2xl font-semibold text-primary-dark">
 																			s/{pedido.precio.toFixed(2)}
 																		</span>
 																		<span className="text-gray-400 line-through">

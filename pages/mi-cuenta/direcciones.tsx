@@ -96,7 +96,7 @@ export default function Direcciones() {
 										<div className="grid md:grid-cols-2 gap-6">
 											{/* Dirección de entrega */}
 											<div className="bg-white rounded-lg p-6">
-												<h3 className="font-semibold text-gray-900 mb-2 text-lg">
+												<h3 className="font-semibold text-primary-dark mb-2 text-lg">
 													Dirección de entrega principal
 												</h3>
 												{direcciones.find(
@@ -133,7 +133,7 @@ export default function Direcciones() {
 
 											{/* Dirección de facturación */}
 											<div className="bg-white rounded-lg p-6">
-												<h3 className="font-semibold text-gray-900 mb-2 text-lg">
+												<h3 className="font-semibold text-primary-dark mb-2 text-lg">
 													Dirección de facturación
 												</h3>
 												{direcciones.find(
@@ -198,7 +198,7 @@ export default function Direcciones() {
 											<div>
 												<label
 													htmlFor="titulo"
-													className="block text-sm font-semibold text-gray-900 mb-2"
+													className="block text-sm font-semibold text-primary-dark mb-2"
 												>
 													Título de la dirección (Ej: Casa, Oficina)
 												</label>
@@ -218,7 +218,7 @@ export default function Direcciones() {
 											<div>
 												<label
 													htmlFor="direccion"
-													className="block text-sm font-semibold text-gray-900 mb-2"
+													className="block text-sm font-semibold text-primary-dark mb-2"
 												>
 													Dirección completa
 												</label>
@@ -238,7 +238,7 @@ export default function Direcciones() {
 											<div>
 												<label
 													htmlFor="referencia"
-													className="block text-sm font-semibold text-gray-900 mb-2"
+													className="block text-sm font-semibold text-primary-dark mb-2"
 												>
 													Referencia
 												</label>
@@ -258,7 +258,7 @@ export default function Direcciones() {
 												<div>
 													<label
 														htmlFor="ciudad"
-														className="block text-sm font-semibold text-gray-900 mb-2"
+														className="block text-sm font-semibold text-primary-dark mb-2"
 													>
 														Departamento
 													</label>
@@ -280,7 +280,7 @@ export default function Direcciones() {
 												<div>
 													<label
 														htmlFor="provincia"
-														className="block text-sm font-semibold text-gray-900 mb-2"
+														className="block text-sm font-semibold text-primary-dark mb-2"
 													>
 														Provincia
 													</label>
@@ -301,7 +301,7 @@ export default function Direcciones() {
 												<div>
 													<label
 														htmlFor="distrito"
-														className="block text-sm font-semibold text-gray-900 mb-2"
+														className="block text-sm font-semibold text-primary-dark mb-2"
 													>
 														Distrito
 													</label>
@@ -326,7 +326,7 @@ export default function Direcciones() {
 												<div>
 													<label
 														htmlFor="codigoPostal"
-														className="block text-sm font-semibold text-gray-900 mb-2"
+														className="block text-sm font-semibold text-primary-dark mb-2"
 													>
 														Código postal
 													</label>
@@ -344,7 +344,7 @@ export default function Direcciones() {
 												<div>
 													<label
 														htmlFor="telefono"
-														className="block text-sm font-semibold text-gray-900 mb-2"
+														className="block text-sm font-semibold text-primary-dark mb-2"
 													>
 														Teléfono de contacto
 													</label>

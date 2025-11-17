@@ -91,7 +91,7 @@ export default function Home({
 							</span>
 						</p>
 					</div>
-					<div className="w-full md:w-1/2">
+					<div className="w-full md:w-1/2 floating">
 						<Image
 							src="/images/liwilu_home_laptop_img.png"
 							alt="Laptop"
@@ -122,7 +122,7 @@ export default function Home({
 
 					{/* Columna derecha (4 imágenes pequeñas) */}
 					<div className="grid grid-cols-2 grid-rows-2 gap-2 md:gap-4">
-						<div className="relative h-40 sm:h-auto md:aspect-square">
+						<div className="relative h-40 md:h-auto md:aspect-square">
 							<Image
 								src="/images/liwilu_home_categoria_02.png"
 								alt="Imagen 1"
@@ -134,19 +134,19 @@ export default function Home({
 							</div>
 						</div>
 
-						<div className="relative h-40 sm:h-auto md:aspect-square">
+						<div className="relative h-40 md:h-auto md:aspect-square">
 							<Image
 								src="/images/liwilu_home_categoria_03.png"
 								alt="Imagen 2"
 								fill
 								className="object-cover rounded-xl shadow-md hover:scale-105 transition-transform duration-300"
 							/>
-							<div className="absolute bottom-1 left-1 text-white text-md md:text-xl px-4 py-2 rounded-tl-lg font-semibold leanding-tight">
+							<div className="absolute bottom-1 left-1 text-white text-md md:text-xl px-4 py-2 rounded-tl-lg font-semibold">
 								HOGAR Y LIMPIEZA
 							</div>
 						</div>
 
-						<div className="relative h-40 sm:h-auto md:aspect-square">
+						<div className="relative h-40 md:h-auto md:aspect-square">
 							<Image
 								src="/images/liwilu_home_categoria_04.png"
 								alt="Imagen 3"
@@ -158,7 +158,7 @@ export default function Home({
 							</div>
 						</div>
 
-						<div className="relative h-40 sm:h-auto md:aspect-square">
+						<div className="relative h-40 md:h-auto md:aspect-square">
 							<Image
 								src="/images/liwilu_home_categoria_05.png"
 								alt="Imagen 4"

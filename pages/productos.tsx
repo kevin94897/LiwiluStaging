@@ -52,7 +52,9 @@ export const getServerSideProps: GetServerSideProps = async () => {
 };
 
 export default function Tienda({ products, categories, error }: TiendaProps) {
-	const [openCategories, setOpenCategories] = useState<string[]>(['Categorías']);
+	const [openCategories, setOpenCategories] = useState<string[]>([
+		'Categorías',
+	]);
 	const [selectedCategory, setSelectedCategory] = useState<string>('all');
 	const [currentPage, setCurrentPage] = useState(1);
 	const [loadingCart, setLoadingCart] = useState<string | null>(null);
@@ -94,7 +96,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 		try {
 			setLoadingCart(producto.id);
 			addToCart(producto, 1);
-			
+
 			// Abrir modal
 			setModalProduct(producto);
 		} catch (error) {
@@ -162,7 +164,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 						</p>
 					</div>
 					<div className="w-1/2 flex items-center justify-center">
-						<div className="absolute md:-bottom-10">
+						<div className="absolute md:-bottom-10 floating-slow">
 							<Image
 								src="/images/productos/liwilu_productos_laptop_img.png"
 								alt="MacBook Pro"
@@ -201,7 +203,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 				</div>
 
 				<div className="max-w-7xl mx-auto px-6">
-					<div className="text-white text-sm mb-6">
+					<div className="text-white text-sm mb-3">
 						<Link href="/" className="hover:underline">
 							Inicio
 						</Link>
@@ -209,15 +211,15 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 						<span>Tienda virtual</span>
 					</div>
 
-					<div className="flex gap-6 overflow-x-auto pb-2 max-w-5xl mx-auto">
+					<div className="flex gap-6 overflow-x-auto pb-2 max-w-5xl mx-auto md:justify-center">
 						{categories.slice(0, 6).map((cat) => (
 							<div
 								key={cat.id}
 								onClick={() => setSelectedCategory(cat.id)}
 								className="flex flex-col items-center min-w-[100px] cursor-pointer hover:opacity-80 transition"
 							>
-								<div className="w-20 h-20 rounded-full overflow-hidden bg-white shadow-lg mb-2 flex items-center justify-center">
-									<span className="text-3xl">
+								<div className="w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden bg-white shadow-lg mb-2 flex items-center justify-center">
+									<span className="text-2xl md:text-6xl">
 										{cat.name?.[0]?.value.includes('Libro')
 											? '📚'
 											: cat.name?.[0]?.value.includes('Hogar') ||
@@ -232,7 +234,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 											: '🏷️'}
 									</span>
 								</div>
-								<span className="text-white text-xs text-center font-semibold">
+								<span className="text-white text-md text-center font-semibold">
 									{cat.name?.[0]?.value || 'Categoría'}
 								</span>
 							</div>
@@ -276,7 +278,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 														setSelectedCategory(cat.id);
 														setCurrentPage(1);
 													}}
-													className="w-full text-left text-gray-500 font-bold hover:text-gray-900 transition-colors flex items-center justify-between group"
+													className="w-full text-left text-gray-500 font-bold hover:text-primary-dark transition-colors flex items-center justify-between group"
 												>
 													<span className="text-sm">{cat.name}</span>
 													<FaPlus className="w-3 h-3 text-primary-dark transition" />
@@ -303,7 +305,28 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 								</button>
 								{openCategories.includes('Tallas') && (
 									<div className="mt-3 text-sm text-gray-500">
-										Filtro próximamente
+										<ul className="space-y-3 my-5">
+											{[
+												{ id: '1', name: 'Large' },
+												{ id: '2', name: 'Medium' },
+												{ id: '3', name: 'Small' },
+												{ id: '4', name: 'XS' },
+												{ id: '5', name: 'XXS' },
+											].map((cat) => (
+												<li key={cat.id}>
+													<button
+														onClick={() => {
+															setSelectedCategory(cat.id);
+															setCurrentPage(1);
+														}}
+														className="w-full text-left text-gray-500 font-bold hover:text-primary-dark transition-colors flex items-center justify-between group"
+													>
+														<span className="text-sm">{cat.name}</span>
+														<FaPlus className="w-3 h-3 text-primary-dark transition" />
+													</button>
+												</li>
+											))}
+										</ul>
 									</div>
 								)}
 							</div>
@@ -390,7 +413,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 							</h2>
 							<div className="flex items-center gap-2">
 								<label className="text-sm text-gray-600">Ordenar por:</label>
-								<select className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+								<select className="border rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
 									<option>Seleccionar</option>
 									<option>Precio: Menor a Mayor</option>
 									<option>Precio: Mayor a Menor</option>
@@ -472,7 +495,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 														<h3 className="font-normal text-lg mb-2 line-clamp-2 h-10 text-white leading-5">
 															{product.name?.[0]?.value ||
 																'Producto sin nombre'}
-													</h3>
+														</h3>
 
 														<div className="flex items-center gap-1 mb-0">
 															<div className="flex text-yellow-400 text-sm">
@@ -537,115 +560,62 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 								{/* Paginación */}
 
 								{totalPages > 1 && (
-
 									<div className="flex justify-center items-center gap-2">
-
 										<button
-
 											onClick={() =>
-
 												setCurrentPage((prev) => Math.max(1, prev - 1))
-
 											}
-
 											disabled={currentPage === 1}
-
-											className="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-
+											className="px-4 py-2 border rounded-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
 										>
-
 											‹
-
 										</button>
 
-
-
 										{[...Array(totalPages)].map((_, i) => {
-
 											const page = i + 1;
 
 											if (
-
 												page === 1 ||
-
 												page === totalPages ||
-
 												(page >= currentPage - 1 && page <= currentPage + 1)
-
 											) {
-
 												return (
-
 													<button
-
 														key={page}
-
 														onClick={() => setCurrentPage(page)}
-
-														className={`px-4 py-2 rounded-lg transition ${
-
+														className={`px-4 py-2 rounded-sm transition ${
 															currentPage === page
-
 																? 'bg-primary text-white font-semibold'
-
 																: 'border hover:bg-gray-100'
-
 														}`}
-
 													>
-
 														{page}
-
 													</button>
-
 												);
-
 											} else if (
-
 												page === currentPage - 2 ||
-
 												page === currentPage + 2
-
 											) {
-
 												return (
-
 													<span key={page} className="px-2">
-
 														...
-
 													</span>
-
 												);
-
 											}
 
 											return null;
-
 										})}
 
-
-
 										<button
-
 											onClick={() =>
-
 												setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-
 											}
-
 											disabled={currentPage === totalPages}
-
 											className="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-
 										>
-
 											›
-
 										</button>
-
 									</div>
-
 								)}
 							</>
 						)}

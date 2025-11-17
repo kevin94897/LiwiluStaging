@@ -14,7 +14,7 @@ export default function BannerCalidad() {
 			{/* Contenido */}
 			<div className="max-w-full lg:max-w-[60%] h-full mx-auto flex items-center justify-end">
 				<div className="relative z-10 h-full flex items-center justify-end px-6 md:px-12">
-					<h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-right md:text-right drop-shadow-md max-w-[58%]">
+					<h2 className="text-2xl md:text-4xl lg:text-6xl font-semibold text-right md:text-right drop-shadow-md max-w-[58%]">
 						<span className="text-primary-light">La calidad nos distingue</span>
 					</h2>
 				</div>

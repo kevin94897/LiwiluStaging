@@ -63,7 +63,7 @@ export default function ProductosDestacados({
 
 	return (
 		<section className="max-w-7xl mx-auto px-6 py-12">
-			<h2 className="text-3xl font-bold text-center mb-8 text-primary">
+			<h2 className="text-2xl md:text-4xl font-semibold text-center mb-8 text-primary-dark">
 				Productos destacados
 			</h2>
 

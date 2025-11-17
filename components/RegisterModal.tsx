@@ -95,7 +95,7 @@ export default function RegisterModal({
 					<div className="p-8">
 						{/* Header */}
 						<div className="mb-6">
-							<h2 className="text-3xl font-bold text-gray-900 mb-2">
+							<h2 className="text-3xl font-bold text-primary-dark mb-2">
 								Crea tu cuenta
 							</h2>
 							<p className="text-gray-600 text-sm">
@@ -111,7 +111,7 @@ export default function RegisterModal({
 								<div>
 									<label
 										htmlFor="firstName"
-										className="block text-sm font-semibold text-gray-900 mb-2"
+										className="block text-sm font-semibold text-primary-dark mb-2"
 									>
 										Nombre
 									</label>
@@ -131,7 +131,7 @@ export default function RegisterModal({
 								<div>
 									<label
 										htmlFor="lastName"
-										className="block text-sm font-semibold text-gray-900 mb-2"
+										className="block text-sm font-semibold text-primary-dark mb-2"
 									>
 										Apellido
 									</label>
@@ -153,7 +153,7 @@ export default function RegisterModal({
 							<div>
 								<label
 									htmlFor="email"
-									className="block text-sm font-semibold text-gray-900 mb-2"
+									className="block text-sm font-semibold text-primary-dark mb-2"
 								>
 									Correo electrónico
 								</label>
@@ -174,7 +174,7 @@ export default function RegisterModal({
 							<div>
 								<label
 									htmlFor="emailConfirm"
-									className="block text-sm font-semibold text-gray-900 mb-2"
+									className="block text-sm font-semibold text-primary-dark mb-2"
 								>
 									Confirmar correo electrónico
 								</label>
@@ -195,7 +195,7 @@ export default function RegisterModal({
 							<div>
 								<label
 									htmlFor="password"
-									className="block text-sm font-semibold text-gray-900 mb-2"
+									className="block text-sm font-semibold text-primary-dark mb-2"
 								>
 									Contraseña
 								</label>
@@ -216,7 +216,7 @@ export default function RegisterModal({
 							<div>
 								<label
 									htmlFor="passwordConfirm"
-									className="block text-sm font-semibold text-gray-900 mb-2"
+									className="block text-sm font-semibold text-primary-dark mb-2"
 								>
 									Confirmar contraseña
 								</label>

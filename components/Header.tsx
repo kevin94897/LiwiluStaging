@@ -154,7 +154,7 @@ function QuickActions({ isMobile = false, onOpenLogin, onOpenRegister }: QuickAc
             {/* 🔹 Columna izquierda */}
             <div className="flex-1 pr-4 text-left flex flex-col justify-between">
               <div>
-                <h3 className="font-semibold text-gray-900">Bienvenidos</h3>
+                <h3 className="font-semibold text-primary-dark">Bienvenidos</h3>
                 <p className="text-xs text-gray-500 mt-2 leading-none">
                   Inicia sesión y podrás consultar el estado de tus pedidos y todo
                   lo que necesites.
@@ -174,7 +174,7 @@ function QuickActions({ isMobile = false, onOpenLogin, onOpenRegister }: QuickAc
 
             {/* 🔹 Columna derecha */}
             <div className="flex-1 pl-4 text-left leading-none">
-              <h3 className="font-semibold text-gray-900">
+              <h3 className="font-semibold text-primary-dark">
                 Regístrate para una experiencia completa
               </h3>
               <p className="text-xs text-gray-500 mt-2">

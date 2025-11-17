@@ -50,7 +50,7 @@ export default function ProductosRelacionados({
 
 	return (
 		<section className="max-w-7xl mx-auto px-6 py-8">
-			<h2 className="text-3xl font-semibold text-center mb-8 text-primary-dark">
+			<h2 className="text-2xl md:text-4xl font-semibold text-center mb-8 text-primary-dark">
 				Productos relacionados
 			</h2>
 

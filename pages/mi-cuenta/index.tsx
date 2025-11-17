@@ -73,7 +73,7 @@ export default function MiCuenta() {
 									</div>
 
 									<div className="bg-white rounded-lg p-6">
-										<h3 className="font-semibold text-gray-900 mb-2">
+										<h3 className="font-semibold text-primary-dark mb-2">
 											Datos del comprador
 										</h3>
 										<p className="text-gray-700 mb-1">Gonzalo Vera</p>
@@ -143,7 +143,7 @@ export default function MiCuenta() {
 
 									<div className="grid md:grid-cols-2 gap-6">
 										<div className="bg-white rounded-lg p-6">
-											<h3 className="font-semibold text-gray-900 mb-2">
+											<h3 className="font-semibold text-primary-dark mb-2">
 												Dirección de entrega principal
 											</h3>
 											<p className="text-gray-600 mb-4">
@@ -170,7 +170,7 @@ export default function MiCuenta() {
 										</div>
 
 										<div className="bg-white rounded-lg p-6">
-											<h3 className="font-semibold text-gray-900 mb-2">
+											<h3 className="font-semibold text-primary-dark mb-2">
 												Dirección de facturación
 											</h3>
 											<p className="text-gray-600 mb-4">
