@@ -39,7 +39,7 @@ export default function ComoComprar() {
 								slidesToShow: 1,
 								slidesToScroll: 1,
 								centerMode: true,
-								centerPadding: '40px',
+								centerPadding: '15px',
 							},
 						},
 					]}

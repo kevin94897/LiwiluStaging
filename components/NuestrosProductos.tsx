@@ -80,7 +80,7 @@ export default function NuestrosProductos({
 		autoplaySpeed: 3000,
 		arrows: false,
 		centerMode: true,
-		centerPadding: '40px',
+		centerPadding: '20px',
 		dotsClass: 'slick-dots custom-dots',
 	};
 
@@ -237,7 +237,7 @@ export default function NuestrosProductos({
 				{/* Botón Ir a la Tienda */}
 				<div className="flex justify-center">
 					<Link href="/productos">
-						<button className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-3 rounded-full text-xl transition-all hover:scale-105 shadow-lg">
+						<button className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-3 rounded-full text-md md:text-xl transition-all hover:scale-105 shadow-lg">
 							Ir a la Tienda
 						</button>
 					</Link>

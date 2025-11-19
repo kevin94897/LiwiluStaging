@@ -1,4 +1,7 @@
-import Image from 'next/image';
+"use client";
+
+import Image from "next/image";
+import Slider from "react-slick";
 
 export default function Aptitudes() {
 	const features = [
@@ -13,7 +16,7 @@ export default function Aptitudes() {
 					priority
 				/>
 			),
-			text: 'Más de 10 000 clientes satisfechos con nosotros',
+			text: "Más de 10 000 clientes satisfechos con nosotros",
 		},
 		{
 			icon: (
@@ -26,7 +29,7 @@ export default function Aptitudes() {
 					priority
 				/>
 			),
-			text: 'Despacho rápido y entregas puntuales en todo Lima Metropolitana',
+			text: "Despacho rápido y entregas puntuales en todo Lima Metropolitana",
 		},
 		{
 			icon: (
@@ -39,7 +42,7 @@ export default function Aptitudes() {
 					priority
 				/>
 			),
-			text: 'Catorce años de experiencia ofreciendo calidad y compromiso',
+			text: "Catorce años de experiencia ofreciendo calidad y compromiso",
 		},
 		{
 			icon: (
@@ -52,24 +55,57 @@ export default function Aptitudes() {
 					priority
 				/>
 			),
-			text: 'Comprometidos con la responsabilidad ambiental y social',
+			text: "Comprometidos con la responsabilidad ambiental y social",
 		},
 	];
+
+	// Configuración del slider
+	const settings = {
+		dots: false,
+		infinite: true,
+		speed: 500,
+		slidesToShow: 4,
+		slidesToScroll: 1,
+		autoplay: true,
+		autoplaySpeed: 3500,
+		centerMode: true,
+		centerPadding: '20px',
+		arrows: false,
+		responsive: [
+			{
+				breakpoint: 1024,
+				settings: { slidesToShow: 3 },
+			},
+			{
+				breakpoint: 768,
+				settings: { slidesToShow: 2 },
+			},
+			{
+				breakpoint: 480,
+				settings: { slidesToShow: 1 },
+			},
+		],
+	};
 
 	return (
 		<section className="bg-gray-50 py-12">
 			<h2 className="text-2xl md:text-4xl font-semibold text-center mb-8 text-primary-dark">
 				Tu confianza, nuestro compromiso
 			</h2>
-			<div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
-				{features.map((feature, index) => (
-					<div key={index} className="flex flex-col items-center space-y-4">
-						{feature.icon}
-						<p className="text-gray-500 text-sm max-w-[180px] font-bold">
-							{feature.text}
-						</p>
-					</div>
-				))}
+
+			<div className="max-w-7xl mx-auto px-6">
+				<Slider {...settings}>
+					{features.map((feature, index) => (
+						<div key={index}>
+							<div className="flex flex-col items-center text-center space-y-4 px-6">
+								{feature.icon}
+								<p className="text-gray-500 text-sm max-w-[180px] font-bold mx-auto">
+									{feature.text}
+								</p>
+							</div>
+						</div>
+					))}
+				</Slider>
 			</div>
 		</section>
 	);

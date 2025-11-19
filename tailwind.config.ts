@@ -30,8 +30,8 @@ const config: Config = {
 					black: '#1F2937',
 					'gray-dark': '#333',
 					gray: '#787D86',
-					'gray-light': '#D1D5DB',
-					'gray-lighter': '#F3F4F6',
+					grayLight: '#D1D5DB',
+					grayLighter: 'rgba(15, 54, 51, 0.4)',
 					white: '#FFFFFF',
 				},
 				bg: {

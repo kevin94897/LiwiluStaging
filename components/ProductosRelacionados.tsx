@@ -144,7 +144,7 @@ export default function ProductosRelacionados({
 									</div>
 
 									<button
-										className="w-full bg-white text-primary font-semibold py-2 rounded-xl transition hover:bg-gray-100 flex items-center justify-center gap-2"
+										className="w-full bg-white text-primary font-semibold py-3 rounded-xl transition hover:bg-gray-100 flex items-center justify-center gap-2"
 										onClick={(e) => handleAddToCart(e, product)}
 										disabled={loadingCart === product.id}
 									>
@@ -174,7 +174,7 @@ export default function ProductosRelacionados({
 											</>
 										) : (
 											<>
-												<FaShoppingCart className="w-4 h-4" />
+												{/* <FaShoppingCart className="w-4 h-4" /> */}
 												<span>Agregar al carrito</span>
 											</>
 										)}

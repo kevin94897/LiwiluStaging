@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { GetServerSideProps } from 'next';
 import Layout from '@/components/Layout';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Contacto from '@/components/Contacto';
 import AddToCartModal from '@/components/AddToCartModal';
 
@@ -60,9 +60,15 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 	const [loadingCart, setLoadingCart] = useState<string | null>(null);
 	const [favoritos, setFavoritos] = useState<string[]>([]);
 	const [modalProduct, setModalProduct] = useState<Product | null>(null);
+	const [isVisible, setIsVisible] = useState(false);
 	const productsPerPage = 9;
 
 	const { addToCart } = useCart();
+
+	// Animación de entrada
+	useEffect(() => {
+		setIsVisible(true);
+	}, []);
 
 	const toggleCategory = (category: string) => {
 		setOpenCategories((prev) =>
@@ -82,7 +88,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 				: [...prev, productId]
 		);
 
-		// Guardar en localStorage
 		const updatedFavoritos = favoritos.includes(productId)
 			? favoritos.filter((id) => id !== productId)
 			: [...favoritos, productId];
@@ -96,8 +101,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 		try {
 			setLoadingCart(producto.id);
 			addToCart(producto, 1);
-
-			// Abrir modal
 			setModalProduct(producto);
 		} catch (error) {
 			console.error('Error al agregar al carrito:', error);
@@ -127,7 +130,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 
 	return (
 		<Layout title="Tienda - Liwilu" description="Productos al por mayor">
-			{/* Banner Hero - MISMO CÓDIGO */}
+			{/* Banner Hero con animación */}
 			<section className="relative text-white overflow-hidden">
 				<div className="absolute inset-0">
 					<Image
@@ -151,20 +154,30 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 							priority
 						/>
 					</div>
-					<div className="w-1/2">
-						<span className="text-[12px] md:text-sm font-light mb-2 block ">
+					<div
+						className={`w-1/2 transition-all duration-1000 transform ${
+							isVisible
+								? 'opacity-100 translate-x-0'
+								: 'opacity-0 -translate-x-10'
+						}`}
+					>
+						<span className="text-[12px] md:text-sm font-light mb-2 block animate-fade-in">
 							NUEVO
 						</span>
-						<h1 className="text-2xl md:text-5xl font-bold mb-2 text-primary-light leading-tight">
+						<h1 className="text-2xl md:text-5xl font-bold mb-2 text-primary-light leading-tight animate-slide-up">
 							MacBook Pro de 14 pulgadas M4
 						</h1>
-						<p className="text-[12px] md:text-sm font-light text-secondary">
+						<p className="text-[12px] md:text-sm font-light text-secondary animate-fade-in-delay">
 							<span>SKU: MW2U3E/A</span>
 							<span className="ml-2">Barcode: 195949704796</span>
 						</p>
 					</div>
 					<div className="w-1/2 flex items-center justify-center">
-						<div className="absolute md:-bottom-10 floating-slow">
+						<div
+							className={`absolute md:-bottom-10 floating-slow transition-all duration-1000 ${
+								isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+							}`}
+						>
 							<Image
 								src="/images/productos/liwilu_productos_laptop_img.png"
 								alt="MacBook Pro"
@@ -203,7 +216,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 				</div>
 
 				<div className="max-w-7xl mx-auto px-6">
-					<div className="text-white text-sm mb-3">
+					<div className="text-white text-sm mb-3 animate-fade-in">
 						<Link href="/" className="hover:underline">
 							Inicio
 						</Link>
@@ -211,15 +224,16 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 						<span>Tienda virtual</span>
 					</div>
 
-					<div className="flex gap-6 overflow-x-auto pb-2 max-w-5xl mx-auto md:justify-center">
-						{categories.slice(0, 6).map((cat) => (
+					<div className="flex gap-6 overflow-x-auto pb-2 max-w-5xl mx-auto md:justify-center overflow-y-hidden">
+						{categories.slice(0, 6).map((cat, index) => (
 							<div
 								key={cat.id}
 								onClick={() => setSelectedCategory(cat.id)}
-								className="flex flex-col items-center min-w-[100px] cursor-pointer hover:opacity-80 transition"
+								className={`flex flex-col items-center min-w-[100px] cursor-pointer transition-all duration-300 hover:scale-110 animate-fade-in-up`}
+								style={{ animationDelay: `${index * 100}ms` }}
 							>
-								<div className="w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden bg-white shadow-lg mb-2 flex items-center justify-center">
-									<span className="text-2xl md:text-6xl">
+								<div className="w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden bg-white shadow-lg mb-2 flex items-center justify-center transition-all duration-300 hover:shadow-2xl hover:-translate-y-2">
+									<span className="text-2xl md:text-6xl transition-transform duration-300 hover:scale-110">
 										{cat.name?.[0]?.value.includes('Libro')
 											? '📚'
 											: cat.name?.[0]?.value.includes('Hogar') ||
@@ -246,7 +260,7 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 			{/* Contenido principal */}
 			<div className="max-w-7xl mx-auto px-6 py-8">
 				<div className="flex flex-col md:flex-row gap-20">
-					{/* Sidebar */}
+					{/* Sidebar con animación */}
 					<aside className="w-full md:w-64 flex-shrink-0 font-sans md:block hidden">
 						<div className="bg-white rounded-2xl shadow-lg p-5">
 							<div className="mb-4">
@@ -389,9 +403,13 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 						</div>
 					</aside>
 
-					{/* Grid de productos */}
+					{/* Grid de productos con animaciones */}
 					<main className="flex-1">
-						<div className="bg-white rounded-sm shadow-md mb-14 overflow-hidden">
+						<div
+							className={`bg-white rounded-sm shadow-md mb-14 overflow-hidden transition-all duration-700 transform hover:shadow-xl ${
+								isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+							}`}
+						>
 							<div className="relative h-32 md:h-40">
 								<Image
 									src="/images/productos/liwilu_banner_productos_grid.png"
@@ -403,221 +421,159 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 							</div>
 						</div>
 
-						<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-							<h2 className="text-xl font-semibold">
-								{selectedCategory === 'all'
-									? `Todos los productos (${filteredProducts.length})`
-									: `${getCategoryName(selectedCategory)} (${
-											filteredProducts.length
-									  })`}
-							</h2>
-							<div className="flex items-center gap-2">
-								<label className="text-sm text-gray-600">Ordenar por:</label>
-								<select className="border rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-									<option>Seleccionar</option>
-									<option>Precio: Menor a Mayor</option>
-									<option>Precio: Mayor a Menor</option>
-									<option>Más recientes</option>
-									<option>Nombre A-Z</option>
-								</select>
-							</div>
-						</div>
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+							{currentProducts.map((product, index) => {
+								const imageId = product.associations?.images?.[0]?.id;
+								const imageUrl = imageId
+									? getProductImageUrl(product.id, imageId)
+									: '/no-image.png';
 
-						{error && (
-							<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-								<strong>Error:</strong> {error}
-							</div>
-						)}
-
-						{currentProducts.length === 0 ? (
-							<div className="text-center py-12 bg-gray-100 rounded-xl">
-								<p className="text-xl text-gray-600 mb-2">
-									{filteredProducts.length === 0
-										? 'No hay productos en esta categoría'
-										: 'No hay productos disponibles'}
-								</p>
-								{selectedCategory !== 'all' && (
-									<button
-										onClick={() => setSelectedCategory('all')}
-										className="text-green-600 hover:underline mt-2"
+								return (
+									<Link
+										key={product.id}
+										href={`/tienda/${product.id}`}
+										className="block animate-fade-in-up"
+										style={{ animationDelay: `${index * 100}ms` }}
 									>
-										Ver todos los productos
-									</button>
-								)}
-							</div>
-						) : (
-							<>
-								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-									{currentProducts.map((product) => {
-										const imageId = product.associations?.images?.[0]?.id;
-										const imageUrl = imageId
-											? getProductImageUrl(product.id, imageId)
-											: '/no-image.png';
+										<div className="bg-primary rounded-md shadow-md overflow-hidden hover:shadow-2xl transition-all duration-300 transform group">
+											<div className="relative overflow-hidden">
+												<button
+													className="absolute top-3 left-3 bg-white rounded-full p-2 hover:bg-gray-100 z-10 shadow-md transition-all duration-300 hover:scale-110"
+													onClick={(e) => toggleFavorito(e, product.id)}
+												>
+													<FaRegHeart
+														className={`w-5 h-5 transition-all duration-300 ${
+															favoritos.includes(product.id)
+																? 'text-red-500 fill-current scale-110'
+																: 'text-gray-400 hover:text-red-500'
+														}`}
+													/>
+												</button>
+												<div className="relative w-full h-56 bg-gray-100 overflow-hidden">
+													<Image
+														src={imageUrl}
+														alt={product.name?.[0]?.value || 'Producto'}
+														fill
+														unoptimized
+														className="object-cover transition-transform duration-500 group-hover:scale-105"
+													/>
+												</div>
+											</div>
 
-										return (
-											<Link
-												key={product.id}
-												href={`/tienda/${product.id}`}
-												className="block"
-											>
-												<div className="bg-primary rounded-md shadow-md overflow-hidden hover:shadow-xl transition">
-													<div className="relative">
-														<button
-															className="absolute top-3 left-3 bg-white rounded-full p-2 hover:bg-gray-100 z-10 shadow-md"
-															onClick={(e) => toggleFavorito(e, product.id)}
-														>
-															<FaRegHeart
-																className={`w-5 h-5 transition ${
-																	favoritos.includes(product.id)
-																		? 'text-red-500 fill-current'
-																		: 'text-gray-400 hover:text-red-500'
-																}`}
-															/>
-														</button>
-														<div className="relative w-full h-56 bg-gray-100">
-															<Image
-																src={imageUrl}
-																alt={product.name?.[0]?.value || 'Producto'}
-																fill
-																unoptimized
-																className="object-cover"
-															/>
-														</div>
-													</div>
+											<div className="p-4">
+												<div className="mb-0">
+													<span className="text-white text-sm font-normal">
+														Liwilu
+													</span>
+												</div>
 
-													<div className="p-4">
-														<div className="mb-0">
-															<span className="text-white text-sm font-normal">
-																Liwilu
-															</span>
-														</div>
+												<h3 className="font-normal text-lg mb-2 line-clamp-2 h-10 text-white leading-5 transition-colors group-hover:text-gray-100">
+													{product.name?.[0]?.value || 'Producto sin nombre'}
+												</h3>
 
-														<h3 className="font-normal text-lg mb-2 line-clamp-2 h-10 text-white leading-5">
-															{product.name?.[0]?.value ||
-																'Producto sin nombre'}
-														</h3>
-
-														<div className="flex items-center gap-1 mb-0">
-															<div className="flex text-yellow-400 text-sm">
-																{'★'.repeat(5)}
-															</div>
-														</div>
-
-														<div className="flex items-center gap-2 mb-6">
-															<span className="text-white font-bold text-xl">
-																{formatPrice(product.price || '0')}
-															</span>
-															<span className="text-white text-sm line-through">
-																{formatPrice(
-																	parseFloat(product.price || '0') * 1.5
-																)}
-															</span>
-														</div>
-
-														<button
-															className="w-full bg-white text-primary font-semibold py-2 rounded-xl transition hover:bg-gray-100 flex items-center justify-center gap-2"
-															onClick={(e) => handleAddToCart(e, product)}
-															disabled={loadingCart === product.id}
-														>
-															{loadingCart === product.id ? (
-																<>
-																	<svg
-																		className="animate-spin h-5 w-5"
-																		xmlns="http://www.w3.org/2000/svg"
-																		fill="none"
-																		viewBox="0 0 24 24"
-																	>
-																		<circle
-																			className="opacity-25"
-																			cx="12"
-																			cy="12"
-																			r="10"
-																			stroke="currentColor"
-																			strokeWidth="4"
-																		/>
-																		<path
-																			className="opacity-75"
-																			fill="currentColor"
-																			d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-																		/>
-																	</svg>
-																	<span>Agregando...</span>
-																</>
-															) : (
-																<>
-																	<FaShoppingCart className="w-4 h-4" />
-																	<span>Agregar al carrito</span>
-																</>
-															)}
-														</button>
+												<div className="flex items-center gap-1 mb-0">
+													<div className="flex text-yellow-400 text-sm">
+														{'★'.repeat(5)}
 													</div>
 												</div>
-											</Link>
-										);
-									})}
-								</div>
 
-								{/* Paginación */}
-
-								{totalPages > 1 && (
-									<div className="flex justify-center items-center gap-2">
-										<button
-											onClick={() =>
-												setCurrentPage((prev) => Math.max(1, prev - 1))
-											}
-											disabled={currentPage === 1}
-											className="px-4 py-2 border rounded-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-										>
-											‹
-										</button>
-
-										{[...Array(totalPages)].map((_, i) => {
-											const page = i + 1;
-
-											if (
-												page === 1 ||
-												page === totalPages ||
-												(page >= currentPage - 1 && page <= currentPage + 1)
-											) {
-												return (
-													<button
-														key={page}
-														onClick={() => setCurrentPage(page)}
-														className={`px-4 py-2 rounded-sm transition ${
-															currentPage === page
-																? 'bg-primary text-white font-semibold'
-																: 'border hover:bg-gray-100'
-														}`}
-													>
-														{page}
-													</button>
-												);
-											} else if (
-												page === currentPage - 2 ||
-												page === currentPage + 2
-											) {
-												return (
-													<span key={page} className="px-2">
-														...
+												<div className="flex items-center gap-2 mb-6">
+													<span className="text-white font-bold text-xl">
+														{formatPrice(product.price || '0')}
 													</span>
-												);
-											}
+													<span className="text-white text-sm line-Categorías">
+														{formatPrice(parseFloat(product.price || '0') * 1.5)}
+													</span>
+												</div>
 
-											return null;
-										})}
+												<button
+													className="w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 hover:bg-gray-100 hover:shadow-lg flex items-center justify-center gap-2 transform hover:scale-105"
+													onClick={(e) => handleAddToCart(e, product)}
+													disabled={loadingCart === product.id}
+												>
+													{loadingCart === product.id ? (
+														<>
+															<svg
+																className="animate-spin h-5 w-5"
+																xmlns="http://www.w3.org/2000/svg"
+																fill="none"
+																viewBox="0 0 24 24"
+															>
+																<circle
+																	className="opacity-25"
+																	cx="12"
+																	cy="12"
+																	r="10"
+																	stroke="currentColor"
+																	strokeWidth="4"
+																/>
+																<path
+																	className="opacity-75"
+																	fill="currentColor"
+																	d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+																/>
+															</svg>
+															<span>Agregando...</span>
+														</>
+													) : (
+														<>
+															{/* <FaShoppingCart className="w-4 h-4 transition-transform group-hover:scale-110" /> */}
+															<span>Agregar al carrito</span>
+														</>
+													)}
+												</button>
+											</div>
+										</div>
+									</Link>
+								);
+							})}
+						</div>
 
-										<button
-											onClick={() =>
-												setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-											}
-											disabled={currentPage === totalPages}
-											className="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-										>
-											›
-										</button>
-									</div>
-								)}
-							</>
+						{/* Paginación con animación */}
+						{totalPages > 1 && (
+							<div className="flex justify-center items-center gap-2 animate-fade-in">
+								<button
+									onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+									disabled={currentPage === 1}
+									className="px-4 py-2 border rounded-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105"
+								>
+									‹
+								</button>
+
+								{[...Array(totalPages)].map((_, i) => {
+									const page = i + 1;
+									if (
+										page === 1 ||
+										page === totalPages ||
+										(page >= currentPage - 1 && page <= currentPage + 1)
+									) {
+										return (
+											<button
+												key={page}
+												onClick={() => setCurrentPage(page)}
+												className={`px-4 py-2 rounded-sm transition-all duration-300 transform hover:scale-110 ${
+													currentPage === page
+														? 'bg-primary text-white font-semibold shadow-lg'
+														: 'border hover:bg-gray-100'
+												}`}
+											>
+												{page}
+											</button>
+										);
+									}
+									return null;
+								})}
+
+								<button
+									onClick={() =>
+										setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+									}
+									disabled={currentPage === totalPages}
+									className="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105"
+								>
+									›
+								</button>
+							</div>
 						)}
 					</main>
 				</div>
@@ -625,7 +581,6 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 
 			<Contacto />
 
-			{/* Modal de confirmación */}
 			{modalProduct && (
 				<AddToCartModal
 					isOpen={!!modalProduct}
@@ -633,6 +588,75 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 					product={modalProduct}
 				/>
 			)}
+
+			<style jsx global>{`
+				@keyframes fade-in {
+					from {
+						opacity: 0;
+					}
+					to {
+						opacity: 1;
+					}
+				}
+
+				@keyframes fade-in-up {
+					from {
+						opacity: 0;
+						transform: translateY(20px);
+					}
+					to {
+						opacity: 1;
+						transform: translateY(0);
+					}
+				}
+
+				@keyframes slide-up {
+					from {
+						opacity: 0;
+						transform: translateY(30px);
+					}
+					to {
+						opacity: 1;
+						transform: translateY(0);
+					}
+				}
+
+				.animate-fade-in {
+					animation: fade-in 0.6s ease-out forwards;
+				}
+
+				.animate-fade-in-delay {
+					animation: fade-in 0.8s ease-out 0.3s forwards;
+					opacity: 0;
+				}
+
+				.animate-fade-in-up {
+					animation: fade-in-up 0.6s ease-out forwards;
+					opacity: 0;
+				}
+
+				.animate-slide-up {
+					animation: slide-up 0.8s ease-out forwards;
+				}
+
+				.floating {
+					animation: floating 3s ease-in-out infinite;
+				}
+
+				.floating-slow {
+					animation: floating 4s ease-in-out infinite;
+				}
+
+				@keyframes floating {
+					0%,
+					100% {
+						transform: translateY(0px);
+					}
+					50% {
+						transform: translateY(-10px);
+					}
+				}
+			`}</style>
 		</Layout>
 	);
 }
