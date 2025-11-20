@@ -20,7 +20,7 @@ interface Direccion {
 }
 
 export default function Direcciones() {
-	const [direcciones, setDirecciones] = useState<Direccion[]>([]);
+	const [direcciones] = useState<Direccion[]>([]);
 	const [mostrarFormulario, setMostrarFormulario] = useState(false);
 	const [tipoFormulario, setTipoFormulario] = useState<
 		'entrega' | 'facturacion'

@@ -1,27 +1,26 @@
 // pages/mi-cuenta/index.tsx
-import { useState } from 'react';
+// import { useState } from 'react';
 import Layout from '@/components/Layout';
-import { useRouter } from 'next/router';
+// import { useRouter } from 'next/router';
 import Image from 'next/image';
-import Link from 'next/link';
 import AccountSidebar from '@/components/AccountSidebar';
 
 export default function MiCuenta() {
-	const router = useRouter();
-	const [activeSection, setActiveSection] = useState('mi-cuenta');
+	// const router = useRouter();
+	// const [activeSection, setActiveSection] = useState('mi-cuenta');
 
-	const menuItems = [
-		{ id: 'mi-cuenta', label: 'Mi cuenta', href: '/mi-cuenta' },
-		{ id: 'mis-datos', label: 'Mis datos', href: '/mi-cuenta/mis-datos' },
-		{ id: 'direcciones', label: 'Direcciones', href: '/mi-cuenta/direcciones' },
-		{ id: 'mis-pedidos', label: 'Mis pedidos', href: '/mi-cuenta/mis-pedidos' },
-		{
-			id: 'mis-favoritos',
-			label: 'Mis favoritos',
-			href: '/mi-cuenta/mis-favoritos',
-		},
-		{ id: 'cerrar-sesion', label: 'Cerrar sesión', href: '/logout' },
-	];
+	// const menuItems = [
+	// 	{ id: 'mi-cuenta', label: 'Mi cuenta', href: '/mi-cuenta' },
+	// 	{ id: 'mis-datos', label: 'Mis datos', href: '/mi-cuenta/mis-datos' },
+	// 	{ id: 'direcciones', label: 'Direcciones', href: '/mi-cuenta/direcciones' },
+	// 	{ id: 'mis-pedidos', label: 'Mis pedidos', href: '/mi-cuenta/mis-pedidos' },
+	// 	{
+	// 		id: 'mis-favoritos',
+	// 		label: 'Mis favoritos',
+	// 		href: '/mi-cuenta/mis-favoritos',
+	// 	},
+	// 	{ id: 'cerrar-sesion', label: 'Cerrar sesión', href: '/logout' },
+	// ];
 
 	return (
 		<Layout title="Mi cuenta - Liwilu" description="Gestiona tu cuenta">

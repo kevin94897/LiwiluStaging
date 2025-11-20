@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import Visa from '@/public/images/vectores/payments/visa.svg';
+// import Visa from '@/public/images/vectores/payments/visa.svg';
 import { FaInstagram, FaFacebook, FaTiktok } from 'react-icons/fa';
 
 export default function Footer() {

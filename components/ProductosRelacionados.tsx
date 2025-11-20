@@ -10,7 +10,6 @@ import { useCart } from '@/context/CartContext';
 import AddToCartModal from '@/components/AddToCartModal';
 
 import { Product, getProductImageUrl, formatPrice } from '@/lib/prestashop';
-import { FaShoppingCart } from 'react-icons/fa';
 
 interface ProductProps {
 	relatedProducts: Product[];
@@ -37,7 +36,7 @@ export default function ProductosRelacionados({
 		try {
 			setLoadingCart(producto.id);
 			addToCart(producto, 1);
-			
+
 			// Abrir modal
 			setModalProduct(producto);
 		} catch (error) {

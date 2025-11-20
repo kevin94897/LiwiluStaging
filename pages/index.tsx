@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import Link from 'next/link';
 import { GetServerSideProps } from 'next';
 import Layout from '@/components/Layout';
 import 'slick-carousel/slick/slick.css';

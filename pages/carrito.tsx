@@ -20,23 +20,11 @@ interface Tienda {
 	stock?: number;
 }
 
-// Interfaz de disponibilidad de producto en tienda
-interface ProductoEnTienda {
-	id_product: string;
-	tiendas: Tienda[];
-}
-
-// const DISTRITOS_LIMA = [
-// 	'Ate', 'Barranco', 'Breña', 'Cercado de Lima', 'Chorrillos',
-// 	'Jesús María', 'La Molina', 'La Victoria', 'Lince', 'Magdalena',
-// 	'Miraflores', 'Pueblo Libre', 'San Borja', 'San Isidro',
-// 	'San Juan de Lurigancho', 'San Juan de Miraflores', 'San Luis',
-// 	'San Miguel', 'Santa Anita', 'Santiago de Surco', 'Surquillo',
-// 	'Villa El Salvador', 'Villa María del Triunfo',
-// ];
-
+// Distritos disponibles
 const DISTRITOS_LIMA = [
-	'Miraflores', 'San Isidro', 'Santiago de Surco',
+	'Miraflores',
+	'San Isidro',
+	'Santiago de Surco',
 ];
 
 export default function Carrito() {
@@ -100,10 +88,9 @@ export default function Carrito() {
 	const getTiendasPorDistrito = (distrito: string): Tienda[] => {
 		const tiendasDelDistrito: Tienda[] = [];
 
-		Object.entries(productosEnTiendas).forEach(([productId, tiendas]) => {
+		Object.entries(productosEnTiendas).forEach(([_productId, tiendas]) => {
 			tiendas.forEach(tienda => {
 				if (tienda.district === distrito) {
-					// Evitar duplicados
 					const existe = tiendasDelDistrito.find(t => t.id_store === tienda.id_store);
 					if (!existe) {
 						tiendasDelDistrito.push(tienda);
@@ -333,7 +320,6 @@ export default function Carrito() {
 								const imageId = item.product.associations?.images?.[0]?.id;
 								const imageUrl = imageId ? getProductImageUrl(item.product.id, imageId) : '/no-image.png';
 
-								// Verificar si el producto está en la tienda seleccionada
 								const enTiendaSeleccionada = tiendaSeleccionada && checkStockEnTienda(item.product.id, tiendaSeleccionada);
 								const stockDisponible = tiendaSeleccionada ? getStockEnTienda(item.product.id, tiendaSeleccionada) : 0;
 

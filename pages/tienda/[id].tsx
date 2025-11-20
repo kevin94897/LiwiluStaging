@@ -75,6 +75,15 @@ export default function ProductDetail({
 	error,
 	relatedProducts = [],
 }: ProductDetailProps) {
+	// All hooks must be called at the top level, before any conditional returns
+	const [quantity, setQuantity] = useState(1);
+	const [selectedColor, setSelectedColor] = useState<string | null>(null);
+	const [selectedSize, setSelectedSize] = useState<string | null>(null);
+
+	// Define tab keys type
+	type TabKey = 'Descripción del producto' | 'Especificaciones' | 'Guía de tallas';
+	const [activeTab, setActiveTab] = useState<TabKey>('Descripción del producto');
+
 	if (error || !product) {
 		return (
 			<Layout title="Error - Liwilu" description="Producto no encontrado">
@@ -93,16 +102,13 @@ export default function ProductDetail({
 		);
 	}
 
-	const [quantity, setQuantity] = useState(1);
-	const [selectedColor, setSelectedColor] = useState(null);
-
-	const colors = product?.colors || [
+	// Fallback colors and sizes (Product type doesn't include these properties)
+	const colors = [
 		{ name: 'Ploma', hex: 'gray' },
 		{ name: 'Blanco', hex: 'white' },
 		{ name: 'Negro', hex: '#000000' },
 	];
-	const sizes = product?.sizes || ['S', 'M', 'L', 'XL'];
-	const [selectedSize, setSelectedSize] = useState(null);
+	const sizes = ['S', 'M', 'L', 'XL'];
 
 	const handleIncrease = () => setQuantity((q) => q + 1);
 	const handleDecrease = () => setQuantity((q) => Math.max(1, q - 1));
@@ -216,8 +222,6 @@ export default function ProductDetail({
 			</div>
 		),
 	};
-
-	const [activeTab, setActiveTab] = useState(Object.keys(tabs)[0]); // primera pestaña por defecto
 
 	const mainImage = product.associations?.images?.[0]?.id
 		? getProductImageUrl(product.id, product.associations.images[0].id)
@@ -361,11 +365,10 @@ export default function ProductDetail({
 													key={color.name}
 													title={color.name}
 													onClick={() => setSelectedColor(color.name)}
-													className={`w-5 h-5 rounded-full border-2 transition ${
-														selectedColor === color.name
-															? 'border-[#D3D3D3] border-4 scale-110'
-															: 'border-gray-300 hover:scale-105'
-													}`}
+													className={`w-5 h-5 rounded-full border-2 transition ${selectedColor === color.name
+														? 'border-[#D3D3D3] border-4 scale-110'
+														: 'border-gray-300 hover:scale-105'
+														}`}
 													style={{ backgroundColor: color.hex }}
 												/>
 											))}
@@ -416,11 +419,10 @@ export default function ProductDetail({
 												key={size}
 												onClick={() => setSelectedSize(size)}
 												className={`px-5 py-0 border rounded-lg font-medium transition 
-              ${
-								selectedSize === size
-									? 'bg-primary-dark text-white border-gray-900'
-									: 'border-gray-300 text-gray-700 hover:bg-gray-100 py-1'
-							}`}
+              ${selectedSize === size
+														? 'bg-primary-dark text-white border-gray-900'
+														: 'border-gray-300 text-gray-700 hover:bg-gray-100 py-1'
+													}`}
 											>
 												{size}
 											</button>
@@ -470,12 +472,12 @@ export default function ProductDetail({
 					{Object.keys(tabs).map((tab) => (
 						<button
 							key={tab}
-							onClick={() => setActiveTab(tab)}
-							className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] ${
-								activeTab === tab
-									? 'border-gray-900 text-primary-dark'
-									: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-							}`}
+							onClick={() => setActiveTab(tab as TabKey)}
+
+							className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] ${activeTab === tab
+								? 'border-gray-900 text-primary-dark'
+								: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+								}`}
 						>
 							{tab}
 						</button>
@@ -497,6 +499,6 @@ export default function ProductDetail({
 
 			{/* 🔹 Sección de aptitudes */}
 			<Aptitudes />
-		</Layout>
+		</Layout >
 	);
 }

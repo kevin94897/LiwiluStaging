@@ -17,7 +17,7 @@ import {
 	Category,
 	getProductImageUrl,
 } from '@/lib/prestashop';
-import { FaRegHeart, FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
+import { FaRegHeart, FaPlus, FaMinus } from 'react-icons/fa';
 
 interface TiendaProps {
 	products: Product[];
@@ -51,7 +51,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
 	}
 };
 
-export default function Tienda({ products, categories, error }: TiendaProps) {
+export default function Tienda({ products, categories }: TiendaProps) {
 	const [openCategories, setOpenCategories] = useState<string[]>([
 		'Categorías',
 	]);
@@ -123,10 +123,10 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 	);
 	const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
 
-	const getCategoryName = (categoryId: string) => {
-		const category = categories.find((c) => c.id === categoryId);
-		return category?.name?.[0]?.value || 'Categoría';
-	};
+	// const getCategoryName = (categoryId: string) => {
+	// 	const category = categories.find((c) => c.id === categoryId);
+	// 	return category?.name?.[0]?.value || 'Categoría';
+	// };
 
 	return (
 		<Layout title="Tienda - Liwilu" description="Productos al por mayor">
@@ -155,11 +155,10 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 						/>
 					</div>
 					<div
-						className={`w-1/2 transition-all duration-1000 transform ${
-							isVisible
-								? 'opacity-100 translate-x-0'
-								: 'opacity-0 -translate-x-10'
-						}`}
+						className={`w-1/2 transition-all duration-1000 transform ${isVisible
+							? 'opacity-100 translate-x-0'
+							: 'opacity-0 -translate-x-10'
+							}`}
 					>
 						<span className="text-[12px] md:text-sm font-light mb-2 block animate-fade-in">
 							NUEVO
@@ -174,9 +173,8 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 					</div>
 					<div className="w-1/2 flex items-center justify-center">
 						<div
-							className={`absolute md:-bottom-10 floating-slow transition-all duration-1000 ${
-								isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-							}`}
+							className={`absolute md:-bottom-10 floating-slow transition-all duration-1000 ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+								}`}
 						>
 							<Image
 								src="/images/productos/liwilu_productos_laptop_img.png"
@@ -237,15 +235,15 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 										{cat.name?.[0]?.value.includes('Libro')
 											? '📚'
 											: cat.name?.[0]?.value.includes('Hogar') ||
-											  cat.name?.[0]?.value.includes('Limpieza')
-											? '🧹'
-											: cat.name?.[0]?.value.includes('Uniforme')
-											? '👕'
-											: cat.name?.[0]?.value.includes('Útil')
-											? '✏️'
-											: cat.name?.[0]?.value.includes('Tecnolog')
-											? '💻'
-											: '🏷️'}
+												cat.name?.[0]?.value.includes('Limpieza')
+												? '🧹'
+												: cat.name?.[0]?.value.includes('Uniforme')
+													? '👕'
+													: cat.name?.[0]?.value.includes('Útil')
+														? '✏️'
+														: cat.name?.[0]?.value.includes('Tecnolog')
+															? '💻'
+															: '🏷️'}
 									</span>
 								</div>
 								<span className="text-white text-md text-center font-semibold">
@@ -406,9 +404,8 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 					{/* Grid de productos con animaciones */}
 					<main className="flex-1">
 						<div
-							className={`bg-white rounded-sm shadow-md mb-14 overflow-hidden transition-all duration-700 transform hover:shadow-xl ${
-								isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-							}`}
+							className={`bg-white rounded-sm shadow-md mb-14 overflow-hidden transition-all duration-700 transform hover:shadow-xl ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+								}`}
 						>
 							<div className="relative h-32 md:h-40">
 								<Image
@@ -442,11 +439,10 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 													onClick={(e) => toggleFavorito(e, product.id)}
 												>
 													<FaRegHeart
-														className={`w-5 h-5 transition-all duration-300 ${
-															favoritos.includes(product.id)
-																? 'text-red-500 fill-current scale-110'
-																: 'text-gray-400 hover:text-red-500'
-														}`}
+														className={`w-5 h-5 transition-all duration-300 ${favoritos.includes(product.id)
+															? 'text-red-500 fill-current scale-110'
+															: 'text-gray-400 hover:text-red-500'
+															}`}
 													/>
 												</button>
 												<div className="relative w-full h-56 bg-gray-100 overflow-hidden">
@@ -551,11 +547,10 @@ export default function Tienda({ products, categories, error }: TiendaProps) {
 											<button
 												key={page}
 												onClick={() => setCurrentPage(page)}
-												className={`px-4 py-2 rounded-sm transition-all duration-300 transform hover:scale-110 ${
-													currentPage === page
-														? 'bg-primary text-white font-semibold shadow-lg'
-														: 'border hover:bg-gray-100'
-												}`}
+												className={`px-4 py-2 rounded-sm transition-all duration-300 transform hover:scale-110 ${currentPage === page
+													? 'bg-primary text-white font-semibold shadow-lg'
+													: 'border hover:bg-gray-100'
+													}`}
 											>
 												{page}
 											</button>
