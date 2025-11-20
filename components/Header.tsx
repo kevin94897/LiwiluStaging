@@ -24,7 +24,7 @@ const topLinks = [
   { href: '/campanas', label: 'Tiendas campañas 2026' },
   { href: '/registro', label: 'Regístrate' },
   {
-    href: '/favoritos',
+    href: '/mi-cuenta/mis-favoritos',
     label: 'Mis favoritos',
     icon: <FaRegHeart size={12} />,
   },
@@ -59,16 +59,16 @@ function SearchBar({ isMobile = false }) {
   return (
     <div
       className={`flex items-center bg-white rounded-full ${isMobile
-          ? 'px-4 py-2'
-          : 'px-3 py-1 w-full max-w-md xl:min-w-[300px] lg:max-w-[250px]'
+        ? 'px-4 py-2'
+        : 'px-3 py-1 w-full max-w-md xl:min-w-[300px] lg:max-w-[250px]'
         }`}
     >
       <input
         type="search"
         placeholder="¿Qué estás buscando?"
         className={`flex-grow px-2 outline-none bg-transparent ${isMobile
-            ? 'text-[15px] placeholder-gray-400 text-gray-800'
-            : 'py-1 text-sm text-gray-700'
+          ? 'text-[15px] placeholder-gray-400 text-gray-800'
+          : 'py-1 text-sm text-gray-700'
           }`}
       />
       <button
@@ -133,12 +133,12 @@ function QuickActions({ isMobile = false, onOpenLogin, onOpenRegister }: QuickAc
         <FaBoxes /> Compra mayorista
       </Link>
       <Link
-        href="/pedido"
+        href="/rastreo"
         className="flex items-center gap-2 hover:text-green-400 transition"
       >
         <FaTruck /> Sigue tu pedido
       </Link>
-      
+
       {/* Botón de apertura */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -146,7 +146,7 @@ function QuickActions({ isMobile = false, onOpenLogin, onOpenRegister }: QuickAc
       >
         <FaUser /> Mi cuenta
       </button>
-      
+
       {/* Caja desplegable */}
       {isOpen && (
         <div className="absolute top-5 right-0 mt-3 w-[420px] rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] p-6 z-50">
@@ -193,7 +193,7 @@ function QuickActions({ isMobile = false, onOpenLogin, onOpenRegister }: QuickAc
           </div>
         </div>
       )}
-      
+
       <Link
         href="/carrito"
         className="relative hover:text-green-400 transition"
@@ -249,8 +249,8 @@ export default function Header() {
     <>
       <header
         className={`w-full text-white fixed top-0 left-0 z-50 transition-all duration-300 ${isSticky
-            ? 'backdrop-blur-md bg-[#0b2d2d]/90 shadow-lg'
-            : 'bg-transparent'
+          ? 'backdrop-blur-md bg-[#0b2d2d]/90 shadow-lg'
+          : 'bg-transparent'
           }`}
       >
         {/* 🔹 TOP BAR */}
@@ -287,8 +287,8 @@ export default function Header() {
             <div className="lg:hidden space-y-3" ref={menuRef}>
               <div className="flex items-end md:items-center justify-between">
                 <Logo width={120} height={36} className="mr-5" />
-                <QuickActions 
-                  isMobile 
+                <QuickActions
+                  isMobile
                   onOpenLogin={() => setLoginModalOpen(true)}
                   onOpenRegister={() => setRegisterModalOpen(true)}
                 />
@@ -320,10 +320,10 @@ export default function Header() {
                             href={c.href}
                             onClick={() => setMobileCatsOpen(false)}
                             className={`block px-4 py-3 text-white transition-colors ${c.highlight
-                                ? 'bg-primary hover:bg-primary rounded-xl font-medium text-[#0b2d2d]'
-                                : c.highlightBottom
-                                  ? 'text-white hover:bg-white/10 rounded-xl font-bold'
-                                  : 'text-white/90 hover:bg-white/10 rounded-lg'
+                              ? 'bg-primary hover:bg-primary rounded-xl font-medium text-[#0b2d2d]'
+                              : c.highlightBottom
+                                ? 'text-white hover:bg-white/10 rounded-xl font-bold'
+                                : 'text-white/90 hover:bg-white/10 rounded-lg'
                               }`}
                           >
                             {c.label}
@@ -358,10 +358,10 @@ export default function Header() {
                               href={c.href}
                               onClick={() => setMobileCatsOpen(false)}
                               className={`flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
-                                  ? 'bg-primary text-white hover:bg-primary-light'
-                                  : c.highlightBottom
-                                    ? 'bg-gray-100 font-bold hover:bg-gray-200'
-                                    : 'hover:bg-gray-50'
+                                ? 'bg-primary text-white hover:bg-primary-light'
+                                : c.highlightBottom
+                                  ? 'bg-gray-100 font-bold hover:bg-gray-200'
+                                  : 'hover:bg-gray-50'
                                 }`}
                             >
                               <span className="truncate">{c.label}</span>
@@ -381,7 +381,7 @@ export default function Header() {
                 <SearchBar />
               </div>
               <Logo width={100} height={40} className="justify-center" />
-              <QuickActions 
+              <QuickActions
                 onOpenLogin={() => setLoginModalOpen(true)}
                 onOpenRegister={() => setRegisterModalOpen(true)}
               />

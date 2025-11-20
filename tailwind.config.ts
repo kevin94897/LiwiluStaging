@@ -36,14 +36,16 @@ const config: Config = {
 				},
 				bg: {
 					'primary-dark': '#0f2828',
-					success: '#D1FAE5',
-					error: '#FEE2E2',
-					disabled: '#F3F4F6',
+					DEFAULT: '#45b171',
+					hover: '#059669',
+					light: '#4ded8c',
+					dark: '#0f2828',
 				},
 				border: {
-					DEFAULT: '#E5E7EB',
-					error: '#FCA5A5',
-					success: '#6EE7B7',
+					DEFAULT: '#45b171',
+					hover: '#059669',
+					light: '#4ded8c',
+					dark: '#0f2828',
 				},
 			},
 			borderRadius: {

@@ -62,21 +62,11 @@ export default function MisFavoritos() {
 		<Layout
 			title="Mis favoritos - Liwilu"
 			description="Tus productos favoritos"
+			background={true}
 		>
 			<div className="min-h-screen py-8">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="flex flex-col lg:flex-row gap-6">
-						<div className="absolute -right-60 md:-right-32 top-30 md:top-12 w-auto md:w-auto z-0 pointer-events-none hidden lg:block">
-							<Image
-								src="/images/vectores/liwilu_banner_productos_vector_04.png"
-								alt="MacBook Pro"
-								width={408}
-								height={427}
-								quality={100}
-								className="h-auto"
-								priority
-							/>
-						</div>
 						<AccountSidebar activeSection="mis-favoritos" />
 
 						<main className="flex-1">
@@ -89,9 +79,8 @@ export default function MisFavoritos() {
 									{favoritos.map((producto) => (
 										<div
 											key={producto.id}
-											className={`rounded-md overflow-hidden shadow-lg hover:shadow-xl transition ${
-												producto.disponible ? 'bg-white' : 'bg-gray-100'
-											}`}
+											className={`rounded-md overflow-hidden shadow-lg hover:shadow-xl transition ${producto.disponible ? 'bg-white' : 'bg-gray-100'
+												}`}
 										>
 											{/* Imagen del producto */}
 											<div className="relative">
@@ -111,11 +100,10 @@ export default function MisFavoritos() {
 													className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-110 transition"
 												>
 													<svg
-														className={`w-6 h-6 ${
-															producto.favorito
+														className={`w-6 h-6 ${producto.favorito
 																? 'text-primary fill-current'
 																: 'text-gray-400 fill-gray-400'
-														}`}
+															}`}
 														fill={producto.favorito ? 'currentColor' : 'none'}
 														stroke="currentColor"
 														viewBox="0 0 24 24"
@@ -132,42 +120,37 @@ export default function MisFavoritos() {
 
 											{/* Info del producto */}
 											<div
-												className={`p-4 ${
-													producto.disponible
+												className={`p-4 ${producto.disponible
 														? 'bg-primary text-white'
 														: 'bg-[rgba(120,125,134,0.5)] text-white'
-												}`}
+													}`}
 											>
 												<p
-													className={`font-normal text-sm ${
-														producto.disponible ? '' : 'text-[#787d86cc]'
-													}`}
+													className={`font-normal text-sm ${producto.disponible ? '' : 'text-[#787d86cc]'
+														}`}
 												>
 													{producto.marca}
 												</p>
 
 												<h3
-													className={`font-normal text-lg ${
-														producto.disponible ? '' : 'text-[#787d86cc]'
-													}`}
+													className={`font-normal text-lg ${producto.disponible ? '' : 'text-[#787d86cc]'
+														}`}
 												>
 													{producto.nombre}
 												</h3>
 
 												{/* Rating */}
 												<div
-													className={`flex text-yellow-300 ${
-														producto.disponible ? '' : 'text-[#787d86cc]'
-													}`}
+													className={`flex text-yellow-300 ${producto.disponible ? '' : 'text-[#787d86cc]'
+														}`}
 												>
 													{'★'.repeat(5)}
 												</div>
 
 												{/* Precio */}
 												<div
-													className={`flex items-baseline gap-2 mb-4 ${
-														producto.disponible ? '' : 'text-[#787d86cc]'
-													}`}
+													className={`flex items-baseline gap-2 mb-4 ${producto.disponible ? '' : 'text-[#787d86cc]'
+														}`}
 												>
 													<span className="text-xl md:text-2xl font-semibold">
 														s/ {producto.precio.toFixed(2)}

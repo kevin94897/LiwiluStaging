@@ -22,9 +22,10 @@ interface Tienda {
 
 // Distritos disponibles
 const DISTRITOS_LIMA = [
-	'Miraflores',
-	'San Isidro',
-	'Santiago de Surco',
+	'Ate', 'Barranco', 'Breña', 'Cercado de Lima', 'Chorrillos',
+	'Jesús María', 'La Molina', 'La Victoria', 'Lince', 'Los Olivos',
+	'Magdalena', 'Miraflores', 'Pueblo Libre', 'San Borja', 'San Isidro',
+	'San Juan de Lurigancho', 'San Miguel', 'Santiago de Surco', 'Surquillo'
 ];
 
 export default function Carrito() {
@@ -36,6 +37,51 @@ export default function Carrito() {
 	const [mostrarMapa, setMostrarMapa] = useState(false);
 	const [productosEnTiendas, setProductosEnTiendas] = useState<Record<string, Tienda[]>>({});
 	const [loadingStores, setLoadingStores] = useState(false);
+	const [direccionEnvio, setDireccionEnvio] = useState({
+		calle: 'Calle continental 145',
+		distrito: 'Ate',
+		ciudad: 'Lima',
+		departamento: 'Lima'
+	});
+	const [editandoDireccion, setEditandoDireccion] = useState(false);
+	const [validandoStock, setValidandoStock] = useState(false);
+	const [stockValidado, setStockValidado] = useState(false);
+
+	// Estados para autenticación
+	const [isLoggedIn, setIsLoggedIn] = useState(false);
+	const [showLoginModal, setShowLoginModal] = useState(true);
+	const [isGuest, setIsGuest] = useState(false);
+
+	// NUEVO: Estado para el tab activo (login o registro)
+	const [activeTab, setActiveTab] = useState<'login' | 'registro'>('login');
+
+	// NUEVO: Estados para login
+	const [loginData, setLoginData] = useState({
+		email: '',
+		password: ''
+	});
+
+	// NUEVO: Estados para registro
+	const [registroData, setRegistroData] = useState({
+		nombre: '',
+		apellido: '',
+		tipoDocumento: 'DNI',
+		numeroDocumento: '',
+		celular: '',
+		telefonoOpcional: '',
+		departamento: 'Lima',
+		provincia: 'Lima',
+		distrito: '',
+		direccion: '',
+		numeroDpto: '',
+		referencia: '',
+		email: '',
+		password: '',
+		confirmarPassword: ''
+	});
+
+	// NUEVO: Errores de validación
+	const [errors, setErrors] = useState<Record<string, string>>({});
 
 	// Función para obtener tiendas con stock desde PrestaShop
 	const fetchTiendasConStock = async (productIds: string[]) => {
@@ -84,10 +130,84 @@ export default function Carrito() {
 		setTiendaSeleccionada(null);
 	};
 
+	const validarStockProductos = async () => {
+		setValidandoStock(true);
+		try {
+			await new Promise(resolve => setTimeout(resolve, 1500));
+			const todosConStock = items.every(item => true);
+			setStockValidado(todosConStock);
+
+			if (todosConStock) {
+				showNotification('success', 'Stock disponible para todos los productos');
+			} else {
+				showNotification('error', 'Algunos productos no tienen stock suficiente');
+			}
+		} catch (error) {
+			console.error('Error al validar stock:', error);
+			showNotification('error', 'Error al validar stock');
+		} finally {
+			setValidandoStock(false);
+		}
+	};
+
+	const showNotification = (type: 'success' | 'error', message: string) => {
+		alert(message);
+	};
+
+	// NUEVO: Manejo de login
+	const handleLogin = (e: React.FormEvent) => {
+		e.preventDefault();
+		if (loginData.email && loginData.password) {
+			// Aquí harías la validación real con tu API
+			setIsLoggedIn(true);
+			setShowLoginModal(false);
+			showNotification('success', '¡Bienvenido de vuelta!');
+		}
+	};
+
+	// NUEVO: Manejo de registro
+	const handleRegistro = (e: React.FormEvent) => {
+		e.preventDefault();
+
+		// Validaciones
+		const newErrors: Record<string, string> = {};
+
+		if (registroData.password !== registroData.confirmarPassword) {
+			newErrors.confirmarPassword = 'Las contraseñas no coinciden';
+		}
+
+		if (registroData.password.length < 6) {
+			newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+		}
+
+		if (registroData.numeroDocumento.length < 8) {
+			newErrors.numeroDocumento = 'Número de documento inválido';
+		}
+
+		if (!registroData.distrito) {
+			newErrors.distrito = 'Selecciona un distrito';
+		}
+
+		if (Object.keys(newErrors).length > 0) {
+			setErrors(newErrors);
+			return;
+		}
+
+		// Aquí harías el registro real con tu API
+		console.log('Registro exitoso:', registroData);
+		setIsLoggedIn(true);
+		setShowLoginModal(false);
+		showNotification('success', '¡Cuenta creada exitosamente!');
+	};
+
+	const handleContinueAsGuest = () => {
+		setIsGuest(true);
+		setShowLoginModal(false);
+	};
+
 	// Obtener tiendas por distrito
 	const getTiendasPorDistrito = (distrito: string): Tienda[] => {
 		const tiendasDelDistrito: Tienda[] = [];
-
 		Object.entries(productosEnTiendas).forEach(([_productId, tiendas]) => {
 			tiendas.forEach(tienda => {
 				if (tienda.district === distrito) {
@@ -98,7 +218,6 @@ export default function Carrito() {
 				}
 			});
 		});
-
 		return tiendasDelDistrito;
 	};
 
@@ -121,21 +240,19 @@ export default function Carrito() {
 	const total = subtotal + envio;
 
 	const tiendasDisponibles = distritoSeleccionado ? getTiendasPorDistrito(distritoSeleccionado) : [];
-
-	// Obtener información de la tienda seleccionada
 	const infoTiendaSeleccionada = tiendasDisponibles.find(t => t.id_store === tiendaSeleccionada);
 
 	if (items.length === 0) {
 		return (
-			<Layout title="Carrito - Liwilu" description="Tu carrito de compras">
-				<div className="max-w-7xl mx-auto px-6 py-16 mt-32">
+			<Layout title="Carrito - Liwilu" description="Tu carrito de compras" background={true}>
+				<div className="max-w-7xl mx-auto px-6 py-16 my-32">
 					<div className="text-center animate-fade-in">
 						<svg className="mx-auto h-24 w-24 text-gray-400 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
 						</svg>
 						<h2 className="text-3xl font-bold text-primary-dark mb-4">Tu carrito está vacío</h2>
 						<p className="text-gray-600 mb-8">Agrega productos para comenzar tu compra</p>
-						<Link href="/productos" className="inline-block bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-3 rounded-lg transition">
+						<Link href="/productos" className="inline-block bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-3 rounded-full transition">
 							Ir a la tienda
 						</Link>
 					</div>
@@ -145,13 +262,376 @@ export default function Carrito() {
 	}
 
 	return (
-		<Layout title="Carrito - Liwilu" description="Tu carrito de compras">
-			<div className="max-w-7xl mx-auto px-6 py-8">
+		<Layout title="Carrito - Liwilu" description="Tu carrito de compras" background={true}>
+			{/* MODAL MEJORADO DE LOGIN/REGISTRO */}
+			{showLoginModal && items.length > 0 && (
+				<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+					<div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8">
+						{/* Tabs */}
+						<div className="flex border-b">
+							<button
+								onClick={() => setActiveTab('login')}
+								className={`flex-1 py-4 px-6 font-semibold transition-all ${activeTab === 'login'
+									? 'text-primary border-b-2 border-primary'
+									: 'text-gray-500 hover:text-gray-700'
+									}`}
+							>
+								Iniciar Sesión
+							</button>
+							<button
+								onClick={() => setActiveTab('registro')}
+								className={`flex-1 py-4 px-6 font-semibold transition-all ${activeTab === 'registro'
+									? 'text-primary border-b-2 border-primary'
+									: 'text-gray-500 hover:text-gray-700'
+									}`}
+							>
+								Crear Cuenta
+							</button>
+						</div>
+
+						<div className="p-8">
+							{/* TAB DE LOGIN */}
+							{activeTab === 'login' && (
+								<div className="animate-fade-in">
+									<h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+										¡Bienvenido de vuelta!
+									</h2>
+									<p className="text-gray-600 text-center mb-6">
+										Carrito: <span className="font-semibold">{items.length} productos</span>
+									</p>
+
+									<div className="space-y-4">
+										<div>
+											<label className="block text-sm font-medium text-gray-700 mb-2">
+												Correo electrónico
+											</label>
+											<input
+												type="email"
+												value={loginData.email}
+												onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+												placeholder="ejemplo@correo.com"
+												className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+											/>
+										</div>
+
+										<div>
+											<label className="block text-sm font-medium text-gray-700 mb-2">
+												Contraseña
+											</label>
+											<input
+												type="password"
+												value={loginData.password}
+												onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+												placeholder="••••••••"
+												className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+											/>
+										</div>
+
+										<div className="flex items-center justify-between text-sm">
+											<label className="flex items-center">
+												<input type="checkbox" className="mr-2" />
+												<span className="text-gray-600">Recordarme</span>
+											</label>
+											<Link href="/recuperar-password" className="text-primary hover:text-primary-dark font-medium">
+												¿Olvidaste tu contraseña?
+											</Link>
+										</div>
+
+										<button
+											onClick={handleLogin}
+											className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg"
+										>
+											Iniciar sesión
+										</button>
+
+										<button
+											onClick={handleContinueAsGuest}
+											className="w-full bg-white hover:bg-gray-50 border-2 border-primary text-primary font-semibold py-3 rounded-full transition-all duration-300 hover:scale-105"
+										>
+											Continuar como invitado
+										</button>
+									</div>
+								</div>
+							)}
+
+							{/* TAB DE REGISTRO */}
+							{activeTab === 'registro' && (
+								<div className="animate-fade-in max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+									<h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+										Crea tu cuenta
+									</h2>
+									<p className="text-gray-600 text-center mb-6">
+										Completa tus datos para continuar
+									</p>
+
+									<div className="space-y-4">
+										{/* Datos Personales */}
+										<div className="grid grid-cols-2 gap-4">
+											<div>
+												<label className="block text-sm font-medium text-gray-700 mb-2">
+													Nombre *
+												</label>
+												<input
+													type="text"
+													value={registroData.nombre}
+													onChange={(e) => setRegistroData({ ...registroData, nombre: e.target.value })}
+													placeholder="Gonzalo"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												/>
+											</div>
+											<div>
+												<label className="block text-sm font-medium text-gray-700 mb-2">
+													Apellido *
+												</label>
+												<input
+													type="text"
+													value={registroData.apellido}
+													onChange={(e) => setRegistroData({ ...registroData, apellido: e.target.value })}
+													placeholder="Vera"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												/>
+											</div>
+										</div>
+
+										{/* Documento */}
+										<div className="grid grid-cols-2 gap-4">
+											<div>
+												<label className="block text-sm font-medium text-gray-700 mb-2">
+													Tipo de documento *
+												</label>
+												<select
+													value={registroData.tipoDocumento}
+													onChange={(e) => setRegistroData({ ...registroData, tipoDocumento: e.target.value })}
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												>
+													<option value="DNI">DNI</option>
+													<option value="CE">Carnet de Extranjería</option>
+													<option value="Pasaporte">Pasaporte</option>
+												</select>
+											</div>
+											<div>
+												<label className="block text-sm font-medium text-gray-700 mb-2">
+													Número de documento *
+												</label>
+												<input
+													type="text"
+													value={registroData.numeroDocumento}
+													onChange={(e) => setRegistroData({ ...registroData, numeroDocumento: e.target.value })}
+													placeholder="74218601"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												/>
+												{errors.numeroDocumento && (
+													<p className="text-red-500 text-xs mt-1">{errors.numeroDocumento}</p>
+												)}
+											</div>
+										</div>
+
+										{/* Teléfonos */}
+										<div className="grid grid-cols-2 gap-4">
+											<div>
+												<label className="block text-sm font-medium text-gray-700 mb-2">
+													Celular *
+												</label>
+												<input
+													type="tel"
+													value={registroData.celular}
+													onChange={(e) => setRegistroData({ ...registroData, celular: e.target.value })}
+													placeholder="973 820 088"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												/>
+											</div>
+											<div>
+												<label className="block text-sm font-medium text-gray-700 mb-2">
+													Teléfono opcional
+												</label>
+												<input
+													type="tel"
+													value={registroData.telefonoOpcional}
+													onChange={(e) => setRegistroData({ ...registroData, telefonoOpcional: e.target.value })}
+													placeholder="973 820 088"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												/>
+											</div>
+										</div>
+
+										{/* Ubicación */}
+										<div className="grid grid-cols-2 gap-4">
+											<div>
+												<label className="block text-sm font-medium text-gray-700 mb-2">
+													Departamento *
+												</label>
+												<input
+													type="text"
+													value={registroData.departamento}
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg bg-gray-50"
+													disabled
+												/>
+											</div>
+											<div>
+												<label className="block text-sm font-medium text-gray-700 mb-2">
+													Provincia *
+												</label>
+												<input
+													type="text"
+													value={registroData.provincia}
+													onChange={(e) => setRegistroData({ ...registroData, provincia: e.target.value })}
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												/>
+											</div>
+										</div>
+
+										<div>
+											<label className="block text-sm font-medium text-gray-700 mb-2">
+												Distrito *
+											</label>
+											<select
+												value={registroData.distrito}
+												onChange={(e) => setRegistroData({ ...registroData, distrito: e.target.value })}
+												className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+											>
+												<option value="">Seleccionar distrito</option>
+												{DISTRITOS_LIMA.map(d => (
+													<option key={d} value={d}>{d}</option>
+												))}
+											</select>
+											{errors.distrito && (
+												<p className="text-red-500 text-xs mt-1">{errors.distrito}</p>
+											)}
+										</div>
+
+										<div>
+											<label className="block text-sm font-medium text-gray-700 mb-2">
+												Dirección *
+											</label>
+											<input
+												type="text"
+												value={registroData.direccion}
+												onChange={(e) => setRegistroData({ ...registroData, direccion: e.target.value })}
+												placeholder="Calle rosales 432"
+												className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+											/>
+										</div>
+
+										<div className="grid grid-cols-2 gap-4">
+											<div>
+												<label className="block text-sm font-medium text-gray-700 mb-2">
+													Nro. de dpto. / Piso
+												</label>
+												<input
+													type="text"
+													value={registroData.numeroDpto}
+													onChange={(e) => setRegistroData({ ...registroData, numeroDpto: e.target.value })}
+													placeholder="201"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												/>
+											</div>
+											<div>
+												<label className="block text-sm font-medium text-gray-700 mb-2">
+													Referencia
+												</label>
+												<input
+													type="text"
+													value={registroData.referencia}
+													onChange={(e) => setRegistroData({ ...registroData, referencia: e.target.value })}
+													placeholder="Frente al parque"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												/>
+											</div>
+										</div>
+
+										{/* Credenciales */}
+										<div className="pt-4 border-t">
+											<div className="mb-4">
+												<label className="block text-sm font-medium text-gray-700 mb-2">
+													Correo electrónico *
+												</label>
+												<input
+													type="email"
+													value={registroData.email}
+													onChange={(e) => setRegistroData({ ...registroData, email: e.target.value })}
+													placeholder="ejemplo@correo.com"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												/>
+											</div>
+
+											<div className="grid grid-cols-2 gap-4">
+												<div>
+													<label className="block text-sm font-medium text-gray-700 mb-2">
+														Contraseña *
+													</label>
+													<input
+														type="password"
+														value={registroData.password}
+														onChange={(e) => setRegistroData({ ...registroData, password: e.target.value })}
+														placeholder="••••••••"
+														className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													/>
+													{errors.password && (
+														<p className="text-red-500 text-xs mt-1">{errors.password}</p>
+													)}
+												</div>
+												<div>
+													<label className="block text-sm font-medium text-gray-700 mb-2">
+														Confirmar contraseña *
+													</label>
+													<input
+														type="password"
+														value={registroData.confirmarPassword}
+														onChange={(e) => setRegistroData({ ...registroData, confirmarPassword: e.target.value })}
+														placeholder="••••••••"
+														className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													/>
+													{errors.confirmarPassword && (
+														<p className="text-red-500 text-xs mt-1">{errors.confirmarPassword}</p>
+													)}
+												</div>
+											</div>
+										</div>
+
+										<div className="flex items-start pt-2">
+											<input type="checkbox" className="mt-1 mr-2" />
+											<label className="text-xs text-gray-600">
+												Acepto los <Link href="/terminos" className="text-primary hover:underline">términos y condiciones</Link> y las <Link href="/privacidad" className="text-primary hover:underline">políticas de privacidad</Link>
+											</label>
+										</div>
+
+										<button
+											onClick={handleRegistro}
+											className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg"
+										>
+											Crear cuenta
+										</button>
+
+										<button
+											onClick={handleContinueAsGuest}
+											className="w-full bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-700 font-semibold py-3 rounded-full transition-all duration-300"
+										>
+											Continuar como invitado
+										</button>
+									</div>
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
+			)}
+
+			<div className="max-w-7xl mx-auto px-6 py-16">
 				<div className="flex items-center justify-between mb-8">
-					<h1 className="text-3xl font-bold animate-fade-in">
-						Carrito de compras <span className="text-gray-500 text-xl">({items.length} productos)</span>
-					</h1>
-					<Link href="/productos" className="text-sm text-gray-600 hover:text-primary">← Seguir comprando</Link>
+					<div>
+						<h1 className="text-3xl font-bold animate-fade-in">
+							Carrito de compras <span className="text-gray-500 text-xl">({items.length} productos)</span>
+						</h1>
+						{(isLoggedIn || isGuest) && (
+							<div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+								<svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+									<path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+								</svg>
+								<span>{isLoggedIn ? loginData.email : 'Invitado'}</span>
+							</div>
+						)}
+					</div>
+					{/* <Link href="/productos" className="text-sm text-gray-600 hover:text-primary">← Seguir comprando</Link> */}
 				</div>
 
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -186,11 +666,101 @@ export default function Carrito() {
 							</div>
 
 							{metodoEnvio === 'delivery' && (
-								<div className="mt-4 p-4 bg-blue-50 rounded-lg animate-fade-in">
-									<p className="text-sm text-gray-700">📦 El envío se realizará en el transcurso de 10 días hábiles.</p>
-									<p className="text-sm font-semibold text-primary mt-2">
-										Costo: {envio === 0 ? 'Gratis' : formatPrice(envio.toString())}
-									</p>
+								<div className="mt-4 space-y-4 animate-fade-in">
+									<div className="p-4 bg-blue-50 rounded-lg">
+										<p className="text-sm text-gray-700">📦 El envío se realizará en el transcurso de 10 días hábiles.</p>
+										<p className="text-sm font-semibold text-primary mt-2">
+											Costo: {envio === 0 ? 'Gratis' : formatPrice(envio.toString())}
+										</p>
+									</div>
+
+									{/* Dirección de envío */}
+									<div className="border-2 border-gray-200 rounded-lg p-4">
+										<div className="flex items-center justify-between mb-3">
+											<h3 className="font-semibold text-gray-900">Dirección de envío</h3>
+											<button
+												onClick={() => setEditandoDireccion(!editandoDireccion)}
+												className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
+											>
+												✏️ Editar
+											</button>
+										</div>
+
+										{editandoDireccion ? (
+											<div className="space-y-3">
+												<input
+													type="text"
+													value={direccionEnvio.calle}
+													onChange={(e) => setDireccionEnvio({ ...direccionEnvio, calle: e.target.value })}
+													placeholder="Calle y número"
+													className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+												/>
+												<div className="grid grid-cols-2 gap-2">
+													<input
+														type="text"
+														value={direccionEnvio.distrito}
+														onChange={(e) => setDireccionEnvio({ ...direccionEnvio, distrito: e.target.value })}
+														placeholder="Distrito"
+														className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+													/>
+													<input
+														type="text"
+														value={direccionEnvio.ciudad}
+														onChange={(e) => setDireccionEnvio({ ...direccionEnvio, ciudad: e.target.value })}
+														placeholder="Ciudad"
+														className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+													/>
+												</div>
+												<input
+													type="text"
+													value={direccionEnvio.departamento}
+													onChange={(e) => setDireccionEnvio({ ...direccionEnvio, departamento: e.target.value })}
+													placeholder="Departamento"
+													className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+												/>
+												<button
+													onClick={() => setEditandoDireccion(false)}
+													className="w-full bg-primary text-white py-2 rounded-lg text-sm font-semibold hover:bg-primary-dark transition"
+												>
+													Guardar dirección
+												</button>
+											</div>
+										) : (
+											<div className="text-sm text-gray-700">
+												<p className="font-medium">{direccionEnvio.calle}</p>
+												<p>{direccionEnvio.distrito}, {direccionEnvio.ciudad}, {direccionEnvio.departamento}</p>
+											</div>
+										)}
+									</div>
+
+									{/* Validar Stock */}
+									<div className="border-2 border-primary/20 rounded-lg p-4 bg-primary/5">
+										<div className="flex items-center justify-between mb-2">
+											<h3 className="font-semibold text-gray-900 text-sm">Verificar disponibilidad</h3>
+											{stockValidado && (
+												<span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
+													✓ Verificado
+												</span>
+											)}
+										</div>
+										<p className="text-xs text-gray-600 mb-3">
+											Valida que todos los productos tengan stock disponible antes de continuar
+										</p>
+										<button
+											onClick={validarStockProductos}
+											disabled={validandoStock}
+											className="w-full bg-white border-2 border-primary text-primary py-2 rounded-lg text-sm font-semibold hover:bg-primary hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+										>
+											{validandoStock ? (
+												<span className="flex items-center justify-center gap-2">
+													<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+													Validando...
+												</span>
+											) : (
+												'Validar disponibilidad'
+											)}
+										</button>
+									</div>
 								</div>
 							)}
 
@@ -407,27 +977,32 @@ export default function Carrito() {
 							})}
 
 							<button onClick={clearCart} className="text-gray-600 hover:text-red-600 text-sm font-medium transition">
-								🗑️ Vaciar carrito
+								Vaciar carrito
 							</button>
 						</div>
 					</div>
 
 					{/* Resumen del pedido */}
-					<div className="lg:col-span-1">
+					<div className="lg:col-span-1 z-10">
 						<div className="bg-white rounded-xl shadow-lg p-6 sticky top-32 animate-fade-in">
 							<h2 className="text-xl font-bold mb-6">Resumen del pedido</h2>
 
 							<div className="mb-6">
 								<label className="block text-sm font-medium text-gray-700 mb-2">Código de cupón</label>
-								<div className="flex gap-2">
+								<div className="flex w-full">
 									<input
 										type="text"
 										value={couponCode}
 										onChange={(e) => setCouponCode(e.target.value)}
 										placeholder="Ingresa tu cupón"
-										className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+										className="flex-1 px-4 py-2 border border-gray-300 rounded-l-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
 									/>
-									<button className="bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-lg transition">Aplicar</button>
+
+									<button
+										className="bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-r-sm border border-primary"
+									>
+										Aplicar
+									</button>
 								</div>
 							</div>
 
@@ -455,9 +1030,9 @@ export default function Carrito() {
 							<Link href="/checkout">
 								<button
 									className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-full transition-all duration-300 mb-3 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-									disabled={metodoEnvio === 'retiro' && !tiendaSeleccionada}
+									disabled={(metodoEnvio === 'retiro' && !tiendaSeleccionada) || (!isLoggedIn && !isGuest)}
 								>
-									Finalizar compra
+									{!isLoggedIn && !isGuest ? 'Inicia sesión para continuar' : 'Finalizar compra'}
 								</button>
 							</Link>
 
@@ -476,6 +1051,10 @@ export default function Carrito() {
 				@keyframes fade-in-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 				.animate-fade-in { animation: fade-in 0.6s ease-out forwards; }
 				.animate-fade-in-up { animation: fade-in-up 0.6s ease-out forwards; opacity: 0; }
+				.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+				.custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+				.custom-scrollbar::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+				.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
 			`}</style>
 		</Layout>
 	);

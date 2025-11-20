@@ -33,21 +33,11 @@ export default function MisDatos() {
 		<Layout
 			title="Mis datos - Liwilu"
 			description="Edita tu información personal"
+			background={true}
 		>
 			<div className="min-h-screen py-8">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="flex flex-col lg:flex-row gap-6">
-						<div className="absolute -right-60 md:-right-32 top-30 md:top-12 w-auto md:w-auto z-0 pointer-events-none hidden lg:block">
-							<Image
-								src="/images/vectores/liwilu_banner_productos_vector_04.png"
-								alt="MacBook Pro"
-								width={408}
-								height={427}
-								quality={100}
-								className="h-auto"
-								priority
-							/>
-						</div>
 						{/* Sidebar */}
 						<AccountSidebar activeSection="mis-datos" />
 
