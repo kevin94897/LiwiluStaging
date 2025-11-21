@@ -13,7 +13,7 @@ export default function PedidoExitoso() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [numeroPedido, setNumeroPedido] = useState('');
-    const [nombreCliente, setNombreCliente] = useState('RENZO R.');
+    const [nombreCliente] = useState('RENZO R.');
 
     // Datos de ejemplo del pedido (en producción vendrían del backend)
     const pedidoData = {

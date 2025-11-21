@@ -2,7 +2,6 @@
 // import { useState } from 'react';
 import Layout from '@/components/Layout';
 // import { useRouter } from 'next/router';
-import Image from 'next/image';
 import AccountSidebar from '@/components/AccountSidebar';
 
 export default function MiCuenta() {

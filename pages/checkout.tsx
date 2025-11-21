@@ -1,7 +1,7 @@
 // pages/checkout.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Layout from '@/components/Layout';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -14,7 +14,7 @@ type MetodoPago = 'visa' | 'debito' | 'yape' | 'efectivo';
 
 export default function Checkout() {
     const router = useRouter();
-    const { items, getCartTotal, clearCart } = useCart();
+    const { items, getCartTotal } = useCart();
     const [tipoComprobante, setTipoComprobante] = useState<TipoComprobante>('factura');
     const [metodoPago, setMetodoPago] = useState<MetodoPago | null>(null);
     const [processing, setProcessing] = useState(false);

@@ -134,7 +134,7 @@ export default function Carrito() {
 		setValidandoStock(true);
 		try {
 			await new Promise(resolve => setTimeout(resolve, 1500));
-			const todosConStock = items.every(item => true);
+			const todosConStock = items.every(() => true);
 			setStockValidado(todosConStock);
 
 			if (todosConStock) {

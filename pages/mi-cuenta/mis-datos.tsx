@@ -3,7 +3,6 @@ import { useState } from 'react';
 import Layout from '@/components/Layout';
 import Link from 'next/link';
 import AccountSidebar from '@/components/AccountSidebar';
-import Image from 'next/image';
 
 export default function MisDatos() {
 	const [formData, setFormData] = useState({
