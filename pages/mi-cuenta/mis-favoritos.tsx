@@ -101,8 +101,8 @@ export default function MisFavoritos() {
 												>
 													<svg
 														className={`w-6 h-6 ${producto.favorito
-																? 'text-primary fill-current'
-																: 'text-gray-400 fill-gray-400'
+															? 'text-primary fill-current'
+															: 'text-gray-400 fill-gray-400'
 															}`}
 														fill={producto.favorito ? 'currentColor' : 'none'}
 														stroke="currentColor"
@@ -121,8 +121,8 @@ export default function MisFavoritos() {
 											{/* Info del producto */}
 											<div
 												className={`p-4 ${producto.disponible
-														? 'bg-primary text-white'
-														: 'bg-[rgba(120,125,134,0.5)] text-white'
+													? 'bg-primary text-white'
+													: 'bg-[rgba(120,125,134,0.5)] text-white'
 													}`}
 											>
 												<p
@@ -179,7 +179,7 @@ export default function MisFavoritos() {
 								)}
 
 								{/* Botón volver */}
-								<div className="flex flex-col-reverse md:flex-row justify-between mt-8 pt-6 border-t gap-6 text-center">
+								<div className="flex flex-col-reverse md:flex-row justify-between mt-8 pt-6 border-t gap-6 text-center items-center">
 									<Link
 										href="/mi-cuenta"
 										className="text-gray-500 hover:text-gray-700 font-medium"

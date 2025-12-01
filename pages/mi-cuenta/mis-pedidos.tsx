@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Layout from '@/components/Layout';
 import Link from 'next/link';
 import Image from 'next/image';
+import Button from '@/components/ui/Button';
 import AccountSidebar from '@/components/AccountSidebar';
 
 interface Pedido {
@@ -278,16 +279,16 @@ export default function MisPedidos() {
 								</div>
 
 								{/* Botones de acción */}
-								<div className="flex flex-col-reverse md:flex-row justify-between mt-8 pt-6 border-t gap-6 text-center">
+								<div className="flex flex-col-reverse md:flex-row justify-between mt-8 pt-6 border-t gap-6 text-center items-center">
 									<Link
 										href="/mi-cuenta"
 										className="text-gray-500 hover:text-gray-700 font-medium"
 									>
 										Volver
 									</Link>
-									<button className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-2 md:py-4 rounded-full transition">
+									<Button variant="primary" size="md">
 										Guardar
-									</button>
+									</Button>
 								</div>
 							</div>
 						</main>

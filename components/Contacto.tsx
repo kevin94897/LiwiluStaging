@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Button from './ui/Button';
 
 export default function Contacto() {
 	return (
@@ -77,12 +78,9 @@ export default function Contacto() {
 
 					{/* Botón */}
 					<div className="text-center">
-						<button
-							type="submit"
-							className="mt-6 bg-white text-primary px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition-all w-full md:w-auto"
-						>
+						<Button variant="secondary" size="md">
 							Solicite un asesor
-						</button>
+						</Button>
 					</div>
 				</form>
 			</div>

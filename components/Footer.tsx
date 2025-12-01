@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 // import Visa from '@/public/images/vectores/payments/visa.svg';
 import { FaInstagram, FaFacebook, FaTiktok } from 'react-icons/fa';
+import StoresModal from '@/components/StoresModal';
 
 export default function Footer() {
 	return (
@@ -40,56 +41,59 @@ export default function Footer() {
 					</div>
 					<ul>
 						<li>
-							<a href="#">Misión</a>
+							<Link href="/estaticas/nosotros">Nosotros</Link>
 						</li>
 						<li>
-							<a href="#">Visión</a>
+							<Link href="/estaticas/nosotros#mision">Misión</Link>
 						</li>
 						<li>
-							<a href="#">Valores</a>
+							<Link href="/estaticas/nosotros#vision">Visión</Link>
 						</li>
 						<li>
-							<a href="#">Trabaja con nosotros</a>
+							<Link href="#">Valores</Link>
+						</li>
+						<li>
+							<Link href="/estaticas/trabajemos-juntos">Trabaja con nosotros</Link>
 						</li>
 					</ul>
 				</div>
 
 				{/* Columna 2: Enlaces */}
 				<div>
-					<h3 className="font-semibold mb-4 text-white">
-						Tiendas campañas 2026
-					</h3>
+					<StoresModal />
 					<ul className="space-y-2 text-sm text-gray-200">
 						<li>
-							<Link href="#">Políticas de cookies</Link>
+							<Link href="/estaticas/politicas">Políticas de cookies</Link>
 						</li>
 						<li>
-							<Link href="#">
+							<Link href="/estaticas/politicas">
 								Políticas de privacidad y manejo de datos personales
 							</Link>
 						</li>
 						<li>
-							<Link href="#">
+							<Link href="/estaticas/politicas">
 								Políticas de aceptación de envío publicidad y promociones
 							</Link>
 						</li>
 						<li>
-							<Link href="#">Políticas de cambios y devoluciones</Link>
+							<Link href="/estaticas/politicas">Políticas de cambios y devoluciones</Link>
 						</li>
 						<li>
-							<Link href="#">Políticas de envíos y recojo en tienda</Link>
+							<Link href="/estaticas/politicas">Políticas de envíos y recojo en tienda</Link>
 						</li>
 					</ul>
 				</div>
 
 				{/* Columna 3: Suscripción y redes */}
 				<div className="space-y-4">
-					<Image
-						src="/images/liwilu_libro_reclamaciones.png"
-						alt="Libro de reclamaciones"
-						width={90}
-						height={90}
-					/>
+					<Link href="/estaticas/libro-reclamaciones">
+						<Image
+							src="/images/liwilu_libro_reclamaciones.png"
+							alt="Libro de reclamaciones"
+							width={90}
+							height={90}
+						/>
+					</Link>
 					<div className="flex items-center gap-3">
 						<div>
 							<h4 className="text-white font-semibold text-sm mb-2">
