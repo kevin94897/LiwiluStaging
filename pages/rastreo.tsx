@@ -5,6 +5,7 @@ import { useState } from 'react';
 import Layout from '@/components/Layout';
 import Image from 'next/image';
 import { FaSearch, FaCheckCircle, FaClock, FaTruck, FaBox, FaHome } from 'react-icons/fa';
+import Button from '@/components/ui/Button';
 
 interface EstadoPedido {
     id: string;
@@ -228,13 +229,16 @@ export default function RastreoPedido() {
                                     />
                                     <FaSearch className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400" />
                                 </div>
-                                <button
+                                {/* <button
                                     onClick={handleBuscarPedido}
                                     disabled={buscando}
                                     className="bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-4 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {buscando ? 'Buscando...' : 'Buscar'}
-                                </button>
+                                </button> */}
+                                <Button variant="primary" size="md" onClick={handleBuscarPedido} disabled={buscando}>
+                                    Buscar
+                                </Button>
                             </div>
 
                             {error && (

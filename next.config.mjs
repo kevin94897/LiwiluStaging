@@ -9,16 +9,18 @@ const nextConfig = {
     return config
   },
   images: {
-    domains: [
-      'prestaliwilu.nerdstudiolab.com',
-      'images.unsplash.com',
-      'localhost',
-      'via.placeholder.com'
-    ],
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'prestaliwilu.nerdstudiolab.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
       },
     ],
   },

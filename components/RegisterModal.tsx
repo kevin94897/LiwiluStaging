@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook } from 'react-icons/fa';
+import useForm from '../lib/useForm';
 
 interface RegisterModalProps {
 	isOpen: boolean;
@@ -17,6 +18,17 @@ export default function RegisterModal({
 	onSwitchToLogin,
 }: RegisterModalProps) {
 	const [formData, setFormData] = useState({
+		firstName: '',
+		lastName: '',
+		email: '',
+		emailConfirm: '',
+		password: '',
+		passwordConfirm: '',
+		acceptTerms: false,
+		receiveOffers: false,
+	});
+
+	const { values, errors, handleChange, validateRequired } = useForm({
 		firstName: '',
 		lastName: '',
 		email: '',
@@ -118,12 +130,12 @@ export default function RegisterModal({
 									<input
 										type="text"
 										id="firstName"
-										value={formData.firstName}
+										value={values.firstName}
 										onChange={(e) =>
-											setFormData({ ...formData, firstName: e.target.value })
+											handleChange(e)
 										}
 										placeholder="Gonzalo"
-										className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+										className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 										required
 									/>
 								</div>
@@ -138,12 +150,12 @@ export default function RegisterModal({
 									<input
 										type="text"
 										id="lastName"
-										value={formData.lastName}
+										value={values.lastName}
 										onChange={(e) =>
-											setFormData({ ...formData, lastName: e.target.value })
+											handleChange(e)
 										}
 										placeholder="Gonzalo"
-										className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+										className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 										required
 									/>
 								</div>
@@ -160,12 +172,12 @@ export default function RegisterModal({
 								<input
 									type="email"
 									id="email"
-									value={formData.email}
+									value={values.email}
 									onChange={(e) =>
-										setFormData({ ...formData, email: e.target.value })
+										handleChange(e)
 									}
 									placeholder="Ingrese tu correo electrónico"
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+									className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 									required
 								/>
 							</div>
@@ -181,12 +193,12 @@ export default function RegisterModal({
 								<input
 									type="email"
 									id="emailConfirm"
-									value={formData.emailConfirm}
+									value={values.emailConfirm}
 									onChange={(e) =>
-										setFormData({ ...formData, emailConfirm: e.target.value })
+										handleChange(e)
 									}
 									placeholder="Ingrese tu correo electrónico"
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+									className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 									required
 								/>
 							</div>
@@ -202,12 +214,12 @@ export default function RegisterModal({
 								<input
 									type="password"
 									id="password"
-									value={formData.password}
+									value={values.password}
 									onChange={(e) =>
-										setFormData({ ...formData, password: e.target.value })
+										handleChange(e)
 									}
 									placeholder="Crea una contraseña segura"
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+									className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 									required
 								/>
 							</div>
@@ -223,15 +235,12 @@ export default function RegisterModal({
 								<input
 									type="password"
 									id="passwordConfirm"
-									value={formData.passwordConfirm}
+									value={values.passwordConfirm}
 									onChange={(e) =>
-										setFormData({
-											...formData,
-											passwordConfirm: e.target.value,
-										})
+										handleChange(e)
 									}
 									placeholder="Repite tu contraseña"
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+									className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 									required
 								/>
 							</div>
@@ -241,9 +250,9 @@ export default function RegisterModal({
 								<label className="flex items-start gap-3 cursor-pointer">
 									<input
 										type="checkbox"
-										checked={formData.acceptTerms}
+										checked={values.acceptTerms}
 										onChange={(e) =>
-											setFormData({ ...formData, acceptTerms: e.target.checked })
+											handleChange(e)
 										}
 										className="mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
 										required
@@ -256,12 +265,9 @@ export default function RegisterModal({
 								<label className="flex items-start gap-3 cursor-pointer">
 									<input
 										type="checkbox"
-										checked={formData.receiveOffers}
+										checked={values.receiveOffers}
 										onChange={(e) =>
-											setFormData({
-												...formData,
-												receiveOffers: e.target.checked,
-											})
+											handleChange(e)
 										}
 										className="mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
 									/>
@@ -301,7 +307,7 @@ export default function RegisterModal({
 						<div className="space-y-3">
 							<button
 								onClick={handleGoogleSignup}
-								className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+								className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-sm hover:bg-gray-50 transition"
 							>
 								<FcGoogle size={20} />
 								<span className="text-gray-700 font-medium">
@@ -311,7 +317,7 @@ export default function RegisterModal({
 
 							<button
 								onClick={handleFacebookSignup}
-								className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+								className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-sm hover:bg-gray-50 transition"
 							>
 								<FaFacebook size={20} className="text-blue-600" />
 								<span className="text-gray-700 font-medium">

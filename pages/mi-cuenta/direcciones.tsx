@@ -84,7 +84,7 @@ export default function Direcciones() {
 										{/* Grid de direcciones */}
 										<div className="grid md:grid-cols-2 gap-6">
 											{/* Dirección de entrega */}
-											<div className="bg-white rounded-lg p-6">
+											<div className="bg-white rounded-sm p-6">
 												<h3 className="font-semibold text-primary-dark mb-2 text-lg">
 													Dirección de entrega principal
 												</h3>
@@ -121,7 +121,7 @@ export default function Direcciones() {
 											</div>
 
 											{/* Dirección de facturación */}
-											<div className="bg-white rounded-lg p-6">
+											<div className="bg-white rounded-sm p-6">
 												<h3 className="font-semibold text-primary-dark mb-2 text-lg">
 													Dirección de facturación
 												</h3>
@@ -175,7 +175,7 @@ export default function Direcciones() {
 									<>
 										{/* Formulario de dirección */}
 										<form onSubmit={handleSubmit} className="space-y-6">
-											<div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-6">
+											<div className="bg-primary/10 border border-primary/20 rounded-sm p-4 mb-6">
 												<h3 className="font-semibold text-primary">
 													{tipoFormulario === 'entrega'
 														? 'Nueva dirección de entrega'
@@ -197,7 +197,7 @@ export default function Direcciones() {
 													name="titulo"
 													value={formData.titulo}
 													onChange={handleChange}
-													className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+													className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 													placeholder="Casa, Oficina, etc."
 													required
 												/>
@@ -217,7 +217,7 @@ export default function Direcciones() {
 													value={formData.direccion}
 													onChange={handleChange}
 													rows={3}
-													className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition resize-none"
+													className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition resize-none"
 													placeholder="Av. Ejemplo 123, Urbanización..."
 													required
 												/>
@@ -237,7 +237,7 @@ export default function Direcciones() {
 													name="referencia"
 													value={formData.referencia}
 													onChange={handleChange}
-													className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+													className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 													placeholder="Frente al parque, al costado de..."
 												/>
 											</div>
@@ -256,7 +256,7 @@ export default function Direcciones() {
 														name="ciudad"
 														value={formData.ciudad}
 														onChange={handleChange}
-														className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+														className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 														required
 													>
 														<option value="">Seleccionar</option>
@@ -278,7 +278,7 @@ export default function Direcciones() {
 														name="provincia"
 														value={formData.provincia}
 														onChange={handleChange}
-														className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+														className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 														required
 													>
 														<option value="">Seleccionar</option>
@@ -299,7 +299,7 @@ export default function Direcciones() {
 														name="distrito"
 														value={formData.distrito}
 														onChange={handleChange}
-														className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+														className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 														required
 													>
 														<option value="">Seleccionar</option>
@@ -325,7 +325,7 @@ export default function Direcciones() {
 														name="codigoPostal"
 														value={formData.codigoPostal}
 														onChange={handleChange}
-														className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+														className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 														placeholder="15001"
 													/>
 												</div>
@@ -343,7 +343,7 @@ export default function Direcciones() {
 														name="telefono"
 														value={formData.telefono}
 														onChange={handleChange}
-														className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
+														className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 														placeholder="987 654 321"
 														required
 													/>
@@ -374,12 +374,9 @@ export default function Direcciones() {
 												>
 													Cancelar
 												</button>
-												<button
-													type="submit"
-													className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-2 md:py-4 rounded-full transition"
-												>
+												<Button variant="primary" size="md">
 													Guardar dirección
-												</button>
+												</Button>
 											</div>
 										</form>
 									</>

@@ -4,24 +4,27 @@
 import { useEffect, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook } from 'react-icons/fa';
+import useForm from '../lib/useForm';
 
 interface LoginModalProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onSwitchToRegister: () => void;
+	fromTrimegisto?: boolean; // ✅ Nueva prop
 }
 
 export default function LoginModal({
 	isOpen,
 	onClose,
 	onSwitchToRegister,
+	fromTrimegisto = false, // ✅ Por defecto false
 }: LoginModalProps) {
-	const [formData, setFormData] = useState({
+
+	const { values, errors, handleChange, validateRequired } = useForm({
 		email: '',
 		password: '',
 	});
 
-	// Cerrar con tecla ESC
 	useEffect(() => {
 		const handleEsc = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') onClose();
@@ -42,19 +45,21 @@ export default function LoginModal({
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		console.log('Login:', formData);
-		// Aquí iría tu lógica de autenticación
+
+		if (!validateRequired()) return;
+
+		console.log("Login OK!", values);
 		onClose();
 	};
 
+
+
 	const handleGoogleLogin = () => {
 		console.log('Login with Google');
-		// Implementar OAuth con Google
 	};
 
 	const handleFacebookLogin = () => {
 		console.log('Login with Facebook');
-		// Implementar OAuth con Facebook
 	};
 
 	return (
@@ -78,7 +83,9 @@ export default function LoginModal({
 								Inicia sesión
 							</h2>
 							<p className="text-gray-600 text-sm">
-								Accede a tu cuenta para seguir tus pedidos y comprar más rápido
+								{fromTrimegisto
+									? 'Ingresa tus credenciales para acceder a Trimegisto'
+									: 'Accede a tu cuenta para seguir tus pedidos y comprar más rápido'}
 							</p>
 						</div>
 
@@ -95,14 +102,18 @@ export default function LoginModal({
 								<input
 									type="email"
 									id="email"
-									value={formData.email}
+									name="email"
+									value={values.email}
 									onChange={(e) =>
-										setFormData({ ...formData, email: e.target.value })
+										handleChange(e)
 									}
-									placeholder="Ingrese tu correo electrónico"
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
-									required
+									className={`w-full px-4 py-3 border rounded-sm transition ${errors.email ? 'border-red-500' : 'border-gray-300'
+										}`}
 								/>
+								{errors.email && (
+									<p className="text-red-500 text-xs mt-1">{errors.email}</p>
+								)}
+
 							</div>
 
 							{/* Contraseña */}
@@ -116,14 +127,18 @@ export default function LoginModal({
 								<input
 									type="password"
 									id="password"
-									value={formData.password}
+									name="password"
+									value={values.password}
 									onChange={(e) =>
-										setFormData({ ...formData, password: e.target.value })
+										handleChange(e)
 									}
-									placeholder="Crea una contraseña segura"
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition"
-									required
+									className={`w-full px-4 py-3 border rounded-sm transition ${errors.password ? 'border-red-500' : 'border-gray-300'
+										}`}
 								/>
+								{errors.password && (
+									<p className="text-red-500 text-xs mt-1">{errors.password}</p>
+								)}
+
 							</div>
 
 							{/* Olvidó contraseña */}
@@ -145,35 +160,40 @@ export default function LoginModal({
 							</button>
 						</form>
 
-						{/* Divider */}
-						<div className="flex items-center my-6">
-							<div className="flex-1 border-t border-gray-300"></div>
-							<span className="px-4 text-sm text-gray-500">Or</span>
-							<div className="flex-1 border-t border-gray-300"></div>
-						</div>
+						{/* ✅ MOSTRAR SOCIAL LOGIN SOLO SI NO ES TRIMEGISTO */}
+						{!fromTrimegisto && (
+							<>
+								{/* Divider */}
+								<div className="flex items-center my-6">
+									<div className="flex-1 border-t border-gray-300"></div>
+									<span className="px-4 text-sm text-gray-500">Or</span>
+									<div className="flex-1 border-t border-gray-300"></div>
+								</div>
 
-						{/* Social Login */}
-						<div className="space-y-3">
-							<button
-								onClick={handleGoogleLogin}
-								className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-							>
-								<FcGoogle size={20} />
-								<span className="text-gray-700 font-medium">
-									Inicie sesión con Google
-								</span>
-							</button>
+								{/* Social Login */}
+								<div className="space-y-3">
+									<button
+										onClick={handleGoogleLogin}
+										className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-sm hover:bg-gray-50 transition"
+									>
+										<FcGoogle size={20} />
+										<span className="text-gray-700 font-medium">
+											Inicie sesión con Google
+										</span>
+									</button>
 
-							<button
-								onClick={handleFacebookLogin}
-								className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-							>
-								<FaFacebook size={20} className="text-blue-600" />
-								<span className="text-gray-700 font-medium">
-									Inicie sesión con Facebook
-								</span>
-							</button>
-						</div>
+									<button
+										onClick={handleFacebookLogin}
+										className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-sm hover:bg-gray-50 transition"
+									>
+										<FaFacebook size={20} className="text-blue-600" />
+										<span className="text-gray-700 font-medium">
+											Inicie sesión con Facebook
+										</span>
+									</button>
+								</div>
+							</>
+						)}
 
 						{/* Link a Registro */}
 						<div className="mt-6 text-center">

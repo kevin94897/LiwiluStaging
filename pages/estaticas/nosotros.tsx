@@ -2,6 +2,7 @@
 'use client';
 
 import Layout from '@/components/Layout';
+import Button from '@/components/ui/Button';
 import Image from 'next/image';
 
 export default function Nosotros() {
@@ -116,7 +117,7 @@ export default function Nosotros() {
 
                         <div className="grid md:grid-cols-3 gap-8">
                             {/* Valor 1 */}
-                            <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
+                            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
                                 <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4 mx-auto">
                                     <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -129,7 +130,7 @@ export default function Nosotros() {
                             </div>
 
                             {/* Valor 2 */}
-                            <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
+                            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
                                 <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4 mx-auto">
                                     <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -142,7 +143,7 @@ export default function Nosotros() {
                             </div>
 
                             {/* Valor 3 */}
-                            <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
+                            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
                                 <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4 mx-auto">
                                     <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -159,7 +160,7 @@ export default function Nosotros() {
 
                 {/* CTA Section */}
                 <div className="max-w-6xl mx-auto px-4 py-16">
-                    <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-3xl p-8 md:p-12 text-center shadow-2xl">
+                    <div className="bg-primary rounded-3xl p-8 md:p-12 text-center shadow-2xl">
                         <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                             ¿Listo para trabajar con nosotros?
                         </h2>
@@ -167,18 +168,12 @@ export default function Nosotros() {
                             Únete a los cientos de clientes satisfechos que confían en LIWILU para sus necesidades de uniformes, EPPs y artículos escolares.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <a
-                                href="/contacto"
-                                className="bg-white text-green-600 font-bold px-8 py-4 rounded-full hover:bg-gray-50 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                            >
+                            <Button variant="secondary" size="md" href="/contacto">
                                 Contáctanos
-                            </a>
-                            <a
-                                href="/catalogo"
-                                className="bg-transparent border-2 border-white text-white font-bold px-8 py-4 rounded-full hover:bg-white hover:text-green-600 transition-all duration-300 transform hover:scale-105"
-                            >
+                            </Button>
+                            <Button variant="secondary" size="md" href="/catalogo">
                                 Ver catálogo
-                            </a>
+                            </Button>
                         </div>
                     </div>
                 </div>

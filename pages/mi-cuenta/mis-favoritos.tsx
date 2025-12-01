@@ -79,7 +79,7 @@ export default function MisFavoritos() {
 									{favoritos.map((producto) => (
 										<div
 											key={producto.id}
-											className={`rounded-md overflow-hidden shadow-lg hover:shadow-xl transition ${producto.disponible ? 'bg-white' : 'bg-gray-100'
+											className={`rounded-sm overflow-hidden shadow-lg hover:shadow-xl transition ${producto.disponible ? 'bg-white' : 'bg-gray-100'
 												}`}
 										>
 											{/* Imagen del producto */}

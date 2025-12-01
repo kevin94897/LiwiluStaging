@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { getProductImageUrl, formatPrice } from '@/lib/prestashop';
 import { FaRegTrashAlt, FaMapMarkerAlt, FaTruck, FaStore, FaCheck, FaTimes, FaCheckCircle, FaRegClock, FaTimesCircle } from 'react-icons/fa';
+import router from 'next/router';
 
 // Interfaz de tienda
 interface Tienda {
@@ -46,6 +47,10 @@ export default function Carrito() {
 	const [editandoDireccion, setEditandoDireccion] = useState(false);
 	const [validandoStock, setValidandoStock] = useState(false);
 	const [stockValidado, setStockValidado] = useState(false);
+	const [personaAutorizada, setPersonaAutorizada] = useState({
+		nombre: 'Gonzalo Vera', // Rellenar con los datos del usuario logueado o un default
+		dni: '70255456',
+	});
 
 	// Estados para autenticación
 	const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -310,7 +315,7 @@ export default function Carrito() {
 												value={loginData.email}
 												onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
 												placeholder="ejemplo@correo.com"
-												className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 											/>
 										</div>
 
@@ -323,7 +328,7 @@ export default function Carrito() {
 												value={loginData.password}
 												onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
 												placeholder="••••••••"
-												className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 											/>
 										</div>
 
@@ -376,7 +381,7 @@ export default function Carrito() {
 													value={registroData.nombre}
 													onChange={(e) => setRegistroData({ ...registroData, nombre: e.target.value })}
 													placeholder="Gonzalo"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 												/>
 											</div>
 											<div>
@@ -388,7 +393,7 @@ export default function Carrito() {
 													value={registroData.apellido}
 													onChange={(e) => setRegistroData({ ...registroData, apellido: e.target.value })}
 													placeholder="Vera"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 												/>
 											</div>
 										</div>
@@ -402,7 +407,7 @@ export default function Carrito() {
 												<select
 													value={registroData.tipoDocumento}
 													onChange={(e) => setRegistroData({ ...registroData, tipoDocumento: e.target.value })}
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 												>
 													<option value="DNI">DNI</option>
 													<option value="CE">Carnet de Extranjería</option>
@@ -418,7 +423,7 @@ export default function Carrito() {
 													value={registroData.numeroDocumento}
 													onChange={(e) => setRegistroData({ ...registroData, numeroDocumento: e.target.value })}
 													placeholder="74218601"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 												/>
 												{errors.numeroDocumento && (
 													<p className="text-red-500 text-xs mt-1">{errors.numeroDocumento}</p>
@@ -437,7 +442,7 @@ export default function Carrito() {
 													value={registroData.celular}
 													onChange={(e) => setRegistroData({ ...registroData, celular: e.target.value })}
 													placeholder="973 820 088"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 												/>
 											</div>
 											<div>
@@ -449,7 +454,7 @@ export default function Carrito() {
 													value={registroData.telefonoOpcional}
 													onChange={(e) => setRegistroData({ ...registroData, telefonoOpcional: e.target.value })}
 													placeholder="973 820 088"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 												/>
 											</div>
 										</div>
@@ -463,7 +468,7 @@ export default function Carrito() {
 												<input
 													type="text"
 													value={registroData.departamento}
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg bg-gray-50"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm bg-gray-50"
 													disabled
 												/>
 											</div>
@@ -475,7 +480,7 @@ export default function Carrito() {
 													type="text"
 													value={registroData.provincia}
 													onChange={(e) => setRegistroData({ ...registroData, provincia: e.target.value })}
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 												/>
 											</div>
 										</div>
@@ -487,7 +492,7 @@ export default function Carrito() {
 											<select
 												value={registroData.distrito}
 												onChange={(e) => setRegistroData({ ...registroData, distrito: e.target.value })}
-												className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 											>
 												<option value="">Seleccionar distrito</option>
 												{DISTRITOS_LIMA.map(d => (
@@ -508,7 +513,7 @@ export default function Carrito() {
 												value={registroData.direccion}
 												onChange={(e) => setRegistroData({ ...registroData, direccion: e.target.value })}
 												placeholder="Calle rosales 432"
-												className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 											/>
 										</div>
 
@@ -522,7 +527,7 @@ export default function Carrito() {
 													value={registroData.numeroDpto}
 													onChange={(e) => setRegistroData({ ...registroData, numeroDpto: e.target.value })}
 													placeholder="201"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 												/>
 											</div>
 											<div>
@@ -534,7 +539,7 @@ export default function Carrito() {
 													value={registroData.referencia}
 													onChange={(e) => setRegistroData({ ...registroData, referencia: e.target.value })}
 													placeholder="Frente al parque"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 												/>
 											</div>
 										</div>
@@ -550,7 +555,7 @@ export default function Carrito() {
 													value={registroData.email}
 													onChange={(e) => setRegistroData({ ...registroData, email: e.target.value })}
 													placeholder="ejemplo@correo.com"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 												/>
 											</div>
 
@@ -564,7 +569,7 @@ export default function Carrito() {
 														value={registroData.password}
 														onChange={(e) => setRegistroData({ ...registroData, password: e.target.value })}
 														placeholder="••••••••"
-														className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+														className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 													/>
 													{errors.password && (
 														<p className="text-red-500 text-xs mt-1">{errors.password}</p>
@@ -579,7 +584,7 @@ export default function Carrito() {
 														value={registroData.confirmarPassword}
 														onChange={(e) => setRegistroData({ ...registroData, confirmarPassword: e.target.value })}
 														placeholder="••••••••"
-														className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+														className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 													/>
 													{errors.confirmarPassword && (
 														<p className="text-red-500 text-xs mt-1">{errors.confirmarPassword}</p>
@@ -637,12 +642,12 @@ export default function Carrito() {
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 					<div className="lg:col-span-2 space-y-6">
 						{/* Método de envío */}
-						<div className="bg-white rounded-xl shadow-md p-6 animate-fade-in">
+						<div className="bg-white rounded-sm shadow-md p-6 animate-fade-in">
 							<h2 className="text-lg font-bold mb-4">Selecciona tu método de entrega</h2>
 							<div className="grid grid-cols-2 gap-4">
 								<button
 									onClick={() => setMetodoEnvio('delivery')}
-									className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all duration-300 transform hover:scale-105 ${metodoEnvio === 'delivery' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/50'
+									className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${metodoEnvio === 'delivery' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/50'
 										}`}
 								>
 									<FaTruck className={`text-2xl ${metodoEnvio === 'delivery' ? 'text-primary' : 'text-gray-400'}`} />
@@ -654,7 +659,7 @@ export default function Carrito() {
 
 								<button
 									onClick={handleCambiarARetiro}
-									className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all duration-300 transform hover:scale-105 ${metodoEnvio === 'retiro' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/50'
+									className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${metodoEnvio === 'retiro' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/50'
 										}`}
 								>
 									<FaStore className={`text-2xl ${metodoEnvio === 'retiro' ? 'text-primary' : 'text-gray-400'}`} />
@@ -667,7 +672,7 @@ export default function Carrito() {
 
 							{metodoEnvio === 'delivery' && (
 								<div className="mt-4 space-y-4 animate-fade-in">
-									<div className="p-4 bg-blue-50 rounded-lg">
+									<div className="p-4 bg-blue-50 rounded-sm">
 										<p className="text-sm text-gray-700">📦 El envío se realizará en el transcurso de 10 días hábiles.</p>
 										<p className="text-sm font-semibold text-primary mt-2">
 											Costo: {envio === 0 ? 'Gratis' : formatPrice(envio.toString())}
@@ -675,7 +680,7 @@ export default function Carrito() {
 									</div>
 
 									{/* Dirección de envío */}
-									<div className="border-2 border-gray-200 rounded-lg p-4">
+									<div className="border-2 border-gray-200 rounded-sm p-4">
 										<div className="flex items-center justify-between mb-3">
 											<h3 className="font-semibold text-gray-900">Dirección de envío</h3>
 											<button
@@ -693,7 +698,7 @@ export default function Carrito() {
 													value={direccionEnvio.calle}
 													onChange={(e) => setDireccionEnvio({ ...direccionEnvio, calle: e.target.value })}
 													placeholder="Calle y número"
-													className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+													className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
 												/>
 												<div className="grid grid-cols-2 gap-2">
 													<input
@@ -701,14 +706,14 @@ export default function Carrito() {
 														value={direccionEnvio.distrito}
 														onChange={(e) => setDireccionEnvio({ ...direccionEnvio, distrito: e.target.value })}
 														placeholder="Distrito"
-														className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+														className="px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
 													/>
 													<input
 														type="text"
 														value={direccionEnvio.ciudad}
 														onChange={(e) => setDireccionEnvio({ ...direccionEnvio, ciudad: e.target.value })}
 														placeholder="Ciudad"
-														className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+														className="px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
 													/>
 												</div>
 												<input
@@ -716,11 +721,11 @@ export default function Carrito() {
 													value={direccionEnvio.departamento}
 													onChange={(e) => setDireccionEnvio({ ...direccionEnvio, departamento: e.target.value })}
 													placeholder="Departamento"
-													className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+													className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
 												/>
 												<button
 													onClick={() => setEditandoDireccion(false)}
-													className="w-full bg-primary text-white py-2 rounded-lg text-sm font-semibold hover:bg-primary-dark transition"
+													className="w-full bg-primary text-white py-2 rounded-sm text-sm font-semibold hover:bg-primary-dark transition"
 												>
 													Guardar dirección
 												</button>
@@ -734,7 +739,7 @@ export default function Carrito() {
 									</div>
 
 									{/* Validar Stock */}
-									<div className="border-2 border-primary/20 rounded-lg p-4 bg-primary/5">
+									<div className="border-2 border-primary/20 rounded-sm p-4 bg-primary/5">
 										<div className="flex items-center justify-between mb-2">
 											<h3 className="font-semibold text-gray-900 text-sm">Verificar disponibilidad</h3>
 											{stockValidado && (
@@ -749,7 +754,7 @@ export default function Carrito() {
 										<button
 											onClick={validarStockProductos}
 											disabled={validandoStock}
-											className="w-full bg-white border-2 border-primary text-primary py-2 rounded-lg text-sm font-semibold hover:bg-primary hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+											className="w-full bg-white border-2 border-primary text-primary py-2 rounded-sm text-sm font-semibold hover:bg-primary hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
 										>
 											{validandoStock ? (
 												<span className="flex items-center justify-center gap-2">
@@ -770,7 +775,7 @@ export default function Carrito() {
 									<select
 										value={distritoSeleccionado}
 										onChange={(e) => handleSeleccionarDistrito(e.target.value)}
-										className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+										className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
 									>
 										<option value="">Seleccionar distrito</option>
 										{DISTRITOS_LIMA.map((distrito) => (
@@ -783,7 +788,7 @@ export default function Carrito() {
 
 						{/* Mapa y tiendas disponibles */}
 						{metodoEnvio === 'retiro' && mostrarMapa && (
-							<div className="bg-white rounded-xl shadow-md p-6 animate-fade-in-up">
+							<div className="bg-white rounded-sm shadow-md p-6 animate-fade-in-up">
 								<div className="flex items-center justify-between mb-4">
 									<h2 className="text-lg font-bold">Puntos de retiro más cercanos</h2>
 									<button onClick={() => { setDistritoSeleccionado(''); setMostrarMapa(false); }} className="text-sm text-primary hover:text-primary-dark">
@@ -791,12 +796,12 @@ export default function Carrito() {
 									</button>
 								</div>
 
-								<div className="mb-4 p-3 bg-gray-100 rounded-lg">
+								<div className="mb-4 p-3 bg-gray-100 rounded-sm">
 									<p className="text-sm text-gray-700"><strong>Distrito:</strong> {distritoSeleccionado}</p>
 								</div>
 
 								{/* Mapa simulado */}
-								<div className="relative h-64 bg-gray-200 rounded-lg mb-6 overflow-hidden">
+								<div className="relative h-64 bg-gray-200 rounded-sm mb-6 overflow-hidden">
 									<Image src="https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&h=400&fit=crop" alt="Mapa" fill className="object-cover opacity-70" />
 									<div className="absolute inset-0 flex items-center justify-center">
 										<FaMapMarkerAlt className="text-red-500 text-4xl animate-bounce" />
@@ -810,7 +815,7 @@ export default function Carrito() {
 										<p className="mt-4 text-gray-600">Cargando tiendas disponibles...</p>
 									</div>
 								) : tiendasDisponibles.length === 0 ? (
-									<div className="text-center py-8 bg-amber-50 rounded-lg">
+									<div className="text-center py-8 bg-amber-50 rounded-sm">
 										<FaTimesCircle className="text-amber-500 text-4xl mx-auto mb-3" />
 										<p className="text-amber-800 font-semibold">No hay tiendas disponibles en este distrito</p>
 										<p className="text-sm text-amber-700 mt-2">Intenta con otro distrito cercano</p>
@@ -823,7 +828,7 @@ export default function Carrito() {
 											return (
 												<div
 													key={tienda.id_store}
-													className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${tiendaSeleccionada === tienda.id_store ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/50'
+													className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${tiendaSeleccionada === tienda.id_store ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/50'
 														}`}
 													onClick={() => setTiendaSeleccionada(tienda.id_store)}
 												>
@@ -894,7 +899,7 @@ export default function Carrito() {
 								const stockDisponible = tiendaSeleccionada ? getStockEnTienda(item.product.id, tiendaSeleccionada) : 0;
 
 								return (
-									<div key={item.product.id} className="bg-white rounded-md shadow-md p-6 flex gap-4 animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+									<div key={item.product.id} className="bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
 										<div>
 											{metodoEnvio === 'retiro' && tiendaSeleccionada ? (
 												enTiendaSeleccionada ? (
@@ -952,7 +957,7 @@ export default function Carrito() {
 													<p className="text-gray-600 text-sm mb-4">SKU: {item.product.reference || 'N/A'}</p>
 
 													<div className="flex items-center justify-between">
-														<div className="flex items-center border border-gray-300 rounded-lg">
+														<div className="flex items-center border border-gray-300 rounded-sm">
 															<button onClick={() => handleUpdateQuantity(item.product.id, item.quantity - 1)} className="px-3 py-1 hover:bg-gray-100 transition">-</button>
 															<span className="px-4 py-1 border-x">{item.quantity}</span>
 															<button onClick={() => handleUpdateQuantity(item.product.id, item.quantity + 1)} className="px-3 py-1 hover:bg-gray-100 transition">+</button>
@@ -976,15 +981,35 @@ export default function Carrito() {
 								);
 							})}
 
-							<button onClick={clearCart} className="text-gray-600 hover:text-red-600 text-sm font-medium transition">
-								Vaciar carrito
+							<button onClick={clearCart} className="text-gray-600 hover:text-red-600 text-sm font-medium transition flex gap-2">
+								<FaRegTrashAlt size={18} /> Vaciar carrito
 							</button>
+						</div>
+						<div className="bg-white rounded-sm shadow-md p-6 animate-fade-in">
+							<h2 className="text-lg font-bold mb-2 text-primary-dark">Persona autorizada a retirar</h2>
+							<div className="">
+								<div className="flex items-center justify-between mb-3">
+									<div className="font-semibold text-[#606060]">
+										<p>Nombre: Gonzalo Vera </p>
+										<p>DNI: 70255456</p>
+									</div>
+									<button
+										onClick={() => router.push('/autorizacion')}
+										className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
+									>
+										✏️ Editar
+									</button>
+								</div>
+							</div>
 						</div>
 					</div>
 
+
+
+
 					{/* Resumen del pedido */}
 					<div className="lg:col-span-1 z-10">
-						<div className="bg-white rounded-xl shadow-lg p-6 sticky top-32 animate-fade-in">
+						<div className="bg-white rounded-sm shadow-lg p-6 sticky top-32 animate-fade-in">
 							<h2 className="text-xl font-bold mb-6">Resumen del pedido</h2>
 
 							<div className="mb-6">

@@ -87,7 +87,7 @@ export default function MisDatos() {
 													name="nombre"
 													value={formData.nombre}
 													onChange={handleChange}
-													className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition"
+													className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 													required
 												/>
 											</div>
@@ -105,7 +105,7 @@ export default function MisDatos() {
 													name="apellido"
 													value={formData.apellido}
 													onChange={handleChange}
-													className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition"
+													className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 													required
 												/>
 											</div>
@@ -125,7 +125,7 @@ export default function MisDatos() {
 													name="tipoDocumento"
 													value={formData.tipoDocumento}
 													onChange={handleChange}
-													className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition appearance-none bg-white"
+													className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition appearance-none bg-white"
 													required
 												>
 													<option value="DNI">DNI</option>
@@ -147,7 +147,7 @@ export default function MisDatos() {
 													name="numeroDocumento"
 													value={formData.numeroDocumento}
 													onChange={handleChange}
-													className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition"
+													className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 													required
 												/>
 											</div>
@@ -167,7 +167,7 @@ export default function MisDatos() {
 												name="celular"
 												value={formData.celular}
 												onChange={handleChange}
-												className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition"
+												className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
 												required
 											/>
 										</div>
