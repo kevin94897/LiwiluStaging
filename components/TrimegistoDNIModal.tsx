@@ -105,7 +105,7 @@ export function TrimegistoDNIModal({
                             </p>
                         </div>
 
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             <div>
                                 <input
                                     name="dni"

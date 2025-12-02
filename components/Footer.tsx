@@ -1,10 +1,76 @@
+// components/Footer.tsx
+'use client';
+
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-// import Visa from '@/public/images/vectores/payments/visa.svg';
 import { FaInstagram, FaFacebook, FaTiktok } from 'react-icons/fa';
+import { PiWarningCircleFill } from 'react-icons/pi';
 import StoresModal from '@/components/StoresModal';
+import { newsletterSchema, NewsletterSchemaType } from '@/lib/newsletterSchema';
 
 export default function Footer() {
+	const [newsletterData, setNewsletterData] = useState<NewsletterSchemaType>({
+		email: ''
+	});
+
+	const [errors, setErrors] = useState<Partial<Record<keyof NewsletterSchemaType, string>>>({});
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [successMessage, setSuccessMessage] = useState('');
+
+	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		setNewsletterData({ email: e.target.value });
+		setErrors({});
+		setSuccessMessage('');
+	};
+
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setIsSubmitting(true);
+		setSuccessMessage('');
+
+		// Validación con Zod
+		const result = newsletterSchema.safeParse(newsletterData);
+
+		if (!result.success) {
+			const formattedErrors = result.error.flatten().fieldErrors;
+			const newErrors: Partial<Record<keyof NewsletterSchemaType, string>> = {};
+
+			for (const key in formattedErrors) {
+				const errorArray = formattedErrors[key as keyof typeof formattedErrors];
+				if (errorArray && errorArray.length > 0) {
+					newErrors[key as keyof NewsletterSchemaType] = errorArray[0];
+				}
+			}
+
+			setErrors(newErrors);
+			setIsSubmitting(false);
+			return;
+		}
+
+		// Si es válido
+		setErrors({});
+		console.log('Newsletter suscripción:', newsletterData);
+
+		try {
+			// Aquí iría la llamada a tu API
+			// await fetch('/api/newsletter', { method: 'POST', body: JSON.stringify(newsletterData) });
+
+			await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay
+
+			setSuccessMessage('¡Suscripción exitosa! 🎉');
+			setNewsletterData({ email: '' });
+
+			// Limpiar mensaje de éxito después de 5 segundos
+			setTimeout(() => setSuccessMessage(''), 5000);
+		} catch (error) {
+			console.error('Error al suscribirse:', error);
+			setErrors({ email: 'Hubo un error. Intenta nuevamente.' });
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
 	return (
 		<footer className="text-white py-10 px-6 relative">
 			<div className="absolute inset-0">
@@ -94,25 +160,53 @@ export default function Footer() {
 							height={90}
 						/>
 					</Link>
-					<div className="flex items-center gap-3">
-						<div>
-							<h4 className="text-white font-semibold text-sm mb-2">
-								¡Entérate de las últimas novedades!
-							</h4>
-							<form className="flex">
+					<div>
+						<h4 className="text-white font-semibold text-sm mb-2">
+							¡Entérate de las últimas novedades!
+						</h4>
+						<form onSubmit={handleSubmit} className="space-y-2">
+							<div className="flex">
 								<input
 									type="email"
+									name="email"
+									value={newsletterData.email}
+									onChange={handleChange}
 									placeholder="Dirección de correo electrónico"
-									className="px-4 py-2 rounded-l-md text-primary-dark text-sm w-full"
+									className={`px-4 py-2 rounded-l-sm text-primary-dark text-sm w-full focus:outline-none focus:ring-2 transition ${errors.email
+										? 'ring-2 ring-red-400'
+										: 'focus:ring-white/50'
+										}`}
+									disabled={isSubmitting}
 								/>
 								<button
 									type="submit"
-									className="bg-primaryhover:bg-green-600 px-4 rounded-r-md text-sm font-semibold"
+									disabled={isSubmitting}
+									className="bg-primary hover:bg-primary-dark px-4 rounded-r-sm text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
 								>
-									Registrarse
+									{isSubmitting ? (
+										<span className="flex items-center gap-1">
+											<div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+										</span>
+									) : (
+										'Registrarse'
+									)}
 								</button>
-							</form>
-						</div>
+							</div>
+
+							{/* Mensaje de error */}
+							{errors.email && (
+								<p className="text-red-300 text-xs flex items-center gap-1 bg-red-500/20 px-2 py-1 rounded">
+									<PiWarningCircleFill size={14} /> {errors.email}
+								</p>
+							)}
+
+							{/* Mensaje de éxito */}
+							{successMessage && (
+								<p className="text-green-300 text-xs flex items-center gap-1 bg-green-500/20 px-2 py-1 rounded animate-fade-in">
+									✓ {successMessage}
+								</p>
+							)}
+						</form>
 					</div>
 
 					{/* Redes sociales */}
@@ -152,9 +246,19 @@ export default function Footer() {
 				</div>
 			</div>
 
-			<div className="max-w-7xl mx-auto pt-6 text-center text-sm text-gray-400">
+			<div className="max-w-7xl mx-auto pt-6 text-center text-sm text-gray-400 relative z-10">
 				© {new Date().getFullYear()} Liwilu. Todos los derechos reservados.
 			</div>
+
+			<style jsx global>{`
+				@keyframes fade-in {
+					from { opacity: 0; transform: translateY(-5px); }
+					to { opacity: 1; transform: translateY(0); }
+				}
+				.animate-fade-in {
+					animation: fade-in 0.3s ease-out;
+				}
+			`}</style>
 		</footer>
 	);
 }

@@ -13,6 +13,7 @@ import Button from '@/components/ui/Button';
 import { loginSchema, LoginSchemaType } from '@/lib/loginSchema';
 import { carritoRegisterSchema, CarritoRegisterSchemaType } from '@/lib/carritoRegisterSchema';
 import { PiWarningCircleFill } from 'react-icons/pi';
+import { FaPencil } from "react-icons/fa6";
 
 // Interfaz de tienda
 interface Tienda {
@@ -76,7 +77,8 @@ export default function Carrito() {
 		referencia: '',
 		email: '',
 		password: '',
-		confirmarPassword: ''
+		confirmarPassword: '',
+		aceptoTerminos: false
 	});
 	const [registroErrors, setRegistroErrors] = useState<Partial<Record<keyof CarritoRegisterSchemaType, string>>>({});
 
@@ -87,6 +89,36 @@ export default function Carrito() {
 		email: '',
 		password: ''
 	});
+
+	const resetLoginForm = () => {
+		setLoginData({
+			email: '',
+			password: ''
+		});
+		setLoginErrors({});
+	};
+
+	const resetRegistroForm = () => {
+		setRegistroData({
+			nombre: '',
+			apellido: '',
+			tipoDocumento: 'DNI',
+			numeroDocumento: '',
+			celular: '',
+			telefonoOpcional: '',
+			departamento: 'Lima',
+			provincia: 'Lima',
+			distrito: '',
+			direccion: '',
+			numeroDpto: '',
+			referencia: '',
+			email: '',
+			password: '',
+			confirmarPassword: '',
+			aceptoTerminos: false
+		});
+		setRegistroErrors({});
+	};
 
 	const [loginErrors, setLoginErrors] = useState<Partial<Record<keyof LoginSchemaType, string>>>({});
 
@@ -119,6 +151,14 @@ export default function Carrito() {
 			fetchTiendasConStock(productIds);
 		}
 	}, [items]);
+
+	useEffect(() => {
+		if (activeTab === 'login') {
+			resetLoginForm();
+		} else {
+			resetRegistroForm();
+		}
+	}, [activeTab]);
 
 	const handleUpdateQuantity = (productId: string, newQuantity: number) => {
 		if (newQuantity < 1) return;
@@ -706,6 +746,11 @@ export default function Carrito() {
 												Acepto los <Link href="/terminos" className="text-primary hover:underline">términos y condiciones</Link> y las <Link href="/privacidad" className="text-primary hover:underline">políticas de privacidad</Link>
 											</label>
 										</div>
+										{registroErrors.aceptoTerminos && (
+											<p className="text-red-500 text-xs mt-0 flex items-center gap-1">
+												<PiWarningCircleFill size={16} /> {registroErrors.aceptoTerminos}
+											</p>
+										)}
 
 										<Button variant="primary" size="md" className="w-full" onClick={handleRegistro}>
 											Crear cuenta
@@ -788,7 +833,7 @@ export default function Carrito() {
 												onClick={() => setEditandoDireccion(!editandoDireccion)}
 												className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
 											>
-												✏️ Editar
+												<FaPencil className="text-sm" /> Editar
 											</button>
 										</div>
 
@@ -894,8 +939,8 @@ export default function Carrito() {
 							<div className="bg-white rounded-sm shadow-md p-6 animate-fade-in-up">
 								<div className="flex items-center justify-between mb-4">
 									<h2 className="text-lg font-bold">Puntos de retiro más cercanos</h2>
-									<button onClick={() => { setDistritoSeleccionado(''); setMostrarMapa(false); }} className="text-sm text-primary hover:text-primary-dark">
-										✏️ Editar
+									<button onClick={() => { setDistritoSeleccionado(''); setMostrarMapa(false); }} className="text-sm text-primary hover:text-primary-dark flex items-center gap-1">
+										<FaPencil className="text-sm" /> Editar
 									</button>
 								</div>
 
@@ -1100,7 +1145,7 @@ export default function Carrito() {
 										onClick={() => router.push('/autorizacion')}
 										className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
 									>
-										✏️ Editar
+										<FaPencil className="text-sm" /> Editar
 									</button>
 								</div>
 							</div>

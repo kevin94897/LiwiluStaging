@@ -8,6 +8,7 @@ import AccountSidebar from '@/components/AccountSidebar';
 import Button from '@/components/ui/Button';
 import { direccionSchema, DireccionSchemaType } from '@/lib/mi-cuenta/direccionSchema';
 import { PiWarningCircleFill } from 'react-icons/pi';
+import { FaPencil } from 'react-icons/fa6';
 
 interface Direccion {
 	id: string;
@@ -196,19 +197,7 @@ export default function Direcciones() {
 													onClick={() => abrirFormulario('entrega')}
 													className="text-primary hover:text-primary-dark font-medium flex items-center gap-1 mt-4 transition"
 												>
-													<svg
-														className="w-4 h-4"
-														fill="none"
-														stroke="currentColor"
-														viewBox="0 0 24 24"
-													>
-														<path
-															strokeLinecap="round"
-															strokeLinejoin="round"
-															strokeWidth={2}
-															d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-														/>
-													</svg>
+													<FaPencil className="text-sm" />
 													Editar
 												</button>
 											</div>
@@ -233,19 +222,7 @@ export default function Direcciones() {
 													onClick={() => abrirFormulario('facturacion')}
 													className="text-primary hover:text-primary-dark font-medium flex items-center gap-1 mt-4 transition"
 												>
-													<svg
-														className="w-4 h-4"
-														fill="none"
-														stroke="currentColor"
-														viewBox="0 0 24 24"
-													>
-														<path
-															strokeLinecap="round"
-															strokeLinejoin="round"
-															strokeWidth={2}
-															d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-														/>
-													</svg>
+													<FaPencil className="text-sm" />
 													Editar
 												</button>
 											</div>

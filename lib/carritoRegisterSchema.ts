@@ -44,6 +44,11 @@ export const carritoRegisterSchema = z.object({
 
     confirmarPassword: z.string()
         .min(1, "Confirma tu contraseña"),
+
+    aceptoTerminos: z.boolean().refine(val => val === true, {
+        message: "Debes aceptar los términos",
+    }),
+
 })
     .refine(data => data.password === data.confirmarPassword, {
         path: ["confirmarPassword"],

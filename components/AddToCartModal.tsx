@@ -112,7 +112,7 @@ export default function AddToCartModal({
 						<div className="flex gap-3">
 							<Button
 								size="sm"
-								className="w-full"
+								className="w-full flex-1"
 								variant="primary"
 								onClick={onClose}
 							>
