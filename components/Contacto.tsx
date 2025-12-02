@@ -78,7 +78,7 @@ export default function Contacto() {
 
 					{/* Botón */}
 					<div className="text-center">
-						<Button variant="secondary" size="md">
+						<Button variant="secondary" size="md" className='w-full'>
 							Solicite un asesor
 						</Button>
 					</div>

@@ -3,7 +3,6 @@
 
 import { useState } from 'react';
 import Layout from '@/components/Layout';
-import { useRouter } from 'next/navigation';
 import { HiArrowLeft } from 'react-icons/hi';
 import router from 'next/router';
 

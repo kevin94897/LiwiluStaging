@@ -19,6 +19,7 @@ import {
 } from 'react-icons/fa';
 import logo from '../public/images/liwilu_logo.png';
 import { TrimegistoDNIModal, TrimegistoRegisterModal } from './TrimegistoDNIModal';
+import Button from './ui/Button';
 
 const topLinks = [
   { href: '/nosotros', label: 'Nosotros' },
@@ -158,15 +159,12 @@ function QuickActions({ isMobile = false, onOpenLogin, onOpenRegister }: QuickAc
                 </p>
               </div>
 
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  onOpenLogin();
-                }}
-                className="inline-block w-full bg-primary font-medium text-sm py-2 rounded-full hover:bg-primary-light transition text-center text-white mt-4"
-              >
+              <Button size='sm' className="w-full" variant="primary" onClick={() => {
+                setIsOpen(false);
+                onOpenLogin();
+              }}>
                 Iniciar sesión
-              </button>
+              </Button>
             </div>
 
             <div className="flex-1 pl-4 text-left leading-none">
@@ -176,15 +174,12 @@ function QuickActions({ isMobile = false, onOpenLogin, onOpenRegister }: QuickAc
               <p className="text-xs text-gray-500 mt-2">
                 Recibirás notificaciones de ofertas y promociones.
               </p>
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  onOpenRegister();
-                }}
-                className="mt-4 inline-block w-full border border-primary text-primary font-medium text-sm py-2 rounded-full hover:bg-primary/10 transition text-center"
-              >
+              <Button size='sm' className="w-full mt-4" variant="outline" onClick={() => {
+                setIsOpen(false);
+                onOpenRegister();
+              }}>
                 Crear cuenta
-              </button>
+              </Button>
             </div>
           </div>
         </div>

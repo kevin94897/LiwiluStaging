@@ -2,7 +2,7 @@
 'use client';
 
 import Layout from '@/components/Layout';
-import Link from 'next/link';
+import Button from '@/components/ui/Button';
 
 export default function Custom404() {
     return (
@@ -31,9 +31,9 @@ export default function Custom404() {
                             Lo sentimos, la página que buscas no existe si crees que algo no funciona, informa de un problema
                         </p>
 
-                        <Link href="/" className="inline-block px-10 py-3 text-lg font-semibold border border-green-600 text-green-700 rounded-full hover:bg-green-50 transition-colors duration-300">
+                        <Button href="/" variant="outline" size="md">
                             Ir a inicio
-                        </Link>
+                        </Button>
                     </div>
 
                 </div>

@@ -3,27 +3,47 @@
 
 import { useEffect, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
+import { PiWarningCircleFill } from "react-icons/pi";
 import { FaFacebook } from 'react-icons/fa';
-import useForm from '../lib/useForm';
+import Button from './ui/Button';
+import { loginSchema, LoginSchemaType } from '../lib/loginSchema';
 
 interface LoginModalProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onSwitchToRegister: () => void;
-	fromTrimegisto?: boolean; // ✅ Nueva prop
+	fromTrimegisto?: boolean;
 }
 
 export default function LoginModal({
 	isOpen,
 	onClose,
 	onSwitchToRegister,
-	fromTrimegisto = false, // ✅ Por defecto false
+	fromTrimegisto = false,
 }: LoginModalProps) {
-
-	const { values, errors, handleChange, validateRequired } = useForm({
+	// ✅ Estado del formulario
+	const [formData, setFormData] = useState<LoginSchemaType>({
 		email: '',
 		password: '',
 	});
+
+	const [errors, setErrors] = useState<Partial<Record<keyof LoginSchemaType, string>>>({});
+
+	// ✅ Manejador de cambios
+	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const { name, value } = e.target;
+		setFormData(prev => ({ ...prev, [name]: value }));
+		// Limpiar error del campo
+		setErrors(prev => ({ ...prev, [name]: undefined }));
+	};
+
+	// ✅ Resetear formulario cuando se cierra el modal
+	useEffect(() => {
+		if (!isOpen) {
+			setFormData({ email: '', password: '' });
+			setErrors({});
+		}
+	}, [isOpen]);
 
 	useEffect(() => {
 		const handleEsc = (e: KeyboardEvent) => {
@@ -46,13 +66,30 @@ export default function LoginModal({
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!validateRequired()) return;
+		// ✅ Validación con Zod
+		const result = loginSchema.safeParse(formData);
 
-		console.log("Login OK!", values);
+		if (!result.success) {
+			const formattedErrors = result.error.flatten().fieldErrors;
+			const newErrors: Partial<Record<keyof LoginSchemaType, string>> = {};
+
+			for (const key in formattedErrors) {
+				const errorArray = formattedErrors[key as keyof typeof formattedErrors];
+				if (errorArray && errorArray.length > 0) {
+					newErrors[key as keyof LoginSchemaType] = errorArray[0];
+				}
+			}
+
+			setErrors(newErrors);
+			console.log("Errores de validación:", newErrors);
+			return;
+		}
+
+		// Si es válido
+		setErrors({});
+		console.log("Login OK!", formData);
 		onClose();
 	};
-
-
 
 	const handleGoogleLogin = () => {
 		console.log('Login with Google');
@@ -70,7 +107,6 @@ export default function LoginModal({
 				onClick={onClose}
 			/>
 
-			{/* Modal */}
 			<div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
 				<div
 					className="bg-white rounded-2xl shadow-2xl max-w-md w-full pointer-events-auto animate-scale-in overflow-y-auto max-h-[90vh] relative"
@@ -89,59 +125,49 @@ export default function LoginModal({
 							</p>
 						</div>
 
-						{/* Formulario */}
-						<form onSubmit={handleSubmit} className="space-y-4">
+						<form onSubmit={handleSubmit} className="space-y-4" noValidate>
 							{/* Email */}
 							<div>
-								<label
-									htmlFor="email"
-									className="block text-sm font-semibold text-primary-dark mb-2"
-								>
+								<label className="block text-sm font-semibold text-primary-dark mb-2">
 									Correo electrónico
 								</label>
 								<input
 									type="email"
-									id="email"
 									name="email"
-									value={values.email}
-									onChange={(e) =>
-										handleChange(e)
-									}
-									className={`w-full px-4 py-3 border rounded-sm transition ${errors.email ? 'border-red-500' : 'border-gray-300'
+									value={formData.email}
+									onChange={handleChange}
+									placeholder="correo@ejemplo.com"
+									className={`w-full px-4 py-3 border rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition ${errors.email ? 'border-red-500' : 'border-gray-300'
 										}`}
 								/>
 								{errors.email && (
-									<p className="text-red-500 text-xs mt-1">{errors.email}</p>
+									<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+										<PiWarningCircleFill size={16} /> {errors.email}
+									</p>
 								)}
-
 							</div>
 
-							{/* Contraseña */}
+							{/* Password */}
 							<div>
-								<label
-									htmlFor="password"
-									className="block text-sm font-semibold text-primary-dark mb-2"
-								>
+								<label className="block text-sm font-semibold text-primary-dark mb-2">
 									Contraseña
 								</label>
 								<input
 									type="password"
-									id="password"
 									name="password"
-									value={values.password}
-									onChange={(e) =>
-										handleChange(e)
-									}
-									className={`w-full px-4 py-3 border rounded-sm transition ${errors.password ? 'border-red-500' : 'border-gray-300'
+									value={formData.password}
+									onChange={handleChange}
+									placeholder="Mínimo 6 caracteres"
+									className={`w-full px-4 py-3 border rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition ${errors.password ? 'border-red-500' : 'border-gray-300'
 										}`}
 								/>
 								{errors.password && (
-									<p className="text-red-500 text-xs mt-1">{errors.password}</p>
+									<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+										<PiWarningCircleFill size={16} /> {errors.password}
+									</p>
 								)}
-
 							</div>
 
-							{/* Olvidó contraseña */}
 							<div className="text-right">
 								<button
 									type="button"
@@ -151,26 +177,20 @@ export default function LoginModal({
 								</button>
 							</div>
 
-							{/* Botón Submit */}
-							<button
-								type="submit"
-								className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-full transition"
-							>
+							<Button variant="primary" size="md" className="w-full" type="submit">
 								Iniciar sesión
-							</button>
+							</Button>
 						</form>
 
-						{/* ✅ MOSTRAR SOCIAL LOGIN SOLO SI NO ES TRIMEGISTO */}
+						{/* Solo si no es Trimegisto */}
 						{!fromTrimegisto && (
 							<>
-								{/* Divider */}
 								<div className="flex items-center my-6">
 									<div className="flex-1 border-t border-gray-300"></div>
-									<span className="px-4 text-sm text-gray-500">Or</span>
+									<span className="px-4 text-sm text-gray-500">O</span>
 									<div className="flex-1 border-t border-gray-300"></div>
 								</div>
 
-								{/* Social Login */}
 								<div className="space-y-3">
 									<button
 										onClick={handleGoogleLogin}
@@ -195,7 +215,6 @@ export default function LoginModal({
 							</>
 						)}
 
-						{/* Link a Registro */}
 						<div className="mt-6 text-center">
 							<p className="text-sm text-gray-600">
 								¿Aún no tienes cuenta?{' '}
@@ -212,7 +231,6 @@ export default function LoginModal({
 						</div>
 					</div>
 
-					{/* Botón cerrar (X) */}
 					<button
 						onClick={onClose}
 						className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition"
@@ -237,12 +255,8 @@ export default function LoginModal({
 
 			<style jsx>{`
 				@keyframes fade-in {
-					from {
-						opacity: 0;
-					}
-					to {
-						opacity: 1;
-					}
+					from { opacity: 0; }
+					to { opacity: 1; }
 				}
 				@keyframes scale-in {
 					from {
@@ -254,11 +268,11 @@ export default function LoginModal({
 						transform: scale(1) translateY(0);
 					}
 				}
-				.animate-fade-in {
-					animation: fade-in 0.2s ease-out;
+				.animate-fade-in { 
+					animation: fade-in 0.2s ease-out; 
 				}
-				.animate-scale-in {
-					animation: scale-in 0.3s ease-out;
+				.animate-scale-in { 
+					animation: scale-in 0.3s ease-out; 
 				}
 			`}</style>
 		</>

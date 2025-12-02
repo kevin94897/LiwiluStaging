@@ -1,12 +1,8 @@
 // components/ui/Button.tsx
 import React from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline';
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'outline_white';
 export type ButtonSize = 'sm' | 'md' | 'lg';
-
-// 1. Unimos las propiedades del botón y del ancla (<a>)
-type LinkProps = React.AnchorHTMLAttributes<HTMLAnchorElement>;
-type ButtonElementProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 interface ButtonBaseProps {
     variant?: ButtonVariant;
@@ -15,12 +11,16 @@ interface ButtonBaseProps {
     children: React.ReactNode;
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
+    href?: string;
 }
 
-// Interfaz para el componente final: puede tener propiedades de botón Y/O de enlace
-export interface ButtonProps extends ButtonBaseProps, LinkProps, ButtonElementProps { }
+// ✅ Union type en lugar de extends para evitar conflictos
+export type ButtonProps = ButtonBaseProps &
+    (
+        | React.ButtonHTMLAttributes<HTMLButtonElement>
+        | React.AnchorHTMLAttributes<HTMLAnchorElement>
+    );
 
-// 2. Definimos el tipo de referencia que puede ser un botón o un ancla
 type CombinedRef = HTMLButtonElement | HTMLAnchorElement;
 
 const Button = React.forwardRef<CombinedRef, ButtonProps>(
@@ -33,8 +33,8 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
             leftIcon,
             rightIcon,
             className = '',
-            disabled = false,
-            href, // 3. Desestructuramos href
+            // disabled = false,
+            href,
             ...props
         },
         ref
@@ -44,14 +44,54 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
 
         // Variantes de color
         const variants = {
-            primary: 'bg-primary hover:bg-green-600 text-white shadow-md hover:shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed',
-            secondary: 'bg-white hover:bg-gray-50 text-green-600 border-2 border-green-500 hover:border-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed',
-            outline: 'bg-transparent hover:bg-green-50 text-green-600 border-2 border-green-500 hover:border-green-600 disabled:bg-transparent disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed'
+            primary: `
+                bg-primary
+                hover:bg-primary-dark
+                text-neutral-white
+                disabled:bg-neutral-grayLight
+                disabled:text-white
+                disabled:cursor-not-allowed
+            `.trim().replace(/\s+/g, ' '),
+
+            secondary: `
+                bg-neutral-white
+                hover:bg-primary-dark
+                text-primary
+                hover:text-white
+                hover:border-primary-dark
+                disabled:bg-neutral-grayLight
+                disabled:text-white
+                disabled:cursor-not-allowed
+            `.trim().replace(/\s+/g, ' '),
+
+            outline: `
+                bg-transparent
+                text-primary
+                border-2 border-primary
+                hover:text-primary-dark
+                hover:border-primary-dark
+                disabled:bg-neutral-grayLight
+                disabled:text-white
+                disabled:border-neutral-grayLight
+                disabled:cursor-not-allowed
+            `.trim().replace(/\s+/g, ' '),
+
+            outline_white: `
+                text-white
+                border-2 border-white
+                hover:border-transparent
+                hover:text-primary
+                hover:bg-white
+                disabled:bg-neutral-grayLight
+                disabled:text-white
+                disabled:border-neutral-grayLight
+                disabled:cursor-not-allowed
+            `.trim().replace(/\s+/g, ' ')
         };
 
         // Tamaños
         const sizes = {
-            sm: 'px-4 py-2 text-sm rounded-full',
+            sm: 'px-4 py-3 text-sm rounded-full',
             md: 'px-8 py-3 text-base rounded-full',
             lg: 'px-8 py-4 text-lg rounded-full'
         };
@@ -59,8 +99,8 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
         // Ancho completo
         const widthClass = fullWidth ? 'w-full' : '';
 
-        // Deshabilitar si se usa href y la prop disabled es true
-        const pointerEventsClass = disabled ? 'pointer-events-none' : '';
+        // Deshabilitar eventos si es enlace deshabilitado
+        const pointerEventsClass = disabled && href ? 'pointer-events-none' : '';
 
         const buttonClasses = `
             ${baseStyles}
@@ -79,29 +119,27 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
             </>
         );
 
-        // 4. Renderizado condicional
+        // Renderizado condicional
         if (href) {
-            // Renderizar como <a>
             return (
                 <a
-                    ref={ref as React.ForwardedRef<HTMLAnchorElement>} // Casteo seguro
+                    ref={ref as React.ForwardedRef<HTMLAnchorElement>}
                     href={href}
                     className={buttonClasses}
-                    aria-disabled={disabled} // Accesibilidad para enlaces deshabilitados
-                    {...(props as LinkProps)} // Aseguramos pasar props de enlace
+                    aria-disabled={disabled}
+                    {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
                 >
                     {content}
                 </a>
             );
         }
 
-        // Renderizar como <button>
         return (
             <button
-                ref={ref as React.ForwardedRef<HTMLButtonElement>} // Casteo seguro
+                ref={ref as React.ForwardedRef<HTMLButtonElement>}
                 className={buttonClasses}
                 disabled={disabled}
-                {...(props as ButtonElementProps)} // Aseguramos pasar props de botón
+                {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
             >
                 {content}
             </button>

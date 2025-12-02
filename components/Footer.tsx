@@ -16,7 +16,7 @@ export default function Footer() {
 					priority
 				/>
 			</div>
-			<div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8 border-b border-white/20 pb-10 relative z-50">
+			<div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8 border-b border-white/20 pb-10 relative z-10">
 				{/* Columna 1: Logo + contacto */}
 				<div className="space-y-3">
 					<Image

@@ -3,8 +3,8 @@
 
 import { useEffect } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { Product, getProductImageUrl, formatPrice } from '@/lib/prestashop';
+import Button from './ui/Button';
 
 interface AddToCartModalProps {
 	isOpen: boolean;
@@ -110,17 +110,23 @@ export default function AddToCartModal({
 
 						{/* Botones */}
 						<div className="flex gap-3">
-							<button
+							<Button
+								size="sm"
+								className="w-full"
+								variant="primary"
 								onClick={onClose}
-								className="flex-1 px-6 py-3 border-2 border-primary text-primary font-semibold rounded-full hover:bg-primary/5 transition"
 							>
 								Seguir comprando
-							</button>
-							<Link href="/carrito" className="flex-1">
-								<button className="w-full px-6 py-3 bg-primary text-white font-semibold rounded-full hover:bg-primary-dark transition">
-									Ir a carrito
-								</button>
-							</Link>
+							</Button>
+							<Button
+								href='/carrito'
+								size="sm"
+								className="w-full flex-1"
+								variant="outline"
+								onClick={onClose}
+							>
+								Ir a carrito
+							</Button>
 						</div>
 					</div>
 

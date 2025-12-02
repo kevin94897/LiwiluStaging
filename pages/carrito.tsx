@@ -9,6 +9,7 @@ import { useCart } from '@/context/CartContext';
 import { getProductImageUrl, formatPrice } from '@/lib/prestashop';
 import { FaRegTrashAlt, FaMapMarkerAlt, FaTruck, FaStore, FaCheck, FaTimes, FaCheckCircle, FaRegClock, FaTimesCircle } from 'react-icons/fa';
 import router from 'next/router';
+import Button from '@/components/ui/Button';
 
 // Interfaz de tienda
 interface Tienda {
@@ -47,10 +48,6 @@ export default function Carrito() {
 	const [editandoDireccion, setEditandoDireccion] = useState(false);
 	const [validandoStock, setValidandoStock] = useState(false);
 	const [stockValidado, setStockValidado] = useState(false);
-	const [personaAutorizada, setPersonaAutorizada] = useState({
-		nombre: 'Gonzalo Vera', // Rellenar con los datos del usuario logueado o un default
-		dni: '70255456',
-	});
 
 	// Estados para autenticación
 	const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -342,19 +339,12 @@ export default function Carrito() {
 											</Link>
 										</div>
 
-										<button
-											onClick={handleLogin}
-											className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg"
-										>
-											Iniciar sesión
-										</button>
-
-										<button
-											onClick={handleContinueAsGuest}
-											className="w-full bg-white hover:bg-gray-50 border-2 border-primary text-primary font-semibold py-3 rounded-full transition-all duration-300 hover:scale-105"
-										>
+										<Button variant="primary" size="md" className="w-full" onClick={handleLogin}>
+											Iniciar Sesión
+										</Button>
+										<Button variant="outline" size="md" className="w-full" onClick={handleContinueAsGuest}>
 											Continuar como invitado
-										</button>
+										</Button>
 									</div>
 								</div>
 							)}
@@ -600,19 +590,13 @@ export default function Carrito() {
 											</label>
 										</div>
 
-										<button
-											onClick={handleRegistro}
-											className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg"
-										>
+										<Button variant="primary" size="md" className="w-full" onClick={handleRegistro}>
 											Crear cuenta
-										</button>
+										</Button>
 
-										<button
-											onClick={handleContinueAsGuest}
-											className="w-full bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-700 font-semibold py-3 rounded-full transition-all duration-300"
-										>
+										<Button variant="outline" size="md" className="w-full" onClick={handleContinueAsGuest}>
 											Continuar como invitado
-										</button>
+										</Button>
 									</div>
 								</div>
 							)}
@@ -1052,20 +1036,15 @@ export default function Carrito() {
 								<span className="text-primary">{formatPrice(total.toString())}</span>
 							</div>
 
-							<Link href="/checkout">
-								<button
-									className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-full transition-all duration-300 mb-3 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-									disabled={(metodoEnvio === 'retiro' && !tiendaSeleccionada) || (!isLoggedIn && !isGuest)}
-								>
-									{!isLoggedIn && !isGuest ? 'Inicia sesión para continuar' : 'Finalizar compra'}
-								</button>
-							</Link>
 
-							<Link href="/productos">
-								<button className="w-full bg-white hover:bg-gray-50 border-2 border-primary text-primary font-semibold py-3 rounded-full transition-all duration-300 hover:scale-105">
-									Seguir comprando
-								</button>
-							</Link>
+							<Button href='/checkout' variant="primary" size="md" className="w-full mb-3" disabled={(metodoEnvio === 'retiro' && !tiendaSeleccionada) || (!isLoggedIn && !isGuest)}>
+								{!isLoggedIn && !isGuest ? 'Inicia sesión para continuar' : 'Finalizar compra'}
+							</Button>
+
+							<Button href='/productos' variant="outline" size="md" className="w-full">
+								Seguir comprando
+							</Button>
+
 						</div>
 					</div>
 				</div>

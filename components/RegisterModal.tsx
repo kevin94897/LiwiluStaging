@@ -4,7 +4,10 @@
 import { useEffect, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook } from 'react-icons/fa';
-import useForm from '../lib/useForm';
+import Button from './ui/Button';
+import { PiWarningCircleFill } from "react-icons/pi";
+import { registerSchema } from '../lib/registerSchema';
+import { z } from 'zod';
 
 interface RegisterModalProps {
 	isOpen: boolean;
@@ -12,12 +15,15 @@ interface RegisterModalProps {
 	onSwitchToLogin: () => void;
 }
 
+type RegisterFormValues = z.infer<typeof registerSchema>;
+
 export default function RegisterModal({
 	isOpen,
 	onClose,
 	onSwitchToLogin,
 }: RegisterModalProps) {
-	const [formData, setFormData] = useState({
+	// ✅ Estado completo del formulario
+	const [formData, setFormData] = useState<RegisterFormValues>({
 		firstName: '',
 		lastName: '',
 		email: '',
@@ -28,16 +34,40 @@ export default function RegisterModal({
 		receiveOffers: false,
 	});
 
-	const { values, errors, handleChange, validateRequired } = useForm({
-		firstName: '',
-		lastName: '',
-		email: '',
-		emailConfirm: '',
-		password: '',
-		passwordConfirm: '',
-		acceptTerms: false,
-		receiveOffers: false,
-	});
+	const [errors, setErrors] = useState<Partial<Record<keyof RegisterFormValues, string>>>({});
+
+	// ✅ Resetear formulario cuando se cierra el modal
+	useEffect(() => {
+		if (!isOpen) {
+			setFormData({
+				firstName: '',
+				lastName: '',
+				email: '',
+				emailConfirm: '',
+				password: '',
+				passwordConfirm: '',
+				acceptTerms: false,
+				receiveOffers: false,
+			});
+			setErrors({});
+		}
+	}, [isOpen]);
+
+	// ✅ Manejador para inputs de texto
+	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const { name, value } = e.target;
+		setFormData(prev => ({ ...prev, [name]: value }));
+		// Limpiar error del campo
+		setErrors(prev => ({ ...prev, [name]: undefined }));
+	};
+
+	// ✅ Manejador para checkboxes
+	const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const { name, checked } = e.target;
+		setFormData(prev => ({ ...prev, [name]: checked }));
+		// Limpiar error del campo
+		setErrors(prev => ({ ...prev, [name]: undefined }));
+	};
 
 	// Cerrar con tecla ESC
 	useEffect(() => {
@@ -61,24 +91,28 @@ export default function RegisterModal({
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 
-		// Validaciones
-		if (formData.email !== formData.emailConfirm) {
-			alert('Los correos electrónicos no coinciden');
+		// ✅ Validación con Zod
+		const result = registerSchema.safeParse(formData);
+
+		if (!result.success) {
+			const formattedErrors = result.error.flatten().fieldErrors;
+			const newErrors: Partial<Record<keyof RegisterFormValues, string>> = {};
+
+			for (const key in formattedErrors) {
+				const errorArray = formattedErrors[key as keyof typeof formattedErrors];
+				if (errorArray && errorArray.length > 0) {
+					newErrors[key as keyof RegisterFormValues] = errorArray[0];
+				}
+			}
+
+			setErrors(newErrors);
+			console.log("Errores de validación:", newErrors);
 			return;
 		}
 
-		if (formData.password !== formData.passwordConfirm) {
-			alert('Las contraseñas no coinciden');
-			return;
-		}
-
-		if (!formData.acceptTerms) {
-			alert('Debes aceptar los términos y condiciones');
-			return;
-		}
-
-		console.log('Register:', formData);
-		// Aquí iría tu lógica de registro
+		// Si es válido
+		setErrors({});
+		console.log("Registro exitoso!", formData);
 		onClose();
 	};
 
@@ -89,6 +123,11 @@ export default function RegisterModal({
 	const handleFacebookSignup = () => {
 		console.log('Signup with Facebook');
 	};
+
+	// Helper para determinar la clase de borde
+	const inputClasses = (fieldName: keyof RegisterFormValues) =>
+		`w-full px-4 py-3 border rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition ${errors[fieldName] ? 'border-error' : 'border-gray-300'
+		}`;
 
 	return (
 		<>
@@ -117,7 +156,7 @@ export default function RegisterModal({
 						</div>
 
 						{/* Formulario */}
-						<form onSubmit={handleSubmit} className="space-y-4">
+						<form onSubmit={handleSubmit} className="space-y-4" noValidate>
 							{/* Nombre y Apellido */}
 							<div className="grid grid-cols-2 gap-4">
 								<div>
@@ -128,16 +167,19 @@ export default function RegisterModal({
 										Nombre
 									</label>
 									<input
+										name="firstName"
 										type="text"
 										id="firstName"
-										value={values.firstName}
-										onChange={(e) =>
-											handleChange(e)
-										}
+										value={formData.firstName}
+										onChange={handleChange}
 										placeholder="Gonzalo"
-										className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
-										required
+										className={inputClasses('firstName')}
 									/>
+									{errors.firstName && (
+										<p className="text-error text-xs mt-1 flex items-start gap-1">
+											<PiWarningCircleFill size={16} /> {errors.firstName}
+										</p>
+									)}
 								</div>
 
 								<div>
@@ -148,16 +190,19 @@ export default function RegisterModal({
 										Apellido
 									</label>
 									<input
+										name="lastName"
 										type="text"
 										id="lastName"
-										value={values.lastName}
-										onChange={(e) =>
-											handleChange(e)
-										}
-										placeholder="Gonzalo"
-										className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
-										required
+										value={formData.lastName}
+										onChange={handleChange}
+										placeholder="García"
+										className={inputClasses('lastName')}
 									/>
+									{errors.lastName && (
+										<p className="text-error text-xs mt-1 flex items-start gap-1">
+											<PiWarningCircleFill size={16} /> {errors.lastName}
+										</p>
+									)}
 								</div>
 							</div>
 
@@ -170,16 +215,19 @@ export default function RegisterModal({
 									Correo electrónico
 								</label>
 								<input
+									name="email"
 									type="email"
 									id="email"
-									value={values.email}
-									onChange={(e) =>
-										handleChange(e)
-									}
-									placeholder="Ingrese tu correo electrónico"
-									className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
-									required
+									value={formData.email}
+									onChange={handleChange}
+									placeholder="correo@ejemplo.com"
+									className={inputClasses('email')}
 								/>
+								{errors.email && (
+									<p className="text-error text-xs mt-1 flex items-start gap-1">
+										<PiWarningCircleFill size={16} /> {errors.email}
+									</p>
+								)}
 							</div>
 
 							{/* Confirmar Email */}
@@ -191,16 +239,19 @@ export default function RegisterModal({
 									Confirmar correo electrónico
 								</label>
 								<input
+									name="emailConfirm"
 									type="email"
 									id="emailConfirm"
-									value={values.emailConfirm}
-									onChange={(e) =>
-										handleChange(e)
-									}
-									placeholder="Ingrese tu correo electrónico"
-									className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
-									required
+									value={formData.emailConfirm}
+									onChange={handleChange}
+									placeholder="correo@ejemplo.com"
+									className={inputClasses('emailConfirm')}
 								/>
+								{errors.emailConfirm && (
+									<p className="text-error text-xs mt-1 flex items-start gap-1">
+										<PiWarningCircleFill size={16} /> {errors.emailConfirm}
+									</p>
+								)}
 							</div>
 
 							{/* Contraseña */}
@@ -212,16 +263,19 @@ export default function RegisterModal({
 									Contraseña
 								</label>
 								<input
+									name="password"
 									type="password"
 									id="password"
-									value={values.password}
-									onChange={(e) =>
-										handleChange(e)
-									}
-									placeholder="Crea una contraseña segura"
-									className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
-									required
+									value={formData.password}
+									onChange={handleChange}
+									placeholder="Mínimo 6 caracteres"
+									className={inputClasses('password')}
 								/>
+								{errors.password && (
+									<p className="text-error text-xs mt-1 flex items-start gap-1">
+										<PiWarningCircleFill size={16} /> {errors.password}
+									</p>
+								)}
 							</div>
 
 							{/* Confirmar Contraseña */}
@@ -233,48 +287,62 @@ export default function RegisterModal({
 									Confirmar contraseña
 								</label>
 								<input
+									name="passwordConfirm"
 									type="password"
 									id="passwordConfirm"
-									value={values.passwordConfirm}
-									onChange={(e) =>
-										handleChange(e)
-									}
+									value={formData.passwordConfirm}
+									onChange={handleChange}
 									placeholder="Repite tu contraseña"
-									className="w-full px-4 py-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
-									required
+									className={inputClasses('passwordConfirm')}
 								/>
+								{errors.passwordConfirm && (
+									<p className="text-error text-xs mt-1 flex items-start gap-1">
+										<PiWarningCircleFill size={16} /> {errors.passwordConfirm}
+									</p>
+								)}
 							</div>
 
 							{/* Checkboxes */}
 							<div className="space-y-3">
+								{/* Aceptar Términos */}
 								<label className="flex items-start gap-3 cursor-pointer">
 									<input
 										type="checkbox"
-										checked={values.acceptTerms}
-										onChange={(e) =>
-											handleChange(e)
-										}
-										className="mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-										required
+										name="acceptTerms"
+										checked={formData.acceptTerms}
+										onChange={handleCheckboxChange}
+										className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary ${errors.acceptTerms ? 'border-error' : ''
+											}`}
 									/>
 									<span className="text-sm text-gray-700">
 										Acepto los Términos y Condiciones y la política de Privacidad
 									</span>
 								</label>
+								{errors.acceptTerms && (
+									<p className="text-error text-xs mt-1 flex items-start gap-1">
+										<PiWarningCircleFill size={16} /> {errors.acceptTerms}
+									</p>
+								)}
 
+								{/* Recibir Ofertas */}
 								<label className="flex items-start gap-3 cursor-pointer">
 									<input
 										type="checkbox"
-										checked={values.receiveOffers}
-										onChange={(e) =>
-											handleChange(e)
-										}
-										className="mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+										name="receiveOffers"
+										checked={formData.receiveOffers}
+										onChange={handleCheckboxChange}
+										className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary ${errors.receiveOffers ? 'border-error' : ''
+											}`}
 									/>
 									<span className="text-sm text-gray-700">
 										Quiero recibir ofertas y beneficios exclusivos
 									</span>
 								</label>
+								{errors.receiveOffers && (
+									<p className="text-error text-xs mt-1 flex items-start gap-1">
+										<PiWarningCircleFill size={16} /> {errors.receiveOffers}
+									</p>
+								)}
 							</div>
 
 							{/* Olvidó contraseña */}
@@ -288,18 +356,15 @@ export default function RegisterModal({
 							</div>
 
 							{/* Botón Submit */}
-							<button
-								type="submit"
-								className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-full transition"
-							>
+							<Button variant="primary" size="md" className="w-full" type="submit">
 								Registrarse
-							</button>
+							</Button>
 						</form>
 
 						{/* Divider */}
 						<div className="flex items-center my-6">
 							<div className="flex-1 border-t border-gray-300"></div>
-							<span className="px-4 text-sm text-gray-500">Or</span>
+							<span className="px-4 text-sm text-gray-500">O</span>
 							<div className="flex-1 border-t border-gray-300"></div>
 						</div>
 
@@ -311,7 +376,7 @@ export default function RegisterModal({
 							>
 								<FcGoogle size={20} />
 								<span className="text-gray-700 font-medium">
-									Inicie sesión con Google
+									Registrarse con Google
 								</span>
 							</button>
 
@@ -321,7 +386,7 @@ export default function RegisterModal({
 							>
 								<FaFacebook size={20} className="text-blue-600" />
 								<span className="text-gray-700 font-medium">
-									Inicie sesión con Facebook
+									Registrarse con Facebook
 								</span>
 							</button>
 						</div>
@@ -368,12 +433,8 @@ export default function RegisterModal({
 
 			<style jsx>{`
 				@keyframes fade-in {
-					from {
-						opacity: 0;
-					}
-					to {
-						opacity: 1;
-					}
+					from { opacity: 0; }
+					to { opacity: 1; }
 				}
 				@keyframes scale-in {
 					from {
@@ -385,11 +446,11 @@ export default function RegisterModal({
 						transform: scale(1) translateY(0);
 					}
 				}
-				.animate-fade-in {
-					animation: fade-in 0.2s ease-out;
+				.animate-fade-in { 
+					animation: fade-in 0.2s ease-out; 
 				}
-				.animate-scale-in {
-					animation: scale-in 0.3s ease-out;
+				.animate-scale-in { 
+					animation: scale-in 0.3s ease-out; 
 				}
 			`}</style>
 		</>

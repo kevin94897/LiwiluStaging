@@ -11,6 +11,7 @@ import AddToCartModal from '@/components/AddToCartModal';
 
 import { FaHeart, FaShoppingCart } from 'react-icons/fa';
 import { Product, getProductImageUrl, formatPrice } from '@/lib/prestashop';
+import Button from './ui/Button';
 
 interface ProductProps {
 	featuredProducts: Product[];
@@ -26,7 +27,7 @@ export default function ProductosDestacados({
 	const [modalProduct, setModalProduct] = useState<Product | null>(null);
 	const { addToCart } = useCart();
 
-	const toggleFavorito = (e: React.MouseEvent, productId: string) => {
+	const toggleFavorito = (e: React.MouseEvent<HTMLButtonElement>, productId: string) => {
 		e.preventDefault();
 		e.stopPropagation();
 
@@ -43,7 +44,7 @@ export default function ProductosDestacados({
 		localStorage.setItem('liwilu_favoritos', JSON.stringify(updatedFavoritos));
 	};
 
-	const handleAddToCart = async (e: React.MouseEvent, producto: Product) => {
+	const handleAddToCart = async (e: React.MouseEvent<HTMLButtonElement>, producto: Product) => {
 		e.preventDefault();
 		e.stopPropagation();
 
@@ -147,11 +148,10 @@ export default function ProductosDestacados({
 													onClick={(e) => toggleFavorito(e, product.id)}
 												>
 													<FaHeart
-														className={`w-5 h-5 transition ${
-															favoritos.includes(product.id)
-																? 'text-red-500 fill-current'
-																: 'text-gray-400 hover:text-red-500'
-														}`}
+														className={`w-5 h-5 transition ${favoritos.includes(product.id)
+															? 'text-red-500 fill-current'
+															: 'text-gray-400 hover:text-red-500'
+															}`}
 													/>
 												</button>
 											</div>
@@ -166,20 +166,21 @@ export default function ProductosDestacados({
 															parseFloat(product.price || '0') * 1.2
 														)}
 													</span>
-													<span className="text-green-600 font-bold text-lg">
+													<span className="text-primary font-bold text-lg">
 														{formatPrice(product.price || '0')}
 													</span>
 												</div>
-												<button
-													className="w-full btn btn-primary flex items-center justify-center gap-2 hover:scale-105 transition-transform rounded-full"
-													onClick={(e) => handleAddToCart(e, product)}
+												<Button
+													size="sm"
+													className="w-full"
+													variant="primary"
+													onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleAddToCart(e, product)}
 													disabled={loadingCart === product.id}
 												>
 													{loadingCart === product.id ? (
 														<>
 															<svg
 																className="animate-spin h-4 w-4"
-																xmlns="http://www.w3.org/2000/svg"
 																fill="none"
 																viewBox="0 0 24 24"
 															>
@@ -200,12 +201,12 @@ export default function ProductosDestacados({
 															<span>...</span>
 														</>
 													) : (
-														<>
+														<span className="flex items-center gap-2">
 															<FaShoppingCart className="w-4 h-4" />
 															<span>Agregar</span>
-														</>
+														</span>
 													)}
-												</button>
+												</Button>
 											</div>
 										</div>
 									</Link>
