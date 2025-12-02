@@ -10,6 +10,9 @@ import { getProductImageUrl, formatPrice } from '@/lib/prestashop';
 import { FaRegTrashAlt, FaMapMarkerAlt, FaTruck, FaStore, FaCheck, FaTimes, FaCheckCircle, FaRegClock, FaTimesCircle } from 'react-icons/fa';
 import router from 'next/router';
 import Button from '@/components/ui/Button';
+import { loginSchema, LoginSchemaType } from '@/lib/loginSchema';
+import { carritoRegisterSchema, CarritoRegisterSchemaType } from '@/lib/carritoRegisterSchema';
+import { PiWarningCircleFill } from 'react-icons/pi';
 
 // Interfaz de tienda
 interface Tienda {
@@ -57,14 +60,8 @@ export default function Carrito() {
 	// NUEVO: Estado para el tab activo (login o registro)
 	const [activeTab, setActiveTab] = useState<'login' | 'registro'>('login');
 
-	// NUEVO: Estados para login
-	const [loginData, setLoginData] = useState({
-		email: '',
-		password: ''
-	});
-
 	// NUEVO: Estados para registro
-	const [registroData, setRegistroData] = useState({
+	const [registroData, setRegistroData] = useState<CarritoRegisterSchemaType>({
 		nombre: '',
 		apellido: '',
 		tipoDocumento: 'DNI',
@@ -81,9 +78,18 @@ export default function Carrito() {
 		password: '',
 		confirmarPassword: ''
 	});
+	const [registroErrors, setRegistroErrors] = useState<Partial<Record<keyof CarritoRegisterSchemaType, string>>>({});
 
 	// NUEVO: Errores de validación
-	const [errors, setErrors] = useState<Record<string, string>>({});
+	// const [errors, setErrors] = useState<Record<string, string>>({});
+
+	const [loginData, setLoginData] = useState<LoginSchemaType>({
+		email: '',
+		password: ''
+	});
+
+	const [loginErrors, setLoginErrors] = useState<Partial<Record<keyof LoginSchemaType, string>>>({});
+
 
 	// Función para obtener tiendas con stock desde PrestaShop
 	const fetchTiendasConStock = async (productIds: string[]) => {
@@ -132,6 +138,19 @@ export default function Carrito() {
 		setTiendaSeleccionada(null);
 	};
 
+	const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const { name, value } = e.target;
+		setLoginData(prev => ({ ...prev, [name]: value }));
+		setLoginErrors(prev => ({ ...prev, [name]: undefined }));
+	};
+
+	// Manejador para Registro
+	const handleRegistroChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+		const { name, value } = e.target;
+		setRegistroData(prev => ({ ...prev, [name]: value }));
+		setRegistroErrors(prev => ({ ...prev, [name]: undefined }));
+	};
+
 	const validarStockProductos = async () => {
 		setValidandoStock(true);
 		try {
@@ -159,43 +178,58 @@ export default function Carrito() {
 	// NUEVO: Manejo de login
 	const handleLogin = (e: React.FormEvent) => {
 		e.preventDefault();
-		if (loginData.email && loginData.password) {
-			// Aquí harías la validación real con tu API
-			setIsLoggedIn(true);
-			setShowLoginModal(false);
-			showNotification('success', '¡Bienvenido de vuelta!');
+
+		// Validación con Zod
+		const result = loginSchema.safeParse(loginData);
+
+		if (!result.success) {
+			const formattedErrors = result.error.flatten().fieldErrors;
+			const newErrors: Partial<Record<keyof LoginSchemaType, string>> = {};
+
+			for (const key in formattedErrors) {
+				const errorArray = formattedErrors[key as keyof typeof formattedErrors];
+				if (errorArray && errorArray.length > 0) {
+					newErrors[key as keyof LoginSchemaType] = errorArray[0];
+				}
+			}
+
+			setLoginErrors(newErrors);
+			return;
 		}
+
+		// Si es válido
+		setLoginErrors({});
+		// Aquí harías la validación real con tu API
+		setIsLoggedIn(true);
+		setShowLoginModal(false);
+		showNotification('success', '¡Bienvenido de vuelta!');
 	};
 
 	// NUEVO: Manejo de registro
 	const handleRegistro = (e: React.FormEvent) => {
 		e.preventDefault();
 
-		// Validaciones
-		const newErrors: Record<string, string> = {};
+		// Validación con Zod
+		const result = carritoRegisterSchema.safeParse(registroData);
 
-		if (registroData.password !== registroData.confirmarPassword) {
-			newErrors.confirmarPassword = 'Las contraseñas no coinciden';
-		}
+		if (!result.success) {
+			const formattedErrors = result.error.flatten().fieldErrors;
+			const newErrors: Partial<Record<keyof CarritoRegisterSchemaType, string>> = {};
 
-		if (registroData.password.length < 6) {
-			newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
-		}
+			for (const key in formattedErrors) {
+				const errorArray = formattedErrors[key as keyof typeof formattedErrors];
+				if (errorArray && errorArray.length > 0) {
+					newErrors[key as keyof CarritoRegisterSchemaType] = errorArray[0];
+				}
+			}
 
-		if (registroData.numeroDocumento.length < 8) {
-			newErrors.numeroDocumento = 'Número de documento inválido';
-		}
-
-		if (!registroData.distrito) {
-			newErrors.distrito = 'Selecciona un distrito';
-		}
-
-		if (Object.keys(newErrors).length > 0) {
-			setErrors(newErrors);
+			setRegistroErrors(newErrors);
+			console.log("Errores de validación:", newErrors);
 			return;
 		}
 
-		// Aquí harías el registro real con tu API
+		// Si es válido
+		setRegistroErrors({});
 		console.log('Registro exitoso:', registroData);
 		setIsLoggedIn(true);
 		setShowLoginModal(false);
@@ -309,11 +343,18 @@ export default function Carrito() {
 											</label>
 											<input
 												type="email"
+												name="email"  // ✅ Agregar name
 												value={loginData.email}
-												onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+												onChange={handleLoginChange}  // ✅ Cambiar a handleLoginChange
 												placeholder="ejemplo@correo.com"
-												className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.email ? 'border-red-500' : 'border-gray-200'
+													}`}
 											/>
+											{loginErrors.email && (
+												<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+													<PiWarningCircleFill size={16} /> {loginErrors.email}
+												</p>
+											)}
 										</div>
 
 										<div>
@@ -322,11 +363,18 @@ export default function Carrito() {
 											</label>
 											<input
 												type="password"
+												name="password"  // ✅ Agregar name
 												value={loginData.password}
-												onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+												onChange={handleLoginChange}  // ✅ Cambiar a handleLoginChange
 												placeholder="••••••••"
-												className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.password ? 'border-red-500' : 'border-gray-200'
+													}`}
 											/>
+											{loginErrors.password && (
+												<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+													<PiWarningCircleFill size={16} /> {loginErrors.password}
+												</p>
+											)}
 										</div>
 
 										<div className="flex items-center justify-between text-sm">
@@ -368,11 +416,18 @@ export default function Carrito() {
 												</label>
 												<input
 													type="text"
+													name="nombre"  // ✅ Agregar
 													value={registroData.nombre}
-													onChange={(e) => setRegistroData({ ...registroData, nombre: e.target.value })}
+													onChange={handleRegistroChange}  // ✅ Cambiar
 													placeholder="Gonzalo"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.nombre ? 'border-red-500' : 'border-gray-200'
+														}`}
 												/>
+												{registroErrors.nombre && (
+													<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+														<PiWarningCircleFill size={16} /> {registroErrors.nombre}
+													</p>
+												)}
 											</div>
 											<div>
 												<label className="block text-sm font-medium text-gray-700 mb-2">
@@ -380,45 +435,45 @@ export default function Carrito() {
 												</label>
 												<input
 													type="text"
+													name="apellido"  // ✅ Agregar
 													value={registroData.apellido}
-													onChange={(e) => setRegistroData({ ...registroData, apellido: e.target.value })}
+													onChange={handleRegistroChange}  // ✅ Cambiar
 													placeholder="Vera"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.apellido ? 'border-red-500' : 'border-gray-200'
+														}`}
 												/>
+												{registroErrors.apellido && (
+													<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+														<PiWarningCircleFill size={16} /> {registroErrors.apellido}
+													</p>
+												)}
 											</div>
 										</div>
 
 										{/* Documento */}
-										<div className="grid grid-cols-2 gap-4">
-											<div>
-												<label className="block text-sm font-medium text-gray-700 mb-2">
-													Tipo de documento *
-												</label>
-												<select
-													value={registroData.tipoDocumento}
-													onChange={(e) => setRegistroData({ ...registroData, tipoDocumento: e.target.value })}
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-												>
-													<option value="DNI">DNI</option>
-													<option value="CE">Carnet de Extranjería</option>
-													<option value="Pasaporte">Pasaporte</option>
-												</select>
-											</div>
-											<div>
-												<label className="block text-sm font-medium text-gray-700 mb-2">
-													Número de documento *
-												</label>
-												<input
-													type="text"
-													value={registroData.numeroDocumento}
-													onChange={(e) => setRegistroData({ ...registroData, numeroDocumento: e.target.value })}
-													placeholder="74218601"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-												/>
-												{errors.numeroDocumento && (
-													<p className="text-red-500 text-xs mt-1">{errors.numeroDocumento}</p>
-												)}
-											</div>
+										<div>
+											<label className="block text-sm font-medium text-gray-700 mb-2">
+												Tipo de documento *
+											</label>
+											<select
+												name="tipoDocumento"  // ✅ Agregar name
+												value={registroData.tipoDocumento}
+												onChange={(e) => setRegistroData({
+													...registroData,
+													tipoDocumento: e.target.value as "DNI" | "CE" | "Pasaporte"  // ✅ Type assertion
+												})}
+												className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.tipoDocumento ? 'border-red-500' : 'border-gray-200'
+													}`}
+											>
+												<option value="DNI">DNI</option>
+												<option value="CE">Carnet de Extranjería</option>
+												<option value="Pasaporte">Pasaporte</option>
+											</select>
+											{registroErrors.tipoDocumento && (
+												<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+													<PiWarningCircleFill size={16} /> {registroErrors.tipoDocumento}
+												</p>
+											)}
 										</div>
 
 										{/* Teléfonos */}
@@ -429,11 +484,18 @@ export default function Carrito() {
 												</label>
 												<input
 													type="tel"
+													name="celular"
 													value={registroData.celular}
-													onChange={(e) => setRegistroData({ ...registroData, celular: e.target.value })}
+													onChange={handleRegistroChange}
 													placeholder="973 820 088"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.celular ? 'border-red-500' : 'border-gray-200'
+														}`}
 												/>
+												{registroErrors.celular && (
+													<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+														<PiWarningCircleFill size={16} /> {registroErrors.celular}
+													</p>
+												)}
 											</div>
 											<div>
 												<label className="block text-sm font-medium text-gray-700 mb-2">
@@ -441,11 +503,18 @@ export default function Carrito() {
 												</label>
 												<input
 													type="tel"
+													name="telefonoOpcional"
 													value={registroData.telefonoOpcional}
-													onChange={(e) => setRegistroData({ ...registroData, telefonoOpcional: e.target.value })}
+													onChange={handleRegistroChange}
 													placeholder="973 820 088"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.telefonoOpcional ? 'border-red-500' : 'border-gray-200'
+														}`}
 												/>
+												{registroErrors.telefonoOpcional && (
+													<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+														<PiWarningCircleFill size={16} /> {registroErrors.telefonoOpcional}
+													</p>
+												)}
 											</div>
 										</div>
 
@@ -468,10 +537,18 @@ export default function Carrito() {
 												</label>
 												<input
 													type="text"
+													name="provincia"
 													value={registroData.provincia}
-													onChange={(e) => setRegistroData({ ...registroData, provincia: e.target.value })}
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													onChange={handleRegistroChange}
+													placeholder="Lima"
+													className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.provincia ? 'border-red-500' : 'border-gray-200'
+														}`}
 												/>
+												{registroErrors.provincia && (
+													<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+														<PiWarningCircleFill size={16} /> {registroErrors.provincia}
+													</p>
+												)}
 											</div>
 										</div>
 
@@ -480,17 +557,21 @@ export default function Carrito() {
 												Distrito *
 											</label>
 											<select
+												name="distrito"
 												value={registroData.distrito}
-												onChange={(e) => setRegistroData({ ...registroData, distrito: e.target.value })}
-												className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												onChange={handleRegistroChange}
+												className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.distrito ? 'border-red-500' : 'border-gray-200'
+													}`}
 											>
 												<option value="">Seleccionar distrito</option>
 												{DISTRITOS_LIMA.map(d => (
 													<option key={d} value={d}>{d}</option>
 												))}
 											</select>
-											{errors.distrito && (
-												<p className="text-red-500 text-xs mt-1">{errors.distrito}</p>
+											{registroErrors.distrito && (
+												<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+													<PiWarningCircleFill size={16} /> {registroErrors.distrito}
+												</p>
 											)}
 										</div>
 
@@ -500,11 +581,18 @@ export default function Carrito() {
 											</label>
 											<input
 												type="text"
+												name="direccion"
 												value={registroData.direccion}
-												onChange={(e) => setRegistroData({ ...registroData, direccion: e.target.value })}
+												onChange={handleRegistroChange}
 												placeholder="Calle rosales 432"
-												className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+												className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.direccion ? 'border-red-500' : 'border-gray-200'
+													}`}
 											/>
+											{registroErrors.direccion && (
+												<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+													<PiWarningCircleFill size={16} /> {registroErrors.direccion}
+												</p>
+											)}
 										</div>
 
 										<div className="grid grid-cols-2 gap-4">
@@ -514,11 +602,18 @@ export default function Carrito() {
 												</label>
 												<input
 													type="text"
+													name="numeroDpto"
 													value={registroData.numeroDpto}
-													onChange={(e) => setRegistroData({ ...registroData, numeroDpto: e.target.value })}
+													onChange={handleRegistroChange}
 													placeholder="201"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.numeroDpto ? 'border-red-500' : 'border-gray-200'
+														}`}
 												/>
+												{registroErrors.numeroDpto && (
+													<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+														<PiWarningCircleFill size={16} /> {registroErrors.numeroDpto}
+													</p>
+												)}
 											</div>
 											<div>
 												<label className="block text-sm font-medium text-gray-700 mb-2">
@@ -526,11 +621,18 @@ export default function Carrito() {
 												</label>
 												<input
 													type="text"
+													name="referencia"
 													value={registroData.referencia}
-													onChange={(e) => setRegistroData({ ...registroData, referencia: e.target.value })}
+													onChange={handleRegistroChange}
 													placeholder="Frente al parque"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.referencia ? 'border-red-500' : 'border-gray-200'
+														}`}
 												/>
+												{registroErrors.referencia && (
+													<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+														<PiWarningCircleFill size={16} /> {registroErrors.referencia}
+													</p>
+												)}
 											</div>
 										</div>
 
@@ -542,11 +644,18 @@ export default function Carrito() {
 												</label>
 												<input
 													type="email"
+													name="email"
 													value={registroData.email}
-													onChange={(e) => setRegistroData({ ...registroData, email: e.target.value })}
+													onChange={handleRegistroChange}
 													placeholder="ejemplo@correo.com"
-													className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+													className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.email ? 'border-red-500' : 'border-gray-200'
+														}`}
 												/>
+												{registroErrors.email && (
+													<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+														<PiWarningCircleFill size={16} /> {registroErrors.email}
+													</p>
+												)}
 											</div>
 
 											<div className="grid grid-cols-2 gap-4">
@@ -556,13 +665,17 @@ export default function Carrito() {
 													</label>
 													<input
 														type="password"
+														name="password"
 														value={registroData.password}
-														onChange={(e) => setRegistroData({ ...registroData, password: e.target.value })}
+														onChange={handleRegistroChange}
 														placeholder="••••••••"
-														className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+														className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.password ? 'border-red-500' : 'border-gray-200'
+															}`}
 													/>
-													{errors.password && (
-														<p className="text-red-500 text-xs mt-1">{errors.password}</p>
+													{registroErrors.password && (
+														<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+															<PiWarningCircleFill size={16} /> {registroErrors.password}
+														</p>
 													)}
 												</div>
 												<div>
@@ -571,13 +684,17 @@ export default function Carrito() {
 													</label>
 													<input
 														type="password"
+														name="confirmarPassword"
 														value={registroData.confirmarPassword}
-														onChange={(e) => setRegistroData({ ...registroData, confirmarPassword: e.target.value })}
+														onChange={handleRegistroChange}
 														placeholder="••••••••"
-														className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+														className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.confirmarPassword ? 'border-red-500' : 'border-gray-200'
+															}`}
 													/>
-													{errors.confirmarPassword && (
-														<p className="text-red-500 text-xs mt-1">{errors.confirmarPassword}</p>
+													{registroErrors.confirmarPassword && (
+														<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+															<PiWarningCircleFill size={16} /> {registroErrors.confirmarPassword}
+														</p>
 													)}
 												</div>
 											</div>
@@ -735,10 +852,12 @@ export default function Carrito() {
 										<p className="text-xs text-gray-600 mb-3">
 											Valida que todos los productos tengan stock disponible antes de continuar
 										</p>
-										<button
+										<Button
+											size='sm'
+											variant='outline'
+											className='w-full'
 											onClick={validarStockProductos}
 											disabled={validandoStock}
-											className="w-full bg-white border-2 border-primary text-primary py-2 rounded-sm text-sm font-semibold hover:bg-primary hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
 										>
 											{validandoStock ? (
 												<span className="flex items-center justify-center gap-2">
@@ -748,7 +867,7 @@ export default function Carrito() {
 											) : (
 												'Validar disponibilidad'
 											)}
-										</button>
+										</Button>
 									</div>
 								</div>
 							)}

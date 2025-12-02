@@ -4,6 +4,7 @@ import Layout from '@/components/Layout';
 // import { useRouter } from 'next/router';
 import AccountSidebar from '@/components/AccountSidebar';
 import Button from '@/components/ui/Button';
+import Link from 'next/link';
 
 export default function MiCuenta() {
 	// const router = useRouter();
@@ -70,7 +71,7 @@ export default function MiCuenta() {
 										</p>
 
 										<div className="flex gap-4 justify-end">
-											<button className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
+											<Link href="/mi-cuenta/mis-datos" className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
 												<svg
 													className="w-4 h-4"
 													fill="none"
@@ -85,7 +86,7 @@ export default function MiCuenta() {
 													/>
 												</svg>
 												Editar
-											</button>
+											</Link>
 											<button className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
 												<svg
 													className="w-4 h-4"
@@ -138,7 +139,7 @@ export default function MiCuenta() {
 												Aún no guardaste una dirección de envío
 											</p>
 											<div className="float-right">
-												<button className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
+												<Link href="/mi-cuenta/direcciones" className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
 													<svg
 														className="w-4 h-4"
 														fill="none"
@@ -153,7 +154,7 @@ export default function MiCuenta() {
 														/>
 													</svg>
 													Editar
-												</button>
+												</Link>
 											</div>
 										</div>
 
@@ -165,7 +166,7 @@ export default function MiCuenta() {
 												Aún no guardaste una dirección de envío
 											</p>
 											<div className="float-right">
-												<button className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
+												<Link href="/mi-cuenta/direcciones" className="text-primary hover:text-primary-dark font-medium flex items-center gap-1">
 													<svg
 														className="w-4 h-4"
 														fill="none"
@@ -180,7 +181,7 @@ export default function MiCuenta() {
 														/>
 													</svg>
 													Editar
-												</button>
+												</Link>
 											</div>
 										</div>
 									</div>
