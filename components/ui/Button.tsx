@@ -12,6 +12,7 @@ interface ButtonBaseProps {
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
     href?: string;
+    disabled?: boolean;
 }
 
 // ✅ Union type en lugar de extends para evitar conflictos
@@ -33,7 +34,7 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
             leftIcon,
             rightIcon,
             className = '',
-            // disabled = false,
+            disabled = false,
             href,
             ...props
         },
