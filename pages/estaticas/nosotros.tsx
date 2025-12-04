@@ -76,7 +76,7 @@ export default function Nosotros() {
                         {/* Misión y Visión */}
                         <div className="space-y-10">
                             {/* Misión */}
-                            <div>
+                            <div id='mision'>
                                 <div className="mb-4">
                                     <h2 className="text-3xl md:text-4xl font-bold text-primary-dark relative inline-block">
                                         Nuestra Misión
@@ -91,7 +91,7 @@ export default function Nosotros() {
                             </div>
 
                             {/* Visión */}
-                            <div>
+                            <div id='vision'>
                                 <div className="mb-4">
                                     <h2 className="text-3xl md:text-4xl font-bold text-primary-dark relative inline-block">
                                         Nuestra Visión

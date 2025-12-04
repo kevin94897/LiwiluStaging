@@ -97,7 +97,7 @@ export default function StoresModal() {
                                     <input
                                         type="text"
                                         placeholder="Buscar ubicación..."
-                                        className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none transition-colors"
+                                        className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-sm focus:border-green-500 focus:outline-none transition-colors text-primary-dark"
                                     />
                                 </div>
                             </div>
@@ -105,7 +105,7 @@ export default function StoresModal() {
                             {/* Lista de ubicaciones con dropdown */}
                             <div className="space-y-3">
                                 {Object.entries(storesData).map(([location, stores]) => (
-                                    <div key={location} className="border-2 border-gray-200 rounded-xl overflow-hidden">
+                                    <div key={location} className="border-2 border-gray-200 rounded-sm overflow-hidden">
                                         {/* Header del dropdown */}
                                         <button
                                             onClick={() => setSelectedLocation(selectedLocation === location ? null : location)}

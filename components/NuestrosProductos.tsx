@@ -5,8 +5,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Slider from 'react-slick';
+import { motion } from 'framer-motion';
 import { Product, getProductImageUrl, formatPrice } from '@/lib/prestashop';
 import { useCart } from '@/context/CartContext';
+import {
+	fadeInUp,
+	staggerContainer,
+	staggerItem,
+	cardHover,
+	transitions,
+	viewportConfig
+} from '@/lib/motionVariants';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
@@ -27,10 +36,10 @@ export default function NuestrosProductos({
 		const checkMobile = () => {
 			setIsMobile(window.innerWidth < 768);
 		};
-		
+
 		checkMobile();
 		window.addEventListener('resize', checkMobile);
-		
+
 		return () => window.removeEventListener('resize', checkMobile);
 	}, []);
 
@@ -48,7 +57,7 @@ export default function NuestrosProductos({
 		const updatedFavoritos = favoritos.includes(id)
 			? favoritos.filter((fav) => fav !== id)
 			: [...favoritos, id];
-		
+
 		setFavoritos(updatedFavoritos);
 		localStorage.setItem('liwilu_favoritos', JSON.stringify(updatedFavoritos));
 	};
@@ -92,9 +101,20 @@ export default function NuestrosProductos({
 
 		return (
 			<Link href={`/tienda/${producto.id}`}>
-				<div className="bg-white rounded-md overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer mx-2">
+				<motion.div
+					className="bg-white rounded-md overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer mx-2"
+					initial="initial"
+					whileHover="hover"
+					whileTap={{ scale: 0.98 }}
+					variants={cardHover}
+				>
 					{/* Imagen del producto */}
-					<div className="relative bg-gray-50">
+					<motion.div
+						className="relative bg-gray-50"
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						transition={{ duration: 0.5 }}
+					>
 						<div className="relative w-full aspect-square">
 							<Image
 								src={imageUrl}
@@ -106,20 +126,22 @@ export default function NuestrosProductos({
 						</div>
 
 						{/* Botón de favorito */}
-						<button
+						<motion.button
 							onClick={(e) => {
 								e.preventDefault();
 								toggleFavorito(producto.id);
 							}}
-							className="absolute top-4 left-4 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:scale-110 transition-transform z-10"
+							className="absolute top-4 left-4 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center z-10"
+							whileHover={{ scale: 1.2, rotate: 10 }}
+							whileTap={{ scale: 0.9 }}
+							transition={transitions.fast}
 							aria-label="Agregar a favoritos"
 						>
-							<svg
-								className={`w-6 h-6 ${
-									favoritos.includes(producto.id)
+							<motion.svg
+								className={`w-6 h-6 ${favoritos.includes(producto.id)
 										? 'text-red-500 fill-current'
 										: 'text-gray-400'
-								}`}
+									}`}
 								fill={
 									favoritos.includes(producto.id)
 										? 'currentColor'
@@ -127,6 +149,11 @@ export default function NuestrosProductos({
 								}
 								stroke="currentColor"
 								viewBox="0 0 24 24"
+								animate={favoritos.includes(producto.id) ? {
+									scale: [1, 1.2, 1],
+									rotate: [0, 10, -10, 0]
+								} : {}}
+								transition={{ duration: 0.5 }}
 							>
 								<path
 									strokeLinecap="round"
@@ -134,12 +161,17 @@ export default function NuestrosProductos({
 									strokeWidth={2}
 									d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
 								/>
-							</svg>
-						</button>
-					</div>
+							</motion.svg>
+						</motion.button>
+					</motion.div>
 
 					{/* Info del producto */}
-					<div className="bg-primary p-4">
+					<motion.div
+						className="bg-primary p-4"
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.2, ...transitions.smooth }}
+					>
 						<div className="flex items-center justify-between">
 							<div className="flex-1">
 								<p className="text-white text-sm mb-1 h-10 line-clamp-2">
@@ -149,14 +181,15 @@ export default function NuestrosProductos({
 									{formatPrice(producto.price || '0')}
 								</p>
 							</div>
-							<button
+							<motion.button
 								onClick={(e) => handleAddToCart(e, producto)}
 								disabled={loadingCart === producto.id}
-								className={`w-10 h-10 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform ml-2 ${
-									loadingCart === producto.id
+								className={`w-10 h-10 bg-white rounded-full flex items-center justify-center ml-2 ${loadingCart === producto.id
 										? 'opacity-50 cursor-not-allowed'
 										: ''
-								}`}
+									}`}
+								whileHover={{ scale: 1.1 }}
+								whileTap={{ scale: 0.9 }}
 								aria-label="Agregar al carrito"
 							>
 								{loadingCart === producto.id ? (
@@ -195,10 +228,10 @@ export default function NuestrosProductos({
 										/>
 									</svg>
 								)}
-							</button>
+							</motion.button>
 						</div>
-					</div>
-				</div>
+					</motion.div>
+				</motion.div>
 			</Link>
 		);
 	};
@@ -210,13 +243,27 @@ export default function NuestrosProductos({
 	return (
 		<section className="bg-gray-50 py-5 md:py-16">
 			<div className="max-w-7xl mx-auto px-6">
-				<h2 className="text-2xl md:text-4xl font-semibold text-center mb-5 md:mb-12 text-primary-dark">
+				<motion.h2
+					className="text-2xl md:text-4xl font-semibold text-center mb-5 md:mb-12 text-primary-dark"
+					initial="hidden"
+					whileInView="visible"
+					viewport={viewportConfig}
+					variants={fadeInUp}
+					transition={transitions.smooth}
+				>
 					Nuestros Productos
-				</h2>
+				</motion.h2>
 
 				{/* Slider para Mobile */}
 				{isMobile ? (
-					<div className="mb-12">
+					<motion.div
+						className="mb-12"
+						initial="hidden"
+						whileInView="visible"
+						viewport={viewportConfig}
+						variants={fadeInUp}
+						transition={transitions.smooth}
+					>
 						<Slider {...sliderSettings}>
 							{productosAMostrar.map((producto) => (
 								<div key={producto.id}>
@@ -224,24 +271,47 @@ export default function NuestrosProductos({
 								</div>
 							))}
 						</Slider>
-					</div>
+					</motion.div>
 				) : (
 					/* Grid para Desktop */
-					<div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+					<motion.div
+						className="grid sm:grid-cols-2 md:grid-cols-4 gap-6 mb-12"
+						initial="hidden"
+						whileInView="visible"
+						viewport={viewportConfig}
+						variants={staggerContainer}
+					>
 						{productosAMostrar.map((producto) => (
-							<ProductCard key={producto.id} producto={producto} />
+							<motion.div
+								key={producto.id}
+								variants={staggerItem}
+								transition={transitions.smooth}
+							>
+								<ProductCard producto={producto} />
+							</motion.div>
 						))}
-					</div>
+					</motion.div>
 				)}
 
 				{/* Botón Ir a la Tienda */}
-				<div className="flex justify-center">
+				<motion.div
+					className="flex justify-center"
+					initial="hidden"
+					whileInView="visible"
+					viewport={viewportConfig}
+					variants={fadeInUp}
+					transition={{ delay: 0.3, ...transitions.smooth }}
+				>
 					<Link href="/productos">
-						<button className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-3 rounded-full text-md md:text-xl transition-all hover:scale-105 shadow-lg">
+						<motion.button
+							className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-3 rounded-full text-md md:text-xl transition-all shadow-lg"
+							whileHover={{ scale: 1.05 }}
+							whileTap={{ scale: 0.95 }}
+						>
 							Ir a la Tienda
-						</button>
+						</motion.button>
 					</Link>
-				</div>
+				</motion.div>
 			</div>
 
 			{/* CSS personalizado para los dots del slider */}
