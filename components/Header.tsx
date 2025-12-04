@@ -1,13 +1,14 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import Image from 'next/image';
-import { useState, useEffect, useRef } from 'react';
-import { IoMenu } from 'react-icons/io5';
-import { HiChevronRight } from 'react-icons/hi';
-import { useCart } from '@/context/CartContext';
-import LoginModal from '@/components/LoginModal';
-import RegisterModal from '@/components/RegisterModal';
+import Link from "next/link";
+import Image from "next/image";
+import { useState, useEffect, useRef } from "react";
+import { IoMenu } from "react-icons/io5";
+import { HiChevronRight } from "react-icons/hi";
+import { useCart } from "@/context/CartContext";
+import LoginModal from "@/components/LoginModal";
+import RegisterModal from "@/components/RegisterModal";
+import { useAuth } from "@/hooks/useAuth";
 
 import {
   FaRegHeart,
@@ -16,34 +17,45 @@ import {
   FaTruck,
   FaBoxes,
   FaSearch,
-} from 'react-icons/fa';
-import logo from '../public/images/liwilu_logo.png';
-import { TrimegistoDNIModal, TrimegistoRegisterModal } from './TrimegistoDNIModal';
-import Button from './ui/Button';
+  FaSignOutAlt,
+  FaShoppingBag,
+  FaHeart,
+  FaUserCircle,
+} from "react-icons/fa";
+import logo from "../public/images/liwilu_logo.png";
+import {
+  TrimegistoDNIModal,
+  TrimegistoRegisterModal,
+} from "./TrimegistoDNIModal";
+import Button from "./ui/Button";
 
 const topLinks = [
-  { href: '/nosotros', label: 'Nosotros' },
-  { href: '/campanas', label: 'Tiendas campañas 2026' },
-  { href: '/registro', label: 'Regístrate' },
+  { href: "/nosotros", label: "Nosotros" },
+  { href: "/campanas", label: "Tiendas campañas 2026" },
+  { href: "/registro", label: "Regístrate" },
   {
-    href: '/mi-cuenta/mis-favoritos',
-    label: 'Mis favoritos',
+    href: "/mi-cuenta/mis-favoritos",
+    label: "Mis favoritos",
     icon: <FaRegHeart size={12} />,
   },
-  { href: '/politicas', label: 'Políticas de compra' },
+  { href: "/politicas", label: "Políticas de compra" },
 ];
 
 const categories = [
-  { href: '/c/libros', label: 'Libros', highlight: true, isModal: false },
-  { href: '/c/hogar-limpieza', label: 'Productos para el hogar y limpieza', isModal: false },
-  { href: '/c/tecnologia', label: 'Tecnología', isModal: false },
-  { href: '/c/uniformes', label: 'Uniformes', isModal: false },
-  { href: '/c/utiles', label: 'Útiles escolares y de oficina', isModal: false },
-  { href: '/c/ofertas', label: 'Ofertas', isModal: false },
-  { href: '#', label: 'Trimegisto', highlightBottom: true, isModal: true },
+  { href: "/c/libros", label: "Libros", highlight: true, isModal: false },
+  {
+    href: "/c/hogar-limpieza",
+    label: "Productos para el hogar y limpieza",
+    isModal: false,
+  },
+  { href: "/c/tecnologia", label: "Tecnología", isModal: false },
+  { href: "/c/uniformes", label: "Uniformes", isModal: false },
+  { href: "/c/utiles", label: "Útiles escolares y de oficina", isModal: false },
+  { href: "/c/ofertas", label: "Ofertas", isModal: false },
+  { href: "#", label: "Trimegisto", highlightBottom: true, isModal: true },
 ];
 
-function Logo({ width = 100, height = 40, className = '' }) {
+function Logo({ width = 100, height = 40, className = "" }) {
   return (
     <Link href="/" className={`flex items-center ${className}`}>
       <Image
@@ -60,22 +72,25 @@ function Logo({ width = 100, height = 40, className = '' }) {
 function SearchBar({ isMobile = false }) {
   return (
     <div
-      className={`flex items-center bg-white rounded-full ${isMobile
-        ? 'px-4 py-2'
-        : 'px-3 py-1 w-full max-w-md xl:min-w-[300px] lg:max-w-[250px]'
-        }`}
+      className={`flex items-center bg-white rounded-full ${
+        isMobile
+          ? "px-4 py-2"
+          : "px-3 py-1 w-full max-w-md xl:min-w-[300px] lg:max-w-[250px]"
+      }`}
     >
       <input
         type="search"
         placeholder="¿Qué estás buscando?"
-        className={`flex-grow px-2 outline-none bg-transparent ${isMobile
-          ? 'text-[15px] placeholder-gray-400 text-gray-800'
-          : 'py-1 text-sm text-gray-700'
-          }`}
+        className={`flex-grow px-2 outline-none bg-transparent ${
+          isMobile
+            ? "text-[15px] placeholder-gray-400 text-gray-800"
+            : "py-1 text-sm text-gray-700"
+        }`}
       />
       <button
-        className={`${isMobile ? 'ml-2 hover:text-primary-light' : ''
-          } text-gray-700 transition-colors`}
+        className={`${
+          isMobile ? "ml-2 hover:text-primary-light" : ""
+        } text-gray-700 transition-colors`}
       >
         <FaSearch size={18} />
       </button>
@@ -89,30 +104,62 @@ interface QuickActionsProps {
   onOpenRegister: () => void;
 }
 
-function QuickActions({ isMobile = false, onOpenLogin, onOpenRegister }: QuickActionsProps) {
+function QuickActions({
+  isMobile = false,
+  onOpenLogin,
+  onOpenRegister,
+}: QuickActionsProps) {
   const { getCartCount } = useCart();
+  const { user, isAuthenticated, logout, isLoading } = useAuth();
   const cartCount = getCartCount();
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const loginRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (loginRef.current && !loginRef.current.contains(event.target as Node)) {
+      if (
+        loginRef.current &&
+        !loginRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
-    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
+
+  const handleLogout = async () => {
+    if (!confirm("¿Estás seguro que deseas cerrar sesión?")) return;
+
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      setIsOpen(false);
+      // Opcional: Mostrar mensaje de éxito
+      alert("✅ Sesión cerrada correctamente");
+    } catch (error: any) {
+      console.error("Error al cerrar sesión:", error);
+      alert("Error al cerrar sesión");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   if (isMobile) {
     return (
       <div className="flex items-center gap-4">
         <FaBoxes size={20} />
         <FaTruck size={20} />
-        <button onClick={onOpenLogin}>
-          <FaUser size={18} />
-        </button>
+        {isAuthenticated ? (
+          <button onClick={() => setIsOpen(!isOpen)} className="relative">
+            <FaUser size={18} />
+          </button>
+        ) : (
+          <button onClick={onOpenLogin}>
+            <FaUser size={18} />
+          </button>
+        )}
         <Link href="/carrito" className="relative">
           <FaShoppingCart size={18} />
           {cartCount > 0 && (
@@ -121,18 +168,62 @@ function QuickActions({ isMobile = false, onOpenLogin, onOpenRegister }: QuickAc
             </span>
           )}
         </Link>
+
+        {/* Menu mobile del usuario autenticado */}
+        {isOpen && isAuthenticated && (
+          <div
+            className="fixed inset-0 z-50 bg-black/50"
+            onClick={() => setIsOpen(false)}
+          >
+            <div
+              className="absolute right-4 top-16 w-64 bg-white rounded-lg shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-gray-200">
+                <p className="font-semibold text-gray-900">
+                  {user?.firstName} {user?.lastName}
+                </p>
+                <p className="text-xs text-gray-500">{user?.email}</p>
+              </div>
+              <div className="py-2">
+                <Link
+                  href="/mi-cuenta"
+                  className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50"
+                >
+                  <FaUserCircle /> Mi cuenta
+                </Link>
+                <Link
+                  href="/mis-pedidos"
+                  className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50"
+                >
+                  <FaShoppingBag /> Mis pedidos
+                </Link>
+                <Link
+                  href="/mis-favoritos"
+                  className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50"
+                >
+                  <FaHeart /> Favoritos
+                </Link>
+              </div>
+              <div className="border-t border-gray-200">
+                <button
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <FaSignOutAlt />
+                  {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className="flex items-center gap-6 text-sm relative" ref={loginRef}>
-      {/* <Link
-        href="/mayorista"
-        className="flex items-center gap-2 hover:text-green-400 transition"
-      >
-        <FaBoxes /> Compra mayorista
-      </Link> */}
       <Link
         href="/rastreo"
         className="flex items-center gap-2 hover:text-green-400 transition"
@@ -144,45 +235,115 @@ function QuickActions({ isMobile = false, onOpenLogin, onOpenRegister }: QuickAc
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 transition text-sm font-medium"
       >
-        <FaUser /> Mi cuenta
+        <FaUser /> {isAuthenticated ? user?.firstName : "Mi cuenta"}
       </button>
 
       {isOpen && (
-        <div className="absolute top-5 right-0 mt-3 w-[420px] rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] p-6 z-50">
-          <div className="flex divide-x divide-gray-200">
-            <div className="flex-1 pr-4 text-left flex flex-col justify-between">
-              <div>
-                <h3 className="font-semibold text-primary-dark">Bienvenidos</h3>
-                <p className="text-xs text-gray-500 mt-2 leading-none">
-                  Inicia sesión y podrás consultar el estado de tus pedidos y todo
-                  lo que necesites.
+        <>
+          {!isAuthenticated ? (
+            // Menu para usuarios NO autenticados
+            <div className="absolute top-5 right-0 mt-3 w-[420px] rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] p-6 z-50">
+              <div className="flex divide-x divide-gray-200">
+                <div className="flex-1 pr-4 text-left flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-semibold text-primary-dark">
+                      Bienvenidos
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-2 leading-none">
+                      Inicia sesión y podrás consultar el estado de tus pedidos
+                      y todo lo que necesites.
+                    </p>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    variant="primary"
+                    onClick={() => {
+                      setIsOpen(false);
+                      onOpenLogin();
+                    }}
+                  >
+                    Iniciar sesión
+                  </Button>
+                </div>
+
+                <div className="flex-1 pl-4 text-left leading-none">
+                  <h3 className="font-semibold text-primary-dark">
+                    Regístrate para una experiencia completa
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Recibirás notificaciones de ofertas y promociones.
+                  </p>
+                  <Button
+                    size="sm"
+                    className="w-full mt-4"
+                    variant="outline"
+                    onClick={() => {
+                      setIsOpen(false);
+                      onOpenRegister();
+                    }}
+                  >
+                    Crear cuenta
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Menu para usuarios AUTENTICADOS
+            <div className="absolute top-5 right-0 mt-3 w-64 rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
+              {/* Header del menú */}
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <p className="text-sm font-semibold text-gray-900">
+                  {user?.firstName} {user?.lastName}
                 </p>
+                <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
 
-              <Button size='sm' className="w-full" variant="primary" onClick={() => {
-                setIsOpen(false);
-                onOpenLogin();
-              }}>
-                Iniciar sesión
-              </Button>
-            </div>
+              {/* Opciones del menú */}
+              <div className="py-2">
+                <Link
+                  href="/mi-cuenta"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <FaUserCircle size={18} />
+                  Mi cuenta
+                </Link>
 
-            <div className="flex-1 pl-4 text-left leading-none">
-              <h3 className="font-semibold text-primary-dark">
-                Regístrate para una experiencia completa
-              </h3>
-              <p className="text-xs text-gray-500 mt-2">
-                Recibirás notificaciones de ofertas y promociones.
-              </p>
-              <Button size='sm' className="w-full mt-4" variant="outline" onClick={() => {
-                setIsOpen(false);
-                onOpenRegister();
-              }}>
-                Crear cuenta
-              </Button>
+                <Link
+                  href="/mis-pedidos"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <FaShoppingBag size={18} />
+                  Mis pedidos
+                </Link>
+
+                <Link
+                  href="/mis-favoritos"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <FaHeart size={18} />
+                  Favoritos
+                </Link>
+              </div>
+
+              {/* Logout */}
+              <div className="border-t border-gray-200">
+                <button
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FaSignOutAlt size={18} />
+                  {isLoggingOut ? "Cerrando sesión..." : "Cerrar sesión"}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
       <Link
@@ -206,67 +367,72 @@ export default function Header() {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [trimegistoDNIModalOpen, setTrimegistoDNIModalOpen] = useState(false);
-  const [trimegistoRegisterModalOpen, setTrimegistoRegisterModalOpen] = useState(false);
+  const [trimegistoRegisterModalOpen, setTrimegistoRegisterModalOpen] =
+    useState(false);
   const [isFromTrimegisto, setIsFromTrimegisto] = useState(false);
 
-  // ✅ SOLO para el menú dropdown de categorías en DESKTOP
   const desktopMenuRef = useRef<HTMLDivElement | null>(null);
-  // ✅ SOLO para el menú de categorías en MOBILE
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
       setIsSticky(window.scrollY > 40);
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // ✅ Cerrar menú DESKTOP al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (desktopMenuRef.current && !desktopMenuRef.current.contains(event.target as Node)) {
+      if (
+        desktopMenuRef.current &&
+        !desktopMenuRef.current.contains(event.target as Node)
+      ) {
         setMobileCatsOpen(false);
       }
     }
 
-    if (mobileCatsOpen && window.innerWidth >= 1024) { // Solo en desktop
-      document.addEventListener('mousedown', handleClickOutside);
+    if (mobileCatsOpen && window.innerWidth >= 1024) {
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [mobileCatsOpen]);
 
-  // ✅ Cerrar menú MOBILE al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(event.target as Node)
+      ) {
         setMobileCatsOpen(false);
       }
     }
 
-    if (mobileCatsOpen && window.innerWidth < 1024) { // Solo en mobile
-      document.addEventListener('mousedown', handleClickOutside);
+    if (mobileCatsOpen && window.innerWidth < 1024) {
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [mobileCatsOpen]);
 
   return (
     <>
       <header
-        className={`w-full text-white fixed top-0 left-0 z-50 transition-all duration-300 ${isSticky
-          ? 'backdrop-blur-md bg-[#0b2d2d]/90 shadow-lg'
-          : 'bg-transparent'
-          }`}
+        className={`w-full text-white fixed top-0 left-0 z-50 transition-all duration-300 ${
+          isSticky
+            ? "backdrop-blur-md bg-[#0b2d2d]/90 shadow-lg"
+            : "bg-transparent"
+        }`}
       >
         <div
-          className={`bg-primary-light text-[12px] lg:text-xs py-1 px-4 transition-all duration-300 ${isSticky ? 'hidden lg:block' : ''
-            }`}
+          className={`bg-primary-light text-[12px] lg:text-xs py-1 px-4 transition-all duration-300 ${
+            isSticky ? "hidden lg:block" : ""
+          }`}
         >
           <div className="max-w-3xl mx-auto flex justify-between items-center flex-wrap">
             <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-1">
@@ -288,8 +454,9 @@ export default function Header() {
         </div>
 
         <div
-          className={`py-3 transition-all duration-300 ${isSticky ? 'bg-[#0b2d2d]/95 shadow-xl' : 'bg-[#0b2d2d]'
-            }`}
+          className={`py-3 transition-all duration-300 ${
+            isSticky ? "bg-[#0b2d2d]/95 shadow-xl" : "bg-[#0b2d2d]"
+          }`}
         >
           <div className="max-w-7xl mx-auto px-4">
             {/* ===== MOBILE ===== */}
@@ -318,29 +485,33 @@ export default function Header() {
                 </div>
               </div>
 
-              {/* ✅ MENU CATEGORIAS MOBILE con ref */}
               {mobileCatsOpen && (
-                <div ref={mobileMenuRef} className="overflow-hidden max-h-[70vh] overflow-y-auto mt-3">
+                <div
+                  ref={mobileMenuRef}
+                  className="overflow-hidden max-h-[70vh] overflow-y-auto mt-3"
+                >
                   <nav className="px-2 py-3">
                     <ul className="space-y-1">
                       {categories.map((c) => (
                         <li key={c.label}>
                           <Link
-                            href={c.isModal ? '#' : c.href}
-                            onClick={c.isModal
-                              ? (e) => {
-                                e.preventDefault();
-                                setTrimegistoDNIModalOpen(true);
-                                setMobileCatsOpen(false);
-                              }
-                              : () => setMobileCatsOpen(false)
+                            href={c.isModal ? "#" : c.href}
+                            onClick={
+                              c.isModal
+                                ? (e) => {
+                                    e.preventDefault();
+                                    setTrimegistoDNIModalOpen(true);
+                                    setMobileCatsOpen(false);
+                                  }
+                                : () => setMobileCatsOpen(false)
                             }
-                            className={`block px-4 py-3 text-white transition-colors ${c.highlight
-                              ? 'bg-primary hover:bg-primary-light rounded-xl font-medium text-[#0b2d2d]'
-                              : c.highlightBottom
-                                ? 'text-white hover:bg-white/10 rounded-xl font-bold'
-                                : 'text-white/90 hover:bg-white/10 rounded-lg'
-                              }`}
+                            className={`block px-4 py-3 text-white transition-colors ${
+                              c.highlight
+                                ? "bg-primary hover:bg-primary-light rounded-xl font-medium text-[#0b2d2d]"
+                                : c.highlightBottom
+                                ? "text-white hover:bg-white/10 rounded-xl font-bold"
+                                : "text-white/90 hover:bg-white/10 rounded-lg"
+                            }`}
                           >
                             {c.label}
                           </Link>
@@ -371,26 +542,28 @@ export default function Header() {
                         {categories.map((c) => (
                           <li key={c.label}>
                             <Link
-                              href={c.isModal ? '#' : c.href}
-                              onClick={c.isModal
-                                ? (e) => {
-                                  e.preventDefault();
-                                  setTrimegistoDNIModalOpen(true);
-                                  setMobileCatsOpen(false);
-                                }
-                                : () => setMobileCatsOpen(false)
+                              href={c.isModal ? "#" : c.href}
+                              onClick={
+                                c.isModal
+                                  ? (e) => {
+                                      e.preventDefault();
+                                      setTrimegistoDNIModalOpen(true);
+                                      setMobileCatsOpen(false);
+                                    }
+                                  : () => setMobileCatsOpen(false)
                               }
-                              className={`flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
-                                ? 'bg-primary text-white hover:bg-primary-light'
-                                : c.highlightBottom
-                                  ? 'bg-gray-100 font-bold hover:bg-gray-200'
-                                  : 'hover:bg-gray-50'
-                                }`}
+                              className={`flex items-center justify-between px-4 py-3 text-sm transition ${
+                                c.highlight
+                                  ? "bg-primary text-white hover:bg-primary-light"
+                                  : c.highlightBottom
+                                  ? "bg-gray-100 font-bold hover:bg-gray-200"
+                                  : "hover:bg-gray-50"
+                              }`}
                             >
                               <span className="truncate">{c.label}</span>
                               <HiChevronRight
                                 className={
-                                  c.highlight ? 'text-white' : 'text-gray-400'
+                                  c.highlight ? "text-white" : "text-gray-400"
                                 }
                               />
                             </Link>
@@ -427,14 +600,14 @@ export default function Header() {
         isOpen={loginModalOpen}
         onClose={() => {
           setLoginModalOpen(false);
-          setIsFromTrimegisto(false); // ✅ Resetear al cerrar
+          setIsFromTrimegisto(false);
         }}
         onSwitchToRegister={() => {
           setLoginModalOpen(false);
           setRegisterModalOpen(true);
-          setIsFromTrimegisto(false); // ✅ Resetear al cambiar
+          setIsFromTrimegisto(false);
         }}
-        fromTrimegisto={isFromTrimegisto} // ✅ Pasar la prop
+        fromTrimegisto={isFromTrimegisto}
       />
 
       <RegisterModal
@@ -451,7 +624,7 @@ export default function Header() {
         onClose={() => setTrimegistoDNIModalOpen(false)}
         onValidated={() => {
           setTrimegistoDNIModalOpen(false);
-          setIsFromTrimegisto(true); // ✅ IMPORTANTE: Marcar que viene de Trimegisto
+          setIsFromTrimegisto(true);
           setLoginModalOpen(true);
         }}
         onNewUser={() => {
@@ -465,7 +638,7 @@ export default function Header() {
         onClose={() => setTrimegistoRegisterModalOpen(false)}
         onSuccess={() => {
           setTrimegistoRegisterModalOpen(false);
-          setIsFromTrimegisto(true); // ✅ IMPORTANTE: Marcar que viene de Trimegisto
+          setIsFromTrimegisto(true);
           setLoginModalOpen(true);
         }}
       />
