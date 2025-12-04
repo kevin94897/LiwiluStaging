@@ -24,7 +24,7 @@ export const registerSchema = z.object({
         message: "Debes aceptar los términos",
     }),
 
-    receiveOffers: z.boolean().optional(),
+    receiveOffers: z.boolean().optional().default(false),
 })
     .refine(data => data.email === data.emailConfirm, {
         message: "Los correos no coinciden",

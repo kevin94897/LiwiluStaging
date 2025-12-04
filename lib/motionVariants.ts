@@ -1,5 +1,8 @@
 // lib/motionVariants.ts
-import { Variants } from 'framer-motion';
+import { Variants, Transition } from "framer-motion";
+
+// Helper para reciclar easing
+const easing: Transition["ease"] = [0.25, 0.1, 0.25, 1]; // Cubic Bezier suave
 
 // ============================================
 // VARIANTES DE FADE
@@ -54,12 +57,18 @@ export const scaleUp: Variants = {
 
 export const cardHover: Variants = {
     initial: { scale: 1 },
-    hover: { scale: 1.05 }
+    hover: {
+        scale: 1.05,
+        transition: { duration: 0.3, ease: easing }
+    }
 };
 
 export const cardTap: Variants = {
     initial: { scale: 1 },
-    tap: { scale: 0.95 }
+    tap: {
+        scale: 0.95,
+        transition: { duration: 0.2, ease: easing }
+    }
 };
 
 // ============================================
@@ -70,10 +79,7 @@ export const staggerContainer: Variants = {
     hidden: { opacity: 0 },
     visible: {
         opacity: 1,
-        transition: {
-            staggerChildren: 0.1,
-            delayChildren: 0.2
-        }
+        transition: { staggerChildren: 0.1, delayChildren: 0.2 }
     }
 };
 
@@ -81,10 +87,7 @@ export const staggerContainerFast: Variants = {
     hidden: { opacity: 0 },
     visible: {
         opacity: 1,
-        transition: {
-            staggerChildren: 0.05,
-            delayChildren: 0.1
-        }
+        transition: { staggerChildren: 0.05, delayChildren: 0.1 }
     }
 };
 
@@ -92,15 +95,12 @@ export const staggerContainerSlow: Variants = {
     hidden: { opacity: 0 },
     visible: {
         opacity: 1,
-        transition: {
-            staggerChildren: 0.2,
-            delayChildren: 0.3
-        }
+        transition: { staggerChildren: 0.2, delayChildren: 0.3 }
     }
 };
 
 // ============================================
-// VARIANTES PARA ITEMS EN STAGGER
+// VARIANTES PARA ITEMS
 // ============================================
 
 export const staggerItem: Variants = {
@@ -119,19 +119,22 @@ export const staggerItemRight: Variants = {
 };
 
 // ============================================
-// TRANSICIONES PREDEFINIDAS
+// TRANSICIONES CORREGIDAS + TIPADAS
 // ============================================
 
-export const transitions = {
-    smooth: { duration: 0.6, ease: 'easeOut' },
-    fast: { duration: 0.3, ease: 'easeOut' },
-    slow: { duration: 0.8, ease: 'easeOut' },
-    bounce: { type: 'spring', stiffness: 300, damping: 20 },
-    elastic: { type: 'spring', stiffness: 100, damping: 10 }
+export const transitions: Record<
+    "smooth" | "fast" | "slow" | "bounce" | "elastic",
+    Transition
+> = {
+    smooth: { duration: 0.6, ease: easing },
+    fast: { duration: 0.3, ease: easing },
+    slow: { duration: 0.8, ease: easing },
+    bounce: { type: "spring", stiffness: 300, damping: 20 },
+    elastic: { type: "spring", stiffness: 100, damping: 10 }
 };
 
 // ============================================
-// CONFIGURACIONES DE VIEWPORT
+// CONFIG VIEWPORT
 // ============================================
 
 export const viewportConfig = {
@@ -145,7 +148,7 @@ export const viewportConfigFull = {
 };
 
 // ============================================
-// ANIMACIONES PARA BOTONES
+// BOTONES
 // ============================================
 
 export const buttonVariants = {
@@ -158,14 +161,15 @@ export const buttonPulse = {
         scale: 1.05,
         transition: {
             repeat: Infinity,
-            repeatType: 'reverse' as const,
-            duration: 0.5
+            repeatType: "reverse" as const,
+            duration: 0.5,
+            ease: easing
         }
     }
 };
 
 // ============================================
-// ANIMACIONES PARA SLIDERS
+// SLIDERS
 // ============================================
 
 export const slideVariant: Variants = {
@@ -173,11 +177,11 @@ export const slideVariant: Variants = {
     visible: {
         opacity: 1,
         x: 0,
-        transition: { duration: 0.5, ease: 'easeOut' }
+        transition: { duration: 0.5, ease: easing }
     },
     exit: {
         opacity: 0,
         x: -100,
-        transition: { duration: 0.5, ease: 'easeIn' }
+        transition: { duration: 0.5, ease: easing }
     }
 };

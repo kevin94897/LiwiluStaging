@@ -1,92 +1,56 @@
-// ============================================
 // hooks/useAuth.ts
-// ============================================
-import { useState, useEffect } from "react";
-import { loginUser } from "../pages/api/auth/login";
-import { logoutUser, getCurrentUser, isAuthenticated as checkAuth } from "../pages/api/auth/logout";
-
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role?: string;
-}
+import { useState, useEffect } from 'react';
+import { User, getCurrentUser, logoutUser, isAuthenticated as checkAuth } from '../pages/api/auth/logout';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // ✅ Cargar usuario desde localStorage al montar el componente
   useEffect(() => {
-    checkAuthentication();
-  }, []);
+    const loadUser = () => {
+      try {
+        const authenticated = checkAuth();
+        const currentUser = getCurrentUser();
 
-  const checkAuthentication = () => {
-    try {
-      const currentUser = getCurrentUser();
-      const hasToken = checkAuth();
-
-      if (currentUser && hasToken) {
+        setIsAuthenticated(authenticated);
         setUser(currentUser);
-        setIsAuthenticated(true);
-      } else {
-        setUser(null);
+      } catch (error) {
+        console.error('Error al cargar usuario:', error);
         setIsAuthenticated(false);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error al verificar autenticación:", error);
-      setUser(null);
-      setIsAuthenticated(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
-  const login = async (email: string, password: string) => {
-    try {
-      const response = await loginUser({ email, password });
+    loadUser();
 
-      if (response.accessToken) {
-        localStorage.setItem("accessToken", response.accessToken);
+    // ✅ Escuchar cambios en el localStorage (útil para tabs múltiples)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user' || e.key === 'accessToken') {
+        loadUser();
       }
-      if (response.refreshToken) {
-        localStorage.setItem("refreshToken", response.refreshToken);
-      }
-      if (response.data?.user) {
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-        setUser(response.data.user);
-      }
+    };
 
-      setIsAuthenticated(true);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const logout = async () => {
     try {
       await logoutUser();
-      setUser(null);
-      setIsAuthenticated(false);
+      // La función logoutUser ya recarga la página y redirige
     } catch (error) {
       throw error;
     }
   };
 
-  const updateUser = (updatedUser: User) => {
-    setUser(updatedUser);
-    localStorage.setItem("user", JSON.stringify(updatedUser));
-  };
-
   return {
     user,
-    isLoading,
     isAuthenticated,
-    login,
-    logout,
-    updateUser,
-    checkAuth: checkAuthentication,
+    isLoading,
+    logout
   };
 }
