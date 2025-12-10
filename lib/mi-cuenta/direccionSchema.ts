@@ -39,8 +39,9 @@ export const direccionSchema = z.object({
 
     telefono: z
         .string()
-        .min(1, "El teléfono es obligatorio")
-        .regex(/^[0-9]{9}$/, "El teléfono debe tener 9 dígitos"),
+        .regex(/^[0-9]{9}$/, "El teléfono debe tener 9 dígitos")
+        .optional()
+        .or(z.literal("")),
 
     esPrincipal: z
         .boolean()

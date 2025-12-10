@@ -1,4 +1,6 @@
-// lib/auth.ts
+// pages/api/auth/login.ts
+
+import { startTokenRefresh } from '@/lib/auth/tokenManager';
 
 // ============================================
 // Definición de usuario para correcta tipificación
@@ -59,6 +61,10 @@ export const loginUser = async (
       console.log("✅ Usuario guardado:", response.data.user);
     }
 
+    // 🆕 Iniciar sistema de renovación automática de tokens
+    console.log("🚀 Iniciando renovación automática de tokens");
+    startTokenRefresh();
+
     // 🔹 Recargar la página después del login exitoso
     if (typeof window !== "undefined") {
       window.location.href = "/";
@@ -83,10 +89,14 @@ interface LogoutResponse {
 export const logoutUser = async (): Promise<LogoutResponse> => {
   try {
     const accessToken = localStorage.getItem("accessToken");
+    const refreshToken = localStorage.getItem("refreshToken");
 
     if (!accessToken) {
       throw new Error("No hay sesión activa");
     }
+
+    // 🆕 Deshabilitar refreshToken en el servidor
+    console.log("🔒 Deshabilitando refreshToken en el servidor...");
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
       method: "POST",
@@ -94,9 +104,10 @@ export const logoutUser = async (): Promise<LogoutResponse> => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
+      body: JSON.stringify({ refreshToken }),
     });
 
-    // 🔹 Siempre limpiar la sesión
+    // 🔹 Siempre limpiar la sesión localmente
     clearSession();
 
     // 🔹 Redirigir al home después de cerrar sesión
@@ -114,6 +125,7 @@ export const logoutUser = async (): Promise<LogoutResponse> => {
       return { success: false, message: "Sesión cerrada con advertencias" };
     }
 
+    console.log("✅ RefreshToken deshabilitado en el servidor");
     return { success: true, message: "Sesión cerrada correctamente" };
   } catch (err: unknown) {
     clearSession();
@@ -136,6 +148,13 @@ export const logoutUser = async (): Promise<LogoutResponse> => {
 // ============================================
 
 const clearSession = () => {
+  // 🆕 Importar dinámicamente para evitar problemas de SSR
+  if (typeof window !== "undefined") {
+    import('@/lib/auth/tokenManager').then(({ stopTokenRefresh }) => {
+      stopTokenRefresh();
+    });
+  }
+
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("user");
