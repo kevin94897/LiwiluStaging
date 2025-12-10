@@ -1,7 +1,6 @@
-import Head from 'next/head';
 import { useState } from 'react';
 import Layout from '@/components/Layout';
-import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaFileAlt, FaCheckCircle } from 'react-icons/fa';
+import { FaCheckCircle } from 'react-icons/fa';
 import Link from 'next/link';
 import { z } from 'zod';
 import Button from '@/components/ui/Button';

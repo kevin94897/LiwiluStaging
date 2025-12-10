@@ -85,7 +85,7 @@ export default function CambiarPassword() {
                 throw new Error(errorData.message || 'Error al cambiar la contraseña');
             }
 
-            const data = await response.json();
+            // const data = await response.json();
 
             setSuccessMessage('✅ Contraseña actualizada correctamente');
 

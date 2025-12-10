@@ -9,7 +9,6 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import { direccionSchema, DireccionSchemaType } from '@/lib/mi-cuenta/direccionSchema';
-import { PiWarningCircleFill } from 'react-icons/pi';
 import { FaPencil, FaTrash } from 'react-icons/fa6';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
