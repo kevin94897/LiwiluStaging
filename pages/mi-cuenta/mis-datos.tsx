@@ -6,8 +6,9 @@ import Layout from '@/components/Layout';
 import Link from 'next/link';
 import AccountSidebar from '@/components/AccountSidebar';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
 import { misDatosSchema, MisDatosSchemaType } from '@/lib/mi-cuenta/misDatosSchema';
-import { PiWarningCircleFill } from 'react-icons/pi';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { apiGet, apiPut } from '@/lib/auth/apiClient'; // 🆕 Importar funciones del apiClient
 import toast from 'react-hot-toast'; // 🆕 Para mejores notificaciones
@@ -245,148 +246,83 @@ export default function MisDatos() {
 												{/* Nombre y Apellido */}
 												<div className="grid md:grid-cols-2 gap-6">
 													<div>
-														<label
-															htmlFor="nombre"
-															className="block text-sm font-semibold text-primary-dark mb-2"
-														>
-															Nombre *
-														</label>
-														<input
+														<Input
+															label="Nombre *"
 															type="text"
 															id="nombre"
 															name="nombre"
 															value={formData.nombre}
 															onChange={handleChange}
-															className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.nombre
-																	? 'border-red-500 focus:ring-red-500'
-																	: 'border-gray-300 focus:ring-primary focus:border-primary'
-																}`}
 															maxLength={50}
 															disabled={isSubmitting}
+															error={errors.nombre}
 														/>
-														{errors.nombre && (
-															<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-																<PiWarningCircleFill size={16} /> {errors.nombre}
-															</p>
-														)}
 													</div>
 
 													<div>
-														<label
-															htmlFor="apellido"
-															className="block text-sm font-semibold text-primary-dark mb-2"
-														>
-															Apellido *
-														</label>
-														<input
+														<Input
+															label="Apellido *"
 															type="text"
 															id="apellido"
 															name="apellido"
 															value={formData.apellido}
 															onChange={handleChange}
-															className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.apellido
-																	? 'border-red-500 focus:ring-red-500'
-																	: 'border-gray-300 focus:ring-primary focus:border-primary'
-																}`}
 															maxLength={50}
 															disabled={isSubmitting}
+															error={errors.apellido}
 														/>
-														{errors.apellido && (
-															<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-																<PiWarningCircleFill size={16} /> {errors.apellido}
-															</p>
-														)}
 													</div>
 												</div>
 
 												{/* Tipo de documento y Número */}
 												<div className="grid md:grid-cols-2 gap-6">
 													<div>
-														<label
-															htmlFor="tipoDocumento"
-															className="block text-sm font-semibold text-primary-dark mb-2"
-														>
-															Tipo de documento *
-														</label>
-														<select
+														<Select
+															label="Tipo de documento *"
 															id="tipoDocumento"
 															name="tipoDocumento"
 															value={formData.tipoDocumento}
 															onChange={handleChange}
-															className={`w-full px-4 py-3 border-2 rounded-sm transition appearance-none bg-white ${errors.tipoDocumento
-																	? 'border-red-500 focus:ring-red-500'
-																	: 'border-gray-300 focus:ring-primary focus:border-primary'
-																}`}
 															disabled={isSubmitting}
+															error={errors.tipoDocumento}
 														>
 															<option value="">Seleccionar tipo</option>
 															<option value="DNI">DNI</option>
 															<option value="CE">Carnet de Extranjería</option>
 															<option value="Pasaporte">Pasaporte</option>
-														</select>
-														{errors.tipoDocumento && (
-															<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-																<PiWarningCircleFill size={16} /> {errors.tipoDocumento}
-															</p>
-														)}
+														</Select>
 													</div>
 
 													<div>
-														<label
-															htmlFor="numeroDocumento"
-															className="block text-sm font-semibold text-primary-dark mb-2"
-														>
-															Número de Documento *
-														</label>
-														<input
+														<Input
+															label="Número de Documento *"
 															type="text"
 															id="numeroDocumento"
 															name="numeroDocumento"
 															value={formData.numeroDocumento}
 															onChange={handleDocumentoChange}
-															className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.numeroDocumento
-																	? 'border-red-500 focus:ring-red-500'
-																	: 'border-gray-300 focus:ring-primary focus:border-primary'
-																}`}
 															placeholder="74218601"
 															maxLength={11}
 															disabled={isSubmitting}
+															error={errors.numeroDocumento}
 														/>
-														{errors.numeroDocumento && (
-															<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-																<PiWarningCircleFill size={16} /> {errors.numeroDocumento}
-															</p>
-														)}
 													</div>
 												</div>
 
 												{/* Celular */}
 												<div>
-													<label
-														htmlFor="celular"
-														className="block text-sm font-semibold text-primary-dark mb-2"
-													>
-														Celular *
-													</label>
-													<input
+													<Input
+														label="Celular *"
 														type="tel"
 														id="celular"
 														name="celular"
 														value={formData.celular}
 														onChange={handleCelularChange}
-														className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.celular
-																? 'border-red-500 focus:ring-red-500'
-																: 'border-gray-300 focus:ring-primary focus:border-primary'
-															}`}
 														placeholder="973820088"
 														maxLength={9}
 														disabled={isSubmitting}
+														error={errors.celular}
 													/>
-													{errors.celular && (
-														<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-															<PiWarningCircleFill size={16} /> {errors.celular}
-														</p>
-													)}
 												</div>
 
 												{/* Botones de acción */}

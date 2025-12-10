@@ -7,7 +7,7 @@ import AccountSidebar from '@/components/AccountSidebar';
 import Link from 'next/link';
 import { FaPencil } from 'react-icons/fa6';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { apiGet } from '@/lib/auth/apiClient'; // 🆕 Usar apiClient
+import { apiGet } from '@/lib/auth/apiClient';
 
 interface UserData {
 	firstName: string;
@@ -16,17 +16,32 @@ interface UserData {
 	emailVerified: boolean;
 }
 
+interface Address {
+	id: string;
+	userId: string;
+	isMain: boolean;
+	department: string;
+	province: string;
+	district: string;
+	address: string;
+	apartment: string;
+	reference: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export default function MiCuenta() {
 	const [userData, setUserData] = useState<UserData | null>(null);
+	const [addresses, setAddresses] = useState<Address[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
-	// 🆕 Cargar datos del usuario al montar
+	// Cargar datos del usuario y direcciones al montar
 	useEffect(() => {
 		const fetchUserData = async () => {
 			try {
 				setIsLoading(true);
 
-				// 🆕 Usar apiGet que maneja automáticamente tokens
+				// Cargar perfil del usuario
 				const response = await apiGet('/users/profile');
 
 				if (!response.ok) {
@@ -53,9 +68,18 @@ export default function MiCuenta() {
 						localStorage.setItem('user', JSON.stringify(user));
 					}
 				}
+
+				// Cargar direcciones del usuario
+				const addressResponse = await apiGet('/users/addresses');
+
+				if (addressResponse.ok) {
+					const addressResult = await addressResponse.json();
+					if (addressResult.success && addressResult.data) {
+						setAddresses(addressResult.data);
+					}
+				}
 			} catch (error) {
 				console.error('❌ Error al cargar datos del usuario:', error);
-				// No mostrar alert aquí para mejor UX
 			} finally {
 				setIsLoading(false);
 			}
@@ -63,6 +87,11 @@ export default function MiCuenta() {
 
 		fetchUserData();
 	}, []);
+
+	// Buscar dirección principal
+	const mainAddress = addresses.find(addr => addr.isMain);
+	// Buscar dirección de facturación (primera dirección no principal)
+	// const billingAddress = addresses.find(addr => !addr.isMain) || null;
 
 	return (
 		<ProtectedRoute>
@@ -80,7 +109,7 @@ export default function MiCuenta() {
 										Información de mi cuenta
 									</h1>
 
-									{/* 🆕 Loading State */}
+									{/* Loading State */}
 									{isLoading ? (
 										<div className="flex items-center justify-center py-12">
 											<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -114,7 +143,6 @@ export default function MiCuenta() {
 													<h3 className="font-semibold text-primary-dark mb-2">
 														Datos del comprador
 													</h3>
-													{/* 🆕 Mostrar datos dinámicos */}
 													<p className="text-gray-700 mb-1">
 														{userData?.firstName && userData?.lastName
 															? `${userData.firstName} ${userData.lastName}`
@@ -123,7 +151,7 @@ export default function MiCuenta() {
 													<p className="text-gray-600 mb-1">
 														{userData?.email || 'Sin correo registrado'}
 													</p>
-													{/* 🆕 Indicador de verificación de email */}
+													{/* Indicador de verificación de email */}
 													{userData?.emailVerified ? (
 														<p className="text-green-600 text-sm mb-4 flex items-center gap-1">
 															<svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -189,13 +217,39 @@ export default function MiCuenta() {
 												</div>
 
 												<div className="grid md:grid-cols-2 gap-6">
+													{/* Dirección de entrega principal */}
 													<div className="bg-white rounded-lg p-6">
 														<h3 className="font-semibold text-primary-dark mb-2">
 															Dirección de entrega principal
 														</h3>
-														<p className="text-gray-600 mb-4">
-															Aún no guardaste una dirección de envío
-														</p>
+														{mainAddress ? (
+															<>
+																<p className="text-gray-700 mb-1">
+																	{mainAddress.address}
+																	{mainAddress.apartment &&
+																		`, ${mainAddress.apartment}`
+																	}
+																</p>
+																<p className="text-gray-600 mb-1">
+																	{mainAddress.district}
+																</p>
+																<p className="text-gray-600 mb-1">
+																	{mainAddress.province}
+																</p>
+																<p className="text-gray-600 mb-4">
+																	{mainAddress.department}
+																</p>
+																{mainAddress.reference && (
+																	<p className="text-gray-500 text-sm mb-4 italic">
+																		Ref: {mainAddress.reference}
+																	</p>
+																)}
+															</>
+														) : (
+															<p className="text-gray-600 mb-4">
+																Aún no guardaste una dirección de envío
+															</p>
+														)}
 														<div className="float-right">
 															<Link
 																href="/mi-cuenta/direcciones"
@@ -207,13 +261,37 @@ export default function MiCuenta() {
 														</div>
 													</div>
 
-													<div className="bg-white rounded-lg p-6">
+													{/* Dirección de facturación */}
+													{/* <div className="bg-white rounded-lg p-6">
 														<h3 className="font-semibold text-primary-dark mb-2">
 															Dirección de facturación
 														</h3>
-														<p className="text-gray-600 mb-4">
-															Aún no guardaste una dirección de facturación
-														</p>
+														{billingAddress ? (
+															<>
+																<p className="text-gray-700 mb-1">
+																	{billingAddress.address}
+																	{billingAddress.apartment && `, ${billingAddress.apartment}`}
+																</p>
+																<p className="text-gray-600 mb-1">
+																	{billingAddress.district}
+																</p>
+																<p className="text-gray-600 mb-1">
+																	{billingAddress.province}
+																</p>
+																<p className="text-gray-600 mb-4">
+																	{billingAddress.department}
+																</p>
+																{billingAddress.reference && (
+																	<p className="text-gray-500 text-sm mb-4 italic">
+																		Ref: {billingAddress.reference}
+																	</p>
+																)}
+															</>
+														) : (
+															<p className="text-gray-600 mb-4">
+																Aún no guardaste una dirección de facturación
+															</p>
+														)}
 														<div className="float-right">
 															<Link
 																href="/mi-cuenta/direcciones"
@@ -223,11 +301,11 @@ export default function MiCuenta() {
 																Editar
 															</Link>
 														</div>
-													</div>
+													</div> */}
 												</div>
 											</section>
 
-											{/* 🆕 Botones de acción actualizados */}
+											{/* Botones de acción */}
 											<div className="flex flex-col-reverse md:flex-row justify-end mt-8 pt-6 border-t gap-6 text-center items-center">
 												<Link
 													href="/"

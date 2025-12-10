@@ -1,15 +1,43 @@
-// pages/libro-reclamaciones.tsx
-'use client';
-
+import Head from 'next/head';
 import { useState } from 'react';
 import Layout from '@/components/Layout';
 import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaFileAlt, FaCheckCircle } from 'react-icons/fa';
 import Link from 'next/link';
+import { z } from 'zod';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
+import Textarea from '@/components/ui/Textarea';
+
+const reclamacionesSchema = z.object({
+    tipoDocumento: z.string().min(1, "Selecciona el tipo de documento"),
+    numeroDocumento: z.string().min(8, "Mínimo 8 caracteres").max(20, "Máximo 20 caracteres"),
+    nombres: z.string().min(2, "Ingresa tus nombres"),
+    apellidos: z.string().min(2, "Ingresa tus apellidos"),
+    telefono: z.string().min(9, "Mínimo 9 dígitos").regex(/^[\d+\s-]+$/, "Número inválido"),
+    email: z.string().email("Correo inválido"),
+    direccion: z.string().min(10, "Dirección muy corta"),
+    departamento: z.string().min(2, "Ingresa el departamento"),
+    provincia: z.string().min(2, "Ingresa la provincia"),
+    distrito: z.string().min(2, "Ingresa el distrito"),
+    tipoReclamo: z.enum(['reclamo', 'queja']),
+    tipoProducto: z.enum(['producto', 'servicio']),
+    descripcionProducto: z.string().min(10, "Descripción muy corta"),
+    montoReclamado: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+        message: "Monto inválido"
+    }),
+    detalleReclamo: z.string().min(20, "El detalle debe tener al menos 20 caracteres"),
+    pedidoDetalle: z.string().optional()
+});
+
+type ReclamacionesFormValues = z.infer<typeof reclamacionesSchema>;
 
 export default function LibroReclamaciones() {
     const [enviado, setEnviado] = useState(false);
     const [enviando, setEnviando] = useState(false);
-    const [formData, setFormData] = useState({
+    const [errors, setErrors] = useState<Partial<Record<keyof ReclamacionesFormValues, string>>>({});
+
+    const [formData, setFormData] = useState<ReclamacionesFormValues>({
         tipoDocumento: 'DNI',
         numeroDocumento: '',
         nombres: '',
@@ -34,39 +62,100 @@ export default function LibroReclamaciones() {
             ...prev,
             [name]: value
         }));
+        // Limpiar error al escribir
+        if (errors[name as keyof ReclamacionesFormValues]) {
+            setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
     };
 
     const handleSubmit = async () => {
         setEnviando(true);
+        setErrors({});
 
-        // Simular envío
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Validación Zod
+        const result = reclamacionesSchema.safeParse(formData);
+        if (!result.success) {
+            const formattedErrors = result.error.flatten().fieldErrors;
+            const newErrors: Partial<Record<keyof ReclamacionesFormValues, string>> = {};
 
-        setEnviado(true);
-        setEnviando(false);
+            for (const key in formattedErrors) {
+                const errorArray = formattedErrors[key as keyof typeof formattedErrors];
+                if (errorArray?.length) {
+                    newErrors[key as keyof ReclamacionesFormValues] = errorArray[0];
+                }
+            }
+            setErrors(newErrors);
+            setEnviando(false);
+            // Scroll al primer error
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
 
-        // Resetear después de 5 segundos
-        setTimeout(() => {
-            setEnviado(false);
-            setFormData({
-                tipoDocumento: 'DNI',
-                numeroDocumento: '',
-                nombres: '',
-                apellidos: '',
-                telefono: '',
-                email: '',
-                direccion: '',
-                departamento: '',
-                provincia: '',
-                distrito: '',
-                tipoReclamo: 'reclamo',
-                tipoProducto: 'producto',
-                descripcionProducto: '',
-                montoReclamado: '',
-                detalleReclamo: '',
-                pedidoDetalle: ''
+        try {
+            const payload = {
+                fecha: new Date().toISOString().split('T')[0], // "YYYY-MM-DD"
+                nombres: formData.nombres,
+                apellidos: formData.apellidos,
+                domicilio: `${formData.direccion}, ${formData.distrito}, ${formData.provincia}, ${formData.departamento}`,
+                documentoIdentidad: formData.numeroDocumento,
+                telefono: formData.telefono,
+                correoElectronico: formData.email,
+                esProducto: formData.tipoProducto === 'producto',
+                esServicio: formData.tipoProducto === 'servicio',
+                montoReclamado: Number(formData.montoReclamado),
+                descripcionProductoServicio: formData.descripcionProducto,
+                esReclamo: formData.tipoReclamo === 'reclamo',
+                esQueja: formData.tipoReclamo === 'queja',
+                detalleReclamoQueja: formData.detalleReclamo,
+                detallePedido: formData.pedidoDetalle || "N/A",
+                prefiereRespuestaDireccion: false,
+                prefiereRespuestaCorreo: true
+            };
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/general/libro-reclamaciones`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
             });
-        }, 5000);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Error al enviar el reclamo');
+            }
+
+            setEnviado(true);
+
+            // Resetear después de mostrar el mensaje de éxito
+            setTimeout(() => {
+                setEnviado(false);
+                setFormData({
+                    tipoDocumento: 'DNI',
+                    numeroDocumento: '',
+                    nombres: '',
+                    apellidos: '',
+                    telefono: '',
+                    email: '',
+                    direccion: '',
+                    departamento: '',
+                    provincia: '',
+                    distrito: '',
+                    tipoReclamo: 'reclamo',
+                    tipoProducto: 'producto',
+                    descripcionProducto: '',
+                    montoReclamado: '',
+                    detalleReclamo: '',
+                    pedidoDetalle: ''
+                });
+            }, 5000);
+
+        } catch (error) {
+            console.error('Error enviando reclamo:', error);
+            alert('Hubo un error al enviar tu reclamo. Por favor intenta nuevamente.');
+        } finally {
+            setEnviando(false);
+        }
     };
 
     if (enviado) {
@@ -83,7 +172,7 @@ export default function LibroReclamaciones() {
                         <p className="text-gray-600 mb-6">
                             Hemos recibido tu reclamo/queja. Nos pondremos en contacto contigo en un plazo máximo de 15 días hábiles.
                         </p>
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                        <div className="bg-green-50 border border-green-200 rounded-sm p-4 mb-6">
                             <p className="text-sm text-green-800">
                                 <strong>Número de seguimiento:</strong> LR-{Math.floor(Math.random() * 1000000)}
                             </p>
@@ -116,7 +205,7 @@ export default function LibroReclamaciones() {
                                 </p>
                             </div>
                             <div className="flex-shrink-0">
-                                <div className="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <div className="w-32 h-32 bg-gray-100 rounded-sm flex items-center justify-center">
                                     <span className="text-4xl font-bold text-green-600">LIWILU</span>
                                 </div>
                             </div>
@@ -139,149 +228,124 @@ export default function LibroReclamaciones() {
 
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Tipo de Documento *
-                                    </label>
-                                    <select
+                                    <Select
+                                        label="Tipo de Documento *"
                                         name="tipoDocumento"
                                         value={formData.tipoDocumento}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
+                                        error={errors.tipoDocumento}
                                     >
                                         <option value="DNI">DNI</option>
                                         <option value="CE">Carné de Extranjería</option>
                                         <option value="Pasaporte">Pasaporte</option>
-                                    </select>
+                                    </Select>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Número de Documento *
-                                    </label>
-                                    <input
+                                    <Input
+                                        label="Número de Documento *"
                                         type="text"
                                         name="numeroDocumento"
                                         value={formData.numeroDocumento}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
                                         placeholder="12345678"
+                                        error={errors.numeroDocumento}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        <FaUser className="inline mr-2" />
-                                        Nombres *
-                                    </label>
-                                    <input
+                                    <Input
+                                        label="Nombres *"
                                         type="text"
                                         name="nombres"
                                         value={formData.nombres}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
                                         placeholder="Juan Carlos"
+                                        error={errors.nombres}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        <FaUser className="inline mr-2" />
-                                        Apellidos *
-                                    </label>
-                                    <input
+                                    <Input
+                                        label="Apellidos *"
                                         type="text"
                                         name="apellidos"
                                         value={formData.apellidos}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
                                         placeholder="Pérez García"
+                                        error={errors.apellidos}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        <FaPhone className="inline mr-2" />
-                                        Teléfono *
-                                    </label>
-                                    <input
+                                    <Input
+                                        label="Teléfono *"
                                         type="tel"
                                         name="telefono"
                                         value={formData.telefono}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
                                         placeholder="999 888 777"
+                                        error={errors.telefono}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        <FaEnvelope className="inline mr-2" />
-                                        Email *
-                                    </label>
-                                    <input
+                                    <Input
+                                        label="Email *"
                                         type="email"
                                         name="email"
                                         value={formData.email}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
                                         placeholder="correo@ejemplo.com"
+                                        error={errors.email}
                                     />
                                 </div>
 
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        <FaMapMarkerAlt className="inline mr-2" />
-                                        Dirección *
-                                    </label>
-                                    <input
+                                    <Input
+                                        label="Dirección *"
                                         type="text"
                                         name="direccion"
                                         value={formData.direccion}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
                                         placeholder="Av. Los Pinos 123, Urb. Las Flores"
+                                        error={errors.direccion}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Departamento *
-                                    </label>
-                                    <input
+                                    <Input
+                                        label="Departamento *"
                                         type="text"
                                         name="departamento"
                                         value={formData.departamento}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
                                         placeholder="Lima"
+                                        error={errors.departamento}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Provincia *
-                                    </label>
-                                    <input
+                                    <Input
+                                        label="Provincia *"
                                         type="text"
                                         name="provincia"
                                         value={formData.provincia}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
                                         placeholder="Lima"
+                                        error={errors.provincia}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Distrito *
-                                    </label>
-                                    <input
+                                    <Input
+                                        label="Distrito *"
                                         type="text"
                                         name="distrito"
                                         value={formData.distrito}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
                                         placeholder="Miraflores"
+                                        error={errors.distrito}
                                     />
                                 </div>
                             </div>
@@ -296,60 +360,51 @@ export default function LibroReclamaciones() {
                             <div className="space-y-6">
                                 <div className="grid md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Tipo *
-                                        </label>
-                                        <select
+                                        <Select
+                                            label="Tipo *"
                                             name="tipoProducto"
                                             value={formData.tipoProducto}
                                             onChange={handleInputChange}
-                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
+                                            error={errors.tipoProducto}
                                         >
                                             <option value="producto">Producto</option>
                                             <option value="servicio">Servicio</option>
-                                        </select>
+                                        </Select>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Monto Reclamado (S/) *
-                                        </label>
-                                        <input
+                                        <Input
+                                            label="Monto Reclamado (S/) *"
                                             type="number"
                                             name="montoReclamado"
                                             value={formData.montoReclamado}
                                             onChange={handleInputChange}
                                             step="0.01"
-                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
                                             placeholder="0.00"
+                                            error={errors.montoReclamado}
                                         />
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Descripción del Producto/Servicio *
-                                    </label>
-                                    <textarea
+                                    <Textarea
+                                        label="Descripción del Producto/Servicio *"
                                         name="descripcionProducto"
                                         value={formData.descripcionProducto}
                                         onChange={handleInputChange}
                                         rows={3}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition resize-none"
                                         placeholder="Describe el producto o servicio contratado"
+                                        error={errors.descripcionProducto}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Número de Pedido (opcional)
-                                    </label>
-                                    <input
+                                    <Input
+                                        label="Número de Pedido (opcional)"
                                         type="text"
                                         name="pedidoDetalle"
                                         value={formData.pedidoDetalle}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
                                         placeholder="#2153603"
                                     />
                                 </div>
@@ -368,7 +423,7 @@ export default function LibroReclamaciones() {
                                         Tipo *
                                     </label>
                                     <div className="grid md:grid-cols-2 gap-4">
-                                        <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-green-500 transition">
+                                        <label className="flex items-center p-4 border-2 border-gray-200 rounded-sm cursor-pointer hover:border-green-500 transition">
                                             <input
                                                 type="radio"
                                                 name="tipoReclamo"
@@ -382,7 +437,7 @@ export default function LibroReclamaciones() {
                                                 <p className="text-xs text-gray-600">Disconformidad con el producto o servicio</p>
                                             </div>
                                         </label>
-                                        <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-green-500 transition">
+                                        <label className="flex items-center p-4 border-2 border-gray-200 rounded-sm cursor-pointer hover:border-green-500 transition">
                                             <input
                                                 type="radio"
                                                 name="tipoReclamo"
@@ -400,17 +455,14 @@ export default function LibroReclamaciones() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        <FaFileAlt className="inline mr-2" />
-                                        Detalle del Reclamo/Queja *
-                                    </label>
-                                    <textarea
+                                    <Textarea
+                                        label="Detalle del Reclamo/Queja *"
                                         name="detalleReclamo"
                                         value={formData.detalleReclamo}
                                         onChange={handleInputChange}
                                         rows={6}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition resize-none"
                                         placeholder="Describe detalladamente tu reclamo o queja. Incluye fechas, situaciones y cualquier información relevante."
+                                        error={errors.detalleReclamo}
                                     />
                                     <p className="text-xs text-gray-500 mt-2">
                                         Mínimo 50 caracteres. Sea lo más específico posible.
@@ -420,7 +472,7 @@ export default function LibroReclamaciones() {
                         </div>
 
                         {/* Información Legal */}
-                        <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
+                        <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-sm">
                             <h3 className="font-bold text-gray-900 mb-3 flex items-center">
                                 <svg className="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -437,13 +489,9 @@ export default function LibroReclamaciones() {
 
                         {/* Botón de envío */}
                         <div className="flex justify-center pt-6">
-                            <button
-                                onClick={handleSubmit}
-                                disabled={enviando}
-                                className="bg-green-600 hover:bg-green-700 text-white font-bold px-12 py-4 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-lg"
-                            >
+                            <Button onClick={handleSubmit} disabled={enviando}>
                                 {enviando ? 'Enviando...' : 'Enviar Reclamo'}
-                            </button>
+                            </Button>
                         </div>
                     </div>
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
 import Button from "./ui/Button";
+import Input from "./ui/Input";
 import { PiWarningCircleFill } from "react-icons/pi";
 import { registerSchema } from "../lib/registerSchema";
 import { z } from "zod";
@@ -119,9 +120,9 @@ export default function RegisterModal({
 				firstName: formData.firstName,
 				lastName: formData.lastName,
 				email: formData.email,
-				emailConfirm: formData.emailConfirm,
+				confirmEmail: formData.emailConfirm,
 				password: formData.password,
-				passwordConfirm: formData.passwordConfirm,
+				confirmPassword: formData.passwordConfirm,
 				acceptTerms: formData.acceptTerms,
 				receiveOffers: formData.receiveOffers,
 			});
@@ -158,9 +159,7 @@ export default function RegisterModal({
 		// TODO: Implementar OAuth con Facebook
 	};
 
-	const inputClasses = (fieldName: keyof RegisterFormValues) =>
-		`w-full px-4 py-3 border rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition disabled:bg-gray-100 disabled:cursor-not-allowed ${errors[fieldName] ? "border-error" : "border-gray-300"
-		}`;
+
 
 	return (
 		<>
@@ -204,13 +203,8 @@ export default function RegisterModal({
 							{/* Nombre y Apellido */}
 							<div className="grid grid-cols-2 gap-4">
 								<div>
-									<label
-										htmlFor="firstName"
-										className="block text-sm font-semibold text-primary-dark mb-2"
-									>
-										Nombre
-									</label>
-									<input
+									<Input
+										label="Nombre"
 										name="firstName"
 										type="text"
 										id="firstName"
@@ -218,23 +212,13 @@ export default function RegisterModal({
 										onChange={handleChange}
 										disabled={isLoading}
 										placeholder="Gonzalo"
-										className={inputClasses("firstName")}
+										error={errors.firstName}
 									/>
-									{errors.firstName && (
-										<p className="text-error text-xs mt-1 flex items-start gap-1">
-											<PiWarningCircleFill size={16} /> {errors.firstName}
-										</p>
-									)}
 								</div>
 
 								<div>
-									<label
-										htmlFor="lastName"
-										className="block text-sm font-semibold text-primary-dark mb-2"
-									>
-										Apellido
-									</label>
-									<input
+									<Input
+										label="Apellido"
 										name="lastName"
 										type="text"
 										id="lastName"
@@ -242,25 +226,15 @@ export default function RegisterModal({
 										onChange={handleChange}
 										disabled={isLoading}
 										placeholder="García"
-										className={inputClasses("lastName")}
+										error={errors.lastName}
 									/>
-									{errors.lastName && (
-										<p className="text-error text-xs mt-1 flex items-start gap-1">
-											<PiWarningCircleFill size={16} /> {errors.lastName}
-										</p>
-									)}
 								</div>
 							</div>
 
 							{/* Email */}
 							<div>
-								<label
-									htmlFor="email"
-									className="block text-sm font-semibold text-primary-dark mb-2"
-								>
-									Correo electrónico
-								</label>
-								<input
+								<Input
+									label="Correo electrónico"
 									name="email"
 									type="email"
 									id="email"
@@ -268,24 +242,14 @@ export default function RegisterModal({
 									onChange={handleChange}
 									disabled={isLoading}
 									placeholder="correo@ejemplo.com"
-									className={inputClasses("email")}
+									error={errors.email}
 								/>
-								{errors.email && (
-									<p className="text-error text-xs mt-1 flex items-start gap-1">
-										<PiWarningCircleFill size={16} /> {errors.email}
-									</p>
-								)}
 							</div>
 
 							{/* Confirmar Email */}
 							<div>
-								<label
-									htmlFor="emailConfirm"
-									className="block text-sm font-semibold text-primary-dark mb-2"
-								>
-									Confirmar correo electrónico
-								</label>
-								<input
+								<Input
+									label="Confirmar correo electrónico"
 									name="emailConfirm"
 									type="email"
 									id="emailConfirm"
@@ -293,24 +257,14 @@ export default function RegisterModal({
 									onChange={handleChange}
 									disabled={isLoading}
 									placeholder="correo@ejemplo.com"
-									className={inputClasses("emailConfirm")}
+									error={errors.emailConfirm}
 								/>
-								{errors.emailConfirm && (
-									<p className="text-error text-xs mt-1 flex items-start gap-1">
-										<PiWarningCircleFill size={16} /> {errors.emailConfirm}
-									</p>
-								)}
 							</div>
 
 							{/* Contraseña */}
 							<div>
-								<label
-									htmlFor="password"
-									className="block text-sm font-semibold text-primary-dark mb-2"
-								>
-									Contraseña
-								</label>
-								<input
+								<Input
+									label="Contraseña"
 									name="password"
 									type="password"
 									id="password"
@@ -318,24 +272,14 @@ export default function RegisterModal({
 									onChange={handleChange}
 									disabled={isLoading}
 									placeholder="Mínimo 6 caracteres"
-									className={inputClasses("password")}
+									error={errors.password}
 								/>
-								{errors.password && (
-									<p className="text-error text-xs mt-1 flex items-start gap-1">
-										<PiWarningCircleFill size={16} /> {errors.password}
-									</p>
-								)}
 							</div>
 
 							{/* Confirmar Contraseña */}
 							<div>
-								<label
-									htmlFor="passwordConfirm"
-									className="block text-sm font-semibold text-primary-dark mb-2"
-								>
-									Confirmar contraseña
-								</label>
-								<input
+								<Input
+									label="Confirmar contraseña"
 									name="passwordConfirm"
 									type="password"
 									id="passwordConfirm"
@@ -343,13 +287,8 @@ export default function RegisterModal({
 									onChange={handleChange}
 									disabled={isLoading}
 									placeholder="Repite tu contraseña"
-									className={inputClasses("passwordConfirm")}
+									error={errors.passwordConfirm}
 								/>
-								{errors.passwordConfirm && (
-									<p className="text-error text-xs mt-1 flex items-start gap-1">
-										<PiWarningCircleFill size={16} /> {errors.passwordConfirm}
-									</p>
-								)}
 							</div>
 
 							{/* Checkboxes */}

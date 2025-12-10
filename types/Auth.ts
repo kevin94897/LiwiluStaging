@@ -6,9 +6,9 @@ export interface RegisterPayload {
     firstName: string;
     lastName: string;
     email: string;
-    emailConfirm: string;      // ⬅ ahora existe
+    confirmEmail: string;      // ⬅ ahora existe
     password: string;
-    passwordConfirm: string;   // ⬅ ahora existe
+    confirmPassword: string;   // ⬅ ahora existe
     acceptTerms: boolean;
     receiveOffers: boolean;
 }

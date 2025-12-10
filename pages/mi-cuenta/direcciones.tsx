@@ -6,6 +6,8 @@ import Layout from '@/components/Layout';
 import Link from 'next/link';
 import AccountSidebar from '@/components/AccountSidebar';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Textarea from '@/components/ui/Textarea';
 import { direccionSchema, DireccionSchemaType } from '@/lib/mi-cuenta/direccionSchema';
 import { PiWarningCircleFill } from 'react-icons/pi';
 import { FaPencil, FaTrash } from 'react-icons/fa6';
@@ -436,226 +438,122 @@ export default function Direcciones() {
 
 												{/* Título de la dirección */}
 												<div>
-													<label
-														htmlFor="titulo"
-														className="block text-sm font-semibold text-primary-dark mb-2"
-													>
-														Título de la dirección *
-													</label>
-													<input
+													<Input
+														label="Título de la dirección *"
 														type="text"
 														id="titulo"
 														name="titulo"
 														value={formData.titulo}
 														onChange={handleChange}
-														className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.titulo
-															? 'border-red-500 focus:ring-red-500'
-															: 'border-gray-300 focus:ring-primary focus:border-primary'
-															}`}
 														placeholder="Casa, Oficina, etc."
 														maxLength={50}
+														error={errors.titulo}
 													/>
-													{errors.titulo && (
-														<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-															<PiWarningCircleFill size={16} /> {errors.titulo}
-														</p>
-													)}
 												</div>
 
 												{/* Dirección completa */}
 												<div>
-													<label
-														htmlFor="direccion"
-														className="block text-sm font-semibold text-primary-dark mb-2"
-													>
-														Dirección completa *
-													</label>
-													<textarea
+													<Textarea
+														label="Dirección completa *"
 														id="direccion"
 														name="direccion"
 														value={formData.direccion}
 														onChange={handleChange}
 														rows={3}
-														className={`w-full px-4 py-3 border-2 rounded-sm transition resize-none ${errors.direccion
-															? 'border-red-500 focus:ring-red-500'
-															: 'border-gray-300 focus:ring-primary focus:border-primary'
-															}`}
 														placeholder="Av. Ejemplo 123, Urbanización..."
 														maxLength={200}
+														error={errors.direccion}
 													/>
-													{errors.direccion && (
-														<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-															<PiWarningCircleFill size={16} /> {errors.direccion}
-														</p>
-													)}
 												</div>
 
 												{/* Referencia */}
 												<div>
-													<label
-														htmlFor="referencia"
-														className="block text-sm font-semibold text-primary-dark mb-2"
-													>
-														Referencia
-													</label>
-													<input
+													<Input
+														label="Referencia"
 														type="text"
 														id="referencia"
 														name="referencia"
 														value={formData.referencia}
 														onChange={handleChange}
-														className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.referencia
-															? 'border-red-500 focus:ring-red-500'
-															: 'border-gray-300 focus:ring-primary focus:border-primary'
-															}`}
 														placeholder="Frente al parque, al costado de..."
 														maxLength={100}
+														error={errors.referencia}
 													/>
-													{errors.referencia && (
-														<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-															<PiWarningCircleFill size={16} /> {errors.referencia}
-														</p>
-													)}
 												</div>
 
 												{/* Ciudad, Provincia, Distrito */}
 												<div className="grid md:grid-cols-3 gap-6">
 													<div>
-														<label
-															htmlFor="ciudad"
-															className="block text-sm font-semibold text-primary-dark mb-2"
-														>
-															Departamento *
-														</label>
-														<input
+														<Input
+															label="Departamento *"
 															type="text"
 															id="ciudad"
 															name="ciudad"
 															value={formData.ciudad}
 															onChange={handleChange}
-															className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.ciudad
-																? 'border-red-500 focus:ring-red-500'
-																: 'border-gray-300 focus:ring-primary focus:border-primary'
-																}`}
 															placeholder="Lima"
 															maxLength={50}
+															error={errors.ciudad}
 														/>
-														{errors.ciudad && (
-															<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-																<PiWarningCircleFill size={16} /> {errors.ciudad}
-															</p>
-														)}
 													</div>
 
 													<div>
-														<label
-															htmlFor="provincia"
-															className="block text-sm font-semibold text-primary-dark mb-2"
-														>
-															Provincia *
-														</label>
-														<input
+														<Input
+															label="Provincia *"
 															type="text"
 															id="provincia"
 															name="provincia"
 															value={formData.provincia}
 															onChange={handleChange}
-															className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.provincia
-																? 'border-red-500 focus:ring-red-500'
-																: 'border-gray-300 focus:ring-primary focus:border-primary'
-																}`}
 															placeholder="Lima"
 															maxLength={50}
+															error={errors.provincia}
 														/>
-														{errors.provincia && (
-															<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-																<PiWarningCircleFill size={16} /> {errors.provincia}
-															</p>
-														)}
 													</div>
 
 													<div>
-														<label
-															htmlFor="distrito"
-															className="block text-sm font-semibold text-primary-dark mb-2"
-														>
-															Distrito *
-														</label>
-														<input
+														<Input
+															label="Distrito *"
 															type="text"
 															id="distrito"
 															name="distrito"
 															value={formData.distrito}
 															onChange={handleChange}
-															className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.distrito
-																? 'border-red-500 focus:ring-red-500'
-																: 'border-gray-300 focus:ring-primary focus:border-primary'
-																}`}
 															placeholder="San Isidro"
 															maxLength={50}
+															error={errors.distrito}
 														/>
-														{errors.distrito && (
-															<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-																<PiWarningCircleFill size={16} /> {errors.distrito}
-															</p>
-														)}
 													</div>
 												</div>
 
 												{/* Código postal y teléfono */}
 												<div className="grid md:grid-cols-2 gap-6">
 													<div>
-														<label
-															htmlFor="codigoPostal"
-															className="block text-sm font-semibold text-primary-dark mb-2"
-														>
-															Código postal
-														</label>
-														<input
+														<Input
+															label="Código postal"
 															type="text"
 															id="codigoPostal"
 															name="codigoPostal"
 															value={formData.codigoPostal}
 															onChange={handleCodigoPostalChange}
-															className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.codigoPostal
-																? 'border-red-500 focus:ring-red-500'
-																: 'border-gray-300 focus:ring-primary focus:border-primary'
-																}`}
 															placeholder="15001"
 															maxLength={5}
+															error={errors.codigoPostal}
 														/>
-														{errors.codigoPostal && (
-															<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-																<PiWarningCircleFill size={16} /> {errors.codigoPostal}
-															</p>
-														)}
 													</div>
 
 													<div>
-														<label
-															htmlFor="telefono"
-															className="block text-sm font-semibold text-primary-dark mb-2"
-														>
-															Teléfono de contacto *
-														</label>
-														<input
+														<Input
+															label="Teléfono de contacto *"
 															type="tel"
 															id="telefono"
 															name="telefono"
 															value={formData.telefono}
 															onChange={handleTelefonoChange}
-															className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.telefono
-																? 'border-red-500 focus:ring-red-500'
-																: 'border-gray-300 focus:ring-primary focus:border-primary'
-																}`}
 															placeholder="987654321"
 															maxLength={9}
+															error={errors.telefono}
 														/>
-														{errors.telefono && (
-															<p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-																<PiWarningCircleFill size={16} /> {errors.telefono}
-															</p>
-														)}
 													</div>
 												</div>
 
