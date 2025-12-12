@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "./ui/Button";
+import { apiPost } from "@/lib/auth/apiClient";
 import Input from "./ui/Input";
 import { z } from "zod";
 
@@ -101,19 +102,18 @@ export default function ForgotPasswordModal({
         setIsLoading(true);
 
         try {
-            // Llamada al endpoint de recuperación de contraseña
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/forgot-password`, {
-                method: "POST",
+            const response = await apiPost('/auth/forgot-password', {
+                email: formData.email,
+            }, {
+                skipAuth: true,
                 headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ email: formData.email }),
+                    'Content-Type': 'application/json'
+                }
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
-                throw new Error(data.message || "Error al enviar el correo de recuperación");
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Error al enviar el correo de recuperación");
             }
 
             // Mostrar mensaje de éxito
@@ -277,10 +277,7 @@ export default function ForgotPasswordModal({
                                 {/* Link de regreso */}
                                 <div className="mt-6 text-center">
                                     <button
-                                        onClick={() => {
-                                            onClose();
-                                            onBackToLogin();
-                                        }}
+                                        onClick={onBackToLogin}
                                         disabled={isLoading}
                                         className="text-sm text-primary hover:text-primary-dark font-medium flex items-center justify-center gap-1 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
@@ -318,10 +315,7 @@ export default function ForgotPasswordModal({
                                             variant="primary"
                                             size="md"
                                             className="w-full"
-                                            onClick={() => {
-                                                onClose();
-                                                onBackToLogin();
-                                            }}
+                                            onClick={onBackToLogin}
                                         >
                                             Volver al inicio de sesión
                                         </Button>

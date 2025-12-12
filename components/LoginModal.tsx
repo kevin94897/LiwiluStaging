@@ -8,6 +8,7 @@ import { FaFacebook } from "react-icons/fa";
 import Button from "./ui/Button";
 import { loginSchema, LoginSchemaType } from "../lib/loginSchema";
 import { loginUser } from "../pages/api/auth/login"; // 🔹 Importar función de auth
+import ForgotPasswordModal from "./ForgotPasswordModal";
 
 interface LoginModalProps {
 	isOpen: boolean;
@@ -34,6 +35,8 @@ export default function LoginModal({
 
 	const [isLoading, setIsLoading] = useState(false); // 🔹 Estado de carga
 
+	const [showForgotPassword, setShowForgotPassword] = useState(false);
+
 	// ✅ Manejador de cambios
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
@@ -48,6 +51,7 @@ export default function LoginModal({
 			setFormData({ email: "", password: "" });
 			setErrors({});
 			setIsLoading(false);
+			setShowForgotPassword(false);
 		}
 	}, [isOpen]);
 
@@ -68,6 +72,16 @@ export default function LoginModal({
 	}, [isOpen, onClose]);
 
 	if (!isOpen) return null;
+
+	if (showForgotPassword) {
+		return (
+			<ForgotPasswordModal
+				isOpen={true}
+				onClose={onClose}
+				onBackToLogin={() => setShowForgotPassword(false)}
+			/>
+		);
+	}
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -197,6 +211,7 @@ export default function LoginModal({
 									type="button"
 									className="text-sm text-primary hover:text-primary-dark font-medium disabled:opacity-50 disabled:cursor-not-allowed"
 									disabled={isLoading}
+									onClick={() => setShowForgotPassword(true)}
 								>
 									¿Olvidó la contraseña?
 								</button>

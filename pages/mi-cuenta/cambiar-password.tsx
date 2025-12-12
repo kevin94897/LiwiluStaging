@@ -5,39 +5,25 @@ import { useState } from 'react';
 import Layout from '@/components/Layout';
 import AccountSidebar from '@/components/AccountSidebar';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { apiPut } from '@/lib/auth/apiClient';
+import { apiPost } from '@/lib/auth/apiClient';
 import { PiWarningCircleFill } from 'react-icons/pi';
 import Input from '@/components/ui/Input';
 import { z } from 'zod';
 
 // Schema de validación
-const changePasswordSchema = z.object({
-    currentPassword: z.string().min(1, 'La contraseña actual es requerida'),
-    newPassword: z
-        .string()
-        .min(6, 'La contraseña debe tener al menos 6 caracteres')
-        .regex(/[A-Z]/, 'Debe contener al menos una mayúscula')
-        .regex(/[a-z]/, 'Debe contener al menos una minúscula')
-        .regex(/[0-9]/, 'Debe contener al menos un número'),
-    confirmNewPassword: z.string().min(1, 'Debes confirmar la contraseña'),
-}).refine((data) => data.newPassword === data.confirmNewPassword, {
-    message: 'Las contraseñas no coinciden',
-    path: ['confirmNewPassword'],
+const forgotPasswordSchema = z.object({
+    email: z.string().email('Ingresa un correo electrónico válido'),
 });
 
-type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
+type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 export default function CambiarPassword() {
-    const router = useRouter();
-    const [formData, setFormData] = useState<ChangePasswordFormValues>({
-        currentPassword: '',
-        newPassword: '',
-        confirmNewPassword: '',
+    const [formData, setFormData] = useState<ForgotPasswordFormValues>({
+        email: '',
     });
 
-    const [errors, setErrors] = useState<Partial<Record<keyof ChangePasswordFormValues, string>>>({});
+    const [errors, setErrors] = useState<Partial<Record<keyof ForgotPasswordFormValues, string>>>({});
     const [isLoading, setIsLoading] = useState(false);
     const [generalError, setGeneralError] = useState<string>('');
     const [successMessage, setSuccessMessage] = useState<string>('');
@@ -56,15 +42,15 @@ export default function CambiarPassword() {
         setSuccessMessage('');
 
         // Validación con Zod
-        const result = changePasswordSchema.safeParse(formData);
+        const result = forgotPasswordSchema.safeParse(formData);
         if (!result.success) {
             const formattedErrors = result.error.flatten().fieldErrors;
-            const newErrors: Partial<Record<keyof ChangePasswordFormValues, string>> = {};
+            const newErrors: Partial<Record<keyof ForgotPasswordFormValues, string>> = {};
 
             for (const key in formattedErrors) {
                 const errorArray = formattedErrors[key as keyof typeof formattedErrors];
                 if (errorArray?.length) {
-                    newErrors[key as keyof ChangePasswordFormValues] = errorArray[0];
+                    newErrors[key as keyof ForgotPasswordFormValues] = errorArray[0];
                 }
             }
             setErrors(newErrors);
@@ -74,42 +60,26 @@ export default function CambiarPassword() {
         setIsLoading(true);
 
         try {
-            const response = await apiPut('/users/reset-password', {
-                currentPassword: formData.currentPassword,
-                newPassword: formData.newPassword,
-                confirmPassword: formData.confirmNewPassword,
+            const response = await apiPost('/auth/forgot-password', {
+                email: formData.email,
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Error al cambiar la contraseña');
+                throw new Error(errorData.message || 'Error al enviar el correo de recuperación');
             }
 
-            // const data = await response.json();
-
-            setSuccessMessage('✅ Contraseña actualizada correctamente');
+            setSuccessMessage('✅ Se ha enviado un enlace de recuperación a tu correo electrónico. Por favor, revisa tu bandeja de entrada.');
 
             // Limpiar formulario
             setFormData({
-                currentPassword: '',
-                newPassword: '',
-                confirmNewPassword: '',
+                email: '',
             });
-
-            // Redirigir después de 2 segundos
-            setTimeout(() => {
-                router.push('/mi-cuenta');
-            }, 2000);
 
         } catch (error: unknown) {
             if (error instanceof Error) {
-                console.error('❌ Error al cambiar contraseña:', error.message);
-
-                if (error.message.includes('incorrecta') || error.message.includes('invalid')) {
-                    setErrors({ currentPassword: 'La contraseña actual es incorrecta' });
-                } else {
-                    setGeneralError(error.message || 'Error al cambiar la contraseña');
-                }
+                console.error('❌ Error al enviar correo:', error.message);
+                setGeneralError(error.message || 'Error al enviar el correo de recuperación');
             } else {
                 setGeneralError('Error desconocido en el servidor');
             }
@@ -117,8 +87,6 @@ export default function CambiarPassword() {
             setIsLoading(false);
         }
     };
-
-
 
     return (
         <ProtectedRoute>
@@ -155,52 +123,25 @@ export default function CambiarPassword() {
                                             </div>
                                         )}
 
+                                        <div className="mb-6">
+                                            <p className="text-gray-700">
+                                                Para cambiar tu contraseña, ingresa tu correo electrónico. Te enviaremos un enlace seguro para que puedas establecer una nueva contraseña.
+                                            </p>
+                                        </div>
+
                                         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-                                            {/* Contraseña actual */}
+                                            {/* Correo electrónico */}
                                             <div>
                                                 <Input
-                                                    label="Contraseña actual"
-                                                    name="currentPassword"
-                                                    type="password"
-                                                    id="currentPassword"
-                                                    value={formData.currentPassword}
+                                                    label="Correo electrónico"
+                                                    name="email"
+                                                    type="email"
+                                                    id="email"
+                                                    value={formData.email}
                                                     onChange={handleChange}
                                                     disabled={isLoading}
-                                                    placeholder="Ingresa tu contraseña actual"
-                                                    error={errors.currentPassword}
-                                                />
-                                            </div>
-
-                                            {/* Nueva contraseña */}
-                                            <div>
-                                                <Input
-                                                    label="Nueva contraseña"
-                                                    name="newPassword"
-                                                    type="password"
-                                                    id="newPassword"
-                                                    value={formData.newPassword}
-                                                    onChange={handleChange}
-                                                    disabled={isLoading}
-                                                    placeholder="Mínimo 6 caracteres con mayúsculas, minúsculas y números"
-                                                    error={errors.newPassword}
-                                                />
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    La contraseña debe contener al menos una mayúscula, una minúscula y un número
-                                                </p>
-                                            </div>
-
-                                            {/* Confirmar nueva contraseña */}
-                                            <div>
-                                                <Input
-                                                    label="Confirmar nueva contraseña"
-                                                    name="confirmNewPassword"
-                                                    type="password"
-                                                    id="confirmNewPassword"
-                                                    value={formData.confirmNewPassword}
-                                                    onChange={handleChange}
-                                                    disabled={isLoading}
-                                                    placeholder="Repite tu nueva contraseña"
-                                                    error={errors.confirmNewPassword}
+                                                    placeholder="tu@email.com"
+                                                    error={errors.email}
                                                 />
                                             </div>
 
@@ -235,28 +176,28 @@ export default function CambiarPassword() {
                                                                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                                                 />
                                                             </svg>
-                                                            Actualizando...
+                                                            Enviando...
                                                         </span>
                                                     ) : (
-                                                        'Cambiar contraseña'
+                                                        'Enviar enlace de recuperación'
                                                     )}
                                                 </button>
                                             </div>
                                         </form>
 
-                                        {/* Consejos de seguridad */}
-                                        <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                        {/* Información adicional */}
+                                        <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-md">
                                             <h3 className="font-semibold text-primary-dark mb-2 flex items-center gap-2">
                                                 <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                                 </svg>
-                                                Consejos de seguridad
+                                                ¿Qué sucede después?
                                             </h3>
                                             <ul className="text-sm text-gray-700 space-y-1 ml-7">
-                                                <li>• Usa una contraseña única que no uses en otros sitios</li>
-                                                <li>• Combina letras mayúsculas, minúsculas, números y símbolos</li>
-                                                <li>• Evita información personal fácil de adivinar</li>
-                                                <li>• Cambia tu contraseña regularmente</li>
+                                                <li>• Recibirás un correo con un enlace seguro</li>
+                                                <li>• El enlace expirará después de un tiempo por seguridad</li>
+                                                <li>• Haz clic en el enlace para establecer tu nueva contraseña</li>
+                                                <li>• Si no recibes el correo, revisa tu carpeta de spam</li>
                                             </ul>
                                         </div>
                                     </div>
