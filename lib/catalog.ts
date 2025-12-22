@@ -208,6 +208,113 @@ export async function getCatalogHierarchy(): Promise<HierarchyResponse | null> {
 }
 
 /**
+ * Favorites Interface
+ */
+export interface FavoriteProduct {
+    id: number;
+    prestashopId: number;
+    reference: string;
+    name: string;
+    linkRewrite: string;
+    defaultCategory: {
+        id: number;
+        name: string;
+        linkRewrite: string;
+    };
+    price: number;
+    priceWithTax: number;
+    discountPrice: number | null;
+    discountPercent: number;
+    quantity: number;
+    condition: string;
+    coverImage: string;
+    gallery: {
+        id: number;
+        url: string;
+        position: number;
+    }[];
+    addedToFavoritesAt: string;
+}
+
+export interface FavoritesResponse {
+    success: boolean;
+    total: number;
+    data: FavoriteProduct[];
+}
+
+/**
+ * Fetch user favorites
+ */
+export async function getFavorites(): Promise<FavoritesResponse> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://liwilu-backend.nerdstudiolab.com/api';
+    const response = await authenticatedFetch(`${baseUrl}/catalog/products/favorites`, {
+        method: 'GET',
+    });
+
+    if (!response.ok) {
+        throw new Error('Error fetching favorites');
+    }
+
+    return await response.json();
+}
+
+/**
+ * Toggle favorite status for a product
+ */
+export async function toggleFavorite(productId: number): Promise<{
+    action: 'added' | 'removed';
+    productId: number;
+    isFavorite: boolean;
+    favoriteId?: string;
+}> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://liwilu-backend.nerdstudiolab.com/api';
+    const response = await authenticatedFetch(`${baseUrl}/favorites/toggle/${productId}`, {
+        method: 'POST',
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Toggle favorite error:', response.status, errorText);
+        throw new Error(`Error toggling favorite (${response.status}): ${errorText}`);
+    }
+
+    return await response.json();
+}
+
+/**
+ * Check favorite status for multiple products
+ */
+export async function checkMultipleFavorites(productIds: number[]): Promise<Record<string, boolean>> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://liwilu-backend.nerdstudiolab.com/api';
+    const response = await authenticatedFetch(`${baseUrl}/favorites/check-multiple`, {
+        method: 'POST',
+        body: JSON.stringify({ productIds }),
+    });
+
+    if (!response.ok) {
+        return {};
+    }
+
+    return await response.json();
+}
+
+/**
+ * Get count of favorite products
+ */
+export async function getFavoritesCount(): Promise<{ count: number }> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://liwilu-backend.nerdstudiolab.com/api';
+    const response = await authenticatedFetch(`${baseUrl}/favorites/count`, {
+        method: 'GET',
+    });
+
+    if (!response.ok) {
+        return { count: 0 };
+    }
+
+    return await response.json();
+}
+
+/**
  * Fetch level two categories (main categories for buttons).
  */
 export async function getLevelTwoCategories(): Promise<CategoryLevelTwo[]> {

@@ -5,12 +5,14 @@ import Link from 'next/link';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useCart } from '@/context/CartContext';
 import AddToCartModal from '@/components/AddToCartModal';
 
 import { FaHeart, FaShoppingCart } from 'react-icons/fa';
 import { Product, getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
+import { toggleFavorite, getFavorites } from '@/lib/catalog';
 import Button from './ui/Button';
 
 interface ProductProps {
@@ -24,25 +26,74 @@ export default function ProductosDestacados({
 }: ProductProps) {
 	const [favoritos, setFavoritos] = useState<string[]>([]);
 	const [loadingCart, setLoadingCart] = useState<string | null>(null);
+	const [togglingFavorite, setTogglingFavorite] = useState<string | null>(null);
 	const [modalProduct, setModalProduct] = useState<Product | null>(null);
 	const { addToCart } = useCart();
 
-	const toggleFavorito = (e: React.MouseEvent<HTMLButtonElement>, productId: string) => {
+	const toggleFavorito = async (e: React.MouseEvent<HTMLButtonElement>, productId: string) => {
 		e.preventDefault();
 		e.stopPropagation();
 
-		setFavoritos((prev) =>
-			prev.includes(productId)
-				? prev.filter((id) => id !== productId)
-				: [...prev, productId]
-		);
+		try {
+			setTogglingFavorite(productId);
 
-		// Guardar en localStorage
-		const updatedFavoritos = favoritos.includes(productId)
-			? favoritos.filter((id) => id !== productId)
-			: [...favoritos, productId];
-		localStorage.setItem('liwilu_favoritos', JSON.stringify(updatedFavoritos));
+			// Call API to toggle favorite
+			const result = await toggleFavorite(parseInt(productId));
+
+			// Update local state based on API response
+			if (result.isFavorite) {
+				setFavoritos((prev) => [...prev, productId]);
+				toast.success('Producto agregado a favoritos', {
+					duration: 2000,
+					position: 'bottom-right',
+					style: {
+						fontSize: '14px',
+						fontFamily: 'Outfit',
+					},
+				});
+			} else {
+				setFavoritos((prev) => prev.filter((id) => id !== productId));
+				toast.success('Producto eliminado de favoritos', {
+					duration: 2000,
+					position: 'bottom-right',
+					style: {
+						fontSize: '14px',
+						fontFamily: 'Outfit',
+					},
+				});
+			}
+		} catch (error) {
+			console.error('Error toggling favorite:', error);
+
+			// Check if it's an authentication error
+			if (error instanceof Error && error.message.includes('No hay sesión activa')) {
+				alert('Debes iniciar sesión para agregar favoritos');
+			} else {
+				alert('Error al actualizar favoritos. Por favor, intenta de nuevo.');
+			}
+		} finally {
+			setTogglingFavorite(null);
+		}
 	};
+
+	// Fetch user favorites on mount
+	useEffect(() => {
+		async function loadFavorites() {
+			try {
+				const response = await getFavorites();
+				if (response.success) {
+					// Map favorite products to their IDs
+					const favoriteIds = response.data.map(fav => fav.id.toString());
+					setFavoritos(favoriteIds);
+				}
+			} catch (error) {
+				// Silently fail if user is not authenticated
+				console.log('Could not load favorites:', error);
+			}
+		}
+
+		loadFavorites();
+	}, []);
 
 	const handleAddToCart = async (e: React.MouseEvent<HTMLButtonElement>, producto: Product) => {
 		e.preventDefault();
@@ -140,20 +191,25 @@ export default function ProductosDestacados({
 													/>
 												</div>
 												<button
-													className="absolute top-2 right-2 bg-white rounded-full p-2 hover:bg-gray-100 z-10 transition-transform hover:scale-110"
+													className="absolute top-2 right-2 bg-white rounded-full p-2 hover:bg-gray-100 z-10 transition-transform hover:scale-110 disabled:opacity-50"
 													onClick={(e) => toggleFavorito(e, product.id.toString())}
+													disabled={togglingFavorite === product.id.toString()}
 												>
-													<FaHeart
-														className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
-															? 'text-red-500 fill-current'
-															: 'text-gray-400 hover:text-red-500'
-															}`}
-													/>
+													{togglingFavorite === product.id.toString() ? (
+														<div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
+													) : (
+														<FaHeart
+															className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
+																? 'text-red-500 fill-current'
+																: 'text-gray-400 hover:text-red-500'
+																}`}
+														/>
+													)}
 												</button>
 											</div>
 
 											<div className="p-4 flex flex-col justify-between h-44 bg-primary">
-												<h3 className="font-semibold text-lg mb-2 line-clamp-2 h-10 text-white">
+												<h3 className="font-semibold text-lg mb-2 line-clamp-2 h-12 text-white">
 													{getProductName(product)}
 												</h3>
 												<div className="flex justify-between items-center mb-2">

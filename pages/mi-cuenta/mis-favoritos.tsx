@@ -1,61 +1,67 @@
 // pages/mi-cuenta/mis-favoritos.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+
 import Layout from '@/components/Layout';
 import Link from 'next/link';
 import Image from 'next/image';
 import AccountSidebar from '@/components/AccountSidebar';
-
-interface Favorito {
-	id: string;
-	nombre: string;
-	imagen: string;
-	precio: number;
-	precioAnterior: number;
-	marca: string;
-	favorito: boolean;
-	disponible: boolean;
-}
+import { getFavorites, FavoriteProduct, toggleFavorite, getFavoritesCount } from '@/lib/catalog';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function MisFavoritos() {
-	const [favoritos, setFavoritos] = useState<Favorito[]>([
-		{
-			id: '1',
-			nombre: 'Paño de limpieza 15×15',
-			imagen: '/images/productos/liwilu_producto_example.png',
-			precio: 103.92,
-			precioAnterior: 150.0,
-			marca: 'Liwilu',
-			favorito: true,
-			disponible: true,
-		},
-		{
-			id: '2',
-			nombre: 'Paño de limpieza 15×15',
-			imagen: '/images/productos/liwilu_producto_example.png',
-			precio: 103.92,
-			precioAnterior: 150.0,
-			marca: 'Liwilu',
-			favorito: true,
-			disponible: true,
-		},
-		{
-			id: '3',
-			nombre: 'Paño de limpieza 15×15',
-			imagen: '/images/productos/liwilu_producto_example.png',
-			precio: 103.92,
-			precioAnterior: 150.0,
-			marca: 'Liwilu',
-			favorito: false,
-			disponible: false,
-		},
-	]);
+	const [favoritos, setFavoritos] = useState<FavoriteProduct[]>([]);
+	const [favoritesCount, setFavoritesCount] = useState<number>(0);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+	const [removingId, setRemovingId] = useState<number | null>(null);
 
-	const toggleFavorito = (id: string) => {
-		setFavoritos(
-			favoritos.map((fav) =>
-				fav.id === id ? { ...fav, favorito: !fav.favorito } : fav
-			)
-		);
+	useEffect(() => {
+		async function fetchFavorites() {
+			try {
+				const response = await getFavorites();
+				if (response.success) {
+					setFavoritos(response.data);
+
+					// Fetch count
+					const countResponse = await getFavoritesCount();
+					setFavoritesCount(countResponse.count);
+				} else {
+					setError('No se pudieron cargar los favoritos.');
+				}
+			} catch (err) {
+				console.error(err);
+				setError('Error al cargar favoritos.');
+			} finally {
+				setLoading(false);
+			}
+		}
+
+		fetchFavorites();
+	}, []);
+
+	const handleRemoveFavorite = async (productId: number) => {
+		try {
+			setRemovingId(productId);
+			await toggleFavorite(productId);
+
+			// Remove from local state
+			setFavoritos(prev => prev.filter(p => p.id !== productId));
+			setFavoritesCount(prev => Math.max(0, prev - 1));
+			toast.success('Producto eliminado de favoritos', {
+				duration: 2000,
+				position: 'bottom-right',
+				style: {
+					fontSize: '14px',
+					fontFamily: 'Outfit',
+				},
+			});
+		} catch (err) {
+			console.error('Error removing favorite:', err);
+			alert('Error al eliminar de favoritos');
+		} finally {
+			setRemovingId(null);
+		}
 	};
 
 	return (
@@ -72,110 +78,113 @@ export default function MisFavoritos() {
 						<main className="flex-1">
 							<div className="md:px-8 z-10 relative">
 								<h1 className="text-xl md:text-4xl font-semibold mb-8 border-b pb-4">
-									Mis favoritos
+									Mis favoritos <span className="text-gray-500 text-lg">({favoritesCount})</span>
 								</h1>
 
-								<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-									{favoritos.map((producto) => (
-										<div
-											key={producto.id}
-											className={`rounded-sm overflow-hidden shadow-lg hover:shadow-xl transition ${producto.disponible ? 'bg-white' : 'bg-gray-100'
-												}`}
-										>
-											{/* Imagen del producto */}
-											<div className="relative">
-												<div className="relative w-full h-64">
-													<Image
-														src={producto.imagen}
-														alt={producto.nombre}
-														fill
-														className="object-cover"
-														unoptimized
-													/>
-												</div>
-
-												{/* Botón de favorito */}
-												<button
-													onClick={() => toggleFavorito(producto.id)}
-													className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-110 transition"
-												>
-													<svg
-														className={`w-6 h-6 ${producto.favorito
-															? 'text-primary fill-current'
-															: 'text-gray-400 fill-gray-400'
-															}`}
-														fill={producto.favorito ? 'currentColor' : 'none'}
-														stroke="currentColor"
-														viewBox="0 0 24 24"
-													>
-														<path
-															strokeLinecap="round"
-															strokeLinejoin="round"
-															strokeWidth={2}
-															d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-														/>
-													</svg>
-												</button>
-											</div>
-
-											{/* Info del producto */}
-											<div
-												className={`p-4 ${producto.disponible
-													? 'bg-primary text-white'
-													: 'bg-[rgba(120,125,134,0.5)] text-white'
-													}`}
-											>
-												<p
-													className={`font-normal text-sm ${producto.disponible ? '' : 'text-[#787d86cc]'
-														}`}
-												>
-													{producto.marca}
-												</p>
-
-												<h3
-													className={`font-normal text-lg ${producto.disponible ? '' : 'text-[#787d86cc]'
-														}`}
-												>
-													{producto.nombre}
-												</h3>
-
-												{/* Rating */}
-												<div
-													className={`flex text-yellow-300 ${producto.disponible ? '' : 'text-[#787d86cc]'
-														}`}
-												>
-													{'★'.repeat(5)}
-												</div>
-
-												{/* Precio */}
-												<div
-													className={`flex items-baseline gap-2 mb-4 ${producto.disponible ? '' : 'text-[#787d86cc]'
-														}`}
-												>
-													<span className="text-xl md:text-2xl font-semibold">
-														s/ {producto.precio.toFixed(2)}
-													</span>
-													<span className="line-through text-sm opacity-75">
-														s/ {producto.precioAnterior.toFixed(2)}
-													</span>
-												</div>
-											</div>
-										</div>
-									))}
-								</div>
-
-								{favoritos.length === 0 && (
-									<div className="text-center py-12">
-										<p className="text-gray-500 text-lg mb-4">
-											No tienes productos en favoritos
-										</p>
-										<Link
-											href="/productos"
-											className="text-primary hover:text-primary-dark font-semibold"
-										>
-											Explorar productos →
-										</Link>
+								{loading ? (
+									<div className="flex justify-center py-20">
+										<div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
 									</div>
+								) : error ? (
+									<div className="text-center py-12 text-red-500">
+										<p>{error}</p>
+									</div>
+								) : (
+									<>
+										<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+											{favoritos.map((producto) => (
+												<div
+													key={producto.id}
+													className="rounded-sm overflow-hidden shadow-lg hover:shadow-xl transition bg-white"
+												>
+													{/* Imagen del producto */}
+													<div className="relative">
+														<div className="relative w-full h-64">
+															<Image
+																src={producto.coverImage || '/images/placeholder.png'}
+																alt={producto.name}
+																fill
+																className="object-cover"
+																unoptimized
+															/>
+														</div>
+
+														{/* Botón de favorito (clickable para remover) */}
+														<button
+															onClick={() => handleRemoveFavorite(producto.id)}
+															disabled={removingId === producto.id}
+															className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-110 transition disabled:opacity-50"
+															title="Quitar de favoritos"
+														>
+															{removingId === producto.id ? (
+																<div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
+															) : (
+																<svg
+																	className="w-6 h-6 text-primary fill-current"
+																	fill="currentColor"
+																	stroke="currentColor"
+																	viewBox="0 0 24 24"
+																>
+																	<path
+																		strokeLinecap="round"
+																		strokeLinejoin="round"
+																		strokeWidth={2}
+																		d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+																	/>
+																</svg>
+															)}
+														</button>
+													</div>
+
+													{/* Info del producto */}
+													<div className="p-4 bg-primary text-white">
+														<p className="font-normal text-sm opacity-90">
+															{producto.defaultCategory?.name || 'Producto'}
+														</p>
+
+														<Link href={`/producto/${producto.prestashopId}`}>
+															<h3 className="font-normal text-lg hover:underline cursor-pointer truncate">
+																{producto.name}
+															</h3>
+														</Link>
+
+														{/* Rating Placeholder */}
+														<div className="flex text-yellow-300">
+															{'★'.repeat(5)}
+														</div>
+
+														{/* Precio */}
+														<div className="flex items-baseline gap-2 mb-4">
+															<span className="text-xl md:text-2xl font-semibold">
+																s/ {producto.discountPrice
+																	? producto.discountPrice.toFixed(2)
+																	: producto.priceWithTax.toFixed(2)}
+															</span>
+															{producto.discountPrice && (
+																<span className="line-through text-sm opacity-75">
+																	s/ {producto.priceWithTax.toFixed(2)}
+																</span>
+															)}
+														</div>
+													</div>
+												</div>
+											))}
+										</div>
+
+										{favoritos.length === 0 && (
+											<div className="text-center py-12">
+												<p className="text-gray-500 text-lg mb-4">
+													No tienes productos en favoritos
+												</p>
+												<Link
+													href="/productos"
+													className="text-primary hover:text-primary-dark font-semibold"
+												>
+													Explorar productos →
+												</Link>
+											</div>
+										)}
+									</>
 								)}
 
 								{/* Botón volver */}

@@ -9,6 +9,7 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import toast from 'react-hot-toast';
 import Contacto from '@/components/Contacto';
 import AddToCartModal from '@/components/AddToCartModal';
 
@@ -25,10 +26,13 @@ import {
 	searchProducts,
 	getCatalogHierarchy,
 	getLevelTwoCategories,
+	toggleFavorite,
+	getFavorites,
+	checkMultipleFavorites,
 	HierarchyResponse,
 	CategoryLevelTwo
 } from '@/lib/catalog';
-import { FaRegHeart, FaPlus, FaMinus } from 'react-icons/fa';
+import { FaRegHeart, FaPlus, FaMinus, FaHeart } from 'react-icons/fa';
 
 interface TiendaProps {
 	products: Product[];
@@ -140,6 +144,7 @@ export default function Tienda({ products, levelTwoCategories = [], hierarchy, p
 
 	const [loadingCart, setLoadingCart] = useState<string | null>(null);
 	const [favoritos, setFavoritos] = useState<string[]>([]);
+	const [togglingFavorite, setTogglingFavorite] = useState<string | null>(null);
 	const [modalProduct, setModalProduct] = useState<Product | null>(null);
 	const [isVisible, setIsVisible] = useState(false);
 	// const productsPerPage = 9; // Backend handles pagination now with limit 20, but UI was using 9. 
@@ -155,6 +160,61 @@ export default function Tienda({ products, levelTwoCategories = [], hierarchy, p
 		setIsVisible(true);
 	}, []);
 
+	// Fetch user favorites on mount
+	useEffect(() => {
+		async function loadFavorites() {
+			try {
+				const response = await getFavorites();
+				if (response.success) {
+					// Map favorite products to their IDs
+					const favoriteIds = response.data.map(fav => fav.id.toString());
+					setFavoritos(favoriteIds);
+				}
+			} catch (error) {
+				// Silently fail if user is not authenticated
+				console.log('Could not load favorites:', error);
+			}
+		}
+
+		loadFavorites();
+	}, []);
+
+	// Check favorites status when products change (filters/pagination)
+	useEffect(() => {
+		async function checkCurrentPageFavorites() {
+			if (!products || products.length === 0) return;
+
+			try {
+				const productIds = products.map(p => typeof p.id === 'string' ? parseInt(p.id) : p.id); // Use database IDs
+				const favoriteStatus = await checkMultipleFavorites(productIds);
+
+				// Update favorites state with confirmed favorites from current page
+				const confirmedFavorites = Object.entries(favoriteStatus)
+					.filter(([_, isFav]) => isFav)
+					.map(([id]) => id);
+
+				// Merge with existing favorites to avoid losing state of other pages
+				setFavoritos(prev => {
+					// Create set from previous favorites
+					const newFavorites = new Set(prev);
+
+					// Add confirmed favorites
+					confirmedFavorites.forEach(id => newFavorites.add(id));
+
+					// Optionally remove ones that are explicitly false? 
+					// Ideally we trust the check-multiple for currently visible items.
+					// But we might want to keep others.
+
+					return Array.from(newFavorites);
+				});
+			} catch (error) {
+				console.log('Error checking favorites:', error);
+			}
+		}
+
+		checkCurrentPageFavorites();
+	}, [products]);
+
 	const toggleCategory = (category: string) => {
 		setOpenCategories((prev) =>
 			prev.includes(category)
@@ -163,20 +223,50 @@ export default function Tienda({ products, levelTwoCategories = [], hierarchy, p
 		);
 	};
 
-	const toggleFavorito = (e: React.MouseEvent, productId: string) => {
+	const toggleFavorito = async (e: React.MouseEvent, productId: string) => {
 		e.preventDefault();
 		e.stopPropagation();
 
-		setFavoritos((prev) =>
-			prev.includes(productId)
-				? prev.filter((id) => id !== productId)
-				: [...prev, productId]
-		);
+		try {
+			setTogglingFavorite(productId);
 
-		const updatedFavoritos = favoritos.includes(productId)
-			? favoritos.filter((id) => id !== productId)
-			: [...favoritos, productId];
-		localStorage.setItem('liwilu_favoritos', JSON.stringify(updatedFavoritos));
+			// Call API to toggle favorite
+			const result = await toggleFavorite(parseInt(productId));
+
+			// Update local state based on API response
+			if (result.isFavorite) {
+				setFavoritos((prev) => [...prev, productId]);
+				toast.success('Producto agregado a favoritos', {
+					duration: 2000,
+					position: 'bottom-right',
+					style: {
+						fontSize: '14px',
+						fontFamily: 'Outfit',
+					},
+				});
+			} else {
+				setFavoritos((prev) => prev.filter((id) => id !== productId));
+				toast.success('Producto eliminado de favoritos', {
+					duration: 2000,
+					position: 'bottom-right',
+					style: {
+						fontSize: '14px',
+						fontFamily: 'Outfit',
+					},
+				});
+			}
+		} catch (error) {
+			console.error('Error toggling favorite:', error);
+
+			// Check if it's an authentication error
+			if (error instanceof Error && error.message.includes('No hay sesión activa')) {
+				alert('Debes iniciar sesión para agregar favoritos');
+			} else {
+				alert('Error al actualizar favoritos. Por favor, intenta de nuevo.');
+			}
+		} finally {
+			setTogglingFavorite(null);
+		}
 	};
 
 	const handleAddToCart = async (e: React.MouseEvent, producto: Product) => {
@@ -546,7 +636,7 @@ export default function Tienda({ products, levelTwoCategories = [], hierarchy, p
 									id="sort"
 									value={router.query.sortBy || 'price'}
 									onChange={(e) => updateFilters({ sortBy: e.target.value })}
-									className="px-4 py-2 border border-gray-300 rounded-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 cursor-pointer"
+									className="pr-4 pl-2 py-2 border border-gray-300 rounded-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 cursor-pointer"
 								>
 									<option value="price">Precio: Menor a Mayor</option>
 									<option value="name">Nombre: A-Z</option>
@@ -614,15 +704,20 @@ export default function Tienda({ products, levelTwoCategories = [], hierarchy, p
 											<div className="bg-primary rounded-md shadow-md overflow-hidden hover:shadow-2xl transition-all duration-300 transform group">
 												<div className="relative overflow-hidden">
 													<button
-														className="absolute top-3 left-3 bg-white rounded-full p-2 hover:bg-gray-100 z-10 shadow-md transition-all duration-300 hover:scale-110"
-														onClick={(e) => toggleFavorito(e, safeId.toString())}
+														className="absolute top-2 right-2 bg-white rounded-full p-2 hover:bg-gray-100 z-10 transition-transform hover:scale-110 disabled:opacity-50"
+														onClick={(e) => toggleFavorito(e, product.id.toString())}
+														disabled={togglingFavorite === product.id.toString()}
 													>
-														<FaRegHeart
-															className={`w-5 h-5 transition-all duration-300 ${favoritos.includes(safeId.toString())
-																? 'text-red-500 fill-current scale-110'
-																: 'text-gray-400 hover:text-red-500'
-																}`}
-														/>
+														{togglingFavorite === product.id.toString() ? (
+															<div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
+														) : (
+															<FaHeart
+																className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
+																	? 'text-red-500 fill-current'
+																	: 'text-gray-400 hover:text-red-500'
+																	}`}
+															/>
+														)}
 													</button>
 													<div className="relative w-full h-56 bg-gray-100 overflow-hidden">
 														<Image

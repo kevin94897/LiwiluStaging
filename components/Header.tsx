@@ -629,18 +629,16 @@ export default function Header() {
                                   }
                                   : () => setMobileCatsOpen(false)
                               }
-                              className={`flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
-                                ? "bg-primary text-white hover:bg-primary-light"
-                                : c.highlightBottom
-                                  ? "bg-gray-100 font-bold hover:bg-gray-200"
-                                  : "hover:bg-gray-50"
+                              className={`group flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
+                                  ? "bg-primary text-white hover:bg-primary-light"
+                                  : c.highlightBottom
+                                    ? "bg-gray-100 font-bold hover:bg-primary hover:text-white"
+                                    : "hover:bg-primary hover:text-white"
                                 }`}
                             >
                               <span className="truncate">{c.label}</span>
                               <HiChevronRight
-                                className={
-                                  c.highlight ? "text-white" : "text-gray-400"
-                                }
+                                className="text-gray-400 transition-colors group-hover:text-white"
                               />
                             </Link>
                           </li>

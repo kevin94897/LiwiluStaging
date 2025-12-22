@@ -6,7 +6,9 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Slider from 'react-slick';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { Product, getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
+import { toggleFavorite, getFavorites } from '@/lib/catalog';
 import { useCart } from '@/context/CartContext';
 import {
 	fadeInUp,
@@ -29,6 +31,7 @@ export default function NuestrosProductos({
 }: NuestrosProductosProps) {
 	const [favoritos, setFavoritos] = useState<string[]>([]);
 	const [loadingCart, setLoadingCart] = useState<string | null>(null);
+	const [togglingFavorite, setTogglingFavorite] = useState<string | null>(null);
 	const [isMobile, setIsMobile] = useState(false);
 	const { addToCart } = useCart();
 
@@ -44,23 +47,67 @@ export default function NuestrosProductos({
 		return () => window.removeEventListener('resize', checkMobile);
 	}, []);
 
-	// Cargar favoritos del localStorage
+	// Cargar favoritos del API
 	useEffect(() => {
-		const savedFavoritos = localStorage.getItem('liwilu_favoritos');
-		if (savedFavoritos) {
-			setFavoritos(JSON.parse(savedFavoritos));
+		async function loadFavorites() {
+			try {
+				const response = await getFavorites();
+				if (response.success) {
+					// Map favorite products to their IDs
+					const favoriteIds = response.data.map(fav => fav.id.toString());
+					setFavoritos(favoriteIds);
+				}
+			} catch (error) {
+				// Silently fail if user is not authenticated
+				console.log('Could not load favorites:', error);
+			}
 		}
+		loadFavorites();
 	}, []);
 
 	const productosAMostrar = productos.length > 0 ? productos.slice(0, 8) : [];
 
-	const toggleFavorito = (id: string) => {
-		const updatedFavoritos = favoritos.includes(id)
-			? favoritos.filter((fav) => fav !== id)
-			: [...favoritos, id];
+	const toggleFavorito = async (id: string) => {
+		try {
+			setTogglingFavorite(id);
 
-		setFavoritos(updatedFavoritos);
-		localStorage.setItem('liwilu_favoritos', JSON.stringify(updatedFavoritos));
+			// Call API to toggle favorite
+			const result = await toggleFavorite(parseInt(id));
+
+			// Update local state based on API response
+			if (result.isFavorite) {
+				setFavoritos((prev) => [...prev, id]);
+				toast.success('Producto agregado a favoritos', {
+					duration: 2000,
+					position: 'bottom-right',
+					style: {
+						fontSize: '14px',
+						fontFamily: 'Outfit',
+					},
+				});
+			} else {
+				setFavoritos((prev) => prev.filter((fav) => fav !== id));
+				toast.success('Producto eliminado de favoritos', {
+					duration: 2000,
+					position: 'bottom-right',
+					style: {
+						fontSize: '14px',
+						fontFamily: 'Outfit',
+					},
+				});
+			}
+		} catch (error) {
+			console.error('Error toggling favorite:', error);
+
+			// Check if it's an authentication error
+			if (error instanceof Error && error.message.includes('No hay sesión activa')) {
+				toast.error('Debes iniciar sesión para agregar favoritos');
+			} else {
+				toast.error('Error al actualizar favoritos');
+			}
+		} finally {
+			setTogglingFavorite(null);
+		}
 	};
 
 	const handleAddToCart = async (e: React.MouseEvent, producto: Product) => {
@@ -136,37 +183,42 @@ export default function NuestrosProductos({
 								e.preventDefault();
 								toggleFavorito(producto.id.toString());
 							}}
-							className="absolute top-4 left-4 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center z-10"
+							disabled={togglingFavorite === producto.id.toString()}
+							className="absolute top-4 left-4 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center z-10 disabled:opacity-50"
 							whileHover={{ scale: 1.2, rotate: 10 }}
 							whileTap={{ scale: 0.9 }}
 							transition={transitions.fast}
 							aria-label="Agregar a favoritos"
 						>
-							<motion.svg
-								className={`w-6 h-6 ${favoritos.includes(producto.id.toString())
-									? 'text-red-500 fill-current'
-									: 'text-gray-400'
-									}`}
-								fill={
-									favoritos.includes(producto.id.toString())
-										? 'currentColor'
-										: 'none'
-								}
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-								animate={favoritos.includes(producto.id.toString()) ? {
-									scale: [1, 1.2, 1],
-									rotate: [0, 10, -10, 0]
-								} : {}}
-								transition={{ duration: 0.5 }}
-							>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth={2}
-									d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-								/>
-							</motion.svg>
+							{togglingFavorite === producto.id.toString() ? (
+								<div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
+							) : (
+								<motion.svg
+									className={`w-6 h-6 ${favoritos.includes(producto.id.toString())
+										? 'text-red-500 fill-current'
+										: 'text-gray-400'
+										}`}
+									fill={
+										favoritos.includes(producto.id.toString())
+											? 'currentColor'
+											: 'none'
+									}
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+									animate={favoritos.includes(producto.id.toString()) ? {
+										scale: [1, 1.2, 1],
+										rotate: [0, 10, -10, 0]
+									} : {}}
+									transition={{ duration: 0.5 }}
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+									/>
+								</motion.svg>
+							)}
 						</motion.button>
 					</motion.div>
 

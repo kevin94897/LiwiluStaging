@@ -111,16 +111,15 @@ export default function ForgotPasswordModal({
                 }
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || "Error al enviar el correo de recuperación");
+            const data = await response.json();
+
+            if (!response.ok || data.success === false) {
+                throw new Error(data.message || "Error al enviar el correo de recuperación");
             }
 
-            // Mostrar mensaje de éxito
-            setSuccessMessage("✅ Se ha enviado un correo con las instrucciones para recuperar tu contraseña");
+            setSuccessMessage(`✅ ${data.message}`);
             setEmailSent(true);
 
-            // Limpiar formulario
             setFormData({ email: "" });
 
         } catch (error: unknown) {
