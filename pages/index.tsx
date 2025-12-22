@@ -12,7 +12,8 @@ import Beneficios from '@/components/Beneficios';
 import ComoComprar from '@/components/ComoComprar';
 import NuestrosProductos from '@/components/NuestrosProductos';
 
-import { getFeaturedProducts, Product } from '@/lib/prestashop';
+import { Product } from '@/lib/prestashop';
+import { getFeaturedProducts, searchProducts } from '@/lib/catalog';
 
 interface HomeProps {
 	featuredProducts: Product[];
@@ -23,8 +24,8 @@ interface HomeProps {
 export const getServerSideProps: GetServerSideProps = async () => {
 	try {
 		const featuredProducts = await getFeaturedProducts();
-		const { getProducts } = await import('@/lib/prestashop');
-		const allProducts = await getProducts(8);
+		const searchResponse = await searchProducts({ limit: 8 });
+		const allProducts = searchResponse.data || [];
 
 		return {
 			props: {

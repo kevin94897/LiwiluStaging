@@ -15,6 +15,8 @@ import {
 	formatPrice,
 	Product,
 	getRelatedProducts,
+	getProductName,
+	getProductDescription,
 } from '@/lib/prestashop';
 
 interface ProductDetailProps {
@@ -40,8 +42,8 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
 			console.log('🎯 Categoría principal:', mainCategoryId);
 
 			relatedProducts = await getRelatedProducts(
-				mainCategoryId || categoryIds[0], // Usar categoría principal o la primera
-				product.id, // Excluir el producto actual
+				String(mainCategoryId || categoryIds[0]), // Usar categoría principal o la primera
+				String(product.id), // Excluir el producto actual
 				4
 			);
 
@@ -119,7 +121,7 @@ export default function ProductDetail({
 				className="prose prose-sm max-w-none text-gray-600"
 				dangerouslySetInnerHTML={{
 					__html:
-						product.description?.[0]?.value || 'Sin descripción disponible.',
+						getProductDescription(product) || 'Sin descripción disponible.',
 				}}
 			/>
 		),
@@ -229,8 +231,8 @@ export default function ProductDetail({
 
 	return (
 		<Layout
-			title={`${product.name?.[0]?.value || 'Producto'} - Liwilu`}
-			description={product.description?.[0]?.value || 'Detalle del producto'}
+			title={`${getProductName(product)} - Liwilu`}
+			description={getProductDescription(product) || 'Detalle del producto'}
 		>
 			<div className="absolute md:right-[-15vw] md:top-80 w-auto md:w-auto z-0 pointer-events-none md:block hidden">
 				<Image
@@ -269,7 +271,7 @@ export default function ProductDetail({
 						</Link>
 						<span className="mx-2">/</span>
 						<span className="text-primary-dark font-medium">
-							{product.name?.[0]?.value}
+							{getProductName(product)}
 						</span>
 					</div>
 				</div>
@@ -286,7 +288,7 @@ export default function ProductDetail({
 								<div className="relative aspect-square bg-white rounded-sm shadow-md overflow-hidden">
 									<Image
 										src={mainImage}
-										alt={product.name?.[0]?.value || 'Producto'}
+										alt={getProductName(product)}
 										fill
 										className="object-cover"
 										priority
@@ -306,7 +308,7 @@ export default function ProductDetail({
 											>
 												<Image
 													src={getProductImageUrl(product.id, image.id)}
-													alt={`${product.name?.[0]?.value} - imagen ${image.id}`}
+													alt={`${getProductName(product)} - imagen ${image.id}`}
 													fill
 													className="object-contain"
 													unoptimized
@@ -329,7 +331,7 @@ export default function ProductDetail({
 
 								{/* Título y marca */}
 								<h1 className="text-2xl md:text-4xl font-bold mb-2 text-primary-dark">
-									{product.name?.[0]?.value}
+									{getProductName(product)}
 								</h1>
 
 								{/* Rating */}
@@ -349,7 +351,7 @@ export default function ProductDetail({
 										{formatPrice(product.price || '0')}
 									</span>
 									<span className="text-lg text-[#D3D3D3] line-through font-bold">
-										{formatPrice(parseFloat(product.price || '0') * 1.5)}
+										{formatPrice(parseFloat(String(product.price || '0')) * 1.5)}
 									</span>
 								</div>
 

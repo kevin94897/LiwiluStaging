@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Slider from 'react-slick';
 import { motion } from 'framer-motion';
-import { Product, getProductImageUrl, formatPrice } from '@/lib/prestashop';
+import { Product, getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
 import { useCart } from '@/context/CartContext';
 import {
 	fadeInUp,
@@ -18,6 +18,7 @@ import {
 } from '@/lib/motionVariants';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
+import Button from './ui/Button';
 
 interface NuestrosProductosProps {
 	productos?: Product[];
@@ -67,9 +68,9 @@ export default function NuestrosProductos({
 		e.stopPropagation();
 
 		try {
-			setLoadingCart(producto.id);
+			setLoadingCart(producto.id.toString());
 			addToCart(producto, 1);
-			alert(`✓ ${producto.name?.[0]?.value || 'Producto'} agregado al carrito`);
+			alert(`✓ ${getProductName(producto)} agregado al carrito`);
 		} catch (error) {
 			console.error('Error al agregar al carrito:', error);
 			alert('Error al agregar el producto al carrito');
@@ -94,10 +95,12 @@ export default function NuestrosProductos({
 	};
 
 	const ProductCard = ({ producto }: { producto: Product }) => {
-		const imageId = producto.associations?.images?.[0]?.id;
-		const imageUrl = imageId
-			? getProductImageUrl(producto.id, imageId)
-			: '/no-image.png';
+		// Priority to coverImage if available (from catalog)
+		const imageUrl = producto.coverImage || (
+			producto.associations?.images?.[0]?.id
+				? getProductImageUrl(producto.id, producto.associations.images[0].id)
+				: '/no-image.png'
+		);
 
 		return (
 			<Link href={`/tienda/${producto.id}`}>
@@ -115,21 +118,23 @@ export default function NuestrosProductos({
 						animate={{ opacity: 1 }}
 						transition={{ duration: 0.5 }}
 					>
-						<div className="relative w-full aspect-square">
+						<div className="relative w-full aspect-square p-4 bg-gray-50">
 							<Image
 								src={imageUrl}
-								alt={producto.name?.[0]?.value || 'Producto'}
+								alt={getProductName(producto)}
 								fill
-								className="object-contain"
+								className="object-cover"
+								sizes="(max-width: 768px) 90vw, 25vw"
 								unoptimized
 							/>
 						</div>
+
 
 						{/* Botón de favorito */}
 						<motion.button
 							onClick={(e) => {
 								e.preventDefault();
-								toggleFavorito(producto.id);
+								toggleFavorito(producto.id.toString());
 							}}
 							className="absolute top-4 left-4 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center z-10"
 							whileHover={{ scale: 1.2, rotate: 10 }}
@@ -138,18 +143,18 @@ export default function NuestrosProductos({
 							aria-label="Agregar a favoritos"
 						>
 							<motion.svg
-								className={`w-6 h-6 ${favoritos.includes(producto.id)
-										? 'text-red-500 fill-current'
-										: 'text-gray-400'
+								className={`w-6 h-6 ${favoritos.includes(producto.id.toString())
+									? 'text-red-500 fill-current'
+									: 'text-gray-400'
 									}`}
 								fill={
-									favoritos.includes(producto.id)
+									favoritos.includes(producto.id.toString())
 										? 'currentColor'
 										: 'none'
 								}
 								stroke="currentColor"
 								viewBox="0 0 24 24"
-								animate={favoritos.includes(producto.id) ? {
+								animate={favoritos.includes(producto.id.toString()) ? {
 									scale: [1, 1.2, 1],
 									rotate: [0, 10, -10, 0]
 								} : {}}
@@ -175,24 +180,24 @@ export default function NuestrosProductos({
 						<div className="flex items-center justify-between">
 							<div className="flex-1">
 								<p className="text-white text-sm mb-1 h-10 line-clamp-2">
-									{producto.name?.[0]?.value || 'Producto'}
+									{getProductName(producto)}
 								</p>
 								<p className="text-white font-bold text-lg">
-									{formatPrice(producto.price || '0')}
+									{formatPrice(producto.price || 0)}
 								</p>
 							</div>
 							<motion.button
 								onClick={(e) => handleAddToCart(e, producto)}
-								disabled={loadingCart === producto.id}
-								className={`w-10 h-10 bg-white rounded-full flex items-center justify-center ml-2 ${loadingCart === producto.id
-										? 'opacity-50 cursor-not-allowed'
-										: ''
+								disabled={loadingCart === producto.id.toString()}
+								className={`w-10 h-10 bg-white rounded-full flex items-center justify-center ml-2 ${loadingCart === producto.id.toString()
+									? 'opacity-50 cursor-not-allowed'
+									: ''
 									}`}
 								whileHover={{ scale: 1.1 }}
 								whileTap={{ scale: 0.9 }}
 								aria-label="Agregar al carrito"
 							>
-								{loadingCart === producto.id ? (
+								{loadingCart === producto.id.toString() ? (
 									<svg
 										className="animate-spin h-5 w-5 text-primary"
 										xmlns="http://www.w3.org/2000/svg"
@@ -302,15 +307,14 @@ export default function NuestrosProductos({
 					variants={fadeInUp}
 					transition={{ delay: 0.3, ...transitions.smooth }}
 				>
-					<Link href="/productos">
-						<motion.button
-							className="bg-primary hover:bg-primary-dark text-white font-semibold px-16 py-3 rounded-full text-md md:text-xl transition-all shadow-lg"
-							whileHover={{ scale: 1.05 }}
-							whileTap={{ scale: 0.95 }}
-						>
-							Ir a la Tienda
-						</motion.button>
-					</Link>
+					<Button
+						href='/productos'
+						size='lg'
+						variant='primary'
+						className='w-full md:w-auto'
+					>
+						Ir a la Tienda
+					</Button>
 				</motion.div>
 			</div>
 

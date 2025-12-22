@@ -391,7 +391,48 @@ function QuickActions({
   );
 }
 
+interface MenuCategory {
+  href: string;
+  label: string;
+  isModal: boolean;
+  highlight: boolean;
+  highlightBottom?: boolean;
+}
+
 export default function Header() {
+  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
+
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const { getLevelTwoCategories } = await import('@/lib/catalog');
+        const cats = await getLevelTwoCategories();
+
+        const formattedCats: MenuCategory[] = cats.map(c => ({
+          href: `/productos?categoryIds=${c.id}`,
+          label: c.name,
+          isModal: false,
+          highlight: false
+        }));
+
+        // Add static Trimegisto link
+        formattedCats.push({
+          href: "#",
+          label: "Trimegisto",
+          highlightBottom: true,
+          isModal: true,
+          highlight: false
+        });
+
+        setMenuCategories(formattedCats);
+      } catch (error) {
+        console.error("Failed to load header categories", error);
+        // Fallback or keep empty
+      }
+    }
+    fetchCategories();
+  }, []);
+
   const [mobileCatsOpen, setMobileCatsOpen] = useState(false);
   const [isSticky, setIsSticky] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
@@ -412,6 +453,7 @@ export default function Header() {
     }
   }, [router.isReady, router.query]);
 
+  // ... (keeping scroll effect)
   useEffect(() => {
     const handleScroll = () => {
       setIsSticky(window.scrollY > 40);
@@ -420,6 +462,7 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // ... (keeping click outside effects)
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -527,7 +570,7 @@ export default function Header() {
                 >
                   <nav className="px-2 py-3">
                     <ul className="space-y-1">
-                      {categories.map((c) => (
+                      {menuCategories.map((c) => (
                         <li key={c.label}>
                           <Link
                             href={c.isModal ? "#" : c.href}
@@ -573,7 +616,7 @@ export default function Header() {
                   {mobileCatsOpen && (
                     <div className="absolute left-0 top-full mt-3 w-72 z-50 rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] overflow-hidden">
                       <ul className="divide-y divide-gray-200">
-                        {categories.map((c) => (
+                        {menuCategories.map((c) => (
                           <li key={c.label}>
                             <Link
                               href={c.isModal ? "#" : c.href}

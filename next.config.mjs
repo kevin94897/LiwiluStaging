@@ -9,6 +9,7 @@ const nextConfig = {
     return config
   },
   images: {
+    qualities: [75, 100],
     remotePatterns: [
       {
         protocol: 'https',
@@ -21,6 +22,10 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'via.placeholder.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'prestashopliwilu.nerdstudiolab.com',
       },
     ],
   },

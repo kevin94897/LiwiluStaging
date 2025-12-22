@@ -4,38 +4,86 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { GetServerSideProps } from 'next';
 import Layout from '@/components/Layout';
+import Slider from 'react-slick';
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Contacto from '@/components/Contacto';
 import AddToCartModal from '@/components/AddToCartModal';
 
 import { useCart } from '@/context/CartContext';
 import {
-	getProducts,
 	getCategories,
 	formatPrice,
 	Product,
 	Category,
 	getProductImageUrl,
+	getProductName,
 } from '@/lib/prestashop';
+import {
+	searchProducts,
+	getCatalogHierarchy,
+	getLevelTwoCategories,
+	HierarchyResponse,
+	CategoryLevelTwo
+} from '@/lib/catalog';
 import { FaRegHeart, FaPlus, FaMinus } from 'react-icons/fa';
 
 interface TiendaProps {
 	products: Product[];
-	categories: Category[];
+	levelTwoCategories: CategoryLevelTwo[];
+	hierarchy: HierarchyResponse | null;
 	error?: string;
+	pagination?: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+		hasMore: boolean;
+	};
 }
 
-export const getServerSideProps: GetServerSideProps = async () => {
+// Definimos una interfaz para los parámetros de filtro esperados en el query
+interface QueryParams {
+	categoryIds?: string;
+	brandIds?: string;
+	inStock?: string;
+	sortBy?: string;
+	page?: string;
+	search?: string;
+}
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
 	try {
-		const [products, categories] = await Promise.all([
-			getProducts(50),
-			getCategories(),
+		const { query } = context;
+		const params: QueryParams = query;
+
+		// Parsear parámetros
+		const page = params.page ? parseInt(params.page) : 1;
+		const categoryIds = params.categoryIds ? params.categoryIds.split(',').map(Number) : undefined;
+		const brandIds = params.brandIds ? params.brandIds.split(',').map(Number) : undefined;
+		const inStock = params.inStock === 'true';
+
+		const [searchResponse, levelTwoCategories, hierarchy] = await Promise.all([
+			searchProducts({
+				page,
+				categoryIds,
+				brandIds,
+				inStock,
+				sortBy: params.sortBy,
+				limit: 20
+			}),
+			getLevelTwoCategories(),
+			getCatalogHierarchy(),
 		]);
 
 		return {
 			props: {
-				products,
-				categories,
+				products: searchResponse.data || [],
+				levelTwoCategories,
+				hierarchy,
+				pagination: searchResponse.pagination || null,
 			},
 		};
 	} catch (error: unknown) {
@@ -44,24 +92,61 @@ export const getServerSideProps: GetServerSideProps = async () => {
 		return {
 			props: {
 				products: [],
-				categories: [],
+				levelTwoCategories: [],
+				hierarchy: null,
 				error: message,
 			},
 		};
 	}
 };
 
-export default function Tienda({ products, categories }: TiendaProps) {
+export default function Tienda({ products, levelTwoCategories = [], hierarchy, pagination }: TiendaProps & { pagination: any }) {
+	const router = useRouter();
 	const [openCategories, setOpenCategories] = useState<string[]>([
-		'Categorías',
+		'Categoria',
 	]);
 	const [selectedCategory, setSelectedCategory] = useState<string>('all');
-	const [currentPage, setCurrentPage] = useState(1);
+
+	// Sync state with URL query
+	useEffect(() => {
+		if (router.query.categoryIds) {
+			setSelectedCategory(router.query.categoryIds.toString());
+		} else {
+			setSelectedCategory('all');
+		}
+	}, [router.query.categoryIds]);
+
+	const updateFilters = (newParams: Partial<QueryParams>) => {
+		const currentQuery = router.query;
+		const updatedQuery = { ...currentQuery, ...newParams } as Record<string, any>;
+
+		// Remove keys with undefined/null/empty values
+		Object.keys(updatedQuery).forEach((key) => {
+			if (!updatedQuery[key] && updatedQuery[key] !== 0) {
+				delete updatedQuery[key];
+			}
+		});
+
+		// Reset page to 1 on filter change (unless page is explicitly passed)
+		if (!newParams.page) {
+			updatedQuery.page = '1';
+		}
+
+		router.push({
+			pathname: '/productos',
+			query: updatedQuery,
+		}, undefined, { scroll: false });
+	};
+
 	const [loadingCart, setLoadingCart] = useState<string | null>(null);
 	const [favoritos, setFavoritos] = useState<string[]>([]);
 	const [modalProduct, setModalProduct] = useState<Product | null>(null);
 	const [isVisible, setIsVisible] = useState(false);
-	const productsPerPage = 9;
+	// const productsPerPage = 9; // Backend handles pagination now with limit 20, but UI was using 9. 
+	// We should probably rely on backend pagination which returns 20. 
+	// If we want 9, we should request limit=9. getServerSideProps sets limit: 20. 
+	// For now, let's use what backend returns.
+	const productsPerPage = 20;
 
 	const { addToCart } = useCart();
 
@@ -99,7 +184,7 @@ export default function Tienda({ products, categories }: TiendaProps) {
 		e.stopPropagation();
 
 		try {
-			setLoadingCart(producto.id);
+			setLoadingCart(producto.id.toString());
 			addToCart(producto, 1);
 			setModalProduct(producto);
 		} catch (error) {
@@ -110,23 +195,100 @@ export default function Tienda({ products, categories }: TiendaProps) {
 		}
 	};
 
-	const filteredProducts =
-		selectedCategory === 'all'
-			? products
-			: products.filter((p) => p.id_category_default === selectedCategory);
+	// Use products directly from props (server-side filtered)
+	const currentProducts = products;
 
-	const indexOfLastProduct = currentPage * productsPerPage;
-	const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-	const currentProducts = filteredProducts.slice(
-		indexOfFirstProduct,
-		indexOfLastProduct
-	);
-	const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+	// Use pagination from backend if available, otherwise calculate
+	const currentPage = pagination?.page || 1;
+	const totalPages = pagination?.totalPages || 1;
 
 	// const getCategoryName = (categoryId: string) => {
 	// 	const category = categories.find((c) => c.id === categoryId);
 	// 	return category?.name?.[0]?.value || 'Categoría';
 	// };
+
+	// Settings for category slider
+	const categorySliderSettings = {
+		dots: false,
+		infinite: true,
+		speed: 3000, // Faster continuous speed feel or standard transition
+		autoplay: true,
+		autoplaySpeed: 0, // Continuous scroll often uses css linear, but standard autoplay is requested: "Run automatically"
+		// User said "run automatically" which usually implies standard autoplay. 
+		// "speed: 500, autoplaySpeed: 3000" is standard. 
+		// However, for a "ticker" like effect, css mode is different. 
+		// I will use standard autoplay as it's safer unless "continuous marquee" is requested.
+		// Re-reading: "corra de forma automatica". I will use standard autoplay.
+		// Let's stick to the user's specific constraints: desktop 6 options.
+		slidesToShow: 6,
+		slidesToScroll: 1,
+		cssEase: "linear", // Smooths it out if we want continuous, but let's stick to standard first or mix.
+		// Actually, usually "autoplaySpeed: 0 + speed: >2000 + cssEase: linear" makes it continuous. 
+		// If they want pagination-like, standard is best. I will use standard autoplay with decent speed.
+		arrows: false,
+		pauseOnHover: true,
+		responsive: [
+			{
+				breakpoint: 1024,
+				settings: {
+					slidesToShow: 4,
+				}
+			},
+			{
+				breakpoint: 768,
+				settings: {
+					slidesToShow: 3,
+				}
+			},
+			{
+				breakpoint: 480,
+				settings: {
+					slidesToShow: 2, // Or 3 depending on size
+				}
+			}
+		]
+	};
+
+	// Override for smooth auto run if desired:
+	// If the user wants it to "flow" continuously, the settings are:
+	// speed: 2000, autoplaySpeed: 2000, cssEase: "linear"
+	// I'll stick to a standard auto-advance for now: speed 500, autoplaySpeed 3000.
+	const sliderSettings = {
+		dots: false,
+		infinite: true,
+		speed: 500,
+		slidesToShow: 6,
+		slidesToScroll: 1,
+		autoplay: true,
+		autoplaySpeed: 3000,
+		arrows: false,
+		responsive: [
+			{
+				breakpoint: 1280,
+				settings: {
+					slidesToShow: 5,
+				}
+			},
+			{
+				breakpoint: 1024,
+				settings: {
+					slidesToShow: 4,
+				}
+			},
+			{
+				breakpoint: 768,
+				settings: {
+					slidesToShow: 3,
+				}
+			},
+			{
+				breakpoint: 480,
+				settings: {
+					slidesToShow: 2,
+				}
+			}
+		]
+	};
 
 	return (
 		<Layout title="Tienda - Liwilu" description="Productos al por mayor">
@@ -222,169 +384,122 @@ export default function Tienda({ products, categories }: TiendaProps) {
 						<span>Tienda virtual</span>
 					</div>
 
-					<div className="flex gap-6 overflow-x-auto pb-2 max-w-5xl mx-auto md:justify-center overflow-y-hidden">
-						{categories.slice(0, 6).map((cat, index) => (
-							<div
-								key={cat.id}
-								onClick={() => setSelectedCategory(cat.id)}
-								className={`flex flex-col items-center min-w-[100px] cursor-pointer transition-all duration-300 hover:scale-110 animate-fade-in-up`}
-								style={{ animationDelay: `${index * 100}ms` }}
-							>
-								<div className="w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden bg-white shadow-lg mb-2 flex items-center justify-center transition-all duration-300 hover:shadow-2xl hover:-translate-y-2">
-									<span className="text-2xl md:text-6xl transition-transform duration-300 hover:scale-110">
-										{cat.name?.[0]?.value.includes('Libro')
-											? '📚'
-											: cat.name?.[0]?.value.includes('Hogar') ||
-												cat.name?.[0]?.value.includes('Limpieza')
-												? '🧹'
-												: cat.name?.[0]?.value.includes('Uniforme')
-													? '👕'
-													: cat.name?.[0]?.value.includes('Útil')
-														? '✏️'
-														: cat.name?.[0]?.value.includes('Tecnolog')
-															? '💻'
-															: '🏷️'}
-									</span>
-								</div>
-								<span className="text-white text-md text-center font-semibold">
-									{cat.name?.[0]?.value || 'Categoría'}
-								</span>
-							</div>
-						))}
+					{/* Slider Categorias */}
+					<div className="max-w-6xl mx-auto px-4 md:px-0">
+						<Slider {...sliderSettings}>
+							{levelTwoCategories.map((cat, index) => {
+								let emoji = '🏷️';
+								const name = cat.name;
+								if (name.includes('Libro')) emoji = '📚';
+								else if (name.includes('Hogar') || name.includes('Limpieza')) emoji = '🧹';
+								else if (name.includes('Uniforme')) emoji = '👕';
+								else if (name.includes('Útil')) emoji = '✏️';
+								else if (name.includes('Tecnolog')) emoji = '💻';
+
+								return (
+									<div key={cat.id} className="px-2 py-3 focus:outline-none">
+										<div
+											onClick={() => updateFilters({ categoryIds: cat.id.toString() })}
+											className="flex flex-col items-center cursor-pointer transition-transform duration-300"
+										>
+											<div className={`bg-white relative w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden shadow-lg mb-2 mx-auto transition-all ${selectedCategory === cat.id.toString() ? 'ring-4 ring-white scale-105' : 'bg-white'}`}>
+												{cat.coverImage ? (
+													<Image
+														src={cat.coverImage}
+														alt={cat.name}
+														fill
+														sizes="(max-width: 768px) 80px, 128px"
+														className="object-cover"
+														priority={false}
+													/>
+												) : (
+													<span className="absolute inset-0 flex items-center justify-center text-2xl md:text-5xl">
+														{emoji}
+													</span>
+												)}
+											</div>
+
+											<span className="text-white text-xs md:text-md text-center font-semibold block w-full px-1 truncate">
+												{cat.name}
+											</span>
+										</div>
+									</div>
+								);
+							})}
+						</Slider>
 					</div>
 				</div>
 			</section>
 
-			{/* Contenido principal */}
+			{/* Menu Categorias */}
 			<div className="max-w-7xl mx-auto px-6 py-8">
 				<div className="flex flex-col md:flex-row gap-20">
 					{/* Sidebar con animación */}
 					<aside className="w-full md:w-64 flex-shrink-0 font-sans md:block hidden">
-						<div className="bg-white rounded-2xl shadow-lg p-5">
-							<div className="mb-4">
-								<button
-									onClick={() => toggleCategory('Categorías')}
-									className="w-full flex justify-between items-center font-bold text-sm text-gray-800 pb-5 border-b border-gray-200"
-								>
-									<span>Categorías</span>
-									<span className="text-2xl font-light text-gray-600">
-										{openCategories.includes('Categorías') ? (
-											<FaMinus className="w-3 h-3 text-primary-dark transition" />
-										) : (
-											<FaPlus className="w-3 h-3 text-primary-dark transition" />
-										)}
-									</span>
-								</button>
-								{openCategories.includes('Categorías') && (
-									<ul className="space-y-3 my-5">
-										{[
-											{ id: '1', name: 'Laptops' },
-											{ id: '2', name: 'Monitores' },
-											{ id: '3', name: 'Accesorios' },
-											{ id: '4', name: 'Sillas' },
-											{ id: '5', name: 'Periféricos' },
-										].map((cat) => (
-											<li key={cat.id}>
-												<button
-													onClick={() => {
-														setSelectedCategory(cat.id);
-														setCurrentPage(1);
-													}}
-													className="w-full text-left text-gray-500 font-bold hover:text-primary-dark transition-colors flex items-center justify-between group"
-												>
-													<span className="text-sm">{cat.name}</span>
-													<FaPlus className="w-3 h-3 text-primary-dark transition" />
-												</button>
-											</li>
-										))}
-									</ul>
-								)}
-							</div>
+						<div className="bg-white rounded-2xl shadow-lg p-5 divide-y divide-gray-200">
+							{hierarchy?.hierarchy.parentGroups
+								.filter(group =>
+									hierarchy.hierarchy.items.some(item => item.nameParent === group.nameParent)
+								)
+								.map((group) => {
+									const groupName = group.name;
+									const isOpen = openCategories.includes(groupName);
+									const items = hierarchy.hierarchy.items.filter(
+										item => item.nameParent === group.nameParent
+									);
 
-							<div className="mb-4 pb-5 border-b border-gray-200">
-								<button
-									onClick={() => toggleCategory('Tallas')}
-									className="w-full flex justify-between items-center font-bold text-sm text-gray-800"
-								>
-									<span>Tallas</span>
-									<span className="text-2xl font-light text-gray-600">
-										{openCategories.includes('Tallas') ? (
-											<FaMinus className="w-3 h-3 text-primary-dark transition" />
-										) : (
-											<FaPlus className="w-3 h-3 text-primary-dark transition" />
-										)}
-									</span>
-								</button>
-								{openCategories.includes('Tallas') && (
-									<div className="mt-3 text-sm text-gray-500">
-										<ul className="space-y-3 my-5">
-											{[
-												{ id: '1', name: 'Large' },
-												{ id: '2', name: 'Medium' },
-												{ id: '3', name: 'Small' },
-												{ id: '4', name: 'XS' },
-												{ id: '5', name: 'XXS' },
-											].map((cat) => (
-												<li key={cat.id}>
-													<button
-														onClick={() => {
-															setSelectedCategory(cat.id);
-															setCurrentPage(1);
-														}}
-														className="w-full text-left text-gray-500 font-bold hover:text-primary-dark transition-colors flex items-center justify-between group"
-													>
-														<span className="text-sm">{cat.name}</span>
-														<FaPlus className="w-3 h-3 text-primary-dark transition" />
-													</button>
-												</li>
-											))}
-										</ul>
-									</div>
-								)}
-							</div>
+									return (
+										<div key={groupName} className="py-4">
+											<button
+												onClick={() => toggleCategory(groupName)}
+												className="w-full flex justify-between items-center font-bold text-sm text-primary-dark"
+											>
+												<span>{groupName}</span>
+												<span className="text-2xl font-light text-primary-dark">
+													{isOpen ? (
+														<FaMinus className="w-3 h-3 transition" />
+													) : (
+														<FaPlus className="w-3 h-3 transition" />
+													)}
+												</span>
+											</button>
 
-							<div className="mb-4 pb-5 border-b border-gray-200">
-								<button
-									onClick={() => toggleCategory('Material')}
-									className="w-full flex justify-between items-center font-bold text-sm text-gray-800"
-								>
-									<span>Material</span>
-									<span className="text-2xl font-light text-gray-600">
-										{openCategories.includes('Material') ? (
-											<FaMinus className="w-3 h-3 text-primary-dark transition" />
-										) : (
-											<FaPlus className="w-3 h-3 text-primary-dark transition" />
-										)}
-									</span>
-								</button>
-								{openCategories.includes('Material') && (
-									<div className="mt-3 text-sm text-gray-500">
-										Filtro próximamente
-									</div>
-								)}
-							</div>
-
-							<div className="mb-0">
-								<button
-									onClick={() => toggleCategory('Marca')}
-									className="w-full flex justify-between items-center font-bold text-sm text-gray-800"
-								>
-									<span>Marca</span>
-									<span className="text-2xl font-light text-gray-600">
-										{openCategories.includes('Marca') ? (
-											<FaMinus className="w-3 h-3 text-primary-dark transition" />
-										) : (
-											<FaPlus className="w-3 h-3 text-primary-dark transition" />
-										)}
-									</span>
-								</button>
-								{openCategories.includes('Marca') && (
-									<div className="mt-3 text-sm text-gray-500">
-										Filtro próximamente
-									</div>
-								)}
-							</div>
+											{isOpen && (
+												<ul className="space-y-3 mt-4">
+													{/* Add "Ver todos" option for Categoria group */}
+													{groupName === 'Categoria' && (
+														<li>
+															<button
+																onClick={() => {
+																	updateFilters({ categoryIds: undefined });
+																}}
+																className={`w-full text-left font-bold transition-colors flex items-center justify-between ${selectedCategory === 'all' ? 'text-primary' : 'text-gray-500 hover:text-primary-dark'}`}
+															>
+																<span className="text-sm">Ver todos</span>
+																{selectedCategory === 'all' && <span className="w-2 h-2 bg-primary rounded-full"></span>}
+															</button>
+														</li>
+													)}
+													{items.map((item) => (
+														<li key={item.id}>
+															<button
+																onClick={() => {
+																	updateFilters({ categoryIds: item.id.toString() });
+																}}
+																className={`w-full text-left font-bold transition-colors flex items-center justify-between ${selectedCategory === item.id.toString() ? 'text-primary' : 'text-gray-500 hover:text-primary-dark'}`}
+															>
+																<span className="text-sm">{item.name}</span>
+																{selectedCategory === item.id.toString() && <span className="w-2 h-2 bg-primary rounded-full"></span>}
+															</button>
+														</li>
+													))}
+												</ul>
+											)}
+										</div>
+									);
+								})}
 						</div>
+
 
 						<div className="hidden md:block mt-6 bg-white rounded-lg shadow-md overflow-hidden">
 							<div className="relative h-64">
@@ -418,118 +533,183 @@ export default function Tienda({ products, categories }: TiendaProps) {
 							</div>
 						</div>
 
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-							{currentProducts.map((product, index) => {
-								const imageId = product.associations?.images?.[0]?.id;
-								const imageUrl = imageId
-									? getProductImageUrl(product.id, imageId)
-									: '/no-image.png';
+						{/* Sort selector */}
+						<div className="flex justify-between items-center mb-6 animate-fade-in">
+							<p className="text-gray-600 text-sm md:block hidden">
+								{pagination?.total || 0} productos encontrados
+							</p>
+							<div className="flex md:items-center items-start md:flex-row flex-col gap-3">
+								<label htmlFor="sort" className="text-sm font-medium text-gray-700">
+									Ordenar por:
+								</label>
+								<select
+									id="sort"
+									value={router.query.sortBy || 'price'}
+									onChange={(e) => updateFilters({ sortBy: e.target.value })}
+									className="px-4 py-2 border border-gray-300 rounded-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 cursor-pointer"
+								>
+									<option value="price">Precio: Menor a Mayor</option>
+									<option value="name">Nombre: A-Z</option>
+									<option value="newest">Más Recientes</option>
+									<option value="oldest">Más Antiguos</option>
+								</select>
+							</div>
+						</div>
 
-								return (
-									<Link
-										key={product.id}
-										href={`/tienda/${product.id}`}
-										className="block animate-fade-in-up"
-										style={{ animationDelay: `${index * 100}ms` }}
+						{/* Empty state */}
+						{currentProducts.length === 0 ? (
+							<div className="flex flex-col items-center justify-center py-20 px-6 animate-fade-in">
+								<div className="w-32 h-32 mb-6 relative animate-bounce-slow">
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										className="w-full h-full text-gray-300"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
 									>
-										<div className="bg-primary rounded-md shadow-md overflow-hidden hover:shadow-2xl transition-all duration-300 transform group">
-											<div className="relative overflow-hidden">
-												<button
-													className="absolute top-3 left-3 bg-white rounded-full p-2 hover:bg-gray-100 z-10 shadow-md transition-all duration-300 hover:scale-110"
-													onClick={(e) => toggleFavorito(e, product.id)}
-												>
-													<FaRegHeart
-														className={`w-5 h-5 transition-all duration-300 ${favoritos.includes(product.id)
-															? 'text-red-500 fill-current scale-110'
-															: 'text-gray-400 hover:text-red-500'
-															}`}
-													/>
-												</button>
-												<div className="relative w-full h-56 bg-gray-100 overflow-hidden">
-													<Image
-														src={imageUrl}
-														alt={product.name?.[0]?.value || 'Producto'}
-														fill
-														unoptimized
-														className="object-cover transition-transform duration-500 group-hover:scale-105"
-													/>
-												</div>
-											</div>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={1.5}
+											d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+										/>
+									</svg>
+								</div>
+								<h3 className="text-2xl font-bold text-gray-800 mb-2 animate-slide-up text-center">
+									No se encontraron productos
+								</h3>
+								<p className="text-gray-500 text-center mb-6 max-w-md animate-fade-in-delay">
+									No hay productos disponibles con los filtros seleccionados. Intenta ajustar tus criterios de búsqueda.
+								</p>
+								<button
+									onClick={() => {
+										router.push('/productos');
+										setSelectedCategory('all');
+									}}
+									className="px-6 py-3 bg-primary text-white font-semibold rounded-full hover:bg-primary-dark transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+								>
+									Ver todos los productos
+								</button>
+							</div>
+						) : (
+							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+								{currentProducts.map((product, index) => {
+									// Priority to coverImage from catalog, fallback to association logic
+									const imageUrl = product.coverImage || (
+										product.associations?.images?.[0]?.id
+											? getProductImageUrl(product.id.toString(), product.associations.images[0].id)
+											: '/no-image.png'
+									);
 
-											<div className="p-4">
-												<div className="mb-0">
-													<span className="text-white text-sm font-normal">
-														Liwilu
-													</span>
-												</div>
+									// Use prestashopId if available (for Catalog products), otherwise id
+									const safeId = (product as any).prestashopId || product.id;
 
-												<h3 className="font-normal text-lg mb-2 line-clamp-2 h-10 text-white leading-5 transition-colors group-hover:text-gray-100">
-													{product.name?.[0]?.value || 'Producto sin nombre'}
-												</h3>
-
-												<div className="flex items-center gap-1 mb-0">
-													<div className="flex text-yellow-400 text-sm">
-														{'★'.repeat(5)}
+									return (
+										<Link
+											key={product.id}
+											href={`/tienda/${safeId}`}
+											className="block animate-fade-in-up"
+											style={{ animationDelay: `${index * 100}ms` }}
+										>
+											<div className="bg-primary rounded-md shadow-md overflow-hidden hover:shadow-2xl transition-all duration-300 transform group">
+												<div className="relative overflow-hidden">
+													<button
+														className="absolute top-3 left-3 bg-white rounded-full p-2 hover:bg-gray-100 z-10 shadow-md transition-all duration-300 hover:scale-110"
+														onClick={(e) => toggleFavorito(e, safeId.toString())}
+													>
+														<FaRegHeart
+															className={`w-5 h-5 transition-all duration-300 ${favoritos.includes(safeId.toString())
+																? 'text-red-500 fill-current scale-110'
+																: 'text-gray-400 hover:text-red-500'
+																}`}
+														/>
+													</button>
+													<div className="relative w-full h-56 bg-gray-100 overflow-hidden">
+														<Image
+															src={imageUrl}
+															alt={getProductName(product)}
+															fill
+															unoptimized
+															className="object-cover transition-transform duration-500 group-hover:scale-105"
+														/>
 													</div>
 												</div>
 
-												<div className="flex items-center gap-2 mb-6">
-													<span className="text-white font-bold text-xl">
-														{formatPrice(product.price || '0')}
-													</span>
-													<span className="text-white text-sm line-Categorías">
-														{formatPrice(parseFloat(product.price || '0') * 1.5)}
-													</span>
-												</div>
+												<div className="p-4">
+													<div className="mb-0">
+														<span className="text-white text-sm font-normal">
+															Liwilu
+														</span>
+													</div>
 
-												<button
-													className="w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 hover:bg-gray-100 hover:shadow-lg flex items-center justify-center gap-2 transform hover:scale-105"
-													onClick={(e) => handleAddToCart(e, product)}
-													disabled={loadingCart === product.id}
-												>
-													{loadingCart === product.id ? (
-														<>
-															<svg
-																className="animate-spin h-5 w-5"
-																xmlns="http://www.w3.org/2000/svg"
-																fill="none"
-																viewBox="0 0 24 24"
-															>
-																<circle
-																	className="opacity-25"
-																	cx="12"
-																	cy="12"
-																	r="10"
-																	stroke="currentColor"
-																	strokeWidth="4"
-																/>
-																<path
-																	className="opacity-75"
-																	fill="currentColor"
-																	d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-																/>
-															</svg>
-															<span>Agregando...</span>
-														</>
-													) : (
-														<>
-															{/* <FaShoppingCart className="w-4 h-4 transition-transform group-hover:scale-110" /> */}
-															<span>Agregar al carrito</span>
-														</>
-													)}
-												</button>
+													<h3 className="font-normal text-lg mb-2 line-clamp-2 h-10 text-white leading-5 transition-colors group-hover:text-gray-100">
+														{getProductName(product)}
+													</h3>
+
+													<div className="flex items-center gap-1 mb-0">
+														<div className="flex text-yellow-400 text-sm">
+															{'★'.repeat(5)}
+														</div>
+													</div>
+
+													<div className="flex items-center gap-2 mb-6">
+														<span className="text-white font-bold text-xl">
+															{formatPrice(product.price || 0)}
+														</span>
+														<span className="text-white text-sm line-Categorías">
+															{formatPrice(parseFloat((product.price || 0).toString()) * 1.5)}
+														</span>
+													</div>
+
+													<button
+														className="w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 hover:bg-gray-100 hover:shadow-lg flex items-center justify-center gap-2 transform"
+														onClick={(e) => handleAddToCart(e, { ...product, id: safeId })}
+														disabled={loadingCart === safeId.toString()}
+													>
+														{loadingCart === safeId.toString() ? (
+															<>
+																<svg
+																	className="animate-spin h-5 w-5"
+																	xmlns="http://www.w3.org/2000/svg"
+																	fill="none"
+																	viewBox="0 0 24 24"
+																>
+																	<circle
+																		className="opacity-25"
+																		cx="12"
+																		cy="12"
+																		r="10"
+																		stroke="currentColor"
+																		strokeWidth="4"
+																	/>
+																	<path
+																		className="opacity-75"
+																		fill="currentColor"
+																		d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+																	/>
+																</svg>
+																<span>Agregando...</span>
+															</>
+														) : (
+															<>
+																{/* <FaShoppingCart className="w-4 h-4 transition-transform group-hover:scale-110" /> */}
+																<span>Agregar al carrito</span>
+															</>
+														)}
+													</button>
+												</div>
 											</div>
-										</div>
-									</Link>
-								);
-							})}
-						</div>
+										</Link>
+									);
+								})}
+							</div>
+						)}
 
 						{/* Paginación con animación */}
 						{totalPages > 1 && (
 							<div className="flex justify-center items-center gap-2 animate-fade-in">
 								<button
-									onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+									onClick={() => updateFilters({ page: (currentPage - 1).toString() })}
 									disabled={currentPage === 1}
 									className="px-4 py-2 border rounded-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105"
 								>
@@ -546,7 +726,7 @@ export default function Tienda({ products, categories }: TiendaProps) {
 										return (
 											<button
 												key={page}
-												onClick={() => setCurrentPage(page)}
+												onClick={() => updateFilters({ page: page.toString() })}
 												className={`px-4 py-2 rounded-sm transition-all duration-300 transform hover:scale-110 ${currentPage === page
 													? 'bg-primary text-white font-semibold shadow-lg'
 													: 'border hover:bg-gray-100'
@@ -561,7 +741,7 @@ export default function Tienda({ products, categories }: TiendaProps) {
 
 								<button
 									onClick={() =>
-										setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+										updateFilters({ page: (currentPage + 1).toString() })
 									}
 									disabled={currentPage === totalPages}
 									className="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105"
@@ -650,6 +830,20 @@ export default function Tienda({ products, categories }: TiendaProps) {
 					50% {
 						transform: translateY(-10px);
 					}
+				}
+
+				@keyframes bounce-slow {
+					0%,
+					100% {
+						transform: translateY(0);
+					}
+					50% {
+						transform: translateY(-15px);
+					}
+				}
+
+				.animate-bounce-slow {
+					animation: bounce-slow 2s ease-in-out infinite;
 				}
 			`}</style>
 		</Layout>

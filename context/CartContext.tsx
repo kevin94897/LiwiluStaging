@@ -101,7 +101,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 	const getCartTotal = () => {
 		return items.reduce((total, item) => {
-			const price = parseFloat(item.product.price || '0');
+			const price = typeof item.product.price === 'number'
+				? item.product.price
+				: parseFloat(item.product.price || '0');
 			return total + price * item.quantity;
 		}, 0);
 	};

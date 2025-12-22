@@ -10,7 +10,7 @@ import { useCart } from '@/context/CartContext';
 import AddToCartModal from '@/components/AddToCartModal';
 
 import { FaHeart, FaShoppingCart } from 'react-icons/fa';
-import { Product, getProductImageUrl, formatPrice } from '@/lib/prestashop';
+import { Product, getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
 import Button from './ui/Button';
 
 interface ProductProps {
@@ -49,7 +49,7 @@ export default function ProductosDestacados({
 		e.stopPropagation();
 
 		try {
-			setLoadingCart(producto.id);
+			setLoadingCart(producto.id.toString());
 			addToCart(producto, 1);
 
 			// Abrir modal
@@ -79,11 +79,6 @@ export default function ProductosDestacados({
 					<p className="text-xl text-gray-600 mb-4">
 						No se pudieron cargar los productos de PrestaShop
 					</p>
-					<Link href="/api/test-prestashop" target="_blank">
-						<button className="bg-blue-500 text-white px-6 py-2 rounded-lg">
-							🔍 Probar Conexión API
-						</button>
-					</Link>
 				</div>
 			) : (
 				<>
@@ -121,10 +116,11 @@ export default function ProductosDestacados({
 						className="product-slider px-4"
 					>
 						{featuredProducts.map((product) => {
-							const imageId = product.associations?.images?.[0]?.id;
-							const imageUrl = imageId
-								? getProductImageUrl(product.id, imageId)
-								: '/no-image.png';
+							const imageUrl = product.coverImage || (
+								product.associations?.images?.[0]?.id
+									? getProductImageUrl(product.id, product.associations.images[0].id)
+									: '/no-image.png'
+							);
 
 							return (
 								<div key={product.id}>
@@ -137,7 +133,7 @@ export default function ProductosDestacados({
 												<div className="relative w-full h-48">
 													<Image
 														src={imageUrl}
-														alt={product.name?.[0]?.value || 'Producto'}
+														alt={getProductName(product)}
 														fill
 														unoptimized
 														className="object-cover"
@@ -145,10 +141,10 @@ export default function ProductosDestacados({
 												</div>
 												<button
 													className="absolute top-2 right-2 bg-white rounded-full p-2 hover:bg-gray-100 z-10 transition-transform hover:scale-110"
-													onClick={(e) => toggleFavorito(e, product.id)}
+													onClick={(e) => toggleFavorito(e, product.id.toString())}
 												>
 													<FaHeart
-														className={`w-5 h-5 transition ${favoritos.includes(product.id)
+														className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
 															? 'text-red-500 fill-current'
 															: 'text-gray-400 hover:text-red-500'
 															}`}
@@ -156,28 +152,28 @@ export default function ProductosDestacados({
 												</button>
 											</div>
 
-											<div className="p-4 flex flex-col justify-between h-44">
-												<h3 className="font-semibold text-sm mb-2 line-clamp-2 h-10">
-													{product.name?.[0]?.value || 'Producto sin nombre'}
+											<div className="p-4 flex flex-col justify-between h-44 bg-primary">
+												<h3 className="font-semibold text-lg mb-2 line-clamp-2 h-10 text-white">
+													{getProductName(product)}
 												</h3>
 												<div className="flex justify-between items-center mb-2">
-													<span className="text-gray-500 text-sm line-through">
+													<span className="text-white text-sm line-through">
 														{formatPrice(
-															parseFloat(product.price || '0') * 1.2
+															parseFloat((product.price || 0).toString()) * 1.2
 														)}
 													</span>
-													<span className="text-primary font-bold text-lg">
-														{formatPrice(product.price || '0')}
+													<span className="text-white font-bold text-lg">
+														{formatPrice(product.price || 0)}
 													</span>
 												</div>
 												<Button
 													size="sm"
 													className="w-full"
-													variant="primary"
+													variant="secondary"
 													onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleAddToCart(e, product)}
-													disabled={loadingCart === product.id}
+													disabled={loadingCart === product.id.toString()}
 												>
-													{loadingCart === product.id ? (
+													{loadingCart === product.id.toString() ? (
 														<>
 															<svg
 																className="animate-spin h-4 w-4"

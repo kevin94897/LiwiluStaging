@@ -6,7 +6,7 @@ import Layout from '@/components/Layout';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
-import { getProductImageUrl, formatPrice } from '@/lib/prestashop';
+import { getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
 import { FaCreditCard, FaMoneyBillWave, FaTimes } from 'react-icons/fa';
 
 type TipoComprobante = 'boleta' | 'factura';
@@ -431,7 +431,7 @@ export default function Checkout() {
                                             <div className="relative w-16 h-16 bg-gray-50 rounded overflow-hidden flex-shrink-0">
                                                 <Image
                                                     src={imageUrl}
-                                                    alt={item.product.name?.[0]?.value || 'Producto'}
+                                                    alt={getProductName(item.product)}
                                                     fill
                                                     className="object-contain"
                                                     unoptimized
@@ -439,13 +439,13 @@ export default function Checkout() {
                                             </div>
                                             <div className="flex-1">
                                                 <h3 className="text-sm font-medium text-gray-900 line-clamp-2">
-                                                    {item.product.name?.[0]?.value || 'Producto'}
+                                                    {getProductName(item.product)}
                                                 </h3>
                                                 <p className="text-xs text-gray-500">X{item.quantity}</p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="font-semibold text-gray-900">
-                                                    {formatPrice((parseFloat(item.product.price || '0') * item.quantity).toString())}
+                                                    {formatPrice((parseFloat((item.product.price || '0').toString()) * item.quantity).toString())}
                                                 </p>
                                             </div>
                                         </div>

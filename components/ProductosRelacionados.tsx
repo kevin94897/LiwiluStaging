@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import AddToCartModal from '@/components/AddToCartModal';
 
-import { Product, getProductImageUrl, formatPrice } from '@/lib/prestashop';
+import { Product, getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
 import {
 	fadeInUp,
 	cardHover,
@@ -40,7 +40,7 @@ export default function ProductosRelacionados({
 		e.stopPropagation();
 
 		try {
-			setLoadingCart(producto.id);
+			setLoadingCart(producto.id.toString());
 			addToCart(producto, 1);
 			setModalProduct(producto);
 		} catch (error) {
@@ -119,10 +119,11 @@ export default function ProductosRelacionados({
 					className="product-slider"
 				>
 					{relatedProducts.map((product) => {
-						const imageId = product.associations?.images?.[0]?.id;
-						const imageUrl = imageId
-							? getProductImageUrl(product.id, imageId)
-							: '/no-image.png';
+						const imageUrl = product.coverImage || (
+							product.associations?.images?.[0]?.id
+								? getProductImageUrl(product.id, product.associations.images[0].id)
+								: '/no-image.png'
+						);
 
 						return (
 							<div key={product.id} className="px-2">
@@ -143,7 +144,7 @@ export default function ProductosRelacionados({
 										>
 											<Image
 												src={imageUrl}
-												alt={product.name?.[0]?.value || 'Producto'}
+												alt={getProductName(product)}
 												fill
 												unoptimized
 												className="object-cover"
@@ -164,7 +165,7 @@ export default function ProductosRelacionados({
 										</div>
 
 										<h3 className="font-normal text-lg mb-2 line-clamp-2 h-10 text-white leading-5">
-											{product.name?.[0]?.value || 'Producto sin nombre'}
+											{getProductName(product)}
 										</h3>
 
 										<motion.div
@@ -185,21 +186,21 @@ export default function ProductosRelacionados({
 											transition={{ delay: 0.4, ...transitions.bounce }}
 										>
 											<span className="text-white font-bold text-xl">
-												{formatPrice(product.price || '0')}
+												{formatPrice(product.price || 0)}
 											</span>
 											<span className="text-white text-sm line-through">
-												{formatPrice(parseFloat(product.price || '0') * 1.5)}
+												{formatPrice(parseFloat((product.price || 0).toString()) * 1.5)}
 											</span>
 										</motion.div>
 
 										<motion.button
 											className="w-full bg-white text-primary font-semibold py-3 rounded-xl transition hover:bg-gray-100 flex items-center justify-center gap-2"
 											onClick={(e) => handleAddToCart(e, product)}
-											disabled={loadingCart === product.id}
+											disabled={loadingCart === product.id.toString()}
 											whileHover={{ scale: 1.05 }}
 											whileTap={{ scale: 0.95 }}
 										>
-											{loadingCart === product.id ? (
+											{loadingCart === product.id.toString() ? (
 												<>
 													<svg
 														className="animate-spin h-5 w-5"

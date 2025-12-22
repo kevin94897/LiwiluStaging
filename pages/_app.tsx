@@ -6,6 +6,13 @@ import { Toaster } from 'react-hot-toast'; // Opcional
 import { useEffect } from 'react';
 import { initializeAuth } from '@/lib/auth/tokenManager';
 
+import { Outfit } from 'next/font/google';
+
+const outfit = Outfit({
+	subsets: ['latin'],
+	variable: '--font-outfit',
+});
+
 export default function App({ Component, pageProps }: AppProps) {
 	// 🆕 Inicializar sistema de renovación de tokens al cargar la app
 	useEffect(() => {
@@ -14,7 +21,9 @@ export default function App({ Component, pageProps }: AppProps) {
 
 	return (
 		<CartProvider>
-			<Component {...pageProps} />
+			<main className={`${outfit.variable} font-sans`}>
+				<Component {...pageProps} />
+			</main>
 			{/* Opcional: Notificaciones toast */}
 			<Toaster
 				position="top-right"

@@ -6,7 +6,7 @@ import Layout from '@/components/Layout';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
-import { getProductImageUrl, formatPrice } from '@/lib/prestashop';
+import { getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
 import { FaRegTrashAlt, FaMapMarkerAlt, FaTruck, FaStore, FaCheck, FaTimes, FaCheckCircle, FaRegClock, FaTimesCircle } from 'react-icons/fa';
 import router from 'next/router';
 import Button from '@/components/ui/Button';
@@ -124,31 +124,31 @@ export default function Carrito() {
 
 
 	// Función para obtener tiendas con stock desde PrestaShop
-	const fetchTiendasConStock = async (productIds: string[]) => {
-		setLoadingStores(true);
-		try {
-			const response = await fetch('/api/prestashop/product-stores', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ product_ids: productIds })
-			});
+	// const fetchTiendasConStock = async (productIds: string[]) => {
+	// 	setLoadingStores(true);
+	// 	try {
+	// 		const response = await fetch('/api/prestashop/product-stores', {
+	// 			method: 'POST',
+	// 			headers: { 'Content-Type': 'application/json' },
+	// 			body: JSON.stringify({ product_ids: productIds })
+	// 		});
 
-			if (!response.ok) throw new Error('Error al obtener tiendas');
+	// 		if (!response.ok) throw new Error('Error al obtener tiendas');
 
-			const data = await response.json();
-			setProductosEnTiendas(data);
-		} catch (error) {
-			console.error('Error al cargar tiendas:', error);
-		} finally {
-			setLoadingStores(false);
-		}
-	};
+	// 		const data = await response.json();
+	// 		setProductosEnTiendas(data);
+	// 	} catch (error) {
+	// 		console.error('Error al cargar tiendas:', error);
+	// 	} finally {
+	// 		setLoadingStores(false);
+	// 	}
+	// };
 
 	// Cargar tiendas cuando cambia el carrito
 	useEffect(() => {
 		if (items.length > 0) {
-			const productIds = items.map(item => item.product.id);
-			fetchTiendasConStock(productIds);
+			const productIds = items.map(item => item.product.id.toString());
+			// fetchTiendasConStock(productIds);
 		}
 	}, [items]);
 
@@ -971,7 +971,7 @@ export default function Carrito() {
 								) : (
 									<div className="space-y-3">
 										{tiendasDisponibles.map((tienda) => {
-											const todosDisponibles = items.every((item) => checkStockEnTienda(item.product.id, tienda.id_store));
+											const todosDisponibles = items.every((item) => checkStockEnTienda(item.product.id.toString(), tienda.id_store));
 
 											return (
 												<div
@@ -1000,8 +1000,8 @@ export default function Carrito() {
 														<p className="text-xs font-semibold text-gray-700 mb-2">Disponibilidad:</p>
 														<div className="space-y-1">
 															{items.map((item) => {
-																const disponible = checkStockEnTienda(item.product.id, tienda.id_store);
-																const stock = getStockEnTienda(item.product.id, tienda.id_store);
+																const disponible = checkStockEnTienda(item.product.id.toString(), tienda.id_store);
+																const stock = getStockEnTienda(item.product.id.toString(), tienda.id_store);
 
 																return (
 																	<div key={item.product.id} className="flex items-center justify-between gap-2 text-xs">
@@ -1012,7 +1012,7 @@ export default function Carrito() {
 																				<FaTimes className="text-red-500 flex-shrink-0" />
 																			)}
 																			<span className={disponible ? 'text-gray-700' : 'text-gray-500'}>
-																				{item.product.name?.[0]?.value}
+																				{getProductName(item.product)}
 																			</span>
 																		</div>
 																		{disponible && (
@@ -1043,8 +1043,8 @@ export default function Carrito() {
 								const imageId = item.product.associations?.images?.[0]?.id;
 								const imageUrl = imageId ? getProductImageUrl(item.product.id, imageId) : '/no-image.png';
 
-								const enTiendaSeleccionada = tiendaSeleccionada && checkStockEnTienda(item.product.id, tiendaSeleccionada);
-								const stockDisponible = tiendaSeleccionada ? getStockEnTienda(item.product.id, tiendaSeleccionada) : 0;
+								const enTiendaSeleccionada = tiendaSeleccionada && checkStockEnTienda(item.product.id.toString(), tiendaSeleccionada);
+								const stockDisponible = tiendaSeleccionada ? getStockEnTienda(item.product.id.toString(), tiendaSeleccionada) : 0;
 
 								return (
 									<div key={item.product.id} className="bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
@@ -1093,33 +1093,33 @@ export default function Carrito() {
 
 											<div className="flex gap-6">
 												<div className="relative w-32 h-32 flex-shrink-0 bg-gray-50 rounded-sm overflow-hidden">
-													<Image src={imageUrl} alt={item.product.name?.[0]?.value || 'Producto'} fill className="object-contain" unoptimized />
+													<Image src={imageUrl} alt={getProductName(item.product)} fill className="object-contain" unoptimized />
 												</div>
 
 												<div className="flex-1">
 													<Link href={`/tienda/${item.product.id}`}>
 														<h3 className="font-semibold text-lg mb-2 hover:text-primary transition">
-															{item.product.name?.[0]?.value || 'Producto'}
+															{getProductName(item.product)}
 														</h3>
 													</Link>
 													<p className="text-gray-600 text-sm mb-4">SKU: {item.product.reference || 'N/A'}</p>
 
 													<div className="flex items-center justify-between">
 														<div className="flex items-center border border-gray-300 rounded-sm">
-															<button onClick={() => handleUpdateQuantity(item.product.id, item.quantity - 1)} className="px-3 py-1 hover:bg-gray-100 transition">-</button>
+															<button onClick={() => handleUpdateQuantity(item.product.id.toString(), item.quantity - 1)} className="px-3 py-1 hover:bg-gray-100 transition">-</button>
 															<span className="px-4 py-1 border-x">{item.quantity}</span>
-															<button onClick={() => handleUpdateQuantity(item.product.id, item.quantity + 1)} className="px-3 py-1 hover:bg-gray-100 transition">+</button>
+															<button onClick={() => handleUpdateQuantity(item.product.id.toString(), item.quantity + 1)} className="px-3 py-1 hover:bg-gray-100 transition">+</button>
 														</div>
 
 														<div className="text-right">
 															<p className="text-2xl font-bold text-primary-dark">
-																{formatPrice((parseFloat(item.product.price || '0') * item.quantity).toString())}
+																{/* {formatPrice((parseFloat(item.product.price || '0') * item.quantity).toString())} */}
 															</p>
-															<p className="text-sm text-gray-500">{formatPrice(item.product.price || '0')} c/u</p>
+															<p className="text-sm text-gray-500">{formatPrice((item.product.price || '0').toString())} c/u</p>
 														</div>
 													</div>
 
-													<button onClick={() => removeFromCart(item.product.id)} className="mt-4 text-red-500 hover:text-red-700 text-sm font-medium flex gap-2">
+													<button onClick={() => removeFromCart(item.product.id.toString())} className="mt-4 text-red-500 hover:text-red-700 text-sm font-medium flex gap-2">
 														<FaRegTrashAlt size={18} /> Eliminar
 													</button>
 												</div>

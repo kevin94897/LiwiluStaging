@@ -3,7 +3,7 @@
 
 import { useEffect } from 'react';
 import Image from 'next/image';
-import { Product, getProductImageUrl, formatPrice } from '@/lib/prestashop';
+import { Product, getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
 import Button from './ui/Button';
 
 interface AddToCartModalProps {
@@ -37,10 +37,11 @@ export default function AddToCartModal({
 
 	if (!isOpen) return null;
 
-	const imageId = product.associations?.images?.[0]?.id;
-	const imageUrl = imageId
-		? getProductImageUrl(product.id, imageId)
-		: '/no-image.png';
+	const imageUrl = product.coverImage || (
+		product.associations?.images?.[0]?.id
+			? getProductImageUrl(product.id, product.associations.images[0].id)
+			: '/no-image.png'
+	);
 
 	return (
 		<>
@@ -85,7 +86,7 @@ export default function AddToCartModal({
 							<div className="relative w-24 h-24 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0">
 								<Image
 									src={imageUrl}
-									alt={product.name?.[0]?.value || 'Producto'}
+									alt={getProductName(product)}
 									fill
 									className="object-contain"
 									unoptimized
@@ -95,14 +96,14 @@ export default function AddToCartModal({
 							{/* Info del producto */}
 							<div className="flex-1">
 								<h4 className="font-semibold text-primary-dark mb-2 line-clamp-2">
-									{product.name?.[0]?.value || 'Producto'}
+									{getProductName(product)}
 								</h4>
 								<div className="flex items-baseline gap-2">
 									<span className="text-2xl font-bold text-primary-dark">
-										{formatPrice(product.price || '0')}
+										{formatPrice(product.price || 0)}
 									</span>
 									<span className="text-sm text-gray-400 line-through">
-										{formatPrice(parseFloat(product.price || '0') * 1.5)}
+										{formatPrice(parseFloat((product.price || 0).toString()) * 1.5)}
 									</span>
 								</div>
 							</div>

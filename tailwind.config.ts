@@ -9,7 +9,7 @@ const config: Config = {
 	theme: {
 		extend: {
 			fontFamily: {
-				sans: ['"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
+				sans: ['var(--font-outfit)', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
 			},
 			colors: {
 				primary: {
