@@ -1,5 +1,36 @@
 import { authenticatedFetch } from './auth/apiClient';
 
+/**
+ * Legacy Product interface for compatibility
+ */
+export interface Product {
+    id: string | number;
+    name?: Array<{ value: string }> | string;
+    description?: Array<{ value: string }> | string;
+    price?: string | number;
+    quantity?: number;
+    reference?: string;
+    id_category_default?: string | number;
+    category_name?: string;
+    associations?: {
+        images?: Array<{ id: string }>;
+        categories?: Array<{ id: string }>;
+    };
+    coverImage?: string;
+}
+
+/**
+ * Legacy Category interface for compatibility
+ */
+export interface Category {
+    id: string | number;
+    name: Array<{ value: string }> | string;
+    link_rewrite?: Array<{ value: string }> | string;
+    id_parent?: string | number;
+    level_depth?: string | number;
+    active?: string;
+}
+
 export interface CatalogProduct {
     id: number;
     prestashopId: number;
@@ -314,6 +345,125 @@ export async function getFavoritesCount(): Promise<{ count: number }> {
     return await response.json();
 }
 
+export interface ProductBasicData {
+    id: number;
+    name: string;
+    condition: string;
+    sku: string;
+    description: string;
+    resume: string;
+    metaTitle: string;
+    metaDescription: string;
+    linkRewrite: string;
+    defaultCategory: {
+        name: string;
+        linkRewrite: string;
+        active: boolean;
+        levelDepth: number;
+    };
+    features: {
+        name: string;
+        value: string;
+    }[];
+}
+
+export interface ProductBasicResponse {
+    success: boolean;
+    data: ProductBasicData;
+}
+
+export interface ProductAttributeValue {
+    id: number;
+    prestashopId: number;
+    value: string;
+    linkRewrite: string;
+    colorHex?: string;
+}
+
+export interface ProductAttribute {
+    type: string;
+    name: string;
+    values: ProductAttributeValue[];
+}
+
+export interface ProductVariation {
+    id: number;
+    prestashopCombinationId: number;
+    reference: string;
+    priceImpact: number;
+    price: number;
+    priceWithTax: number;
+    quantity: number;
+    images: string[];
+    isDefault: boolean;
+    attributes: {
+        id: number;
+        type: string;
+        name: string;
+        value: string;
+        colorHex?: string;
+    }[];
+}
+
+export interface ProductVariationsData {
+    name: string;
+    price: number;
+    priceWithTax: number;
+    condition: string;
+    coverImage: string;
+    gallery: string[];
+    quantity: number;
+    attributes: ProductAttribute[];
+    variations: ProductVariation[];
+}
+
+export interface ProductVariationsResponse {
+    success: boolean;
+    data: ProductVariationsData;
+}
+
+/**
+ * Fetch basic product information.
+ */
+export async function getProductBasic(productId: string | number): Promise<ProductBasicData | null> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://liwilu-backend.nerdstudiolab.com/api';
+    const url = `${baseUrl}/catalog/products/${productId}/basic`;
+    console.log('Fetching product basic from:', url);
+    try {
+        const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+        if (!response.ok) {
+            console.error(`Error fetching product basic: ${response.status} ${response.statusText} URL: ${url}`);
+            throw new Error(`Error fetching product basic: ${response.statusText}`);
+        }
+        const data: ProductBasicResponse = await response.json();
+        return data.data;
+    } catch (error) {
+        console.error('Error in getProductBasic:', error);
+        return null;
+    }
+}
+
+/**
+ * Fetch product variations.
+ */
+export async function getProductVariations(productId: string | number): Promise<ProductVariationsData | null> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://liwilu-backend.nerdstudiolab.com/api';
+    const url = `${baseUrl}/catalog/products/${productId}/variations`;
+    console.log('Fetching product variations from:', url);
+    try {
+        const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+        if (!response.ok) {
+            console.error(`Error fetching product variations: ${response.status} ${response.statusText} URL: ${url}`);
+            throw new Error(`Error fetching product variations: ${response.statusText}`);
+        }
+        const data: ProductVariationsResponse = await response.json();
+        return data.data;
+    } catch (error) {
+        console.error('Error in getProductVariations:', error);
+        return null;
+    }
+}
+
 /**
  * Fetch level two categories (main categories for buttons).
  */
@@ -330,6 +480,57 @@ export async function getLevelTwoCategories(): Promise<CategoryLevelTwo[]> {
         return data.data || [];
     } catch (error) {
         console.error('Error in getLevelTwoCategories:', error);
+        return [];
+    }
+}
+
+/**
+ * Legacy getCategories for compatibility
+ */
+export async function getCategories(): Promise<Category[]> {
+    const categories = await getLevelTwoCategories();
+    return categories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        link_rewrite: cat.linkRewrite,
+        id_parent: cat.parentId || 0,
+        level_depth: cat.levelDepth,
+        active: cat.active ? '1' : '0'
+    }));
+}
+
+/**
+ * Legacy getRelatedProducts for compatibility
+ */
+export async function getRelatedProducts(
+    categoryId?: string | null,
+    excludeProductId?: string | null,
+    limit: number = 8
+): Promise<Product[]> {
+    try {
+        const params: FilterParams = {
+            limit,
+            categoryIds: categoryId ? [parseInt(categoryId)] : undefined
+        };
+
+        const response = await searchProducts(params);
+
+        // Filter out the current product and map to legacy Product interface
+        return (response.data || [])
+            .filter(p => p && p.id && p.id.toString() !== excludeProductId && p.prestashopId?.toString() !== excludeProductId)
+            .map(p => ({
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                quantity: p.quantity,
+                reference: p.reference,
+                coverImage: p.coverImage,
+                associations: {
+                    categories: [{ id: p.categoryId?.toString() || '0' }]
+                }
+            }));
+    } catch (error) {
+        console.error('Error in getRelatedProducts fallback:', error);
         return [];
     }
 }

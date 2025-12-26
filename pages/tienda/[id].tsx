@@ -1,62 +1,55 @@
 import { GetServerSideProps } from 'next';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Layout from '@/components/Layout';
 import Aptitudes from '@/components/Aptitudes';
 import BannerPublicidad from '@/components/BannerPublicidad';
 import { FaPlus, FaMinus } from 'react-icons/fa';
-
 import ProductosRelacionados from '@/components/ProductosRelacionados';
 
 import {
-	getProduct,
-	getProductImageUrl,
-	formatPrice,
-	Product,
+	getProductBasic,
+	getProductVariations,
 	getRelatedProducts,
-	getProductName,
-	getProductDescription,
-} from '@/lib/prestashop';
+	ProductBasicData,
+	ProductVariationsData,
+	ProductVariation,
+	Product,
+} from '@/lib/catalog';
+import { formatPrice } from '@/lib/utils';
 
 interface ProductDetailProps {
-	product: Product | null;
+	productId: string;
+	basicData: ProductBasicData | null;
+	variationsData: ProductVariationsData | null;
 	error?: string;
-	relatedProducts?: Product[];
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+	const id = params?.id as string;
 	try {
-		const id = params?.id as string;
-		const product = await getProduct(id);
+		const [basicData, variationsData] = await Promise.all([
+			getProductBasic(id),
+			getProductVariations(id)
+		]);
 
-		// ✅ Obtener productos relacionados
-		let relatedProducts: Product[] = [];
-		if (product?.associations?.categories?.length) {
-			// 🔹 Extraer solo los IDs como strings
-			const categoryIds = product.associations.categories.map((cat) => cat.id);
-			console.log('📦 Categorías del producto:', categoryIds);
-
-			// 🔹 Pasar el ID de la categoría principal (id_category_default)
-			const mainCategoryId = product.id_category_default;
-			console.log('🎯 Categoría principal:', mainCategoryId);
-
-			relatedProducts = await getRelatedProducts(
-				String(mainCategoryId || categoryIds[0]), // Usar categoría principal o la primera
-				String(product.id), // Excluir el producto actual
-				4
-			);
-
-			console.log(
-				'✅ Productos relacionados encontrados:',
-				relatedProducts.length
-			);
+		if (!basicData || !variationsData) {
+			return {
+				props: {
+					productId: id,
+					basicData: null,
+					variationsData: null,
+					error: 'Producto no encontrado',
+				},
+			};
 		}
 
 		return {
 			props: {
-				product: product || null,
-				relatedProducts,
+				productId: id,
+				basicData,
+				variationsData,
 			},
 		};
 	} catch (error: unknown) {
@@ -64,29 +57,158 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
 			error instanceof Error ? error.message : 'Error desconocido';
 		return {
 			props: {
-				product: null,
+				productId: id || '',
+				basicData: null,
+				variationsData: null,
 				error: message,
-				relatedProducts: [],
 			},
 		};
 	}
 };
 
-export default function ProductDetail({
-	product,
-	error,
-	relatedProducts = [],
-}: ProductDetailProps) {
-	// All hooks must be called at the top level, before any conditional returns
-	const [quantity, setQuantity] = useState(1);
-	const [selectedColor, setSelectedColor] = useState<string | null>(null);
-	const [selectedSize, setSelectedSize] = useState<string | null>(null);
+// ✅ Función helper para validar imágenes
+const isValidImageUrl = (url: string | null | undefined): boolean => {
+	if (!url) return false;
+	if (!url.startsWith('http')) return false;
+	if (url.includes('Array.jpg')) return false;
+	if (url.includes('undefined')) return false;
+	return true;
+};
 
-	// Define tab keys type
+export default function ProductDetail({
+	productId,
+	basicData,
+	variationsData,
+	error,
+}: ProductDetailProps) {
+	const [quantity, setQuantity] = useState(1);
+	const [selectedAttributes, setSelectedAttributes] = useState<Record<string, number>>({});
+	const [currentVariation, setCurrentVariation] = useState<ProductVariation | null>(null);
+	const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+	const [thumbnailScrollPosition, setThumbnailScrollPosition] = useState(0);
+
 	type TabKey = 'Descripción del producto' | 'Especificaciones' | 'Guía de tallas';
 	const [activeTab, setActiveTab] = useState<TabKey>('Descripción del producto');
 
-	if (error || !product) {
+	// ✅ Inicializar variación por defecto
+	useEffect(() => {
+		if (variationsData?.variations && variationsData.variations.length > 0) {
+			const defaultVar = variationsData.variations.find(v => v.isDefault) || variationsData.variations[0];
+
+			if (defaultVar) {
+				const initialAttrs: Record<string, number> = {};
+				defaultVar.attributes.forEach(attr => {
+					initialAttrs[attr.type] = attr.id;
+				});
+
+				setSelectedAttributes(initialAttrs);
+				setCurrentVariation(defaultVar);
+			}
+		}
+	}, [variationsData]);
+
+	// ✅ Obtener galería de la variación actual o galería general
+	const currentGallery = useMemo(() => {
+		const images: string[] = [];
+
+		// Si hay una variación seleccionada, usar sus imágenes
+		if (currentVariation?.images && currentVariation.images.length > 0) {
+			const validVariationImages = currentVariation.images.filter(isValidImageUrl);
+			if (validVariationImages.length > 0) {
+				return validVariationImages;
+			}
+		}
+
+		// Si no hay variación o no tiene imágenes válidas, usar galería general
+		// 1. Agregar coverImage si es válida
+		if (isValidImageUrl(variationsData?.coverImage)) {
+			images.push(variationsData!.coverImage);
+		}
+
+		// 2. Agregar gallery si existe
+		if (variationsData?.gallery && Array.isArray(variationsData.gallery)) {
+			const validGallery = variationsData.gallery.filter(isValidImageUrl);
+			images.push(...validGallery);
+		}
+
+		// 3. Si aún no hay imágenes, buscar en todas las variaciones
+		if (images.length === 0 && variationsData?.variations) {
+			for (const variation of variationsData.variations) {
+				if (variation.images && variation.images.length > 0) {
+					const validImages = variation.images.filter(isValidImageUrl);
+					if (validImages.length > 0) {
+						images.push(...validImages);
+						break; // Usar solo las imágenes de la primera variación válida
+					}
+				}
+			}
+		}
+
+		// 4. Si aún no hay imágenes, usar placeholder
+		if (images.length === 0) {
+			images.push('/images/placeholder-product.jpg');
+		}
+
+		// Eliminar duplicados
+		return Array.from(new Set(images));
+	}, [currentVariation, variationsData]);
+
+	// ✅ Obtener precio actual
+	const getCurrentPrice = useMemo(() => {
+		if (!variationsData) return { price: 0, priceWithTax: 0 };
+
+		if (currentVariation) {
+			return {
+				price: currentVariation.price,
+				priceWithTax: currentVariation.priceWithTax
+			};
+		}
+
+		return {
+			price: variationsData.price,
+			priceWithTax: variationsData.priceWithTax
+		};
+	}, [currentVariation, variationsData]);
+
+	// ✅ Obtener cantidad disponible
+	const getAvailableQuantity = useMemo(() => {
+		if (currentVariation) {
+			return currentVariation.quantity;
+		}
+		return variationsData?.quantity || 0;
+	}, [currentVariation, variationsData]);
+
+	// ✅ Resetear índice de imagen cuando cambia la variación
+	useEffect(() => {
+		setSelectedImageIndex(0);
+		setThumbnailScrollPosition(0);
+	}, [currentVariation]);
+
+	// ✅ Handlers para navegación de thumbnails
+	const THUMBNAILS_VISIBLE = 4;
+	const maxScroll = Math.max(0, currentGallery.length - THUMBNAILS_VISIBLE);
+
+	const handleScrollUp = () => {
+		setThumbnailScrollPosition(prev => Math.max(0, prev - 1));
+	};
+
+	const handleScrollDown = () => {
+		setThumbnailScrollPosition(prev => Math.min(maxScroll, prev + 1));
+	};
+
+	// ✅ Obtener primera imagen válida de una variación
+	const getVariationPreviewImage = (variation: ProductVariation): string => {
+		if (variation.images && variation.images.length > 0) {
+			const validImage = variation.images.find(isValidImageUrl);
+			if (validImage) return validImage;
+		}
+		if (isValidImageUrl(variationsData?.coverImage)) {
+			return variationsData!.coverImage;
+		}
+		return '/images/placeholder-product.jpg';
+	};
+
+	if (error || !basicData || !variationsData) {
 		return (
 			<Layout title="Error - Liwilu" description="Producto no encontrado">
 				<div className="max-w-7xl mx-auto px-6 py-12">
@@ -104,69 +226,63 @@ export default function ProductDetail({
 		);
 	}
 
-	// Fallback colors and sizes (Product type doesn't include these properties)
-	const colors = [
-		{ name: 'Ploma', hex: 'gray' },
-		{ name: 'Blanco', hex: 'white' },
-		{ name: 'Negro', hex: '#000000' },
-	];
-	const sizes = ['S', 'M', 'L', 'XL'];
+	const handleIncrease = () => {
+		if (quantity < getAvailableQuantity) {
+			setQuantity(q => q + 1);
+		}
+	};
 
-	const handleIncrease = () => setQuantity((q) => q + 1);
 	const handleDecrease = () => setQuantity((q) => Math.max(1, q - 1));
+
+	const handleAttributeChange = (type: string, valueId: number) => {
+		const newAttrs = { ...selectedAttributes, [type]: valueId };
+		setSelectedAttributes(newAttrs);
+
+		// Buscar variación que coincida con todos los atributos seleccionados
+		const foundVariation = variationsData.variations.find(v =>
+			v.attributes.every(attr => newAttrs[attr.type] === attr.id)
+		);
+
+		if (foundVariation) {
+			setCurrentVariation(foundVariation);
+		}
+	};
 
 	const tabs = {
 		'Descripción del producto': (
-			<div
-				className="prose prose-sm max-w-none text-gray-600"
-				dangerouslySetInnerHTML={{
-					__html:
-						getProductDescription(product) || 'Sin descripción disponible.',
-				}}
-			/>
+			<div className="space-y-6">
+				{basicData.resume && (
+					<div
+						className="prose prose-sm max-w-none text-gray-600"
+						dangerouslySetInnerHTML={{ __html: basicData.resume }}
+					/>
+				)}
+				{basicData.description && (
+					<div
+						className="prose prose-sm max-w-none text-gray-600"
+						dangerouslySetInnerHTML={{ __html: basicData.description }}
+					/>
+				)}
+			</div>
 		),
 		Especificaciones: (
 			<div className="overflow-x-auto">
-				<table className="min-w-full border border-gray-200 rounded-lg">
-					<tbody className="divide-y divide-gray-200">
-						<tr>
-							<td className="px-4 py-2 font-medium text-gray-700 w-1/3 bg-gray-50">
-								Marca:
-							</td>
-							<td className="px-4 py-2 text-gray-600">**********</td>
-						</tr>
-						<tr>
-							<td className="px-4 py-2 font-medium text-gray-700 bg-gray-50">
-								SKU:
-							</td>
-							<td className="px-4 py-2 text-gray-600">**********</td>
-						</tr>
-						<tr>
-							<td className="px-4 py-2 font-medium text-gray-700 bg-gray-50">
-								Tipo:
-							</td>
-							<td className="px-4 py-2 text-gray-600">**********</td>
-						</tr>
-						<tr>
-							<td className="px-4 py-2 font-medium text-gray-700 bg-gray-50">
-								Diseño:
-							</td>
-							<td className="px-4 py-2 text-gray-600">**********</td>
-						</tr>
-						<tr>
-							<td className="px-4 py-2 font-medium text-gray-700 bg-gray-50">
-								Condición del producto:
-							</td>
-							<td className="px-4 py-2 text-gray-600">**********</td>
-						</tr>
-						<tr>
-							<td className="px-4 py-2 font-medium text-gray-700 bg-gray-50">
-								Fit:
-							</td>
-							<td className="px-4 py-2 text-gray-600">**********</td>
-						</tr>
-					</tbody>
-				</table>
+				{basicData.features && basicData.features.length > 0 ? (
+					<table className="min-w-full border border-gray-200 rounded-lg">
+						<tbody className="divide-y divide-gray-200">
+							{basicData.features.map((feature, idx) => (
+								<tr key={idx}>
+									<td className="px-4 py-2 font-medium text-gray-700 w-1/3 bg-gray-50">
+										{feature.name}:
+									</td>
+									<td className="px-4 py-2 text-gray-600">{feature.value}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				) : (
+					<p className="text-gray-500">No hay especificaciones disponibles.</p>
+				)}
 			</div>
 		),
 		'Guía de tallas': (
@@ -177,18 +293,10 @@ export default function ProductDetail({
 				<table className="min-w-full border border-gray-200 rounded-lg text-sm">
 					<thead className="bg-gray-50">
 						<tr>
-							<th className="px-4 py-2 text-left font-semibold text-gray-700">
-								Talla
-							</th>
-							<th className="px-4 py-2 text-left font-semibold text-gray-700">
-								Pecho
-							</th>
-							<th className="px-4 py-2 text-left font-semibold text-gray-700">
-								Cintura
-							</th>
-							<th className="px-4 py-2 text-left font-semibold text-gray-700">
-								Largo
-							</th>
+							<th className="px-4 py-2 text-left font-semibold text-gray-700">Talla</th>
+							<th className="px-4 py-2 text-left font-semibold text-gray-700">Pecho</th>
+							<th className="px-4 py-2 text-left font-semibold text-gray-700">Cintura</th>
+							<th className="px-4 py-2 text-left font-semibold text-gray-700">Largo</th>
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-gray-200 text-gray-700">
@@ -225,19 +333,16 @@ export default function ProductDetail({
 		),
 	};
 
-	const mainImage = product.associations?.images?.[0]?.id
-		? getProductImageUrl(product.id, product.associations.images[0].id)
-		: '/no-image.png';
-
 	return (
 		<Layout
-			title={`${getProductName(product)} - Liwilu`}
-			description={getProductDescription(product) || 'Detalle del producto'}
+			title={`${basicData.name} - Liwilu`}
+			description={basicData.metaDescription || 'Detalle del producto'}
 		>
+			{/* Vectores decorativos */}
 			<div className="absolute md:right-[-15vw] md:top-80 w-auto md:w-auto z-0 pointer-events-none md:block hidden">
 				<Image
 					src="/images/vectores/liwilu_banner_productos_vector_04.png"
-					alt="MacBook Pro"
+					alt="Vector background"
 					width={408}
 					height={427}
 					quality={100}
@@ -249,7 +354,7 @@ export default function ProductDetail({
 			<div className="absolute -left-56 md:-left-40 bottom-10 md:bottom-1/3 w-auto md:w-auto z-0 pointer-events-none">
 				<Image
 					src="/images/vectores/liwilu_banner_productos_vector_05.png"
-					alt="MacBook Pro"
+					alt="Vector background"
 					width={408}
 					height={427}
 					quality={100}
@@ -262,17 +367,22 @@ export default function ProductDetail({
 			<div className="mt-20">
 				<div className="max-w-7xl mx-auto px-6 xl:px-0 py-4">
 					<div className="text-neutral-gray text-md font-semibold">
-						<Link href="/" className="hover:underline">
-							Inicio
-						</Link>
+						<Link href="/" className="hover:underline">Inicio</Link>
 						<span className="mx-2">/</span>
-						<Link href="/productos" className="hover:underline">
-							Tienda virtual
-						</Link>
+						<Link href="/productos" className="hover:underline">Tienda virtual</Link>
+						{basicData.defaultCategory && (
+							<>
+								<span className="mx-2">/</span>
+								<Link
+									href={`/productos?category=${basicData.defaultCategory.linkRewrite}`}
+									className="hover:underline"
+								>
+									{basicData.defaultCategory.name}
+								</Link>
+							</>
+						)}
 						<span className="mx-2">/</span>
-						<span className="text-primary-dark font-medium">
-							{getProductName(product)}
-						</span>
+						<span className="text-primary-dark font-medium">{basicData.name}</span>
 					</div>
 				</div>
 			</div>
@@ -283,166 +393,265 @@ export default function ProductDetail({
 					<div className="flex flex-col lg:flex-row gap-8">
 						{/* Columna izquierda - Imágenes */}
 						<div className="w-full lg:w-2/3 flex flex-col lg:flex-row gap-6">
+							{/* Columna de miniaturas - Slider vertical */}
+							{currentGallery.length > 1 && (
+								<div className="order-2 lg:order-1 w-full lg:w-24">
+									<div className="flex lg:flex-col gap-4 lg:gap-0">
+										{/* Botón scroll arriba (desktop) */}
+										{currentGallery.length > THUMBNAILS_VISIBLE && thumbnailScrollPosition > 0 && (
+											<button
+												onClick={handleScrollUp}
+												className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition"
+												aria-label="Scroll up thumbnails"
+											>
+												<svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+												</svg>
+											</button>
+										)}
+
+										{/* Grid de miniaturas */}
+										<div className="flex lg:flex-col gap-4 overflow-x-auto lg:overflow-visible scrollbar-hide w-full">
+											{currentGallery
+												.slice(thumbnailScrollPosition, thumbnailScrollPosition + THUMBNAILS_VISIBLE)
+												.map((img, idx) => {
+													const actualIndex = idx + thumbnailScrollPosition;
+													const isSelected = selectedImageIndex === actualIndex;
+
+													return (
+														<div
+															key={actualIndex}
+															onClick={() => setSelectedImageIndex(actualIndex)}
+															className={`relative aspect-square bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
+																${isSelected ? 'ring-2 ring-primary scale-105' : 'hover:shadow-lg hover:scale-105'}
+															`}
+														>
+															<Image
+																src={img}
+																alt={`${basicData.name} - miniatura ${actualIndex + 1}`}
+																fill
+																className="object-contain p-2"
+																unoptimized
+															/>
+														</div>
+													);
+												})}
+										</div>
+
+										{/* Botón scroll abajo (desktop) */}
+										{currentGallery.length > THUMBNAILS_VISIBLE && thumbnailScrollPosition < maxScroll && (
+											<button
+												onClick={handleScrollDown}
+												className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-lg mt-2 transition"
+												aria-label="Scroll down thumbnails"
+											>
+												<svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+												</svg>
+											</button>
+										)}
+
+										{/* Contador de imágenes */}
+										{currentGallery.length > THUMBNAILS_VISIBLE && (
+											<div className="hidden lg:flex items-center justify-center mt-2 text-xs text-gray-500">
+												{thumbnailScrollPosition + 1}-{Math.min(thumbnailScrollPosition + THUMBNAILS_VISIBLE, currentGallery.length)} de {currentGallery.length}
+											</div>
+										)}
+									</div>
+								</div>
+							)}
+
 							{/* Imagen principal */}
 							<div className="flex-1 order-1 lg:order-2">
 								<div className="relative aspect-square bg-white rounded-sm shadow-md overflow-hidden">
 									<Image
-										src={mainImage}
-										alt={getProductName(product)}
+										src={currentGallery[selectedImageIndex] || currentGallery[0]}
+										alt={basicData.name}
 										fill
-										className="object-cover"
+										className="object-contain p-4"
 										priority
 										unoptimized
 									/>
+
+									{/* Navegación de flechas en la imagen principal */}
+									{currentGallery.length > 1 && (
+										<>
+											<button
+												onClick={() => setSelectedImageIndex(prev => Math.max(0, prev - 1))}
+												disabled={selectedImageIndex === 0}
+												className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition lg:hidden"
+												aria-label="Imagen anterior"
+											>
+												<svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+												</svg>
+											</button>
+											<button
+												onClick={() => setSelectedImageIndex(prev => Math.min(currentGallery.length - 1, prev + 1))}
+												disabled={selectedImageIndex === currentGallery.length - 1}
+												className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition lg:hidden"
+												aria-label="Siguiente imagen"
+											>
+												<svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+												</svg>
+											</button>
+										</>
+									)}
+
+									{/* Indicador de posición */}
+									{currentGallery.length > 1 && (
+										<div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+											{selectedImageIndex + 1} / {currentGallery.length}
+										</div>
+									)}
 								</div>
 							</div>
-
-							{/* Miniaturas */}
-							{product.associations?.images &&
-								product.associations.images.length > 1 && (
-									<div className="grid grid-rows-4 gap-4">
-										{product.associations.images.map((image) => (
-											<div
-												key={image.id}
-												className="relative aspect-square bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition"
-											>
-												<Image
-													src={getProductImageUrl(product.id, image.id)}
-													alt={`${getProductName(product)} - imagen ${image.id}`}
-													fill
-													className="object-contain"
-													unoptimized
-												/>
-											</div>
-										))}
-									</div>
-								)}
 						</div>
 
 						{/* Columna derecha - Información */}
 						<div className="w-full lg:w-1/3">
 							<div className="md:p-6">
-								{/* Badge Nuevo */}
+								{/* Badge condición */}
 								<div className="flex items-center gap-2 mb-4">
-									<span className="bg-[#D3D3D3] text-greendark-500 px-3 py-1 rounded-full text-xs font-bold">
-										NUEVO
+									<span className="bg-[#D3D3D3] text-greendark-500 px-3 py-1 rounded-full text-xs font-bold uppercase">
+										{basicData.condition === 'new' ? 'Nuevo' :
+											basicData.condition === 'used' ? 'Usado' :
+												basicData.condition === 'refurbished' ? 'Reacondicionado' :
+													basicData.condition}
 									</span>
 								</div>
 
-								{/* Título y marca */}
+								{/* Título */}
 								<h1 className="text-2xl md:text-4xl font-bold mb-2 text-primary-dark">
-									{getProductName(product)}
+									{basicData.name}
 								</h1>
 
-								{/* Rating */}
-								<div className="flex items-center gap-5">
+								{/* Rating y SKU */}
+								<div className="flex items-center gap-5 mb-4">
 									<div className="flex items-center gap-2">
 										<div className="flex text-yellow-400">{'★'.repeat(5)}</div>
 										<span className="text-sm text-gray-600">(4.8/5)</span>
 									</div>
-									<span className="text-gray-600 text-sm">
-										SKU: {product.reference || 'N/A'}
-									</span>
+									<span className="text-gray-600 text-sm">SKU: {basicData.sku}</span>
 								</div>
 
 								{/* Precio */}
-								<div className="flex items-center gap-4 mb-6 mt-4">
+								<div className="flex items-center gap-4 mb-6">
 									<span className="text-4xl font-bold text-primary-dark">
-										{formatPrice(product.price || '0')}
+										{formatPrice(getCurrentPrice.priceWithTax)}
 									</span>
 									<span className="text-lg text-[#D3D3D3] line-through font-bold">
-										{formatPrice(parseFloat(String(product.price || '0')) * 1.5)}
+										{formatPrice(getCurrentPrice.priceWithTax * 1.5)}
 									</span>
 								</div>
 
-								{/* Opciones de personalización */}
-								<div className="flex gap-10 mb-6">
-									<div>
-										<label className="block text-gray-700 font-medium mb-5">
-											Color:
-										</label>
-										<div className="flex items-center gap-3">
-											{colors.map((color) => (
-												<button
-													key={color.name}
-													title={color.name}
-													onClick={() => setSelectedColor(color.name)}
-													className={`w-5 h-5 rounded-full border-2 transition ${selectedColor === color.name
-														? 'border-[#D3D3D3] border-4 scale-110'
-														: 'border-gray-300 hover:scale-105'
-														}`}
-													style={{ backgroundColor: color.hex }}
-												/>
-											))}
-										</div>
-										{/* {selectedColor && (
-										<p className="text-sm text-gray-500 mt-1">
-											Seleccionado:{' '}
-											<span className="font-medium">{selectedColor}</span>
-										</p>
-									)} */}
-									</div>
+								{/* Opciones de personalización - Solo si hay variaciones */}
+								{variationsData.attributes && variationsData.attributes.length > 0 && (
+									<div className="flex flex-col gap-6 mb-6">
+										{variationsData.attributes.map((attr) => (
+											<div key={attr.name}>
+												<label className="block text-gray-700 font-medium mb-3">
+													{attr.name}:
+													{currentVariation && (
+														<span className="ml-2 text-primary-dark font-normal">
+															{currentVariation.attributes.find(a => a.type === attr.type)?.value}
+														</span>
+													)}
+												</label>
+												<div className="flex flex-wrap items-center gap-3">
+													{attr.values.map((val) => {
+														const isSelected = selectedAttributes[attr.type] === val.id;
 
-									{/* Cantidad */}
-									<div className="gap-4">
-										<label className="text-gray-700 font-medium pb-2 block">
-											Cantidad:
-										</label>
-										<div className="flex items-center border border-primary rounded-sm overflow-hidden">
-											<button
-												className="px-2 py-2 hover:bg-gray-100 transition text-lg"
-												onClick={handleDecrease}
-											>
-												<FaMinus className="w-3 h-3 text-primary transition" />
-											</button>
-											<span className="px-4 py-2 font-bold">{quantity}</span>
-											<button
-												className="px-2 py-2 hover:bg-gray-100 transition"
-												onClick={handleIncrease}
-											>
-												<FaPlus className="w-3 h-3 text-primary transition" />
-											</button>
-										</div>
-										<span className="text-sm text-gray-500 hidden">
-											{product.quantity || 0} disponibles
-										</span>
-									</div>
-								</div>
+														// Encontrar la variación que tendría este valor
+														const previewVariation = variationsData.variations.find(v =>
+															v.attributes.some(a => a.type === attr.type && a.id === val.id)
+														);
 
-								{/* Talla */}
-								<div className="space-y-2 mb-6">
-									<label className="block text-gray-700 font-medium mb-1">
-										Talla:
-									</label>
+														return (
+															<div key={val.id} className="relative group">
+																<button
+																	title={val.value}
+																	onClick={() => handleAttributeChange(attr.type, val.id)}
+																	className={
+																		attr.type === 'color'
+																			? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
+																				? 'border-primary border-4 scale-110'
+																				: 'border-gray-300 hover:scale-105'
+																			}`
+																			: `px-5 py-2 border rounded-lg font-medium transition ${isSelected
+																				? 'bg-primary-dark text-white border-gray-900'
+																				: 'border-gray-300 text-gray-700 hover:bg-gray-100'
+																			}`
+																	}
+																	style={attr.type === 'color' && val.colorHex ? { backgroundColor: val.colorHex } : {}}
+																>
+																	{attr.type !== 'color' && val.value}
+																</button>
 
-									<div className="flex flex-wrap gap-3">
-										{sizes.map((size) => (
-											<button
-												key={size}
-												onClick={() => setSelectedSize(size)}
-												className={`px-5 py-0 border rounded-lg font-medium transition 
-              ${selectedSize === size
-														? 'bg-primary-dark text-white border-gray-900'
-														: 'border-gray-300 text-gray-700 hover:bg-gray-100 py-1'
-													}`}
-											>
-												{size}
-											</button>
+																{/* Preview de imagen al hacer hover (solo para colores) */}
+																{attr.type === 'color' && previewVariation && !isSelected && (
+																	<div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+																		<div className="bg-white rounded-lg shadow-xl border-2 border-gray-200 p-2">
+																			<div className="relative w-24 h-24">
+																				<Image
+																					src={getVariationPreviewImage(previewVariation)}
+																					alt={val.value}
+																					fill
+																					className="object-contain rounded"
+																					unoptimized
+																				/>
+																			</div>
+																			<p className="text-xs text-center mt-1 text-gray-600">{val.value}</p>
+																		</div>
+																	</div>
+																)}
+															</div>
+														);
+													})}
+												</div>
+											</div>
 										))}
 									</div>
+								)}
 
-									{/* {selectedSize && (
-									<p className="text-sm text-gray-500">
-										Seleccionaste:{' '}
-										<span className="font-semibold">{selectedSize}</span>
-									</p>
-								)} */}
+								{/* Cantidad */}
+								<div className="mb-6">
+									<label className="text-gray-700 font-medium pb-2 block">
+										Cantidad:
+									</label>
+									<div className="flex items-center border border-primary rounded-sm overflow-hidden w-fit">
+										<button
+											className="px-2 py-2 hover:bg-gray-100 transition text-lg disabled:opacity-50"
+											onClick={handleDecrease}
+											disabled={quantity <= 1}
+										>
+											<FaMinus className="w-3 h-3 text-primary transition" />
+										</button>
+										<span className="px-4 py-2 font-bold">{quantity}</span>
+										<button
+											className="px-2 py-2 hover:bg-gray-100 transition disabled:opacity-50"
+											onClick={handleIncrease}
+											disabled={quantity >= getAvailableQuantity}
+										>
+											<FaPlus className="w-3 h-3 text-primary transition" />
+										</button>
+									</div>
+									<span className="text-sm text-gray-500 mt-2 block">
+										{getAvailableQuantity > 0
+											? `${getAvailableQuantity} disponibles`
+											: 'Sin stock'
+										}
+									</span>
 								</div>
 
 								{/* Botones de acción */}
 								<div className="flex gap-2 md:gap-4">
-									<button className="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-5 px-6 rounded-full transition flex items-center justify-center gap-2 h-full">
-										Agregar al carrito
+									<button
+										className="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-5 px-6 rounded-full transition flex items-center justify-center gap-2 h-full disabled:opacity-50 disabled:cursor-not-allowed"
+										disabled={getAvailableQuantity === 0}
+									>
+										{getAvailableQuantity > 0 ? 'Agregar al carrito' : 'Sin stock'}
 									</button>
 									<button className="bg-white hover:bg-gray-50 border-2 border-primary text-primary font-semibold w-[56px] h-[56px] rounded-full transition flex items-center justify-center">
 										<svg
@@ -467,16 +676,15 @@ export default function ProductDetail({
 				</div>
 			</div>
 
+
+			{/* Pestañas de información */}
 			<div className="max-w-7xl mx-auto px-6 py-4">
-				{/* Descripción */}
-				{/* Cabecera de pestañas */}
 				<div className="flex border-b border-gray-200 overflow-x-auto overflow-y-hidden">
 					{Object.keys(tabs).map((tab) => (
 						<button
 							key={tab}
 							onClick={() => setActiveTab(tab as TabKey)}
-
-							className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] ${activeTab === tab
+							className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${activeTab === tab
 								? 'border-gray-900 text-primary-dark'
 								: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
 								}`}
@@ -485,22 +693,17 @@ export default function ProductDetail({
 						</button>
 					))}
 				</div>
-
-				{/* Contenido de pestañas */}
 				<div className="mt-4">{tabs[activeTab]}</div>
 			</div>
 
-			{/* 🔹 Sección de productos relacionados */}
-			<ProductosRelacionados
-				relatedProducts={relatedProducts}
-				error={undefined}
-			/>
+			{/* Productos relacionados */}
+			<ProductosRelacionados productId={productId} />
 
-			{/* 🔹 Sección de comentarios */}
+			{/* Banner publicitario */}
 			<BannerPublicidad />
 
-			{/* 🔹 Sección de aptitudes */}
+			{/* Aptitudes */}
 			<Aptitudes />
-		</Layout >
+		</Layout>
 	);
 }

@@ -7,7 +7,8 @@ import { useState, useEffect } from 'react';
 import Slider from 'react-slick';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { Product, getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
+import { Product } from '@/lib/catalog';
+import { getProductImageUrl, formatPrice, getProductName } from '@/lib/utils';
 import { toggleFavorite, getFavorites } from '@/lib/catalog';
 import { useCart } from '@/context/CartContext';
 import {
@@ -145,7 +146,7 @@ export default function NuestrosProductos({
 		// Priority to coverImage if available (from catalog)
 		const imageUrl = producto.coverImage || (
 			producto.associations?.images?.[0]?.id
-				? getProductImageUrl(producto.id, producto.associations.images[0].id)
+				? getProductImageUrl(producto.id.toString(), producto.associations.images[0].id)
 				: '/no-image.png'
 		);
 

@@ -6,7 +6,8 @@ import Layout from '@/components/Layout';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
-import { getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
+import { getProductImageUrl, formatPrice, getProductName } from '@/lib/utils';
+import { Product } from '@/lib/catalog';
 import { FaCreditCard, FaMoneyBillWave, FaTimes } from 'react-icons/fa';
 
 type TipoComprobante = 'boleta' | 'factura';
@@ -424,7 +425,7 @@ export default function Checkout() {
                             <div className="space-y-4 mb-6">
                                 {items.map((item) => {
                                     const imageId = item.product.associations?.images?.[0]?.id;
-                                    const imageUrl = imageId ? getProductImageUrl(item.product.id, imageId) : '/no-image.png';
+                                    const imageUrl = imageId ? getProductImageUrl(item.product.id.toString(), imageId) : '/no-image.png';
 
                                     return (
                                         <div key={item.product.id} className="flex gap-3">

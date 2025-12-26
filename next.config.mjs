@@ -17,7 +17,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'prestaliwilu.nerdstudiolab.com',
+        hostname: 'prestashopliwilu.nerdstudiolab.com',
       },
       {
         protocol: 'https',

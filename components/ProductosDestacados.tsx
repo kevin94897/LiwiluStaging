@@ -11,7 +11,8 @@ import { useCart } from '@/context/CartContext';
 import AddToCartModal from '@/components/AddToCartModal';
 
 import { FaHeart, FaShoppingCart } from 'react-icons/fa';
-import { Product, getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
+import { Product } from '@/lib/catalog';
+import { getProductImageUrl, formatPrice, getProductName } from '@/lib/utils';
 import { toggleFavorite, getFavorites } from '@/lib/catalog';
 import Button from './ui/Button';
 
@@ -169,7 +170,7 @@ export default function ProductosDestacados({
 						{featuredProducts.map((product) => {
 							const imageUrl = product.coverImage || (
 								product.associations?.images?.[0]?.id
-									? getProductImageUrl(product.id, product.associations.images[0].id)
+									? getProductImageUrl(product.id.toString(), product.associations.images[0].id)
 									: '/no-image.png'
 							);
 

@@ -6,7 +6,7 @@ import Layout from '@/components/Layout';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { formatPrice } from '@/lib/prestashop';
+import { formatPrice } from '@/lib/utils';
 import { FaCheckCircle } from 'react-icons/fa';
 
 export default function PedidoExitoso() {

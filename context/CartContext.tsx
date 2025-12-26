@@ -8,7 +8,7 @@ import {
 	useEffect,
 	ReactNode,
 } from 'react';
-import { Product } from '@/lib/prestashop';
+import { Product } from '@/lib/catalog';
 
 export interface CartItem {
 	product: Product;

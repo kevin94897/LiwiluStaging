@@ -6,11 +6,12 @@ import Slider from 'react-slick';
 import { motion } from 'framer-motion';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import AddToCartModal from '@/components/AddToCartModal';
 
-import { Product, getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
+import { Product, CatalogProduct } from '@/lib/catalog';
+import { getProductImageUrl, formatPrice, getProductName } from '@/lib/utils';
 import {
 	fadeInUp,
 	cardHover,
@@ -19,19 +20,71 @@ import {
 } from '@/lib/motionVariants';
 
 interface ProductProps {
-	relatedProducts: Product[];
-	error?: string;
+	productId: string | number;
+	initialRelatedProducts?: Product[];
 }
 
 export default function ProductosRelacionados({
-	relatedProducts,
-	error,
+	productId,
+	initialRelatedProducts = [],
 }: ProductProps) {
+	const [relatedProducts, setRelatedProducts] = useState<Product[]>(initialRelatedProducts);
+	const [loading, setLoading] = useState(!initialRelatedProducts.length);
+	const [error, setError] = useState<string | null>(null);
 	const [loadingCart, setLoadingCart] = useState<string | null>(null);
 	const [modalProduct, setModalProduct] = useState<Product | null>(null);
 	const { addToCart } = useCart();
 
-	if (!relatedProducts || relatedProducts.length === 0) {
+	useEffect(() => {
+		const fetchRelated = async () => {
+			if (!productId) return;
+
+			setLoading(true);
+			setError(null);
+
+			const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://liwilu-backend.nerdstudiolab.com/api';
+			const url = `${baseUrl}/catalog/products/${productId}/related?limit=8`;
+
+			try {
+				const response = await fetch(url);
+				if (!response.ok) throw new Error('Error al cargar productos relacionados');
+
+				const json = await response.json();
+				const products: Product[] = (json.data || []).map((p: CatalogProduct) => ({
+					id: p.id,
+					name: p.name,
+					price: p.price,
+					quantity: p.quantity,
+					reference: p.reference,
+					coverImage: p.coverImage,
+					associations: {
+						categories: [{ id: p.categoryId?.toString() || '0' }]
+					}
+				}));
+
+				setRelatedProducts(products);
+			} catch (err) {
+				console.error('Error fetching related products:', err);
+				setError('No se pudieron cargar los productos relacionados');
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchRelated();
+	}, [productId]);
+
+	if (loading) {
+		return (
+			<section className="max-w-7xl mx-auto px-6 py-8">
+				<div className="flex justify-center items-center h-48">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+				</div>
+			</section>
+		);
+	}
+
+	if (!loading && (!relatedProducts || relatedProducts.length === 0)) {
 		return null;
 	}
 
@@ -121,16 +174,15 @@ export default function ProductosRelacionados({
 					{relatedProducts.map((product) => {
 						const imageUrl = product.coverImage || (
 							product.associations?.images?.[0]?.id
-								? getProductImageUrl(product.id, product.associations.images[0].id)
+								? getProductImageUrl(product.id.toString(), product.associations.images[0].id)
 								: '/no-image.png'
 						);
 
 						return (
-							<div key={product.id} className="px-2">
+							<div key={product.id} className="px-2 py-4">
 								<motion.div
-									className="bg-primary rounded-md shadow-lg overflow-hidden transition h-full"
+									className="bg-transparent rounded-md shadow-lg overflow-hidden transition h-full"
 									initial="initial"
-									whileHover="hover"
 									whileTap={{ scale: 0.98 }}
 									variants={cardHover}
 								>
@@ -153,7 +205,7 @@ export default function ProductosRelacionados({
 									</Link>
 
 									<motion.div
-										className="p-4"
+										className="p-4 bg-primary"
 										initial={{ opacity: 0, y: 20 }}
 										animate={{ opacity: 1, y: 0 }}
 										transition={{ delay: 0.2, ...transitions.smooth }}

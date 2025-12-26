@@ -6,7 +6,8 @@ import Layout from '@/components/Layout';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
-import { getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
+import { getProductImageUrl, formatPrice, getProductName } from '@/lib/utils';
+import { Product } from '@/lib/catalog';
 import { FaRegTrashAlt, FaMapMarkerAlt, FaTruck, FaStore, FaCheck, FaTimes, FaCheckCircle, FaRegClock, FaTimesCircle } from 'react-icons/fa';
 import router from 'next/router';
 import Button from '@/components/ui/Button';
@@ -1041,7 +1042,7 @@ export default function Carrito() {
 						<div className="space-y-4">
 							{items.map((item, index) => {
 								const imageId = item.product.associations?.images?.[0]?.id;
-								const imageUrl = imageId ? getProductImageUrl(item.product.id, imageId) : '/no-image.png';
+								const imageUrl = imageId ? getProductImageUrl(item.product.id.toString(), imageId) : '/no-image.png';
 
 								const enTiendaSeleccionada = tiendaSeleccionada && checkStockEnTienda(item.product.id.toString(), tiendaSeleccionada);
 								const stockDisponible = tiendaSeleccionada ? getStockEnTienda(item.product.id.toString(), tiendaSeleccionada) : 0;

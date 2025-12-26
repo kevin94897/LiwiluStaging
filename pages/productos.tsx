@@ -15,13 +15,14 @@ import AddToCartModal from '@/components/AddToCartModal';
 
 import { useCart } from '@/context/CartContext';
 import {
-	getCategories,
 	formatPrice,
+	getProductName,
+	getProductImageUrl,
+} from '@/lib/utils';
+import {
 	Product,
 	Category,
-	getProductImageUrl,
-	getProductName,
-} from '@/lib/prestashop';
+} from '@/lib/catalog';
 import {
 	searchProducts,
 	getCatalogHierarchy,
@@ -476,7 +477,7 @@ export default function Tienda({ products, levelTwoCategories = [], hierarchy, p
 
 					{/* Slider Categorias */}
 					<div className="max-w-6xl mx-auto px-4 md:px-0">
-						<Slider {...sliderSettings}>
+						<Slider {...sliderSettings} className='slider-categories'>
 							{levelTwoCategories.map((cat, index) => {
 								let emoji = '🏷️';
 								const name = cat.name;
@@ -509,7 +510,7 @@ export default function Tienda({ products, levelTwoCategories = [], hierarchy, p
 												)}
 											</div>
 
-											<span className="text-white text-xs md:text-md text-center font-semibold block w-full px-1 truncate">
+											<span className="text-white md:text-lg text-xs pt-1 text-center block w-full px-1 !leading-[1.2]">
 												{cat.name}
 											</span>
 										</div>
@@ -697,7 +698,7 @@ export default function Tienda({ products, levelTwoCategories = [], hierarchy, p
 									return (
 										<Link
 											key={product.id}
-											href={`/tienda/${safeId}`}
+											href={`/tienda/${product.id}`}
 											className="block animate-fade-in-up"
 											style={{ animationDelay: `${index * 100}ms` }}
 										>

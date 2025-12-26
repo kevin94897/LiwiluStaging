@@ -12,7 +12,7 @@ import Beneficios from '@/components/Beneficios';
 import ComoComprar from '@/components/ComoComprar';
 import NuestrosProductos from '@/components/NuestrosProductos';
 
-import { Product } from '@/lib/prestashop';
+import { Product } from '@/lib/catalog';
 import { getFeaturedProducts, searchProducts } from '@/lib/catalog';
 
 interface HomeProps {

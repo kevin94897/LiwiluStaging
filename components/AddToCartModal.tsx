@@ -3,7 +3,8 @@
 
 import { useEffect } from 'react';
 import Image from 'next/image';
-import { Product, getProductImageUrl, formatPrice, getProductName } from '@/lib/prestashop';
+import { Product } from '@/lib/catalog';
+import { getProductImageUrl, formatPrice, getProductName } from '@/lib/utils';
 import Button from './ui/Button';
 
 interface AddToCartModalProps {
@@ -39,7 +40,7 @@ export default function AddToCartModal({
 
 	const imageUrl = product.coverImage || (
 		product.associations?.images?.[0]?.id
-			? getProductImageUrl(product.id, product.associations.images[0].id)
+			? getProductImageUrl(product.id.toString(), product.associations.images[0].id)
 			: '/no-image.png'
 	);
 
