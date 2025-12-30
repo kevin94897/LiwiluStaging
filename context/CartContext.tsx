@@ -1,134 +1,137 @@
 // context/CartContext.tsx
-'use client';
+"use client";
 
 import {
-	createContext,
-	useContext,
-	useState,
-	useEffect,
-	ReactNode,
-} from 'react';
-import { Product } from '@/lib/catalog';
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import { Product } from "@/lib/catalog";
 
 export interface CartItem {
-	product: Product;
-	quantity: number;
+  product: Product;
+  quantity: number;
 }
 
 interface CartContextType {
-	items: CartItem[];
-	addToCart: (product: Product, quantity?: number) => void;
-	removeFromCart: (productId: string) => void;
-	updateQuantity: (productId: string, quantity: number) => void;
-	clearCart: () => void;
-	getCartCount: () => number;
-	getCartTotal: () => number;
+  items: CartItem[];
+  addToCart: (product: Product, quantity?: number) => void;
+  removeFromCart: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
+  clearCart: () => void;
+  getCartCount: () => number;
+  getCartTotal: () => number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-	const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>([]);
 
-	// Cargar carrito desde localStorage al iniciar
-	useEffect(() => {
-		const savedCart = localStorage.getItem('liwilu_cart');
-		if (savedCart) {
-			try {
-				setItems(JSON.parse(savedCart));
-			} catch (error) {
-				console.error('Error al cargar el carrito:', error);
-			}
-		}
-	}, []);
+  // Cargar carrito desde localStorage al iniciar
+  useEffect(() => {
+    const savedCart = localStorage.getItem("liwilu_cart");
+    if (savedCart) {
+      try {
+        setItems(JSON.parse(savedCart));
+      } catch (error) {
+        console.error("Error al cargar el carrito:", error);
+      }
+    }
+  }, []);
 
-	// Guardar carrito en localStorage cada vez que cambie
-	useEffect(() => {
-		if (items.length > 0) {
-			localStorage.setItem('liwilu_cart', JSON.stringify(items));
-		} else {
-			localStorage.removeItem('liwilu_cart');
-		}
-	}, [items]);
+  // Guardar carrito en localStorage cada vez que cambie
+  useEffect(() => {
+    if (items.length > 0) {
+      localStorage.setItem("liwilu_cart", JSON.stringify(items));
+    } else {
+      localStorage.removeItem("liwilu_cart");
+    }
+  }, [items]);
 
-	const addToCart = (product: Product, quantity: number = 1) => {
-		setItems((prevItems) => {
-			const existingItem = prevItems.find(
-				(item) => item.product.id === product.id
-			);
+  const addToCart = (product: Product, quantity: number = 1) => {
+    setItems((prevItems) => {
+      const existingItem = prevItems.find(
+        (item) => String(item.product.id) === String(product.id)
+      );
 
-			if (existingItem) {
-				// Si el producto ya existe, aumentar la cantidad
-				return prevItems.map((item) =>
-					item.product.id === product.id
-						? { ...item, quantity: item.quantity + quantity }
-						: item
-				);
-			} else {
-				// Si es nuevo, agregarlo
-				return [...prevItems, { product, quantity }];
-			}
-		});
-	};
+      if (existingItem) {
+        // Si el producto ya existe, aumentar la cantidad
+        return prevItems.map((item) =>
+          String(item.product.id) === String(product.id)
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+      } else {
+        // Si es nuevo, agregarlo
+        return [...prevItems, { product, quantity }];
+      }
+    });
+  };
 
-	const removeFromCart = (productId: string) => {
-		setItems((prevItems) =>
-			prevItems.filter((item) => item.product.id !== productId)
-		);
-	};
+  const removeFromCart = (productId: string) => {
+    setItems((prevItems) =>
+      prevItems.filter((item) => String(item.product.id) !== String(productId))
+    );
+  };
 
-	const updateQuantity = (productId: string, quantity: number) => {
-		if (quantity <= 0) {
-			removeFromCart(productId);
-			return;
-		}
+  const updateQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(productId);
+      return;
+    }
 
-		setItems((prevItems) =>
-			prevItems.map((item) =>
-				item.product.id === productId ? { ...item, quantity } : item
-			)
-		);
-	};
+    setItems((prevItems) =>
+      prevItems.map((item) =>
+        String(item.product.id) === String(productId)
+          ? { ...item, quantity }
+          : item
+      )
+    );
+  };
 
-	const clearCart = () => {
-		setItems([]);
-		localStorage.removeItem('liwilu_cart');
-	};
+  const clearCart = () => {
+    setItems([]);
+    localStorage.removeItem("liwilu_cart");
+  };
 
-	const getCartCount = () => {
-		return items.reduce((total, item) => total + item.quantity, 0);
-	};
+  const getCartCount = () => {
+    return items.reduce((total, item) => total + item.quantity, 0);
+  };
 
-	const getCartTotal = () => {
-		return items.reduce((total, item) => {
-			const price = typeof item.product.price === 'number'
-				? item.product.price
-				: parseFloat(item.product.price || '0');
-			return total + price * item.quantity;
-		}, 0);
-	};
+  const getCartTotal = () => {
+    return items.reduce((total, item) => {
+      const price =
+        typeof item.product.price === "number"
+          ? item.product.price
+          : parseFloat(item.product.price || "0");
+      return total + price * item.quantity;
+    }, 0);
+  };
 
-	return (
-		<CartContext.Provider
-			value={{
-				items,
-				addToCart,
-				removeFromCart,
-				updateQuantity,
-				clearCart,
-				getCartCount,
-				getCartTotal,
-			}}
-		>
-			{children}
-		</CartContext.Provider>
-	);
+  return (
+    <CartContext.Provider
+      value={{
+        items,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        getCartCount,
+        getCartTotal,
+      }}
+    >
+      {children}
+    </CartContext.Provider>
+  );
 }
 
 export function useCart() {
-	const context = useContext(CartContext);
-	if (context === undefined) {
-		throw new Error('useCart debe ser usado dentro de un CartProvider');
-	}
-	return context;
+  const context = useContext(CartContext);
+  if (context === undefined) {
+    throw new Error("useCart debe ser usado dentro de un CartProvider");
+  }
+  return context;
 }
