@@ -327,9 +327,23 @@ export default function ProductDetail({
       }
     }
 
+    // Create a unique ID for cart items
+    // IMPORTANT: Use productId (from URL) as base to match IDs from catalog/other components
+    let cartItemId: string | number = productId;
+
+    // Only add variation suffix if there's actually a variation selected
+    if (currentVariation && currentVariation.attributes && currentVariation.attributes.length > 0) {
+      // Append variation attributes to create unique ID for this specific variation
+      const variantKey = currentVariation.attributes
+        .map((attr) => `${attr.type}-${attr.id}`)
+        .sort()
+        .join("_");
+      cartItemId = `${productId}_${variantKey}`;
+    }
+
     // Create a product object with tax-inclusive price and simulated original price for savings calculation
     const finalProduct: Product = {
-      id: currentVariation ? currentVariation.id : basicData.id,
+      id: cartItemId, // ✅ Use productId for base, or productId_variant for variations
       productId: productId, // ✅ Use URL productId for correct cart links
       name: productName,
       price: priceInfo.priceWithTax, // Use price with tax as the selling price
@@ -674,18 +688,16 @@ export default function ProductDetail({
                               key={actualIndex}
                               onClick={() => setSelectedImageIndex(actualIndex)}
                               className={`relative aspect-square bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
-																${
-                                  isSelected
-                                    ? "ring-2 ring-primary scale-105"
-                                    : "hover:shadow-lg hover:scale-105"
+																${isSelected
+                                  ? "ring-2 ring-primary scale-105"
+                                  : "hover:shadow-lg hover:scale-105"
                                 }
 															`}
                             >
                               <Image
                                 src={img}
-                                alt={`${basicData.name} - miniatura ${
-                                  actualIndex + 1
-                                }`}
+                                alt={`${basicData.name} - miniatura ${actualIndex + 1
+                                  }`}
                                 fill
                                 className="object-contain p-2"
                                 unoptimized
@@ -821,10 +833,10 @@ export default function ProductDetail({
                     {basicData.condition === "new"
                       ? "Nuevo"
                       : basicData.condition === "used"
-                      ? "Usado"
-                      : basicData.condition === "refurbished"
-                      ? "Reacondicionado"
-                      : basicData.condition}
+                        ? "Usado"
+                        : basicData.condition === "refurbished"
+                          ? "Reacondicionado"
+                          : basicData.condition}
                   </span>
                 </div>
 
@@ -903,16 +915,14 @@ export default function ProductDetail({
                                     }
                                     className={
                                       attr.type === "color"
-                                        ? `w-10 h-10 rounded-full border-2 transition relative ${
-                                            isSelected
-                                              ? "border-primary border-4 scale-110"
-                                              : "border-gray-300 hover:scale-105"
-                                          }`
-                                        : `px-5 py-2 border rounded-lg font-medium transition ${
-                                            isSelected
-                                              ? "bg-primary-dark text-white border-gray-900"
-                                              : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                          }`
+                                        ? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
+                                          ? "border-primary border-4 scale-110"
+                                          : "border-gray-300 hover:scale-105"
+                                        }`
+                                        : `px-5 py-2 border rounded-lg font-medium transition ${isSelected
+                                          ? "bg-primary-dark text-white border-gray-900"
+                                          : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                        }`
                                     }
                                     style={
                                       attr.type === "color" && val.colorHex
@@ -998,9 +1008,8 @@ export default function ProductDetail({
                   <button
                     onClick={handleToggleFavorite}
                     disabled={loadingFavorite}
-                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold w-[56px] h-[56px] rounded-full transition flex items-center justify-center ${
-                      isFavorite ? "text-primary" : "text-primary"
-                    }`}
+                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold w-[56px] h-[56px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
+                      }`}
                   >
                     {loadingFavorite ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
@@ -1035,11 +1044,10 @@ export default function ProductDetail({
             <button
               key={tab}
               onClick={() => setActiveTab(tab as TabKey)}
-              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${
-                activeTab === tab
-                  ? "border-gray-900 text-primary-dark"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${activeTab === tab
+                ? "border-gray-900 text-primary-dark"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
             >
               {tab}
             </button>
