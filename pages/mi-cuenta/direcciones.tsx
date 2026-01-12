@@ -12,6 +12,7 @@ import { direccionSchema, DireccionSchemaType } from '@/lib/mi-cuenta/direccionS
 import { FaPencil, FaTrash } from 'react-icons/fa6';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useLocations } from "@/hooks/useLocations";
+import { showToast } from '@/lib/notifications';
 
 interface Address {
 	id: string;
@@ -86,7 +87,7 @@ export default function Direcciones() {
 			}
 		} catch (error) {
 			console.error('Error al cargar direcciones:', error);
-			alert('❌ Error al cargar las direcciones. Por favor, intenta nuevamente.');
+			showToast('Error al cargar las direcciones. Por favor, intenta nuevamente.', 'error');
 		} finally {
 			setIsLoading(false);
 		}
@@ -146,7 +147,7 @@ export default function Direcciones() {
 			const accessToken = localStorage.getItem('accessToken');
 
 			if (!accessToken) {
-				alert('❌ No estás autenticado. Por favor, inicia sesión nuevamente.');
+				showToast('No estás autenticado. Por favor, inicia sesión nuevamente.', 'error');
 				return;
 			}
 
@@ -206,7 +207,7 @@ export default function Direcciones() {
 			const saveResult = await response.json();
 
 			if (saveResult.success) {
-				alert(`✅ Dirección ${direccionEditando ? 'actualizada' : 'guardada'} correctamente`);
+				showToast(`Dirección ${direccionEditando ? 'actualizada' : 'guardada'} correctamente`);
 				setMostrarFormulario(false);
 				setDireccionEditando(null);
 
@@ -218,7 +219,7 @@ export default function Direcciones() {
 			}
 		} catch (error) {
 			console.error('Error al guardar:', error);
-			alert('❌ Hubo un error al guardar. Intenta nuevamente.');
+			showToast('Hubo un error al guardar. Intenta nuevamente.', 'error');
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -302,11 +303,11 @@ export default function Direcciones() {
 				throw new Error(errorData.message || 'Error al eliminar la dirección');
 			}
 
-			alert('✅ Dirección eliminada correctamente');
+			showToast('Dirección eliminada correctamente');
 			await fetchDirecciones();
 		} catch (error) {
 			console.error('Error al eliminar:', error);
-			alert('❌ Hubo un error al eliminar. Intenta nuevamente.');
+			showToast('Hubo un error al eliminar. Intenta nuevamente.', 'error');
 		}
 	};
 

@@ -10,6 +10,7 @@ import LoginModal from "@/components/LoginModal";
 import RegisterModal from "@/components/RegisterModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/router";
+import { showToast } from "@/lib/notifications";
 
 import {
   FaRegHeart,
@@ -144,8 +145,8 @@ function QuickActions({
     } catch (error: unknown) {
       console.error("Error al cerrar sesión:", error);
       setIsLoggingOut(false);
-      if (error instanceof Error) alert(error.message);
-      else alert("Error desconocido al cerrar sesión");
+      if (error instanceof Error) showToast(error.message, "error");
+      else showToast("Error desconocido al cerrar sesión", "error");
     }
   };
 

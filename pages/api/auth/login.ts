@@ -1,19 +1,8 @@
-// pages/api/auth/login.ts
-
 import { startTokenRefresh } from '@/lib/auth/tokenManager';
 import { mergeCart } from '@/lib/cart';
+import { User, saveSession, getCurrentUser, isAuthenticated, clearAuthSession } from '@/lib/auth/authUtils';
 
-// ============================================
-// Definición de usuario para correcta tipificación
-// ============================================
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role?: string;
-  electronicSignatureUrl?: string | null;
-}
+export type { User };
 
 // ============================================
 // Login con recarga de página
@@ -46,20 +35,13 @@ export const loginUser = async (
 
     const response = await res.json() as LoginResponse;
 
-    // 🔹 Guardar tokens y datos del usuario en localStorage
-    if (response.data?.accessToken) {
-      localStorage.setItem("accessToken", response.data.accessToken);
-      console.log("✅ AccessToken guardado");
-    }
-
-    if (response.data?.refreshToken) {
-      localStorage.setItem("refreshToken", response.data.refreshToken);
-      console.log("✅ RefreshToken guardado");
-    }
-
-    if (response.data?.user) {
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-      console.log("✅ Usuario guardado:", response.data.user);
+    // 🔹 Guardar tokens y datos del usuario usando la utilidad centralizada
+    if (response.data) {
+      saveSession(
+        response.data.user,
+        response.data.accessToken,
+        response.data.refreshToken
+      );
     }
 
     // 🛒 Intentar fusionar el carrito (merge cart)
@@ -68,11 +50,9 @@ export const loginUser = async (
       console.log("🛒 Carrito fusionado exitosamente");
     } catch (cartError) {
       console.warn("⚠️ No se pudo fusionar el carrito:", cartError);
-      // No bloqueamos el login si falla el merge del carrito
     }
 
     // 🆕 Iniciar sistema de renovación automática de tokens
-    console.log("🚀 Iniciando renovación automática de tokens");
     startTokenRefresh();
 
     // 🔹 Recargar la página después del login exitoso
@@ -87,132 +67,40 @@ export const loginUser = async (
   }
 };
 
-// ============================================
-// Logout con redirección a home
-// ============================================
-
-interface LogoutResponse {
-  success: boolean;
-  message: string;
-}
-
-export const logoutUser = async (): Promise<LogoutResponse> => {
+/**
+ * @deprecated Use clearAuthSession from authUtils instead
+ * Keeping for backward compatibility if needed by other components temporarily
+ */
+export const logoutUser = async (): Promise<any> => {
   try {
     const accessToken = localStorage.getItem("accessToken");
     const refreshToken = localStorage.getItem("refreshToken");
 
-    if (!accessToken) {
-      throw new Error("No hay sesión activa");
+    if (accessToken) {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ refreshToken }),
+      }).catch(err => console.warn("Silent logout failure:", err));
     }
 
-    // 🆕 Deshabilitar refreshToken en el servidor
-    console.log("🔒 Deshabilitando refreshToken en el servidor...");
+    clearAuthSession();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ refreshToken }),
-    });
-
-    // 🔹 Siempre limpiar la sesión localmente
-    clearSession();
-
-    // 🔹 Redirigir al home después de cerrar sesión
     if (typeof window !== "undefined") {
       window.location.href = "/";
     }
 
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => null);
-      console.warn(
-        "Advertencia al cerrar sesión:",
-        errorData?.message ?? "Error desconocido"
-      );
-
-      return { success: false, message: "Sesión cerrada con advertencias" };
-    }
-
-    console.log("✅ RefreshToken deshabilitado en el servidor");
-    return { success: true, message: "Sesión cerrada correctamente" };
-  } catch (err: unknown) {
-    clearSession();
-
-    // 🔹 Redirigir al home incluso si hay error
+    return { success: true };
+  } catch (err) {
+    clearAuthSession();
     if (typeof window !== "undefined") {
       window.location.href = "/";
     }
-
-    if (err instanceof Error) {
-      throw new Error(err.message);
-    }
-
-    throw new Error("Error desconocido al intentar cerrar sesión");
+    return { success: false };
   }
 };
 
-// ============================================
-// Helpers
-// ============================================
-
-const clearSession = () => {
-  // 🆕 Importar dinámicamente para evitar problemas de SSR
-  if (typeof window !== "undefined") {
-    import('@/lib/auth/tokenManager').then(({ stopTokenRefresh }) => {
-      stopTokenRefresh();
-    });
-  }
-
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("user");
-  console.log("🧹 Sesión limpiada");
-};
-
-// ============================================
-// Obtener usuario actual (validado y tipado)
-// ============================================
-
-export const getCurrentUser = (): User | null => {
-  if (typeof window === "undefined") return null;
-
-  const userStr = localStorage.getItem("user");
-  if (!userStr) {
-    console.log("⚠️ No hay usuario en localStorage");
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(userStr);
-
-    if (
-      parsed &&
-      typeof parsed.id === "string" &&
-      typeof parsed.email === "string" &&
-      typeof parsed.firstName === "string" &&
-      typeof parsed.lastName === "string"
-    ) {
-      console.log("✅ Usuario recuperado:", parsed);
-      return parsed as User;
-    }
-
-    console.log("⚠️ Estructura de usuario inválida:", parsed);
-    return null;
-  } catch (error) {
-    console.error("❌ Error al parsear usuario:", error);
-    return null;
-  }
-};
-
-// ============================================
-// Estado simple de autenticación
-// ============================================
-
-export const isAuthenticated = (): boolean => {
-  if (typeof window === "undefined") return false;
-  const hasToken = !!localStorage.getItem("accessToken");
-  console.log("🔐 Usuario autenticado:", hasToken);
-  return hasToken;
-};
+export { getCurrentUser, isAuthenticated };

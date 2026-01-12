@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 import { HiArrowLeft } from 'react-icons/hi';
 import { PiWarningCircleFill } from 'react-icons/pi';
 import router from 'next/router';
+import { showToast } from '@/lib/notifications';
 import Button from '@/components/ui/Button';
 import { autorizacionSchema, AutorizacionSchemaType } from '@/lib/autorizacionSchema';
 
@@ -59,7 +60,7 @@ export default function AutorizarRetiroPage() {
         setErrors({});
         console.log('Autorización de retiro exitosa:', formData);
         // Aquí iría la lógica para guardar la autorización
-        alert('✅ Autorización guardada exitosamente');
+        showToast('Autorización guardada exitosamente');
         router.back();
     };
 
@@ -102,8 +103,8 @@ export default function AutorizarRetiroPage() {
                                 value={formData.documentType}
                                 onChange={handleChange}
                                 className={`w-full px-4 py-3 border-2 rounded-sm transition bg-white text-gray-700 ${errors.documentType
-                                        ? 'border-red-500 focus:ring-red-500'
-                                        : 'border-gray-300 focus:ring-green-500 focus:border-transparent'
+                                    ? 'border-red-500 focus:ring-red-500'
+                                    : 'border-gray-300 focus:ring-green-500 focus:border-transparent'
                                     }`}
                             >
                                 <option value="">Seleccionar tipo</option>
@@ -130,8 +131,8 @@ export default function AutorizarRetiroPage() {
                                 onChange={handleDocumentNumberChange}
                                 placeholder="74218601"
                                 className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.documentNumber
-                                        ? 'border-red-500 focus:ring-red-500'
-                                        : 'border-gray-300 focus:ring-green-500 focus:border-transparent'
+                                    ? 'border-red-500 focus:ring-red-500'
+                                    : 'border-gray-300 focus:ring-green-500 focus:border-transparent'
                                     }`}
                                 maxLength={8}
                             />
@@ -154,8 +155,8 @@ export default function AutorizarRetiroPage() {
                                 onChange={handleChange}
                                 placeholder="Gonzalo Vera"
                                 className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.fullName
-                                        ? 'border-red-500 focus:ring-red-500'
-                                        : 'border-gray-300 focus:ring-green-500 focus:border-transparent'
+                                    ? 'border-red-500 focus:ring-red-500'
+                                    : 'border-gray-300 focus:ring-green-500 focus:border-transparent'
                                     }`}
                             />
                             {errors.fullName && (

@@ -1,6 +1,7 @@
 // hooks/useAuth.ts
 import { useState, useEffect } from 'react';
-import { User, getCurrentUser, logoutUser, isAuthenticated as checkAuth } from '../pages/api/auth/logout';
+import { User, getCurrentUser, isAuthenticated as checkAuth } from '@/lib/auth/authUtils';
+import { logoutUser } from '@/pages/api/auth/login';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -41,7 +42,6 @@ export function useAuth() {
   const logout = async () => {
     try {
       await logoutUser();
-      // La función logoutUser ya recarga la página y redirige
     } catch (error) {
       throw error;
     }

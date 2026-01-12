@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Button from './ui/Button';
 import { contactoSchema, ContactoSchemaType } from '@/lib/componentcontactoSchema';
 import { PiWarningCircleFill } from 'react-icons/pi';
+import { showToast } from '@/lib/notifications';
 
 export default function Contacto() {
 	const [formData, setFormData] = useState<ContactoSchemaType>({
@@ -77,7 +78,7 @@ export default function Contacto() {
 			// Aquí iría la llamada a tu API
 			// await fetch('/api/contacto', { method: 'POST', body: JSON.stringify(formData) });
 
-			alert('✅ Solicitud enviada. Un asesor se contactará pronto.');
+			showToast('Solicitud enviada. Un asesor se contactará pronto.');
 
 			// Resetear formulario
 			setFormData({
@@ -87,7 +88,7 @@ export default function Contacto() {
 			});
 		} catch (error) {
 			console.error('Error al enviar:', error);
-			alert('❌ Hubo un error. Intenta nuevamente.');
+			showToast('Hubo un error. Intenta nuevamente.', 'error');
 		} finally {
 			setIsSubmitting(false);
 		}

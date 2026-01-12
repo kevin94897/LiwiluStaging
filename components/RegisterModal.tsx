@@ -9,6 +9,8 @@ import { PiWarningCircleFill } from "react-icons/pi";
 import { registerSchema } from "../lib/registerSchema";
 import { z } from "zod";
 import { registerUser } from "../pages/api/auth/register";
+import { showToast } from "@/lib/notifications";
+
 
 interface RegisterModalProps {
 	isOpen: boolean;
@@ -127,12 +129,14 @@ export default function RegisterModal({
 				receiveOffers: formData.receiveOffers,
 			});
 
-			console.log("🔥 Registro exitoso →", response);
-			alert("✅ Cuenta creada con éxito. ¡Bienvenido!");
+			console.log("Registro exitoso", response);
+			showToast("Cuenta creada con éxito. ¡Bienvenido!");
 			onClose();
 		} catch (error: unknown) {
+			console.log("Error en registro", error);
+
 			if (error instanceof Error) {
-				console.error("❌ Error en registro:", error.message);
+				console.error("Error en registro:", error.message);
 
 				if (error.message.includes("correo ya está registrado")) {
 					setErrors({ email: "Este correo ya está registrado" });

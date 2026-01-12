@@ -9,7 +9,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import toast from "react-hot-toast";
+import { showToast } from "@/lib/notifications";
 import Contacto from "@/components/Contacto";
 import AddToCartModal from "@/components/AddToCartModal";
 
@@ -246,24 +246,10 @@ export default function Tienda({
       // Update local state based on API response
       if (result.isFavorite) {
         setFavoritos((prev) => [...prev, productId]);
-        toast.success("Producto agregado a favoritos", {
-          duration: 2000,
-          position: "bottom-right",
-          style: {
-            fontSize: "14px",
-            fontFamily: "Outfit",
-          },
-        });
+        showToast("Producto agregado a favoritos");
       } else {
         setFavoritos((prev) => prev.filter((id) => id !== productId));
-        toast.success("Producto eliminado de favoritos", {
-          duration: 2000,
-          position: "bottom-right",
-          style: {
-            fontSize: "14px",
-            fontFamily: "Outfit",
-          },
-        });
+        showToast("Producto eliminado de favoritos");
       }
     } catch (error) {
       console.error("Error toggling favorite:", error);
@@ -273,13 +259,7 @@ export default function Tienda({
         error instanceof Error &&
         error.message.includes("No hay sesión activa")
       ) {
-        toast.error("Debes iniciar sesión para agregar favoritos", {
-          duration: 3000,
-          style: {
-            fontSize: "14px",
-            fontFamily: "Outfit",
-          },
-        });
+        showToast("Debes iniciar sesión para agregar favoritos", "error");
         router.push(
           {
             pathname: router.pathname,
@@ -289,7 +269,7 @@ export default function Tienda({
           { shallow: true }
         );
       } else {
-        toast.error("Error al actualizar favoritos. Por favor, intenta de nuevo.");
+        showToast("Error al actualizar favoritos. Por favor, intenta de nuevo.", "error");
       }
     } finally {
       setTogglingFavorite(null);
@@ -306,7 +286,7 @@ export default function Tienda({
       setModalProduct(producto);
     } catch (error) {
       console.error("Error al agregar al carrito:", error);
-      alert("Error al agregar el producto al carrito");
+      showToast("Error al agregar el producto al carrito", "error");
     } finally {
       setLoadingCart(null);
     }

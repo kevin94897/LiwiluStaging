@@ -1,6 +1,5 @@
-// pages/mi-cuenta/mis-favoritos.tsx
 import { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
+import { showToast } from '@/lib/notifications';
 
 import Layout from '@/components/Layout';
 import Link from 'next/link';
@@ -48,17 +47,10 @@ export default function MisFavoritos() {
 			// Remove from local state
 			setFavoritos(prev => prev.filter(p => p.id !== productId));
 			setFavoritesCount(prev => Math.max(0, prev - 1));
-			toast.success('Producto eliminado de favoritos', {
-				duration: 2000,
-				position: 'bottom-right',
-				style: {
-					fontSize: '14px',
-					fontFamily: 'Outfit',
-				},
-			});
+			showToast('Producto eliminado de favoritos');
 		} catch (err) {
 			console.error('Error removing favorite:', err);
-			alert('Error al eliminar de favoritos');
+			showToast('Error al eliminar de favoritos', 'error');
 		} finally {
 			setRemovingId(null);
 		}

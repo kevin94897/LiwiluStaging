@@ -52,19 +52,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // 2. Cargar o generar sessionId
-    let currentSessionId = localStorage.getItem("liwilu_session_id");
-    if (!currentSessionId) {
-      currentSessionId = crypto.randomUUID();
-      localStorage.setItem("liwilu_session_id", currentSessionId);
-      console.log("🆕 Generated New Session ID:", currentSessionId);
-    } else {
+    // 2. Cargar sessionId existente
+    const currentSessionId = localStorage.getItem("liwilu_session_id");
+    if (currentSessionId) {
       console.log("📄 Loaded Existing Session ID:", currentSessionId);
+      setSessionId(currentSessionId);
     }
-    setSessionId(currentSessionId);
 
     // 3. Sincronizar con el backend
-    syncCart();
+    const accessToken = localStorage.getItem("accessToken");
+    if (accessToken || currentSessionId) {
+      syncCart();
+    }
   }, []);
 
   // Guardar carrito en localStorage cada vez que cambie

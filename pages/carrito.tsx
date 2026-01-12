@@ -20,6 +20,7 @@ import {
   FaTimesCircle,
 } from "react-icons/fa";
 import router from "next/router";
+import { showToast } from "@/lib/notifications";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
 import { loginSchema, LoginSchemaType } from "@/lib/loginSchema";
@@ -334,26 +335,20 @@ export default function Carrito() {
       setStockValidado(todosConStock);
 
       if (todosConStock) {
-        showNotification(
-          "success",
-          "Stock disponible para todos los productos"
-        );
+        showToastMessage("Stock disponible para todos los productos");
       } else {
-        showNotification(
-          "error",
-          "Algunos productos no tienen stock suficiente"
-        );
+        showToastMessage("Algunos productos no tienen stock suficiente");
       }
     } catch (error) {
       console.error("Error al validar stock:", error);
-      showNotification("error", "Error al validar stock");
+      showToastMessage("Error al validar stock");
     } finally {
       setValidandoStock(false);
     }
   };
 
-  const showNotification = (type: "success" | "error", message: string) => {
-    alert(message);
+  const showToastMessage = (message: string) => {
+    showToast(message, message.toLowerCase().includes("error") ? "error" : "success");
   };
 
   // NUEVO: Manejo de login
@@ -383,7 +378,7 @@ export default function Carrito() {
     // Aquí harías la validación real con tu API
     setIsLoggedIn(true);
     setShowLoginModal(false);
-    showNotification("success", "¡Bienvenido de vuelta!");
+    showToast("¡Bienvenido de vuelta!", "success");
   };
 
   // NUEVO: Manejo de registro
@@ -416,7 +411,7 @@ export default function Carrito() {
     console.log("Registro exitoso:", registroData);
     setIsLoggedIn(true);
     setShowLoginModal(false);
-    showNotification("success", "¡Cuenta creada exitosamente!");
+    showToast("¡Cuenta creada exitosamente!", "success");
   };
 
   const handleContinueAsGuest = () => {
@@ -462,7 +457,7 @@ export default function Carrito() {
     setGuestDataCompleted(true);
     setShowLoginModal(false);
     setShowGuestForm(false);
-    showNotification("success", "¡Datos guardados! Continúa con tu compra.");
+    showToast("¡Datos guardados! Continúa con tu compra.", "success");
   };
 
   // Obtener tiendas por distrito

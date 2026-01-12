@@ -26,19 +26,10 @@ export default function App({ Component, pageProps }: AppProps) {
 			</main>
 			{/* Opcional: Notificaciones toast */}
 			<Toaster
-				position="top-right"
+				position="bottom-right"
 				toastOptions={{
+					className: 'liwilu-toast',
 					duration: 3000,
-					style: {
-						background: '#4CAF50',
-						color: '#fff',
-					},
-					success: {
-						iconTheme: {
-							primary: '#fff',
-							secondary: '#4CAF50',
-						},
-					},
 				}}
 			/>
 		</CartProvider>

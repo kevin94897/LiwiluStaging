@@ -101,6 +101,13 @@ export async function addToCart(productId: number, quantity: number): Promise<Ad
         }
 
         const data: AddToCartResponse = await response.json();
+
+        // Save session ID if returned (for anonymous carts)
+        if (data?.data?.sessionId && typeof window !== 'undefined') {
+            localStorage.setItem('liwilu_session_id', data.data.sessionId);
+            console.log('💾 Saved new session ID to localStorage:', data.data.sessionId);
+        }
+
         return data;
     } catch (error) {
         console.error('Error in addToCart:', error);
@@ -127,6 +134,13 @@ export async function getCart(): Promise<GetCartResponse> {
         }
 
         const data: GetCartResponse = await response.json();
+
+        // Save/Update session ID if returned
+        if (data?.data?.sessionId && typeof window !== 'undefined') {
+            localStorage.setItem('liwilu_session_id', data.data.sessionId);
+            console.log('💾 Updated session ID from getCart:', data.data.sessionId);
+        }
+
         return data;
     } catch (error) {
         console.error('Error in getCart:', error);
@@ -160,7 +174,10 @@ export function getCartTotal(cartData: CartData): number {
  */
 export async function updateCartQuantity(productId: number, quantity: number): Promise<AddToCartResponse> {
     try {
-        const response = await apiPut(`/cart/product/${productId}`, { quantity });
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiPut(`/cart/product/${productId}`, { quantity }, {
+            skipAuth: !accessToken
+        });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -188,7 +205,10 @@ export async function updateCartQuantity(productId: number, quantity: number): P
  */
 export async function removeFromCart(productId: number): Promise<AddToCartResponse> {
     try {
-        const response = await apiDelete(`/cart/product/${productId}`);
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiDelete(`/cart/product/${productId}`, {
+            skipAuth: !accessToken
+        });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -215,7 +235,10 @@ export async function removeFromCart(productId: number): Promise<AddToCartRespon
  */
 export async function clearCart(): Promise<AddToCartResponse> {
     try {
-        const response = await apiDelete('/cart');
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiDelete('/cart', {
+            skipAuth: !accessToken
+        });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));

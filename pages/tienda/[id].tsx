@@ -11,6 +11,7 @@ import ProductosRelacionados from "@/components/ProductosRelacionados";
 import { useCart } from "@/context/CartContext";
 import AddToCartModal from "@/components/AddToCartModal";
 import { useAuth } from "@/hooks/useAuth";
+import { showToast } from "@/lib/notifications";
 
 import {
   getProductBasic,
@@ -400,7 +401,7 @@ export default function ProductDetail({
         openLoginModal();
       } else {
         console.error("Error toggling favorite:", error);
-        alert("Ocurrió un error al actualizar favoritos");
+        showToast("Ocurrió un error al actualizar favoritos", "error");
       }
     } finally {
       setLoadingFavorite(false);
