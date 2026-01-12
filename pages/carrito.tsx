@@ -33,6 +33,7 @@ import { useLocations } from "@/hooks/useLocations";
 import { z } from "zod";
 import { PiWarningCircleFill } from "react-icons/pi";
 import { FaPencil } from "react-icons/fa6";
+import { getCarriers, CartCarrier, getWarehouseDistricts, WarehouseDistrict } from "@/lib/cart";
 
 // Interfaz de tienda
 interface Tienda {
@@ -46,27 +47,7 @@ interface Tienda {
 }
 
 // Distritos disponibles
-const DISTRITOS_LIMA = [
-  "Ate",
-  "Barranco",
-  "Breña",
-  "Cercado de Lima",
-  "Chorrillos",
-  "Jesús María",
-  "La Molina",
-  "La Victoria",
-  "Lince",
-  "Los Olivos",
-  "Magdalena",
-  "Miraflores",
-  "Pueblo Libre",
-  "San Borja",
-  "San Isidro",
-  "San Juan de Lurigancho",
-  "San Miguel",
-  "Santiago de Surco",
-  "Surquillo",
-];
+
 
 
 
@@ -75,12 +56,16 @@ const DISTRITOS_LIMA = [
 export default function Carrito() {
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const [recordarme, setRecordarme] = useState(false);
-  const { items, removeFromCart, updateQuantity, clearCart, getCartTotal } =
+  const { items, removeFromCart, updateQuantity, clearCart, getCartTotal, updateCarrier, selectedCarrier: contextCarrier, totals } =
     useCart();
   const [couponCode, setCouponCode] = useState("");
   const [metodoEnvio, setMetodoEnvio] = useState<"delivery" | "retiro">(
     "delivery"
   );
+  const [carriers, setCarriers] = useState<CartCarrier[]>([]);
+  const [warehouseDistricts, setWarehouseDistricts] = useState<WarehouseDistrict[]>([]);
+  const [loadingCarriers, setLoadingCarriers] = useState(false);
+  const [selectedCarrier, setSelectedCarrier] = useState<CartCarrier | null>(null);
   const [distritoSeleccionado, setDistritoSeleccionado] = useState("");
   const [tiendaSeleccionada, setTiendaSeleccionada] = useState<string | null>(
     null
@@ -188,12 +173,70 @@ export default function Carrito() {
     fetchMainAddress();
   }, [isAuthenticated, user]);
 
-  // Mostrar modal solo cuando hay items Y no está autenticado Y no ha completado datos de invitado
   useEffect(() => {
     if (!authLoading && items.length > 0 && !isAuthenticated && !isLoggedIn && !guestDataCompleted) {
       setShowLoginModal(true);
     }
   }, [items.length, isAuthenticated, isLoggedIn, guestDataCompleted, authLoading]);
+
+  // Fetch carriers
+  useEffect(() => {
+    const fetchCarriers = async () => {
+      setLoadingCarriers(true);
+      try {
+        const response = await getCarriers();
+        if (response.success) {
+          setCarriers(response.data);
+          // Set primary carrier if available
+          if (response.data.length > 0) {
+            // Priority: context carrier > backend carrier 0
+            const carrierToSelect = contextCarrier || response.data[0];
+            setSelectedCarrier(carrierToSelect);
+
+            if (carrierToSelect.name.toLowerCase().includes("retiro")) {
+              setMetodoEnvio("retiro");
+            } else {
+              setMetodoEnvio("delivery");
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching carriers:", error);
+      } finally {
+        setLoadingCarriers(false);
+      }
+    };
+
+    fetchCarriers();
+  }, []);
+
+  // Fetch warehouse districts
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      try {
+        const response = await getWarehouseDistricts();
+        if (response.success) {
+          setWarehouseDistricts(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching warehouse districts:", error);
+      }
+    };
+
+    fetchDistricts();
+  }, []);
+
+  // Sync local selectedCarrier with contextCarrier
+  useEffect(() => {
+    if (contextCarrier) {
+      setSelectedCarrier(contextCarrier);
+      if (contextCarrier.name.toLowerCase().includes("retiro")) {
+        setMetodoEnvio("retiro");
+      } else {
+        setMetodoEnvio("delivery");
+      }
+    }
+  }, [contextCarrier]);
 
   // NUEVO: Estado para el tab activo (login o registro)
   const [activeTab, setActiveTab] = useState<"login" | "registro" | "guest">("login");
@@ -312,13 +355,18 @@ export default function Carrito() {
   const handleRegistroChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, value, type } = e.target;
+    let { name, value, type } = e.target;
 
     // Manejo correcto de checkbox
     if (type === "checkbox") {
       const checked = (e.target as HTMLInputElement).checked;
       setRegistroData((prev) => ({ ...prev, [name]: checked }));
     } else {
+      if (name === "numeroDocumento") {
+        value = value.replace(/\D/g, "");
+        const maxLength = registroData.tipoDocumento === "RUC" ? 11 : (registroData.tipoDocumento === "DNI" ? 8 : 20);
+        if (value.length > maxLength) value = value.slice(0, maxLength);
+      }
       setRegistroData((prev) => ({ ...prev, [name]: value }));
     }
 
@@ -423,7 +471,14 @@ export default function Carrito() {
   const handleGuestChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+
+    if (name === "numeroDocumento") {
+      value = value.replace(/\D/g, "");
+      const maxLength = guestData.tipoDocumento === "RUC" ? 11 : (guestData.tipoDocumento === "DNI" ? 8 : 20);
+      if (value.length > maxLength) value = value.slice(0, maxLength);
+    }
+
     setGuestData((prev) => ({ ...prev, [name]: value }));
     setGuestErrors((prev) => ({ ...prev, [name]: undefined }));
   };
@@ -492,9 +547,9 @@ export default function Carrito() {
     return tienda?.stock || 0;
   };
 
-  const subtotal = getCartTotal();
-  const envio = metodoEnvio === "delivery" ? (subtotal > 100 ? 0 : 15) : 0;
-  const total = subtotal + envio;
+  const subtotal = totals.subtotal;
+  const envio = totals.shipping;
+  const total = totals.total;
 
   // Calculate savings
   const totalSavings = items.reduce((acc, item) => {
@@ -864,6 +919,7 @@ export default function Carrito() {
                             ...registroData,
                             tipoDocumento: e.target.value as
                               | "DNI"
+                              | "RUC"
                               | "CE"
                               | "Pasaporte", // ✅ Type assertion
                           })
@@ -874,6 +930,7 @@ export default function Carrito() {
                           }`}
                       >
                         <option value="DNI">DNI</option>
+                        <option value="RUC">RUC</option>
                         <option value="CE">Carnet de Extranjería</option>
                         <option value="Pasaporte">Pasaporte</option>
                       </select>
@@ -1006,9 +1063,9 @@ export default function Carrito() {
                           }`}
                       >
                         <option value="">Seleccionar distrito</option>
-                        {DISTRITOS_LIMA.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
+                        {warehouseDistricts.map((d) => (
+                          <option key={d.codUbigeoAlm} value={d.desDistrito}>
+                            {d.desDistrito}
                           </option>
                         ))}
                       </select>
@@ -1300,6 +1357,7 @@ export default function Carrito() {
                             ...guestData,
                             tipoDocumento: e.target.value as
                               | "DNI"
+                              | "RUC"
                               | "CE"
                               | "Pasaporte",
                           })
@@ -1310,6 +1368,7 @@ export default function Carrito() {
                           }`}
                       >
                         <option value="DNI">DNI</option>
+                        <option value="RUC">RUC</option>
                         <option value="CE">Carnet de Extranjería</option>
                         <option value="Pasaporte">Pasaporte</option>
                       </select>
@@ -1586,52 +1645,70 @@ export default function Carrito() {
               <h2 className="text-lg font-bold mb-4">
                 Selecciona tu método de entrega
               </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => setMetodoEnvio("delivery")}
-                  className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${metodoEnvio === "delivery"
-                    ? "border-primary bg-primary/5"
-                    : "border-gray-200 hover:border-primary/50"
-                    }`}
-                >
-                  <FaTruck
-                    className={`text-2xl ${metodoEnvio === "delivery"
-                      ? "text-primary"
-                      : "text-gray-400"
-                      }`}
-                  />
-                  <div className="text-left">
-                    <p className="font-semibold">Delivery</p>
-                    <p className="text-xs text-gray-500">10 días hábiles</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {loadingCarriers ? (
+                  <div className="col-span-2 py-8 flex flex-col items-center justify-center bg-gray-50 rounded-sm">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <p className="mt-2 text-sm text-gray-500">Cargando métodos de envío...</p>
                   </div>
-                </button>
+                ) : carriers.length > 0 ? (
+                  carriers.map((carrier) => {
+                    const isRetiro = carrier.name.toLowerCase().includes("retiro");
+                    const isSelected = selectedCarrier?.id === carrier.id;
 
-                <button
-                  onClick={handleCambiarARetiro}
-                  className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${metodoEnvio === "retiro"
-                    ? "border-primary bg-primary/5"
-                    : "border-gray-200 hover:border-primary/50"
-                    }`}
-                >
-                  <FaStore
-                    className={`text-2xl ${metodoEnvio === "retiro"
-                      ? "text-primary"
-                      : "text-gray-400"
-                      }`}
-                  />
-                  <div className="text-left">
-                    <p className="font-semibold">Retiro en tienda</p>
-                    <p className="text-xs text-gray-500">Gratis</p>
+                    return (
+                      <button
+                        key={carrier.id}
+                        onClick={() => {
+                          setSelectedCarrier(carrier);
+                          updateCarrier(carrier.id);
+                          if (isRetiro) {
+                            handleCambiarARetiro();
+                          } else {
+                            setMetodoEnvio("delivery");
+                          }
+                        }}
+                        className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${isSelected
+                          ? "border-primary bg-primary/5"
+                          : "border-gray-200 hover:border-primary/50"
+                          }`}
+                      >
+                        {isRetiro ? (
+                          <FaStore
+                            className={`text-2xl ${isSelected
+                              ? "text-primary"
+                              : "text-gray-400"
+                              }`}
+                          />
+                        ) : (
+                          <FaTruck
+                            className={`text-2xl ${isSelected
+                              ? "text-primary"
+                              : "text-gray-400"
+                              }`}
+                          />
+                        )}
+                        <div className="text-left">
+                          <p className="font-semibold">{carrier.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {carrier.shippingCost === 0 ? "Gratis" : carrier.delay || "Disponible"}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="col-span-2 py-4 text-center text-gray-500 bg-gray-50 rounded-sm">
+                    No hay métodos de envío disponibles.
                   </div>
-                </button>
+                )}
               </div>
 
               {metodoEnvio === "delivery" && (
                 <div className="mt-4 space-y-4 animate-fade-in">
                   <div className="p-4 bg-blue-50 rounded-sm">
                     <p className="text-sm text-gray-700">
-                      📦 El envío se realizará en el transcurso de 10 días
-                      hábiles.
+                      📦 {selectedCarrier?.delay || "El envío se realizará en el transcurso de unos días hábiles."}
                     </p>
                     <p className="text-sm font-semibold text-primary mt-2">
                       Costo:{" "}
@@ -1775,9 +1852,9 @@ export default function Carrito() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
                   >
                     <option value="">Seleccionar distrito</option>
-                    {DISTRITOS_LIMA.map((distrito) => (
-                      <option key={distrito} value={distrito}>
-                        {distrito}
+                    {warehouseDistricts.map((district) => (
+                      <option key={district.codUbigeoAlm} value={district.desDistrito}>
+                        {district.desDistrito}
                       </option>
                     ))}
                   </select>
@@ -2256,7 +2333,7 @@ export default function Carrito() {
                 )}
 
                 <div className="flex justify-between text-gray-600">
-                  <span>Envío</span>
+                  <span>Envío ({selectedCarrier?.name || "Pendiente"})</span>
                   <span className="font-semibold">
                     {envio === 0 ? (
                       <span className="text-green-600">Gratis ✓</span>
@@ -2265,9 +2342,9 @@ export default function Carrito() {
                     )}
                   </span>
                 </div>
-                {metodoEnvio === "delivery" && envio > 0 && (
-                  <p className="text-xs text-gray-500">
-                    ¡Envío gratis en compras mayores a S/ 100!
+                {metodoEnvio === "delivery" && selectedCarrier?.isFree && (
+                  <p className="text-xs text-green-600 font-medium">
+                    ¡Este método de envío es gratuito!
                   </p>
                 )}
               </div>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DNI_REGEX, RUC_REGEX } from "./validations";
 
 const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/;
 
@@ -11,11 +12,10 @@ export const guestDataSchema = z.object({
         .min(1, "El apellido es obligatorio")
         .regex(onlyLetters, "El apellido solo puede contener letras"),
 
-    tipoDocumento: z.enum(['DNI', 'CE', 'Pasaporte']),
+    tipoDocumento: z.enum(['DNI', 'CE', 'Pasaporte', 'RUC']),
 
     numeroDocumento: z.string()
-        .min(8, "Número de documento inválido")
-        .max(12, "Número de documento inválido"),
+        .min(1, "El número de documento es obligatorio"),
 
     celular: z.string()
         .min(9, "El celular debe tener al menos 9 dígitos")
@@ -34,6 +34,32 @@ export const guestDataSchema = z.object({
     numeroDpto: z.string().optional(),
 
     referencia: z.string().optional(),
+}).superRefine((data, ctx) => {
+    if (data.tipoDocumento === 'DNI') {
+        if (!DNI_REGEX.test(data.numeroDocumento)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "El DNI debe tener exactamente 8 números",
+                path: ["numeroDocumento"],
+            });
+        }
+    } else if (data.tipoDocumento === 'RUC') {
+        if (!RUC_REGEX.test(data.numeroDocumento)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "El RUC debe tener 11 números y empezar con 20",
+                path: ["numeroDocumento"],
+            });
+        }
+    } else {
+        if (data.numeroDocumento.length < 8 || data.numeroDocumento.length > 20) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Número de documento inválido",
+                path: ["numeroDocumento"],
+            });
+        }
+    }
 });
 
 export type GuestDataSchemaType = z.infer<typeof guestDataSchema>;

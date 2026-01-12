@@ -13,7 +13,8 @@ import {
   addToCart as apiAddToCart,
   getCart as apiGetCart,
   CartData,
-  CartProduct
+  CartProduct,
+  CartCarrier
 } from "@/lib/cart";
 
 export interface CartItem {
@@ -30,6 +31,9 @@ interface CartContextType {
   getCartCount: () => number;
   getCartTotal: () => number;
   syncCart: () => Promise<void>;
+  updateCarrier: (carrierId: number) => Promise<void>;
+  selectedCarrier: CartCarrier | null;
+  totals: { subtotal: number; shipping: number; total: number };
   isLoading: boolean;
 }
 
@@ -37,6 +41,8 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [totals, setTotals] = useState({ subtotal: 0, shipping: 0, total: 0 });
+  const [selectedCarrier, setSelectedCarrier] = useState<CartCarrier | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
@@ -94,8 +100,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       id: cartProduct.id,
       productId: cartProduct.prestashopId,
       name: cartProduct.name,
-      price: cartProduct.priceWithTax,
-      originalPrice: cartProduct.discountPrice || cartProduct.priceWithTax,
+      price: cartProduct.discountPrice || cartProduct.priceWithTax,
+      originalPrice: cartProduct.priceWithTax,
       quantity: cartProduct.quantity,
       coverImage: cartProduct.coverImage,
       reference: `${cartProduct.prestashopId}`,
@@ -121,7 +127,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }));
 
           setItems(backendItems);
+        } else {
+          setItems([]);
         }
+
+        setTotals(response.data.totals);
+        setSelectedCarrier(response.data.carrier);
       }
     } catch (error: any) {
       // If not authenticated or error, keep local cart
@@ -165,6 +176,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }));
 
         setItems(backendItems);
+        setTotals(response.data.totals);
+        setSelectedCarrier(response.data.carrier);
       }
     } catch (error: any) {
       console.error("Error adding to cart via API:", error);
@@ -219,6 +232,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }));
 
         setItems(backendItems);
+        setTotals(response.data.totals);
+        setSelectedCarrier(response.data.carrier);
       }
     } catch (error: any) {
       console.error("Error removing from cart via API:", error);
@@ -261,6 +276,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }));
 
         setItems(backendItems);
+        setTotals(response.data.totals);
+        setSelectedCarrier(response.data.carrier);
       }
     } catch (error: any) {
       console.error("Error updating quantity via API:", error);
@@ -304,6 +321,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateCarrier = async (carrierId: number) => {
+    setIsLoading(true);
+    try {
+      const { updateCartCarrier } = await import("@/lib/cart");
+      const response = await updateCartCarrier(carrierId);
+
+      if (response.success) {
+        // Actualizar Session ID si el backend retorna uno nuevo
+        updateSessionId(response.data.sessionId);
+
+        // Convert backend products to frontend format
+        const backendItems: CartItem[] = response.data.products.map(p => ({
+          product: convertCartProductToProduct(p),
+          quantity: p.quantity
+        }));
+
+        setItems(backendItems);
+        setTotals(response.data.totals);
+        setSelectedCarrier(response.data.carrier);
+      }
+    } catch (error: any) {
+      console.error("Error updating carrier via API:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getCartCount = () => {
     return items.reduce((total, item) => total + item.quantity, 0);
   };
@@ -329,6 +373,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         getCartCount,
         getCartTotal,
         syncCart,
+        updateCarrier,
+        selectedCarrier,
+        totals,
         isLoading,
       }}
     >

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatPrice } from '@/lib/utils';
 import { FaCheckCircle } from 'react-icons/fa';
+import Button from '@/components/ui/Button';
 
 export default function PedidoExitoso() {
     const router = useRouter();
@@ -92,19 +93,13 @@ export default function PedidoExitoso() {
 
                             {/* Botones de acción */}
                             <div className="space-y-3 w-full max-w-md">
-                                <button
-                                    onClick={() => router.push(`/pedido/${numeroPedido}`)}
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg"
-                                >
+                                <Button className='w-full' onClick={() => router.push(`/rastreo/${numeroPedido}`)}>
                                     Seguir tu pedido
-                                </button>
+                                </Button>
 
-                                <button
-                                    onClick={() => router.push('/productos')}
-                                    className="w-full bg-white hover:bg-gray-50 border-2 border-green-600 text-green-600 font-bold py-4 px-6 rounded-full transition-all duration-300 transform hover:scale-105"
-                                >
+                                <Button className="w-full" variant="outline" onClick={() => router.push('/productos')}>
                                     Ir a la tienda
-                                </button>
+                                </Button>
                             </div>
 
                             {/* Información adicional */}
@@ -178,7 +173,7 @@ export default function PedidoExitoso() {
                                         </span>
                                     </div>
 
-                                    <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
+                                    <div className="bg-green-50 rounded-sm p-4 border-2 border-green-200">
                                         <div className="flex justify-between items-center">
                                             <span className="text-lg font-bold text-green-800">
                                                 Pagado
@@ -220,7 +215,7 @@ export default function PedidoExitoso() {
                                 </div>
 
                                 {/* Tiempo estimado de entrega */}
-                                <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-200">
+                                <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-sm p-4 border border-blue-200">
                                     <div className="flex items-center gap-3">
                                         <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow">
                                             <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

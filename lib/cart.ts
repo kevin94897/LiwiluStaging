@@ -41,6 +41,25 @@ export interface CartTotals {
 }
 
 /**
+ * Warehouse District Interface
+ */
+export interface WarehouseDistrict {
+    codUbigeoAlm: string;
+    desDistrito: string;
+}
+
+/**
+ * Warehouse Map Item Interface
+ */
+export interface WarehouseMapItem {
+    idAlmacen: number;
+    codUbigeoAlm: string;
+    desAlmacen: string;
+    latitud: number;
+    longitud: number;
+}
+
+/**
  * Cart Data Interface
  */
 export interface CartData {
@@ -288,6 +307,105 @@ export async function mergeCart(): Promise<AddToCartResponse> {
     } catch (error) {
         console.error('Error in mergeCart:', error);
         // We throw so the caller knows it failed, but often login proceeds anyway
+        throw error;
+    }
+}
+
+/**
+ * Get available shipping carriers
+ * @returns Promise with the list of carriers
+ */
+export async function getCarriers(): Promise<{ success: boolean; data: CartCarrier[]; total: number }> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiGet('/cart/carriers', {
+            skipAuth: !accessToken
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error fetching carriers: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in getCarriers:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update the cart carrier (shipping method)
+ * @param carrierId - The ID of the carrier to select
+ * @returns Promise with the updated cart response
+ */
+export async function updateCartCarrier(carrierId: number): Promise<AddToCartResponse> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiPut('/cart/carrier', { carrierId }, {
+            skipAuth: !accessToken
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error updating carrier: ${response.statusText}`);
+        }
+
+        const data: AddToCartResponse = await response.json();
+
+        // Update session ID if returned
+        if (data?.data?.sessionId && typeof window !== 'undefined') {
+            localStorage.setItem('liwilu_session_id', data.data.sessionId);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error in updateCartCarrier:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get available warehouse districts for pickup
+ * @returns Promise with the list of districts
+ */
+export async function getWarehouseDistricts(): Promise<{ success: boolean; data: WarehouseDistrict[]; total: number }> {
+    try {
+        const response = await apiGet('/orders/almacenes/distritos', {
+            skipAuth: true // Usually public
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error fetching districts: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in getWarehouseDistricts:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get warehouse map data for a specific district (ubigeo)
+ * @param ubigeo - The ubigeo code of the district
+ * @returns Promise with the list of warehouses and their coordinates
+ */
+export async function getWarehouseMap(ubigeo: string): Promise<{ success: boolean; data: WarehouseMapItem[]; total: number }> {
+    try {
+        const response = await apiGet(`/orders/almacenes/mapa/${ubigeo}`, {
+            skipAuth: true
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error fetching warehouse map: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in getWarehouseMap:', error);
         throw error;
     }
 }

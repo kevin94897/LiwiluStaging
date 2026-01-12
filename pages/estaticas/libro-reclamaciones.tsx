@@ -8,10 +8,11 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Textarea from '@/components/ui/Textarea';
+import { DNI_REGEX, RUC_REGEX } from '@/lib/validations';
 
 const reclamacionesSchema = z.object({
     tipoDocumento: z.string().min(1, "Selecciona el tipo de documento"),
-    numeroDocumento: z.string().min(8, "Mínimo 8 caracteres").max(20, "Máximo 20 caracteres"),
+    numeroDocumento: z.string().min(1, "El número de documento es obligatorio"),
     nombres: z.string().min(2, "Ingresa tus nombres"),
     apellidos: z.string().min(2, "Ingresa tus apellidos"),
     telefono: z.string().min(9, "Mínimo 9 dígitos").regex(/^[\d+\s-]+$/, "Número inválido"),
@@ -28,6 +29,32 @@ const reclamacionesSchema = z.object({
     }),
     detalleReclamo: z.string().min(20, "El detalle debe tener al menos 20 caracteres"),
     pedidoDetalle: z.string().optional()
+}).superRefine((data, ctx) => {
+    if (data.tipoDocumento === 'DNI') {
+        if (!DNI_REGEX.test(data.numeroDocumento)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "El DNI debe tener exactamente 8 números",
+                path: ["numeroDocumento"],
+            });
+        }
+    } else if (data.tipoDocumento === 'RUC') {
+        if (!RUC_REGEX.test(data.numeroDocumento)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "El RUC debe tener 11 números y empezar con 20",
+                path: ["numeroDocumento"],
+            });
+        }
+    } else {
+        if (data.numeroDocumento.length < 8 || data.numeroDocumento.length > 20) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Número de documento inválido",
+                path: ["numeroDocumento"],
+            });
+        }
+    }
 });
 
 type ReclamacionesFormValues = z.infer<typeof reclamacionesSchema>;
@@ -57,7 +84,14 @@ export default function LibroReclamaciones() {
     });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
+        let { name, value } = e.target;
+
+        if (name === "numeroDocumento") {
+            value = value.replace(/\D/g, "");
+            const maxLength = formData.tipoDocumento === "RUC" ? 11 : (formData.tipoDocumento === "DNI" ? 8 : 20);
+            if (value.length > maxLength) value = value.slice(0, maxLength);
+        }
+
         setFormData(prev => ({
             ...prev,
             [name]: value
@@ -236,6 +270,7 @@ export default function LibroReclamaciones() {
                                         error={errors.tipoDocumento}
                                     >
                                         <option value="DNI">DNI</option>
+                                        <option value="RUC">RUC</option>
                                         <option value="CE">Carné de Extranjería</option>
                                         <option value="Pasaporte">Pasaporte</option>
                                     </Select>

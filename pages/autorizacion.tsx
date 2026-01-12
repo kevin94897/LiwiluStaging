@@ -28,7 +28,8 @@ export default function AutorizarRetiroPage() {
 
     const handleDocumentNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.replace(/\D/g, '');
-        if (value.length <= 8) {
+        const maxLength = formData.documentType === 'RUC' ? 11 : 8;
+        if (value.length <= maxLength) {
             setFormData(prev => ({ ...prev, documentNumber: value }));
             setErrors(prev => ({ ...prev, documentNumber: undefined }));
         }
@@ -109,6 +110,7 @@ export default function AutorizarRetiroPage() {
                             >
                                 <option value="">Seleccionar tipo</option>
                                 <option value="DNI">DNI</option>
+                                <option value="RUC">RUC</option>
                                 <option value="CE">Carnet de Extranjería</option>
                                 <option value="Pasaporte">Pasaporte</option>
                             </select>
@@ -134,7 +136,7 @@ export default function AutorizarRetiroPage() {
                                     ? 'border-red-500 focus:ring-red-500'
                                     : 'border-gray-300 focus:ring-green-500 focus:border-transparent'
                                     }`}
-                                maxLength={8}
+                                maxLength={formData.documentType === 'RUC' ? 11 : 15}
                             />
                             {errors.documentNumber && (
                                 <p className="text-red-500 text-xs mt-1 flex items-center gap-1">

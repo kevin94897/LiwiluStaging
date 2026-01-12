@@ -1,7 +1,7 @@
 // pages/checkout.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -10,85 +10,116 @@ import { getProductImageUrl, formatPrice, getProductName } from "@/lib/utils";
 import { Product } from "@/lib/catalog";
 import { FaCreditCard, FaMoneyBillWave, FaTimes } from "react-icons/fa";
 import Button from "@/components/ui/Button";
+import Script from "next/script";
+import { openCulqi, configureCulqi, closeCulqi } from "@/lib/culqi";
+import { showToast } from "@/lib/notifications";
+import { validateDNI, validateRUC } from "@/lib/validations";
 
 type TipoComprobante = "boleta" | "factura";
-type MetodoPago = "visa" | "debito" | "yape" | "efectivo";
+type MetodoPago = "tarjeta" | "yape" | "efectivo";
 
 export default function Checkout() {
   const router = useRouter();
-  const { items, getCartTotal } = useCart();
+  const { items, getCartTotal, clearCart } = useCart();
   const [tipoComprobante, setTipoComprobante] =
     useState<TipoComprobante>("factura");
   const [metodoPago, setMetodoPago] = useState<MetodoPago | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [culqiReady, setCulqiReady] = useState(false);
 
   // Datos para Boleta
+  const [tipoDocumentoBoleta, setTipoDocumentoBoleta] = useState("DNI");
   const [datosBoletaRUC, setDatosBoletaRUC] = useState("");
 
   // Datos para Factura
   const [datosFactura, setDatosFactura] = useState({
     ruc: "",
-    razonSocial: "DNI",
+    razonSocial: "",
   });
 
-  // Datos de tarjeta
-  const [datosTarjeta, setDatosTarjeta] = useState({
-    numero: "",
-    nombre: "",
-    vencimiento: "",
-    cvv: "",
-  });
-
-  // Tarjetas guardadas (simulado)
-  const tarjetasGuardadas = [{ id: "1", tipo: "visa", ultimos4: "1513" }];
-
-  const [tarjetaSeleccionada, setTarjetaSeleccionada] = useState<string | null>(
-    "1"
-  );
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const subtotal = getCartTotal();
   const envio = 15;
   const total = subtotal + envio;
 
+  // Configurar Culqi cuando el script esté listo
+  const handleCulqiLoad = () => {
+    console.log('📦 Script de Culqi cargado');
+    const configured = configureCulqi();
+    setCulqiReady(configured);
+  };
+
+  // Manejar el token de Culqi
+  useEffect(() => {
+    window.culqi = async () => {
+      if (window.Culqi.token) {
+        const token = window.Culqi.token;
+        console.log("✅ Token de Culqi recibido:", token.id);
+
+        try {
+          setProcessing(true);
+
+          // Aquí deberías enviar el token al backend para procesar el cargo
+          // Ejemplo: await apiPost('/payments/charge', { token: token.id, amount: total })
+
+          // Simulación de procesamiento
+          await new Promise(resolve => setTimeout(resolve, 1500));
+
+          closeCulqi();
+          showToast("💳 Pago procesado exitosamente", "success");
+
+          const numeroPedido = Math.floor(Math.random() * 9000) + 1000;
+          clearCart();
+          router.push(`/pedido-exitoso?order=${numeroPedido}`);
+        } catch (error) {
+          console.error("❌ Error al procesar cargo:", error);
+          showToast("Error al procesar el pago", "error");
+          setProcessing(false);
+        }
+      } else if (window.Culqi.order) {
+        // Manejo de pedidos (Yape/PagoEfectivo)
+        const order = window.Culqi.order;
+        console.log("✅ Orden de Culqi recibida:", order);
+
+        closeCulqi();
+        showToast("📱 Orden generada. Completa el pago en tu app", "success");
+
+        // Aquí deberías guardar la orden y redirigir a una página de espera
+        const numeroPedido = Math.floor(Math.random() * 9000) + 1000;
+        router.push(`/pedido-exitoso?order=${numeroPedido}&pending=true`);
+      } else if (window.Culqi.error) {
+        const error = window.Culqi.error;
+        console.log("❌ Error de Culqi:", error);
+        showToast(error.user_message || "Error en el pago", "error");
+        setProcessing(false);
+      }
+    };
+  }, [router, clearCart, total]);
+
   // Validar campos según tipo de comprobante
   const validarDatos = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (tipoComprobante === "boleta") {
-      if (!datosBoletaRUC || datosBoletaRUC.length < 8) {
-        newErrors.rucBoleta = "Ingresa un RUC válido";
+      if (!datosBoletaRUC) {
+        newErrors.rucBoleta = "El número de documento es obligatorio";
+      } else if (tipoDocumentoBoleta === "DNI" && !validateDNI(datosBoletaRUC)) {
+        newErrors.rucBoleta = "Ingresa un DNI válido (8 números)";
+      } else if (tipoDocumentoBoleta === "RUC" && !validateRUC(datosBoletaRUC)) {
+        newErrors.rucBoleta = "El RUC debe tener 11 números y empezar con 20";
       }
     } else {
-      if (!datosFactura.ruc || datosFactura.ruc.length !== 11) {
-        newErrors.rucFactura = "El RUC debe tener 11 dígitos";
+      if (!datosFactura.ruc || !validateRUC(datosFactura.ruc)) {
+        newErrors.rucFactura = "El RUC debe tener 11 números y empezar con 20";
       }
       if (!datosFactura.razonSocial) {
-        newErrors.razonSocial = "Selecciona una razón social";
+        newErrors.razonSocial = "Ingresa la razón social";
       }
     }
 
     if (!metodoPago) {
       newErrors.metodoPago = "Selecciona un método de pago";
-    }
-
-    // Validar datos de tarjeta si se eligió tarjeta nueva
-    if (
-      (metodoPago === "visa" || metodoPago === "debito") &&
-      !tarjetaSeleccionada
-    ) {
-      if (!datosTarjeta.numero || datosTarjeta.numero.length < 16) {
-        newErrors.numeroTarjeta = "Número de tarjeta inválido";
-      }
-      if (!datosTarjeta.nombre) {
-        newErrors.nombreTarjeta = "Ingresa el nombre del titular";
-      }
-      if (!datosTarjeta.vencimiento) {
-        newErrors.vencimiento = "Ingresa la fecha de vencimiento";
-      }
-      if (!datosTarjeta.cvv || datosTarjeta.cvv.length !== 3) {
-        newErrors.cvv = "CVV inválido";
-      }
     }
 
     setErrors(newErrors);
@@ -97,19 +128,47 @@ export default function Checkout() {
 
   const handleProcesarPago = async () => {
     if (!validarDatos()) {
+      showToast("Por favor completa todos los campos requeridos", "error");
       return;
     }
 
-    setProcessing(true);
+    // Si es pago con tarjeta o digital (Culqi)
+    if (metodoPago === "tarjeta" || metodoPago === "yape") {
+      if (!culqiReady) {
+        showToast("Inicializando pasarela de pagos segura...", "success");
+        return;
+      }
 
-    // Simular procesamiento de pago
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+      try {
+        setProcessing(true);
+        const numeroPedido = Math.floor(Math.random() * 90000) + 10000;
 
-    // Generar número de pedido
-    const numeroPedido = Math.floor(Math.random() * 9000) + 1000;
+        console.log('🚀 [Checkout] Iniciando flujo Culqi [CULQI-V6]');
+        openCulqi({
+          title: "Liwilu",
+          currency: "PEN",
+          description: `Pedido ${numeroPedido} - Liwilu Shop`,
+          amount: total,
+        });
 
-    // Redirigir a página de confirmación
-    router.push(`/pedido-exitoso?order=${numeroPedido}`);
+        // El estado 'processing' se manejará en el callback 'window.culqi'
+      } catch (error) {
+        console.error("❌ [Checkout] Error al abrir pasarela:", error);
+        showToast("No se pudo conectar con la pasarela de pagos", "error");
+        setProcessing(false);
+      }
+      return;
+    }
+
+    // Para pago en efectivo
+    if (metodoPago === "efectivo") {
+      setProcessing(true);
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const numeroPedido = Math.floor(Math.random() * 9000) + 1000;
+      showToast("Pedido registrado. Paga en efectivo al recibir", "success");
+      clearCart();
+      router.push(`/pedido-exitoso?order=${numeroPedido}&method=efectivo`);
+    }
   };
 
   // Formatear número de tarjeta
@@ -154,17 +213,17 @@ export default function Checkout() {
       description="Finalizar compra"
       background={true}
     >
-      <div className="max-w-7xl mx-auto px-6 py-8 my-24">
+      <div className="max-w-7xl mx-auto px-6 py-8 my-24 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Columna izquierda - Formulario */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => router.push("/carrito")}
-                className="flex items-center gap-2 text-gray-600 hover:text-primary transition"
+                className="group flex items-center gap-2 text-gray-500 hover:text-primary transition-colors text-sm font-medium"
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -172,39 +231,43 @@ export default function Checkout() {
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                     d="M15 19l-7-7 7-7"
                   />
                 </svg>
                 Volver al carrito
               </button>
+              <div className="flex items-center gap-2 text-xs text-gray-400 uppercase font-semibold">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                Pago Seguro SSL
+              </div>
             </div>
 
+
+
             {/* Tipo de Comprobante */}
-            <div className="bg-white rounded-md shadow-md p-6">
-              <h2 className="text-2xl font-bold mb-6">Comprobante de Pago</h2>
-              <p className="text-gray-600 mb-4 text-sm">
-                Selecciona el comprobante de pago que prefieras
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
+              <h2 className="text-xl font-bold mb-2 text-gray-900">Comprobante de Pago</h2>
+              <p className="text-gray-500 mb-8">
+                Selecciona el tipo de documento para tu compra
               </p>
 
               <div className="flex gap-4 mb-6">
                 <button
                   onClick={() => setTipoComprobante("boleta")}
-                  className={`flex-1 py-3 px-4 rounded-sm border-2 font-semibold transition-all ${
-                    tipoComprobante === "boleta"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "boleta"
+                    ? "border-primary bg-primary text-white"
+                    : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                 >
                   Boleta
                 </button>
                 <button
                   onClick={() => setTipoComprobante("factura")}
-                  className={`flex-1 py-3 px-4 rounded-sm border-2 font-semibold transition-all ${
-                    tipoComprobante === "factura"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "factura"
+                    ? "border-primary bg-primary text-white"
+                    : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                 >
                   <span className="flex items-center justify-center gap-2">
                     <svg
@@ -227,22 +290,46 @@ export default function Checkout() {
               {/* Formulario Boleta */}
               {tipoComprobante === "boleta" && (
                 <div className="space-y-4 animate-fade-in">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      RUC
-                    </label>
-                    <input
-                      type="text"
-                      value={datosBoletaRUC}
-                      onChange={(e) => setDatosBoletaRUC(e.target.value)}
-                      placeholder="Gonzalo"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-                    />
-                    {errors.rucBoleta && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {errors.rucBoleta}
-                      </p>
-                    )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tipo de documento
+                      </label>
+                      <select
+                        value={tipoDocumentoBoleta}
+                        onChange={(e) => {
+                          setTipoDocumentoBoleta(e.target.value);
+                          setDatosBoletaRUC("");
+                          const newErrors = { ...errors };
+                          delete newErrors.rucBoleta;
+                          setErrors(newErrors);
+                        }}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition appearance-none bg-white"
+                      >
+                        <option value="DNI">DNI</option>
+                        <option value="RUC">RUC</option>
+                        <option value="CE">Carnet de Extranjería</option>
+                        <option value="Pasaporte">Pasaporte</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Número de documento
+                      </label>
+                      <input
+                        type="text"
+                        value={datosBoletaRUC}
+                        onChange={(e) => setDatosBoletaRUC(e.target.value.replace(/\D/g, ""))}
+                        placeholder={tipoDocumentoBoleta === "RUC" ? "20123456789" : "12345678"}
+                        maxLength={tipoDocumentoBoleta === "RUC" ? 11 : (tipoDocumentoBoleta === "DNI" ? 8 : 20)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                      />
+                      {errors.rucBoleta && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.rucBoleta}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -261,12 +348,12 @@ export default function Checkout() {
                         onChange={(e) =>
                           setDatosFactura({
                             ...datosFactura,
-                            ruc: e.target.value,
+                            ruc: e.target.value.replace(/\D/g, ""),
                           })
                         }
-                        placeholder="Gonzalo"
+                        placeholder="20123456789"
                         maxLength={11}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
                       />
                       {errors.rucFactura && (
                         <p className="text-red-500 text-xs mt-1">
@@ -278,7 +365,8 @@ export default function Checkout() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Razón Social
                       </label>
-                      <select
+                      <input
+                        type="text"
                         value={datosFactura.razonSocial}
                         onChange={(e) =>
                           setDatosFactura({
@@ -286,12 +374,9 @@ export default function Checkout() {
                             razonSocial: e.target.value,
                           })
                         }
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition appearance-none"
-                      >
-                        <option value="DNI">DNI</option>
-                        <option value="RUC">RUC</option>
-                        <option value="CE">Carnet de Extranjería</option>
-                      </select>
+                        placeholder="Nombre de la empresa"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                      />
                       {errors.razonSocial && (
                         <p className="text-red-500 text-xs mt-1">
                           {errors.razonSocial}
@@ -304,82 +389,85 @@ export default function Checkout() {
             </div>
 
             {/* Tipo de pago */}
-            <div className="bg-white rounded-md shadow-md p-6">
-              <h2 className="text-2xl font-bold mb-6">Tipo de pago</h2>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
+              <h2 className="text-xl font-bold mb-2 text-gray-900">Método de pago</h2>
+              <p className="text-gray-500 mb-8">
+                Elige la opción más conveniente para ti
+              </p>
 
               <div className="space-y-3">
-                {/* Tarjetas guardadas */}
-                {metodoPago === "visa" &&
-                  tarjetasGuardadas.map((tarjeta) => (
-                    <div
-                      key={tarjeta.id}
-                      onClick={() => setTarjetaSeleccionada(tarjeta.id)}
-                      className={`flex items-center justify-between p-4 rounded-sm border-2 cursor-pointer transition-all ${
-                        tarjetaSeleccionada === tarjeta.id
-                          ? "border-primary bg-primary/5"
-                          : "border-gray-200 hover:border-primary/50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <FaCreditCard className="text-2xl text-gray-600" />
-                        <span className="font-medium">
-                          VISA ****{tarjeta.ultimos4}
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Eliminar tarjeta
-                        }}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        <FaTimes />
-                      </button>
-                    </div>
-                  ))}
-
-                {/* Tarjeta de débito */}
+                {/* Tarjeta de crédito/débito */}
                 <button
-                  onClick={() => {
-                    setMetodoPago("debito");
-                    setTarjetaSeleccionada(null);
-                  }}
-                  className={`w-full flex items-center gap-3 p-4 rounded-sm border-2 transition-all ${
-                    metodoPago === "debito"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  onClick={() => setMetodoPago("tarjeta")}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "tarjeta"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
-                  <FaCreditCard className="text-2xl text-gray-600" />
-                  <span className="font-medium">Tarjeta de débito</span>
+                  <div className="flex items-center gap-3">
+                    <FaCreditCard className="text-2xl text-gray-600" />
+                    <div className="text-left">
+                      <p className="font-medium">Tarjeta de crédito/débito</p>
+                      <p className="text-xs text-gray-500">Visa, Mastercard, American Express</p>
+                    </div>
+                  </div>
+                  {metodoPago === "tarjeta" && (
+                    <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
                 </button>
 
                 {/* Yape */}
                 <button
                   onClick={() => setMetodoPago("yape")}
-                  className={`w-full flex items-center gap-3 p-4 rounded-sm border-2 transition-all ${
-                    metodoPago === "yape"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "yape"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
-                  <div className="w-8 h-8 bg-purple-600 rounded-sm flex items-center justify-center text-white font-bold">
-                    Y
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-purple-600 rounded-sm flex items-center justify-center text-white font-bold">
+                      Y
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium">Yape</p>
+                      <p className="text-xs text-gray-500">Pago mediante código QR</p>
+                    </div>
                   </div>
-                  <span className="font-medium">Yape</span>
+                  {metodoPago === "yape" && (
+                    <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
                 </button>
 
                 {/* Pago Efectivo */}
                 <button
                   onClick={() => setMetodoPago("efectivo")}
-                  className={`w-full flex items-center gap-3 p-4 rounded-sm border-2 transition-all ${
-                    metodoPago === "efectivo"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "efectivo"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
-                  <FaMoneyBillWave className="text-2xl text-green-600" />
-                  <span className="font-medium">Pago Efectivo</span>
+                  <div className="flex items-center gap-3">
+                    <FaMoneyBillWave className="text-2xl text-green-600" />
+                    <div className="text-left">
+                      <p className="font-medium">Pago contra entrega</p>
+                      <p className="text-xs text-gray-500">Paga en efectivo al recibir</p>
+                    </div>
+                  </div>
+                  {metodoPago === "efectivo" && (
+                    <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
                 </button>
               </div>
 
@@ -387,128 +475,68 @@ export default function Checkout() {
                 <p className="text-red-500 text-sm mt-3">{errors.metodoPago}</p>
               )}
 
-              {/* Formulario de tarjeta nueva */}
-              {(metodoPago === "visa" || metodoPago === "debito") &&
-                !tarjetaSeleccionada && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-sm space-y-4 animate-fade-in">
-                    <h3 className="font-semibold text-gray-900 mb-3">
-                      Datos de la tarjeta
-                    </h3>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Número de tarjeta
-                      </label>
-                      <input
-                        type="text"
-                        value={datosTarjeta.numero}
-                        onChange={(e) =>
-                          setDatosTarjeta({
-                            ...datosTarjeta,
-                            numero: formatCardNumber(e.target.value),
-                          })
-                        }
-                        placeholder="1234 5678 9012 3456"
-                        maxLength={19}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-                      />
-                      {errors.numeroTarjeta && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {errors.numeroTarjeta}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre del titular
-                      </label>
-                      <input
-                        type="text"
-                        value={datosTarjeta.nombre}
-                        onChange={(e) =>
-                          setDatosTarjeta({
-                            ...datosTarjeta,
-                            nombre: e.target.value.toUpperCase(),
-                          })
-                        }
-                        placeholder="JUAN PEREZ"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-                      />
-                      {errors.nombreTarjeta && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {errors.nombreTarjeta}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Vencimiento
-                        </label>
-                        <input
-                          type="text"
-                          value={datosTarjeta.vencimiento}
-                          onChange={(e) => {
-                            let value = e.target.value.replace(/\D/g, "");
-                            if (value.length >= 2) {
-                              value =
-                                value.slice(0, 2) + "/" + value.slice(2, 4);
-                            }
-                            setDatosTarjeta({
-                              ...datosTarjeta,
-                              vencimiento: value,
-                            });
-                          }}
-                          placeholder="MM/AA"
-                          maxLength={5}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-                        />
-                        {errors.vencimiento && (
-                          <p className="text-red-500 text-xs mt-1">
-                            {errors.vencimiento}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          CVV
-                        </label>
-                        <input
-                          type="text"
-                          value={datosTarjeta.cvv}
-                          onChange={(e) =>
-                            setDatosTarjeta({
-                              ...datosTarjeta,
-                              cvv: e.target.value.replace(/\D/g, ""),
-                            })
-                          }
-                          placeholder="123"
-                          maxLength={3}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-                        />
-                        {errors.cvv && (
-                          <p className="text-red-500 text-xs mt-1">
-                            {errors.cvv}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+              {/* Información de Culqi para pruebas */}
+              {(metodoPago === "tarjeta" || metodoPago === "yape") && (
+                <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xl">🧪</span>
+                    <p className="text-sm font-bold text-blue-900">
+                      Modo de pruebas activo
+                    </p>
                   </div>
-                )}
+
+                  {metodoPago === "tarjeta" ? (
+                    <div className="space-y-2 text-xs text-blue-800">
+                      <p className="flex justify-between"><span>Número:</span> <code className="bg-white px-1.5 py-0.5 rounded border font-bold">4111 1111 1111 1111</code></p>
+                      <p className="flex justify-between"><span>CVV:</span> <code className="bg-white px-1.5 py-0.5 rounded border font-bold">123</code></p>
+                      <p className="flex justify-between"><span>Expiración:</span> <code className="bg-white px-1.5 py-0.5 rounded border font-bold">12 / 2026</code></p>
+                      <p className="mt-3 py-2 px-3 bg-white/50 rounded text-[10px] italic">
+                        El modal de Culqi procesará estos datos de forma segura.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                        ⚠️ <strong className="font-bold">Nota técnica:</strong> El botón de Yape dentro del modal de Culqi requiere un backend real para funcionar.
+                      </p>
+                      <p className="text-[11px] text-blue-800">
+                        Para validar el flujo completo ahora, te recomendamos seleccionar <strong>Tarjeta</strong>.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Formulario de tarjeta nueva (No requerido para Culqi Checkout v4) */}
             </div>
-            <div className="text-center md:text-left">
-              <Button onClick={handleProcesarPago} disabled={processing}>
-                {processing ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Procesando pago...
-                  </span>
-                ) : (
-                  "Siguiente"
-                )}
-              </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4">
+              <div className="order-2 sm:order-1 text-center sm:text-left">
+                <Button onClick={handleProcesarPago} disabled={processing} className="shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow">
+                  {processing ? (
+                    <span className="flex items-center justify-center gap-3">
+                      <div className="animate-spin rounded-full h-4 w-4 border border-white/20 border-b-white"></div>
+                      Procesando...
+                    </span>
+                  ) : (
+                    "Confirmar Pago"
+                  )}
+                </Button>
+              </div>
+              <div className="order-1 sm:order-2 flex items-center gap-4 text-gray-500">
+                <div className="flex -space-x-1">
+                  {['VISA', 'MC', 'AMEX'].map((card) => (
+                    <div
+                      key={card}
+                      className="px-2 py-1 bg-gray-50 border border-gray-200 rounded text-[9px] font-bold tracking-wider shadow-sm"
+                    >
+                      {card}
+                    </div>
+                  ))}
+                </div>
+                <span className="text-xs font-medium hidden md:inline uppercase tracking-tight">
+                  Pagos seguros
+                </span>
+              </div>
             </div>
           </div>
 
@@ -564,9 +592,9 @@ export default function Checkout() {
                         </p>
                         {item.product.originalPrice &&
                           parseFloat(item.product.originalPrice.toString()) >
-                            parseFloat(
-                              (item.product.price || "0").toString()
-                            ) && (
+                          parseFloat(
+                            (item.product.price || "0").toString()
+                          ) && (
                             <p className="text-xs text-gray-400 line-through">
                               {formatPrice(
                                 (
@@ -588,27 +616,37 @@ export default function Checkout() {
               </div>
 
               <div className="border-t pt-4 space-y-3">
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-gray-500 text-sm">
                   <span>Subtotal</span>
-                  <span className="font-semibold">
+                  <span className="font-medium text-gray-900">
                     {formatPrice(subtotal.toString())}
                   </span>
                 </div>
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-gray-500 text-sm">
                   <span>Envío</span>
-                  <span className="font-semibold">
+                  <span className="font-medium text-gray-900">
                     {formatPrice(envio.toString())}
                   </span>
                 </div>
-                <div className="flex justify-between text-xl font-bold pt-3 border-t">
-                  <span>Total</span>
+                <div className="flex justify-between text-lg font-bold pt-4 border-t border-gray-100">
+                  <span className="text-gray-900">Total</span>
                   <span className="text-primary">
                     {formatPrice(total.toString())}
                   </span>
                 </div>
-                <div className="flex justify-between text-lg font-bold text-green-600 bg-green-50 p-3 rounded-sm">
-                  <span>Pagado</span>
-                  <span>{formatPrice(total.toString())}</span>
+
+                <div className="mt-6 pt-6 border-t border-gray-100 hidden lg:block">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border shadow-sm flex-shrink-0">
+                      <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M2.166 4.9L10 1.554L17.834 4.9c.45.19.73.635.73 1.127v3.5c0 5.474-3.41 10.371-8.288 12.236c-.183.07-.384.07-.567 0C4.244 19.897.834 15 .834 9.527v-3.5c0-.492.28-.936.73-1.127zM10 3.3l-6.5 2.763v2.983c0 4.007 2.353 7.749 6.5 9.45c4.147-1.7 6.5-5.443 6.5-9.45V6.063L10 3.3zm2.983 5.114a.75.75 0 10-1.066-1.053L9 10.3l-1.417-1.554a.75.75 0 00-1.102 1.018l2 2.2a.75.75 0 001.084.017l3.418-3.567z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-gray-800 uppercase tracking-tight">Compra 100% Segura</p>
+                      <p className="text-[10px] text-gray-500 line-clamp-2">Protegemos tus datos con los más altos estándares de seguridad (PCI DSS).</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -616,6 +654,12 @@ export default function Checkout() {
         </div>
       </div>
 
+      <Script
+        src="https://checkout.culqi.com/js/v4"
+        strategy="afterInteractive"
+        onLoad={handleCulqiLoad}
+        onError={() => console.error('❌ Error al cargar Culqi')}
+      />
       <style jsx global>{`
         @keyframes fade-in {
           from {

@@ -1,0 +1,99 @@
+// lib/culqi.ts
+
+declare global {
+    interface Window {
+        Culqi: any;
+        culqi: () => void;
+    }
+}
+
+export const CULQI_PUBLIC_KEY = 'pk_test_VEN0u2ywGdZ9Yvuy';
+
+export interface CulqiOptions {
+    title: string;
+    currency: 'PEN' | 'USD';
+    description: string;
+    amount: number;
+}
+
+/**
+ * Configura Culqi con la clave pública
+ */
+export const configureCulqi = () => {
+    if (typeof window === 'undefined' || !window.Culqi) {
+        console.warn('Culqi no está disponible');
+        return false;
+    }
+
+    window.Culqi.publicKey = CULQI_PUBLIC_KEY;
+    console.log('✅ Culqi configurado con clave pública');
+    return true;
+};
+
+/**
+ * Abre el modal de Culqi con los parámetros especificados
+ */
+export const openCulqi = (options: CulqiOptions) => {
+    console.log('%c🚀 [CULQI-V6] INICIANDO...', 'background: #111; color: #00ff00; font-size: 14px; font-weight: bold; padding: 4px;');
+
+    if (typeof window === 'undefined' || !window.Culqi) {
+        console.error('❌ [CULQI-V6] Culqi no está cargado en el navegador');
+        return;
+    }
+
+    try {
+        // 1. LIMPIEZA TOTAL: Culqi v4 a veces mantiene el estado 'order' en su configuración interna
+        // Intentamos resetear cualquier configuración previa
+        if (window.Culqi.order) window.Culqi.order = null;
+        if (window.Culqi.settings) {
+            // Re-asignamos la función para asegurar que no hay closures con datos viejos
+            // Aunque esto es interno, forzamos los settings nuevos
+        }
+
+        const amountCents = Math.round(options.amount * 100);
+        const safeDescription = options.description.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 80);
+
+        // 2. CONFIGURACIÓN DE LLAVE PÚBLICA (Obligatorio primero)
+        window.Culqi.publicKey = CULQI_PUBLIC_KEY;
+
+        // 3. SETTINGS: Solo enviamos parámetros de tokenización (No 'order')
+        const settings = {
+            title: options.title,
+            currency: options.currency,
+            description: safeDescription,
+            amount: amountCents,
+        };
+
+        console.log('📦 [CULQI-V6] Culqi.settings:', settings);
+        window.Culqi.settings(settings);
+
+        // 4. OPTIONS: Configuración del modal
+        const culqiOptions = {
+            lang: 'auto',
+            modal: true,
+            installments: false, // Desactivar cuotas para simplificar pruebas
+        };
+        console.log('📦 [CULQI-V6] Culqi.options:', culqiOptions);
+        window.Culqi.options(culqiOptions);
+
+        // 5. APERTURA
+        console.log('🏁 [CULQI-V6] Ejecutando Culqi.open()...');
+        window.Culqi.open();
+
+    } catch (error) {
+        console.error('❌ [CULQI-V6] Error crítico:', error);
+    }
+};
+
+/**
+ * Cierra el modal de Culqi
+ */
+export const closeCulqi = () => {
+    if (typeof window !== 'undefined' && window.Culqi) {
+        try {
+            window.Culqi.close();
+        } catch (error) {
+            console.warn('No se pudo cerrar Culqi:', error);
+        }
+    }
+};

@@ -1,5 +1,6 @@
 // lib/misDatosSchema.ts
 import { z } from "zod";
+import { DNI_REGEX, RUC_REGEX } from "../validations";
 
 export const misDatosSchema = z.object({
     nombre: z
@@ -22,15 +23,38 @@ export const misDatosSchema = z.object({
 
     numeroDocumento: z
         .string()
-        .min(1, "El número de documento es obligatorio")
-        .min(8, "El número de documento debe tener al menos 8 caracteres")
-        .max(11, "El número de documento no puede exceder 11 caracteres")
-        .regex(/^[0-9]+$/, "El número de documento solo puede contener números"),
+        .min(1, "El número de documento es obligatorio"),
 
     celular: z
         .string()
         .min(1, "El celular es obligatorio")
         .regex(/^[0-9]{9}$/, "El celular debe tener exactamente 9 dígitos")
+}).superRefine((data, ctx) => {
+    if (data.tipoDocumento === 'DNI') {
+        if (!DNI_REGEX.test(data.numeroDocumento)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "El DNI debe tener exactamente 8 números",
+                path: ["numeroDocumento"],
+            });
+        }
+    } else if (data.tipoDocumento === 'RUC') {
+        if (!RUC_REGEX.test(data.numeroDocumento)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "El RUC debe tener 11 números y empezar con 20",
+                path: ["numeroDocumento"],
+            });
+        }
+    } else {
+        if (data.numeroDocumento.length < 8 || data.numeroDocumento.length > 20) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Número de documento inválido",
+                path: ["numeroDocumento"],
+            });
+        }
+    }
 });
 
 export type MisDatosSchemaType = z.infer<typeof misDatosSchema>;
