@@ -9,6 +9,9 @@ import "slick-carousel/slick/slick-theme.css";
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import AddToCartModal from "@/components/AddToCartModal";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/router";
+import toast from "react-hot-toast";
 
 import { Product, CatalogProduct } from "@/lib/catalog";
 import { getProductImageUrl, formatPrice, getProductName } from "@/lib/utils";
@@ -37,6 +40,7 @@ export default function ProductosRelacionados({
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
   const { addToCart } = useCart();
 
+
   useEffect(() => {
     const fetchRelated = async () => {
       if (!productId) return;
@@ -55,19 +59,22 @@ export default function ProductosRelacionados({
         const json = await response.json();
 
         // Map the new response structure to the Product interface
-        const products: Product[] = (json.data || []).map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          quantity: 1, // Default quantity since it's not always in the root
-          reference: p.linkRewrite, // Using linkRewrite as reference if reference is missing
-          coverImage: p.coverImage,
-          associations: {
-            categories: p.defaultCategory
-              ? [{ id: p.defaultCategory.id.toString() }]
-              : [],
-          },
-        }));
+        const products: Product[] = (json.data || [])
+          .map((p: any) => ({
+            id: p.id,
+            productId: p.prestashopId || p.id,
+            name: p.name,
+            price: p.price,
+            quantity: p.quantity !== undefined ? p.quantity : 1, // Use actual quantity if available
+            reference: p.linkRewrite,
+            coverImage: p.coverImage,
+            associations: {
+              categories: p.defaultCategory
+                ? [{ id: p.defaultCategory.id.toString() }]
+                : [],
+            },
+          }))
+          .filter((p: Product) => (p.quantity ?? 0) > 0);
 
         setRelatedProducts(products);
       } catch (err) {
@@ -103,9 +110,11 @@ export default function ProductosRelacionados({
       setLoadingCart(producto.id.toString());
       addToCart(producto, 1);
       setModalProduct(producto);
+
+
     } catch (error) {
       console.error("Error al agregar al carrito:", error);
-      alert("Error al agregar el producto al carrito");
+      toast.error("Error al agregar el producto al carrito");
     } finally {
       setLoadingCart(null);
     }
@@ -183,9 +192,9 @@ export default function ProductosRelacionados({
               product.coverImage ||
               (product.associations?.images?.[0]?.id
                 ? getProductImageUrl(
-                    product.id.toString(),
-                    product.associations.images[0].id
-                  )
+                  product.id.toString(),
+                  product.associations.images[0].id
+                )
                 : "/no-image.png");
 
             return (

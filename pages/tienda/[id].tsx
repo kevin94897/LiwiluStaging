@@ -313,7 +313,7 @@ export default function ProductDetail({
 
   const handleDecrease = () => setQuantity((q) => Math.max(1, q - 1));
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     const priceInfo = getCurrentPrice;
 
     // Construct the product name with attributes if a variation is selected
@@ -361,8 +361,8 @@ export default function ProductDetail({
       },
     };
 
-    // Usamos la variación actual o el producto base
-    addToCart(finalProduct, quantity);
+    // Add to cart (works for both authenticated and guest users)
+    await addToCart(finalProduct, quantity);
     setModalProduct(finalProduct);
   };
 
@@ -609,7 +609,7 @@ export default function ProductDetail({
       </div>
 
       {/* Breadcrumb */}
-      <div className="mt-20">
+      <div className="mt-14">
         <div className="max-w-7xl mx-auto px-6 xl:px-0 py-4">
           <div className="text-neutral-gray text-md font-semibold">
             <Link href="/" className="hover:underline">
@@ -987,11 +987,11 @@ export default function ProductDetail({
                       <FaPlus className="w-3 h-3 text-primary transition" />
                     </button>
                   </div>
-                  <span className="text-sm text-gray-500 mt-2 block">
+                  {/* <span className="text-sm text-gray-500 mt-2 block">
                     {getAvailableQuantity > 0
                       ? `${getAvailableQuantity} disponibles`
                       : "Sin stock"}
-                  </span>
+                  </span> */}
                 </div>
 
                 {/* Botones de acción */}

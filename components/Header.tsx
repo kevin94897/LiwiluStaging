@@ -42,21 +42,13 @@ const topLinks = [
   { href: "/politicas", label: "Políticas de compra" },
 ];
 
-const categories = [
-  { href: "/c/libros", label: "Libros", highlight: true, isModal: false },
-  {
-    href: "/c/hogar-limpieza",
-    label: "Productos para el hogar y limpieza",
-    isModal: false,
-  },
-  { href: "/c/tecnologia", label: "Tecnología", isModal: false },
-  { href: "/c/uniformes", label: "Uniformes", isModal: false },
-  { href: "/c/utiles", label: "Útiles escolares y de oficina", isModal: false },
-  { href: "/c/ofertas", label: "Ofertas", isModal: false },
-  { href: "#", label: "Trimegisto", highlightBottom: true, isModal: true },
-];
+interface LogoProps {
+  className?: string;
+  width?: number;
+  height?: number;
+}
 
-function Logo({ width = 100, height = 40, className = "" }) {
+function Logo({ className = "", width = 120, height = 48 }: LogoProps) {
   return (
     <Link href="/" className={`flex items-center ${className}`}>
       <Image
@@ -65,10 +57,14 @@ function Logo({ width = 100, height = 40, className = "" }) {
         width={width}
         height={height}
         priority
+        sizes="(max-width: 640px) 96px, 120px"
+        className="w-auto h-auto"
+        style={{ width: 'auto', height: 'auto', maxWidth: width }}
       />
     </Link>
   );
 }
+
 
 function SearchBar({ isMobile = false }) {
   return (
@@ -113,6 +109,7 @@ function QuickActions({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const loginRef = useRef<HTMLDivElement | null>(null);
+
 
   // 🔹 DEBUG: Log para verificar el estado
   useEffect(() => {
@@ -445,6 +442,8 @@ export default function Header() {
 
   const desktopMenuRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
+  const mobileToggleRef = useRef<HTMLButtonElement | null>(null);
+
 
   // ✅ Efecto para abrir login desde URL
   useEffect(() => {
@@ -486,7 +485,9 @@ export default function Header() {
     function handleClickOutside(event: MouseEvent) {
       if (
         mobileMenuRef.current &&
-        !mobileMenuRef.current.contains(event.target as Node)
+        !mobileMenuRef.current.contains(event.target as Node) &&
+        mobileToggleRef.current &&
+        !mobileToggleRef.current.contains(event.target as Node)
       ) {
         setMobileCatsOpen(false);
       }
@@ -550,6 +551,7 @@ export default function Header() {
               <div className="flex items-center gap-1 md:gap-3">
                 <button
                   type="button"
+                  ref={mobileToggleRef}
                   onClick={() => setMobileCatsOpen(!mobileCatsOpen)}
                   className="flex items-center gap-2 p-2 transition"
                 >
@@ -630,10 +632,10 @@ export default function Header() {
                                   : () => setMobileCatsOpen(false)
                               }
                               className={`group flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
-                                  ? "bg-primary text-white hover:bg-primary-light"
-                                  : c.highlightBottom
-                                    ? "bg-gray-100 font-bold hover:bg-primary hover:text-white"
-                                    : "hover:bg-primary hover:text-white"
+                                ? "bg-primary text-white hover:bg-primary-light"
+                                : c.highlightBottom
+                                  ? "bg-gray-100 font-bold hover:bg-primary hover:text-white"
+                                  : "hover:bg-primary hover:text-white"
                                 }`}
                             >
                               <span className="truncate">{c.label}</span>
@@ -675,6 +677,17 @@ export default function Header() {
         onClose={() => {
           setLoginModalOpen(false);
           setIsFromTrimegisto(false);
+          if (router.query.login === 'true') {
+            const { login, ...rest } = router.query;
+            router.replace(
+              {
+                pathname: router.pathname,
+                query: rest,
+              },
+              undefined,
+              { shallow: true }
+            );
+          }
         }}
         onSwitchToRegister={() => {
           setLoginModalOpen(false);

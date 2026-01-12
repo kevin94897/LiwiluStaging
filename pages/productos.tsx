@@ -273,9 +273,23 @@ export default function Tienda({
         error instanceof Error &&
         error.message.includes("No hay sesión activa")
       ) {
-        alert("Debes iniciar sesión para agregar favoritos");
+        toast.error("Debes iniciar sesión para agregar favoritos", {
+          duration: 3000,
+          style: {
+            fontSize: "14px",
+            fontFamily: "Outfit",
+          },
+        });
+        router.push(
+          {
+            pathname: router.pathname,
+            query: { ...router.query, login: "true" },
+          },
+          undefined,
+          { shallow: true }
+        );
       } else {
-        alert("Error al actualizar favoritos. Por favor, intenta de nuevo.");
+        toast.error("Error al actualizar favoritos. Por favor, intenta de nuevo.");
       }
     } finally {
       setTogglingFavorite(null);
@@ -420,11 +434,10 @@ export default function Tienda({
             />
           </div>
           <div
-            className={`w-1/2 transition-all duration-1000 transform ${
-              isVisible
-                ? "opacity-100 translate-x-0"
-                : "opacity-0 -translate-x-10"
-            }`}
+            className={`w-1/2 transition-all duration-1000 transform ${isVisible
+              ? "opacity-100 translate-x-0"
+              : "opacity-0 -translate-x-10"
+              }`}
           >
             <span className="text-[12px] md:text-sm font-light mb-2 block animate-fade-in">
               NUEVO
@@ -439,9 +452,8 @@ export default function Tienda({
           </div>
           <div className="w-1/2 flex items-center justify-center">
             <div
-              className={`absolute md:-bottom-10 floating-slow transition-all duration-1000 ${
-                isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
-              }`}
+              className={`absolute md:-bottom-10 floating-slow transition-all duration-1000 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+                }`}
             >
               <Image
                 src="/images/productos/liwilu_productos_laptop_img.png"
@@ -511,11 +523,10 @@ export default function Tienda({
                       className="flex flex-col items-center cursor-pointer transition-transform duration-300"
                     >
                       <div
-                        className={`bg-white relative w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden shadow-lg mb-2 mx-auto transition-all ${
-                          selectedCategory === cat.id.toString()
-                            ? "ring-4 ring-white scale-105"
-                            : "bg-white"
-                        }`}
+                        className={`bg-white relative w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden shadow-lg mb-2 mx-auto transition-all ${selectedCategory === cat.id.toString()
+                          ? "ring-4 ring-white scale-105"
+                          : "bg-white"
+                          }`}
                       >
                         {cat.coverImage ? (
                           <Image
@@ -549,7 +560,7 @@ export default function Tienda({
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex flex-col md:flex-row gap-20">
           {/* Sidebar con animación */}
-          <aside className="w-full md:w-64 flex-shrink-0 font-sans md:block hidden">
+          <aside className="w-full md:w-64 flex-shrink-0 md:block hidden">
             <div className="bg-white rounded-2xl shadow-lg p-5 divide-y divide-gray-200">
               {hierarchy?.hierarchy.parentGroups
                 .filter((group) =>
@@ -568,7 +579,7 @@ export default function Tienda({
                     <div key={groupName} className="py-4">
                       <button
                         onClick={() => toggleCategory(groupName)}
-                        className="w-full flex justify-between items-center font-bold text-sm text-primary-dark"
+                        className="w-full flex justify-between items-center font-semibold text-sm text-primary-dark"
                       >
                         <span>{groupName}</span>
                         <span className="text-2xl font-light text-primary-dark">
@@ -589,11 +600,10 @@ export default function Tienda({
                                 onClick={() => {
                                   updateFilters({ categoryIds: undefined });
                                 }}
-                                className={`w-full text-left font-bold transition-colors flex items-center justify-between ${
-                                  selectedCategory === "all"
-                                    ? "text-primary"
-                                    : "text-gray-500 hover:text-primary-dark"
-                                }`}
+                                className={`w-full text-left transition-colors flex items-center justify-between ${selectedCategory === "all"
+                                  ? "text-primary"
+                                  : "text-gray-500 hover:text-primary-dark"
+                                  }`}
                               >
                                 <span className="text-sm">Ver todos</span>
                                 {selectedCategory === "all" && (
@@ -610,11 +620,10 @@ export default function Tienda({
                                     categoryIds: item.id.toString(),
                                   });
                                 }}
-                                className={`w-full text-left font-bold transition-colors flex items-center justify-between ${
-                                  selectedCategory === item.id.toString()
-                                    ? "text-primary"
-                                    : "text-gray-500 hover:text-primary-dark"
-                                }`}
+                                className={`w-full text-left transition-colors flex items-center justify-between ${selectedCategory === item.id.toString()
+                                  ? "text-primary"
+                                  : "text-gray-500 hover:text-primary-dark"
+                                  }`}
                               >
                                 <span className="text-sm">{item.name}</span>
                                 {selectedCategory === item.id.toString() && (
@@ -648,9 +657,8 @@ export default function Tienda({
           {/* Grid de productos con animaciones */}
           <main className="flex-1">
             <div
-              className={`bg-white rounded-sm shadow-md mb-14 overflow-hidden transition-all duration-700 transform hover:shadow-xl ${
-                isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
-              }`}
+              className={`bg-white rounded-sm shadow-md mb-14 overflow-hidden transition-all duration-700 transform hover:shadow-xl ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+                }`}
             >
               <div className="relative h-32 md:h-40">
                 <Image
@@ -733,9 +741,9 @@ export default function Tienda({
                     product.coverImage ||
                     (product.associations?.images?.[0]?.id
                       ? getProductImageUrl(
-                          product.id.toString(),
-                          product.associations.images[0].id
-                        )
+                        product.id.toString(),
+                        product.associations.images[0].id
+                      )
                       : "/no-image.png");
 
                   return (
@@ -745,7 +753,7 @@ export default function Tienda({
                       className="block animate-fade-in-up"
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
-                      <div className="bg-primary rounded-md shadow-md overflow-hidden hover:shadow-2xl transition-all duration-300 transform group">
+                      <div className="rounded-md shadow-md overflow-hidden hover:shadow-2xl transition-all duration-300 transform group">
                         <div className="relative overflow-hidden">
                           <button
                             className="absolute top-2 right-2 bg-white rounded-full p-2 hover:bg-gray-100 z-10 transition-transform hover:scale-110 disabled:opacity-50"
@@ -760,26 +768,33 @@ export default function Tienda({
                               <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
                             ) : (
                               <FaHeart
-                                className={`w-5 h-5 transition ${
-                                  favoritos.includes(product.id.toString())
-                                    ? "text-red-500 fill-current"
-                                    : "text-gray-400 hover:text-red-500"
-                                }`}
+                                className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
+                                  ? "text-red-500 fill-current"
+                                  : "text-gray-400 hover:text-red-500"
+                                  }`}
                               />
                             )}
                           </button>
                           <div className="relative w-full h-56 bg-gray-100 overflow-hidden">
+                            {/* {(product.quantity ?? 0) <= 0 && (
+                              <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 pointer-events-none">
+                                <span className="bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg transform -rotate-12 scale-110">
+                                  AGOTADO
+                                </span>
+                              </div>
+                            )} */}
                             <Image
                               src={imageUrl}
                               alt={getProductName(product)}
                               fill
                               unoptimized
-                              className="object-cover transition-transform duration-500 group-hover:scale-105"
+                              className={`object-cover transition-transform duration-500 group-hover:scale-105 ${(product.quantity ?? 0) <= 0 ? "grayscale opacity-70" : ""
+                                }`}
                             />
                           </div>
                         </div>
 
-                        <div className="p-4">
+                        <div className="p-4 bg-primary">
                           <div className="mb-0">
                             <span className="text-white text-sm font-normal">
                               Liwilu
@@ -803,15 +818,25 @@ export default function Tienda({
                             <span className="text-white text-sm line-Categorías">
                               {formatPrice(
                                 parseFloat((product.price || 0).toString()) *
-                                  1.5
+                                1.5
                               )}
                             </span>
                           </div>
 
                           <button
-                            className="w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 hover:bg-gray-100 hover:shadow-lg flex items-center justify-center gap-2 transform"
-                            onClick={(e) => handleAddToCart(e, product)}
-                            disabled={loadingCart === product.id.toString()}
+                            className={`w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 transform ${(product.quantity ?? 0) <= 0
+                              ? "opacity-50 cursor-not-allowed"
+                              : "hover:bg-gray-100 hover:shadow-lg"
+                              }`}
+                            onClick={(e) => {
+                              if ((product.quantity ?? 0) > 0) {
+                                handleAddToCart(e, product);
+                              } else {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }
+                            }}
+                            disabled={loadingCart === product.id.toString() || (product.quantity ?? 0) <= 0}
                           >
                             {loadingCart === product.id.toString() ? (
                               <>
@@ -837,6 +862,8 @@ export default function Tienda({
                                 </svg>
                                 <span>Agregando...</span>
                               </>
+                            ) : (product.quantity ?? 0) <= 0 ? (
+                              <span>Agotado</span>
                             ) : (
                               <>
                                 {/* <FaShoppingCart className="w-4 h-4 transition-transform group-hover:scale-110" /> */}
@@ -876,11 +903,10 @@ export default function Tienda({
                       <button
                         key={page}
                         onClick={() => updateFilters({ page: page.toString() })}
-                        className={`px-4 py-2 rounded-sm transition-all duration-300 transform hover:scale-110 ${
-                          currentPage === page
-                            ? "bg-primary text-white font-semibold shadow-lg"
-                            : "border hover:bg-gray-100"
-                        }`}
+                        className={`px-4 py-2 rounded-sm transition-all duration-300 transform hover:scale-110 ${currentPage === page
+                          ? "bg-primary text-white font-semibold shadow-lg"
+                          : "border hover:bg-gray-100"
+                          }`}
                       >
                         {page}
                       </button>

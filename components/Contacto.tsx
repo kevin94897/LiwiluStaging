@@ -94,9 +94,9 @@ export default function Contacto() {
 	};
 
 	return (
-		<section className="md:min-h-screen flex flex-col md:flex-row">
+		<section className="relative md:min-h-screen flex flex-col md:flex-row bg-primary">
 			{/* Lado Izquierdo */}
-			<div className="relative w-full md:w-1/2 flex items-center justify-center px-8 py-16 overflow-hidden">
+			<div className="relative w-full md:w-1/2 flex items-start justify-center px-8 py-16 overflow-hidden">
 				{/* Imagen de fondo */}
 				<Image
 					src="/images/liwilu_contacto_banner.png"
@@ -107,12 +107,12 @@ export default function Contacto() {
 				/>
 
 				{/* Contenido */}
-				<div className="relative z-10 text-white max-w-md text-center md:text-left">
+				<div className="relative z-10 text-white text-center flex flex-col items-center">
 					<Image
-						src="/images/liwilu_logo.png"
+						src="/images/liwilu_logo-xl.png"
 						alt="Liwilu"
-						width={130}
-						height={40}
+						width={195}
+						height={60}
 						className="mb-6 mx-auto md:mx-0"
 						priority
 					/>
@@ -126,9 +126,9 @@ export default function Contacto() {
 			</div>
 
 			{/* Lado Derecho - Formulario */}
-			<div className="w-full md:w-1/2 bg-primary flex items-center justify-center p-10">
+			<div className="relative w-full md:w-1/2 bg-primary flex items-center justify-center p-10 md:-ml-12 z-20 rounded-tl-xl rounded-bl-xl">
 				<form onSubmit={handleSubmit} className="w-full max-w-md text-white space-y-6">
-					<h2 className="text-3xl md:text-5xl font-bold text-white text-left md:text-left max-w-44">
+					<h2 className="text-3xl md:text-6xl font-bold text-white text-left md:text-left">
 						¿Estás interesado(a)?
 					</h2>
 

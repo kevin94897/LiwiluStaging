@@ -9,6 +9,12 @@ import {
   ReactNode,
 } from "react";
 import { Product } from "@/lib/catalog";
+import {
+  addToCart as apiAddToCart,
+  getCart as apiGetCart,
+  CartData,
+  CartProduct
+} from "@/lib/cart";
 
 export interface CartItem {
   product: Product;
@@ -17,29 +23,48 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, quantity?: number) => void;
+  addToCart: (product: Product, quantity?: number) => Promise<void>;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   getCartCount: () => number;
   getCartTotal: () => number;
+  syncCart: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Cargar carrito desde localStorage al iniciar
+  // Cargar carrito y sesión desde localStorage al iniciar
   useEffect(() => {
+    // 1. Cargar items locales
     const savedCart = localStorage.getItem("liwilu_cart");
     if (savedCart) {
       try {
         setItems(JSON.parse(savedCart));
       } catch (error) {
-        console.error("Error al cargar el carrito:", error);
+        console.error("Error al cargar el carrito local:", error);
       }
     }
+
+    // 2. Cargar o generar sessionId
+    let currentSessionId = localStorage.getItem("liwilu_session_id");
+    if (!currentSessionId) {
+      currentSessionId = crypto.randomUUID();
+      localStorage.setItem("liwilu_session_id", currentSessionId);
+      console.log("🆕 Generated New Session ID:", currentSessionId);
+    } else {
+      console.log("📄 Loaded Existing Session ID:", currentSessionId);
+    }
+    setSessionId(currentSessionId);
+
+    // 3. Sincronizar con el backend
+    syncCart();
   }, []);
 
   // Guardar carrito en localStorage cada vez que cambie
@@ -51,50 +76,233 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items]);
 
-  const addToCart = (product: Product, quantity: number = 1) => {
-    setItems((prevItems) => {
-      const existingItem = prevItems.find(
-        (item) => String(item.product.id) === String(product.id)
-      );
+  /**
+   * Actualiza el Session ID si el backend retorna uno nuevo
+   */
+  const updateSessionId = (newSessionId?: string) => {
+    if (newSessionId && newSessionId !== sessionId) {
+      console.log("♻️ Backend returned new Session ID:", newSessionId);
+      localStorage.setItem("liwilu_session_id", newSessionId);
+      setSessionId(newSessionId);
+    }
+  };
 
-      if (existingItem) {
-        // Si el producto ya existe, aumentar la cantidad
-        return prevItems.map((item) =>
-          String(item.product.id) === String(product.id)
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      } else {
-        // Si es nuevo, agregarlo
-        return [...prevItems, { product, quantity }];
+  /**
+   * Convert backend CartProduct to frontend Product format
+   */
+  const convertCartProductToProduct = (cartProduct: CartProduct): Product => {
+    return {
+      id: cartProduct.id,
+      productId: cartProduct.prestashopId,
+      name: cartProduct.name,
+      price: cartProduct.priceWithTax,
+      originalPrice: cartProduct.discountPrice || cartProduct.priceWithTax,
+      quantity: cartProduct.quantity,
+      coverImage: cartProduct.coverImage,
+      reference: `${cartProduct.prestashopId}`,
+    };
+  };
+
+  /**
+   * Sync cart with backend
+   */
+  const syncCart = async () => {
+    try {
+      const response = await apiGetCart();
+
+      if (response.success) {
+        // Actualizar Session ID si viene en la respuesta
+        updateSessionId(response.data.sessionId);
+
+        if (response.data.products.length > 0) {
+          // Convert backend products to frontend format
+          const backendItems: CartItem[] = response.data.products.map(product => ({
+            product: convertCartProductToProduct(product),
+            quantity: product.quantity
+          }));
+
+          setItems(backendItems);
+        }
       }
-    });
+    } catch (error: any) {
+      // If not authenticated or error, keep local cart
+      console.log("Could not sync cart with backend:", error.message);
+    }
   };
 
-  const removeFromCart = (productId: string) => {
-    setItems((prevItems) =>
-      prevItems.filter((item) => String(item.product.id) !== String(productId))
-    );
+  /**
+   * Add product to cart (with backend sync)
+   */
+  const addToCart = async (product: Product, quantity: number = 1) => {
+    setIsLoading(true);
+
+    try {
+      // Extract the actual product ID (prestashopId)
+      // We prioritize productId if available, otherwise fallback to id
+      let productId = typeof product.productId === 'number'
+        ? product.productId
+        : parseInt(String(product.productId || product.id));
+
+      const cleanQuantity = Math.max(1, Math.floor(quantity));
+
+      if (isNaN(productId)) {
+        console.error("Invalid Product ID:", product);
+        throw new Error("ID de producto no válido");
+      }
+
+      console.log(`🛒 Adding to cart: ID ${productId}, Quantity ${cleanQuantity}`);
+
+      // Call backend API
+      const response = await apiAddToCart(productId, cleanQuantity);
+
+      if (response.success) {
+        // Actualizar Session ID si el backend retorna uno nuevo
+        updateSessionId(response.data.sessionId);
+
+        // Update local state with backend response
+        const backendItems: CartItem[] = response.data.products.map(p => ({
+          product: convertCartProductToProduct(p),
+          quantity: p.quantity
+        }));
+
+        setItems(backendItems);
+      }
+    } catch (error: any) {
+      console.error("Error adding to cart via API:", error);
+
+      // Fallback to local cart if API fails
+      setItems((prevItems) => {
+        const existingItem = prevItems.find(
+          (item) => String(item.product.id) === String(product.id)
+        );
+
+        if (existingItem) {
+          // Si el producto ya existe, aumentar la cantidad
+          return prevItems.map((item) =>
+            String(item.product.id) === String(product.id)
+              ? { ...item, quantity: item.quantity + quantity }
+              : item
+          );
+        } else {
+          // Si es nuevo, agregarlo
+          return [...prevItems, { product, quantity }];
+        }
+      });
+
+      // Don't re-throw error - allow fallback to work silently
+      console.log("Using local cart fallback");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const removeFromCart = async (productId: string) => {
+    setIsLoading(true);
+    try {
+      const numericId = parseInt(productId);
+      if (isNaN(numericId)) {
+        console.error("Invalid Product ID for removal:", productId);
+        return;
+      }
+
+      // Call backend API
+      const { removeFromCart: apiRemoveFromCart } = await import("@/lib/cart");
+      const response = await apiRemoveFromCart(numericId);
+
+      if (response.success) {
+        // Update session ID if returned
+        updateSessionId(response.data.sessionId);
+
+        // Update local state with backend response
+        const backendItems: CartItem[] = response.data.products.map(p => ({
+          product: convertCartProductToProduct(p),
+          quantity: p.quantity
+        }));
+
+        setItems(backendItems);
+      }
+    } catch (error: any) {
+      console.error("Error removing from cart via API:", error);
+
+      // Fallback to local removal
+      setItems((prevItems) =>
+        prevItems.filter((item) => String(item.product.id) !== String(productId))
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateQuantity = async (productId: string, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(productId);
       return;
     }
 
-    setItems((prevItems) =>
-      prevItems.map((item) =>
-        String(item.product.id) === String(productId)
-          ? { ...item, quantity }
-          : item
-      )
-    );
+    setIsLoading(true);
+    try {
+      const numericId = parseInt(productId);
+      if (isNaN(numericId)) {
+        console.error("Invalid Product ID for update:", productId);
+        return;
+      }
+
+      // Call backend API
+      const { updateCartQuantity } = await import("@/lib/cart");
+      const response = await updateCartQuantity(numericId, quantity);
+
+      if (response.success) {
+        // Update session ID if returned
+        updateSessionId(response.data.sessionId);
+
+        // Update local state with backend response
+        const backendItems: CartItem[] = response.data.products.map(p => ({
+          product: convertCartProductToProduct(p),
+          quantity: p.quantity
+        }));
+
+        setItems(backendItems);
+      }
+    } catch (error: any) {
+      console.error("Error updating quantity via API:", error);
+
+      // Fallback to local update
+      setItems((prevItems) =>
+        prevItems.map((item) =>
+          String(item.product.id) === String(productId)
+            ? { ...item, quantity }
+            : item
+        )
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const clearCart = () => {
-    setItems([]);
-    localStorage.removeItem("liwilu_cart");
+  const clearCart = async () => {
+    setIsLoading(true);
+    try {
+      // Call backend API
+      const { clearCart: apiClearCart } = await import("@/lib/cart");
+      const response = await apiClearCart();
+
+      if (response.success) {
+        // Update session ID if returned
+        updateSessionId(response?.data?.sessionId);
+
+        // Clear local state
+        setItems([]);
+        localStorage.removeItem("liwilu_cart");
+      }
+    } catch (error: any) {
+      console.error("Error clearing cart via API:", error);
+
+      // Fallback to local clear
+      setItems([]);
+      localStorage.removeItem("liwilu_cart");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getCartCount = () => {
@@ -121,6 +329,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         clearCart,
         getCartCount,
         getCartTotal,
+        syncCart,
+        isLoading,
       }}
     >
       {children}
@@ -135,3 +345,4 @@ export function useCart() {
   }
   return context;
 }
+

@@ -21,9 +21,27 @@ export const authenticatedFetch = async (
 ): Promise<Response> => {
     const { skipAuth = false, skipRetry = false, ...fetchOptions } = options;
 
+    // Preparar headers base
+    const baseHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(fetchOptions.headers as Record<string, string>),
+    };
+
+    // Agregar X-Session-Id si existe para identificar carritos de invitados
+    if (typeof window !== 'undefined') {
+        const sessionId = localStorage.getItem('liwilu_session_id');
+        if (sessionId) {
+            console.log('📡 Request with X-Session-Id:', sessionId);
+            baseHeaders['X-Session-Id'] = sessionId;
+        }
+    }
+
     // Si no se debe agregar autenticación, hacer fetch normal
     if (skipAuth) {
-        return fetch(url, fetchOptions);
+        return fetch(url, {
+            ...fetchOptions,
+            headers: baseHeaders
+        });
     }
 
     // Obtener accessToken
@@ -35,9 +53,8 @@ export const authenticatedFetch = async (
 
     // Agregar Authorization header
     const headers = {
-        ...fetchOptions.headers,
+        ...baseHeaders,
         'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
     };
 
     // Hacer la petición

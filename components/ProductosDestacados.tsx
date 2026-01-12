@@ -15,6 +15,8 @@ import { Product } from '@/lib/catalog';
 import { getProductImageUrl, formatPrice, getProductName } from '@/lib/utils';
 import { toggleFavorite, getFavorites } from '@/lib/catalog';
 import Button from './ui/Button';
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/router';
 
 interface ProductProps {
 	featuredProducts: Product[];
@@ -30,6 +32,7 @@ export default function ProductosDestacados({
 	const [togglingFavorite, setTogglingFavorite] = useState<string | null>(null);
 	const [modalProduct, setModalProduct] = useState<Product | null>(null);
 	const { addToCart } = useCart();
+	const router = useRouter();
 
 	const toggleFavorito = async (e: React.MouseEvent<HTMLButtonElement>, productId: string) => {
 		e.preventDefault();
@@ -68,9 +71,24 @@ export default function ProductosDestacados({
 
 			// Check if it's an authentication error
 			if (error instanceof Error && error.message.includes('No hay sesión activa')) {
-				alert('Debes iniciar sesión para agregar favoritos');
+				toast.error('Debes iniciar sesión para agregar favoritos', {
+					duration: 3000,
+					style: {
+						fontSize: '14px',
+						fontFamily: 'Outfit',
+					},
+				});
+				// Trigger login modal without leaving the page
+				router.push(
+					{
+						pathname: router.pathname,
+						query: { ...router.query, login: 'true' },
+					},
+					undefined,
+					{ shallow: true }
+				);
 			} else {
-				alert('Error al actualizar favoritos. Por favor, intenta de nuevo.');
+				toast.error('Error al actualizar favoritos. Por favor, intenta de nuevo.');
 			}
 		} finally {
 			setTogglingFavorite(null);
@@ -106,9 +124,11 @@ export default function ProductosDestacados({
 
 			// Abrir modal
 			setModalProduct(producto);
+
+
 		} catch (error) {
 			console.error('Error al agregar al carrito:', error);
-			alert('Error al agregar el producto al carrito');
+			toast.error('Error al agregar el producto al carrito');
 		} finally {
 			setLoadingCart(null);
 		}
@@ -134,139 +154,155 @@ export default function ProductosDestacados({
 				</div>
 			) : (
 				<>
-					<Slider
-						arrows={true}
-						infinite={true}
-						speed={500}
-						slidesToShow={4}
-						slidesToScroll={1}
-						autoplay={true}
-						autoplaySpeed={3000}
-						responsive={[
-							{
-								breakpoint: 1024,
-								settings: {
-									slidesToShow: 3,
-									slidesToScroll: 1,
-								},
-							},
-							{
-								breakpoint: 768,
-								settings: {
-									slidesToShow: 2,
-									slidesToScroll: 1,
-								},
-							},
-							{
-								breakpoint: 480,
-								settings: {
-									slidesToShow: 1,
-									slidesToScroll: 1,
-								},
-							},
-						]}
-						className="product-slider px-4"
-					>
-						{featuredProducts.map((product) => {
-							const imageUrl = product.coverImage || (
-								product.associations?.images?.[0]?.id
-									? getProductImageUrl(product.id.toString(), product.associations.images[0].id)
-									: '/no-image.png'
-							);
+					{(() => {
+						const activeProducts = featuredProducts.filter(p => (p.quantity ?? 0) > 0);
+						if (activeProducts.length === 0) return (
+							<div className="text-center py-12 bg-gray-100 rounded-xl">
+								<p className="text-xl text-gray-600 mb-4">
+									No hay productos disponibles con stock actualmente.
+								</p>
+							</div>
+						);
 
-							return (
-								<div key={product.id}>
-									<Link href={`/tienda/${product.id}`}>
-										<div className="bg-white rounded-md shadow-lg overflow-hidden hover:shadow-xl transition">
-											<div className="relative">
-												<span className="absolute top-2 left-2 bg-primary text-white px-3 py-1 rounded-full text-xs font-bold z-10">
-													OFERTA
-												</span>
-												<div className="relative w-full h-48">
-													<Image
-														src={imageUrl}
-														alt={getProductName(product)}
-														fill
-														unoptimized
-														className="object-cover"
-													/>
-												</div>
-												<button
-													className="absolute top-2 right-2 bg-white rounded-full p-2 hover:bg-gray-100 z-10 transition-transform hover:scale-110 disabled:opacity-50"
-													onClick={(e) => toggleFavorito(e, product.id.toString())}
-													disabled={togglingFavorite === product.id.toString()}
-												>
-													{togglingFavorite === product.id.toString() ? (
-														<div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
-													) : (
-														<FaHeart
-															className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
-																? 'text-red-500 fill-current'
-																: 'text-gray-400 hover:text-red-500'
-																}`}
-														/>
-													)}
-												</button>
-											</div>
+						return (
+							<Slider
+								arrows={true}
+								infinite={activeProducts.length > 4}
+								speed={500}
+								slidesToShow={Math.min(4, activeProducts.length)}
+								slidesToScroll={1}
+								autoplay={true}
+								autoplaySpeed={3000}
+								responsive={[
+									{
+										breakpoint: 1024,
+										settings: {
+											slidesToShow: Math.min(3, activeProducts.length),
+											slidesToScroll: 1,
+											infinite: activeProducts.length > 3,
+										},
+									},
+									{
+										breakpoint: 768,
+										settings: {
+											slidesToShow: Math.min(2, activeProducts.length),
+											slidesToScroll: 1,
+											infinite: activeProducts.length > 2,
+										},
+									},
+									{
+										breakpoint: 480,
+										settings: {
+											slidesToShow: 1,
+											slidesToScroll: 1,
+											infinite: activeProducts.length > 1,
+										},
+									},
+								]}
+								className="product-slider px-4"
+							>
+								{activeProducts.map((product) => {
+									const imageUrl = product.coverImage || (
+										product.associations?.images?.[0]?.id
+											? getProductImageUrl(product.id.toString(), product.associations.images[0].id)
+											: '/no-image.png'
+									);
 
-											<div className="p-4 flex flex-col justify-between h-44 bg-primary">
-												<h3 className="font-semibold text-lg mb-2 line-clamp-2 h-12 text-white">
-													{getProductName(product)}
-												</h3>
-												<div className="flex justify-between items-center mb-2">
-													<span className="text-white text-sm line-through">
-														{formatPrice(
-															parseFloat((product.price || 0).toString()) * 1.2
-														)}
-													</span>
-													<span className="text-white font-bold text-lg">
-														{formatPrice(product.price || 0)}
-													</span>
-												</div>
-												<Button
-													size="sm"
-													className="w-full"
-													variant="secondary"
-													onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleAddToCart(e, product)}
-													disabled={loadingCart === product.id.toString()}
-												>
-													{loadingCart === product.id.toString() ? (
-														<>
-															<svg
-																className="animate-spin h-4 w-4"
-																fill="none"
-																viewBox="0 0 24 24"
-															>
-																<circle
-																	className="opacity-25"
-																	cx="12"
-																	cy="12"
-																	r="10"
-																	stroke="currentColor"
-																	strokeWidth="4"
-																/>
-																<path
-																	className="opacity-75"
-																	fill="currentColor"
-																	d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-																/>
-															</svg>
-															<span>...</span>
-														</>
-													) : (
-														<span className="flex items-center gap-2">
-															<FaShoppingCart className="w-4 h-4" />
-															<span>Agregar</span>
+									return (
+										<div key={product.id}>
+											<Link href={`/tienda/${product.id}`}>
+												<div className="bg-white rounded-md shadow-lg overflow-hidden hover:shadow-xl transition mb-10">
+													<div className="relative">
+														<span className="absolute top-2 left-2 bg-primary text-white px-3 py-1 rounded-full text-xs font-bold z-10">
+															OFERTA
 														</span>
-													)}
-												</Button>
-											</div>
+														<div className="relative w-full h-48">
+															<Image
+																src={imageUrl}
+																alt={getProductName(product)}
+																fill
+																unoptimized
+																className="object-cover"
+															/>
+														</div>
+														<button
+															className="absolute top-2 right-2 bg-white rounded-full p-2 hover:bg-gray-100 z-10 transition-transform hover:scale-110 disabled:opacity-50"
+															onClick={(e) => toggleFavorito(e, product.id.toString())}
+															disabled={togglingFavorite === product.id.toString()}
+														>
+															{togglingFavorite === product.id.toString() ? (
+																<div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
+															) : (
+																<FaHeart
+																	className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
+																		? 'text-red-500 fill-current'
+																		: 'text-gray-400 hover:text-red-500'
+																		}`}
+																/>
+															)}
+														</button>
+													</div>
+
+													<div className="p-4 flex flex-col justify-between h-44 bg-primary">
+														<h3 className="font-semibold leading-tight text-lg mb-2 line-clamp-2 h-12 text-white">
+															{getProductName(product)}
+														</h3>
+														<div className="flex justify-between items-center mb-2">
+															<span className="text-white text-sm line-through">
+																{formatPrice(
+																	parseFloat((product.price || 0).toString()) * 1.2
+																)}
+															</span>
+															<span className="text-white font-bold text-lg">
+																{formatPrice(product.price || 0)}
+															</span>
+														</div>
+														<Button
+															size="sm"
+															className="w-full"
+															variant="secondary"
+															onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleAddToCart(e, product)}
+															disabled={loadingCart === product.id.toString()}
+														>
+															{loadingCart === product.id.toString() ? (
+																<>
+																	<svg
+																		className="animate-spin h-4 w-4"
+																		fill="none"
+																		viewBox="0 0 24 24"
+																	>
+																		<circle
+																			className="opacity-25"
+																			cx="12"
+																			cy="12"
+																			r="10"
+																			stroke="currentColor"
+																			strokeWidth="4"
+																		/>
+																		<path
+																			className="opacity-75"
+																			fill="currentColor"
+																			d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+																		/>
+																	</svg>
+																	<span>...</span>
+																</>
+															) : (
+																<span className="flex items-center gap-2">
+																	<FaShoppingCart className="w-4 h-4" />
+																	<span>Agregar al carrito</span>
+																</span>
+															)}
+														</Button>
+													</div>
+												</div>
+											</Link>
 										</div>
-									</Link>
-								</div>
-							);
-						})}
-					</Slider>
+									);
+								})}
+							</Slider>
+						);
+					})()}
 				</>
 			)}
 

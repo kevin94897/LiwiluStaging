@@ -21,11 +21,15 @@ import {
 } from "react-icons/fa";
 import router from "next/router";
 import Button from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
 import { loginSchema, LoginSchemaType } from "@/lib/loginSchema";
 import {
   carritoRegisterSchema,
   CarritoRegisterSchemaType,
 } from "@/lib/carritoRegisterSchema";
+import { guestDataSchema, GuestDataSchemaType } from "@/lib/guestDataSchema";
+import { useLocations } from "@/hooks/useLocations";
+import { z } from "zod";
 import { PiWarningCircleFill } from "react-icons/pi";
 import { FaPencil } from "react-icons/fa6";
 
@@ -63,7 +67,12 @@ const DISTRITOS_LIMA = [
   "Surquillo",
 ];
 
+
+
+
+
 export default function Carrito() {
+  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const [recordarme, setRecordarme] = useState(false);
   const { items, removeFromCart, updateQuantity, clearCart, getCartTotal } =
     useCart();
@@ -89,22 +98,104 @@ export default function Carrito() {
   const [editandoDireccion, setEditandoDireccion] = useState(false);
   const [validandoStock, setValidandoStock] = useState(false);
   const [stockValidado, setStockValidado] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptNewsletter, setAcceptNewsletter] = useState(false);
 
   // Estados para autenticación
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  const [isGuest, setIsGuest] = useState(false);
+  const [mainAddressId, setMainAddressId] = useState<string | null>(null);
 
-  // Mostrar modal solo cuando hay items Y no está autenticado
+  const [isGuest, setIsGuest] = useState(false);
+  const [showGuestForm, setShowGuestForm] = useState(false);
+
+  // Estados para formulario de invitado
+  const [guestData, setGuestData] = useState<GuestDataSchemaType>({
+    nombre: "",
+    apellido: "",
+    tipoDocumento: "DNI",
+    numeroDocumento: "",
+    celular: "",
+    telefonoOpcional: "",
+    departamento: "Lima",
+    provincia: "Lima",
+    distrito: "",
+    direccion: "",
+    numeroDpto: "",
+    referencia: "",
+  });
+  const [guestErrors, setGuestErrors] = useState<
+    Partial<Record<keyof GuestDataSchemaType, string>>
+  >({});
+  const [guestDataCompleted, setGuestDataCompleted] = useState(false);
+
+  // Hooks de ubicación
+  const guestLocations = useLocations("Lima", "Lima", "");
+  const userLocations = useLocations(
+    direccionEnvio.departamento || "Lima",
+    direccionEnvio.ciudad || "Lima",
+    direccionEnvio.distrito
+  );
+  const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
+
+  // Sincronizar estado local con hook de auth
   useEffect(() => {
-    if (items.length > 0 && !isLoggedIn && !isGuest) {
+    if (!authLoading) {
+      setIsLoggedIn(isAuthenticated);
+    }
+  }, [isAuthenticated, authLoading]);
+
+  // Cargar dirección principal si el usuario está logueado
+  useEffect(() => {
+    const fetchMainAddress = async () => {
+      if (isAuthenticated && ((user && 'token' in user) || localStorage.getItem('accessToken'))) {
+        try {
+          const token = localStorage.getItem('accessToken');
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/addresses`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+              const mainAddress = result.data.find((addr: any) => addr.isMain);
+              if (mainAddress) {
+                setMainAddressId(mainAddress.id);
+                setDireccionEnvio({
+                  calle: mainAddress.address,
+                  distrito: mainAddress.district,
+                  ciudad: mainAddress.province,
+                  departamento: mainAddress.department,
+                });
+                userLocations.setLocationValues(
+                  mainAddress.department,
+                  mainAddress.province,
+                  mainAddress.district
+                );
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error al cargar dirección principal:", error);
+        }
+      }
+    };
+
+    fetchMainAddress();
+  }, [isAuthenticated, user]);
+
+  // Mostrar modal solo cuando hay items Y no está autenticado Y no ha completado datos de invitado
+  useEffect(() => {
+    if (!authLoading && items.length > 0 && !isAuthenticated && !isLoggedIn && !guestDataCompleted) {
       setShowLoginModal(true);
     }
-  }, [items.length, isLoggedIn, isGuest]);
+  }, [items.length, isAuthenticated, isLoggedIn, guestDataCompleted, authLoading]);
 
   // NUEVO: Estado para el tab activo (login o registro)
-  const [activeTab, setActiveTab] = useState<"login" | "registro">("login");
+  const [activeTab, setActiveTab] = useState<"login" | "registro" | "guest">("login");
 
   // NUEVO: Estados para registro
   const [registroData, setRegistroData] = useState<CarritoRegisterSchemaType>({
@@ -170,27 +261,6 @@ export default function Carrito() {
   const [loginErrors, setLoginErrors] = useState<
     Partial<Record<keyof LoginSchemaType, string>>
   >({});
-
-  // Función para obtener tiendas con stock desde PrestaShop
-  // const fetchTiendasConStock = async (productIds: string[]) => {
-  // 	setLoadingStores(true);
-  // 	try {
-  // 		const response = await fetch('/api/prestashop/product-stores', {
-  // 			method: 'POST',
-  // 			headers: { 'Content-Type': 'application/json' },
-  // 			body: JSON.stringify({ product_ids: productIds })
-  // 		});
-
-  // 		if (!response.ok) throw new Error('Error al obtener tiendas');
-
-  // 		const data = await response.json();
-  // 		setProductosEnTiendas(data);
-  // 	} catch (error) {
-  // 		console.error('Error al cargar tiendas:', error);
-  // 	} finally {
-  // 		setLoadingStores(false);
-  // 	}
-  // };
 
   // Cargar tiendas cuando cambia el carrito
   useEffect(() => {
@@ -351,7 +421,48 @@ export default function Carrito() {
 
   const handleContinueAsGuest = () => {
     setIsGuest(true);
+    setShowGuestForm(true);
+    setActiveTab("guest");
+  };
+
+  const handleGuestChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setGuestData((prev) => ({ ...prev, [name]: value }));
+    setGuestErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleGuestSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validación con Zod
+    const result = guestDataSchema.safeParse(guestData);
+
+    if (!result.success) {
+      const formattedErrors = result.error.flatten().fieldErrors;
+      const newErrors: Partial<Record<keyof GuestDataSchemaType, string>> = {};
+
+      for (const key in formattedErrors) {
+        const errorArray = formattedErrors[key as keyof typeof formattedErrors];
+        if (errorArray && errorArray.length > 0) {
+          newErrors[key as keyof GuestDataSchemaType] = errorArray[0];
+        }
+      }
+
+      setGuestErrors(newErrors);
+      console.log("Errores de validación:", newErrors);
+      return;
+    }
+
+    // Si es válido
+    setGuestErrors({});
+    console.log("Datos de invitado:", guestData);
+    setIsGuest(true);
+    setGuestDataCompleted(true);
     setShowLoginModal(false);
+    setShowGuestForm(false);
+    showNotification("success", "¡Datos guardados! Continúa con tu compra.");
   };
 
   // Obtener tiendas por distrito
@@ -455,6 +566,95 @@ export default function Carrito() {
     );
   }
 
+  const handleSaveAddress = async () => {
+    // Si no está autenticado o es invitado, solo actualiza el estado local
+    if (!isAuthenticated || isGuest) {
+      setEditandoDireccion(false);
+      return;
+    }
+
+    // Si está autenticado, intentar actualizar/crear en el backend
+    try {
+      // Validar datos con Zod
+      const addressSchema = z.object({
+        calle: z.string().min(5, "La dirección es muy corta"),
+        departamento: z.string().min(1, "Selecciona un departamento"),
+        ciudad: z.string().min(1, "Selecciona una provincia"),
+        distrito: z.string().min(1, "Selecciona un distrito"),
+      });
+
+      const validationResult = addressSchema.safeParse(direccionEnvio);
+
+      if (!validationResult.success) {
+        const fieldErrors = validationResult.error.flatten().fieldErrors;
+        const errors: Record<string, string> = {};
+        Object.keys(fieldErrors).forEach((key) => {
+          const messages = fieldErrors[key as keyof typeof fieldErrors];
+          if (messages && messages.length > 0) {
+            errors[key] = messages[0];
+          }
+        });
+        setAddressErrors(errors);
+        return;
+      }
+
+
+      // Limpiar errores si pasa validación
+      setAddressErrors({});
+
+      const token = localStorage.getItem('accessToken');
+      const addressData = {
+        department: direccionEnvio.departamento,
+        province: direccionEnvio.ciudad,
+        district: direccionEnvio.distrito,
+        address: direccionEnvio.calle,
+        apartment: "Dirección Carrito", // Valor por defecto
+        reference: "",
+        isMain: true
+      };
+
+      let response;
+
+      if (mainAddressId) {
+        // Actualizar existente
+        response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/addresses/${mainAddressId}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(addressData)
+        });
+      } else {
+        // Crear nueva
+        response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/addresses`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(addressData)
+        });
+      }
+
+      if (response && response.ok) {
+        if (!mainAddressId) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setMainAddressId(result.data.id);
+          }
+        }
+        console.log("Dirección actualizada correctamente");
+        setEditandoDireccion(false);
+      } else {
+        console.error("Error al guardar dirección en backend");
+      }
+
+    } catch (error) {
+      console.error("Error al guardar dirección:", error);
+    }
+  };
+
   return (
     <Layout
       title="Carrito - Liwilu"
@@ -464,30 +664,28 @@ export default function Carrito() {
       {/* MODAL MEJORADO DE LOGIN/REGISTRO */}
       {showLoginModal && items.length > 0 && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8">
-            {/* Tabs */}
-            <div className="flex border-b">
-              <button
-                onClick={() => setActiveTab("login")}
-                className={`flex-1 py-4 px-6 font-semibold transition-all ${
-                  activeTab === "login"
-                    ? "text-primary border-b-2 border-primary"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8">
+            {/* BOTÓN CERRAR */}
+            <button
+              onClick={() => setShowLoginModal(false)}
+              className="absolute -top-2 -right-2 md:top-4 md:right-4 p-2 bg-white rounded-full shadow-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-all z-10 border border-gray-100"
+              aria-label="Cerrar modal"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
               >
-                Iniciar Sesión
-              </button>
-              <button
-                onClick={() => setActiveTab("registro")}
-                className={`flex-1 py-4 px-6 font-semibold transition-all ${
-                  activeTab === "registro"
-                    ? "text-primary border-b-2 border-primary"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Crear Cuenta
-              </button>
-            </div>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
 
             <div className="p-8">
               {/* TAB DE LOGIN */}
@@ -514,11 +712,10 @@ export default function Carrito() {
                         value={loginData.email}
                         onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
                         placeholder="ejemplo@correo.com"
-                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                          loginErrors.email
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.email
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
                       />
                       {loginErrors.email && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -537,11 +734,10 @@ export default function Carrito() {
                         value={loginData.password}
                         onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
                         placeholder="••••••••"
-                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                          loginErrors.password
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.password
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
                       />
                       {loginErrors.password && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -585,6 +781,18 @@ export default function Carrito() {
                     >
                       Continuar como invitado
                     </Button>
+
+                    <div className="text-center pt-4">
+                      <p className="text-sm text-gray-600">
+                        ¿Aún no tienes cuenta?{" "}
+                        <button
+                          onClick={() => setActiveTab("registro")}
+                          className="text-primary hover:text-primary-dark font-semibold transition-all"
+                        >
+                          Regístrate aquí
+                        </button>
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -612,11 +820,10 @@ export default function Carrito() {
                           value={registroData.nombre}
                           onChange={handleRegistroChange} // ✅ Cambiar
                           placeholder="Gonzalo"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.nombre
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.nombre
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.nombre && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -635,11 +842,10 @@ export default function Carrito() {
                           value={registroData.apellido}
                           onChange={handleRegistroChange} // ✅ Cambiar
                           placeholder="Vera"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.apellido
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.apellido
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.apellido && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -667,11 +873,10 @@ export default function Carrito() {
                               | "Pasaporte", // ✅ Type assertion
                           })
                         }
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.tipoDocumento
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.tipoDocumento
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
                       >
                         <option value="DNI">DNI</option>
                         <option value="CE">Carnet de Extranjería</option>
@@ -687,11 +892,10 @@ export default function Carrito() {
                           value={registroData.numeroDocumento}
                           onChange={handleRegistroChange}
                           placeholder="12345678"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.numeroDocumento
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.numeroDocumento
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.numeroDocumento && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -720,11 +924,10 @@ export default function Carrito() {
                           value={registroData.celular}
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.celular
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.celular
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.celular && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -743,11 +946,10 @@ export default function Carrito() {
                           value={registroData.telefonoOpcional}
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.telefonoOpcional
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.telefonoOpcional
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.telefonoOpcional && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -781,11 +983,10 @@ export default function Carrito() {
                           value={registroData.provincia}
                           onChange={handleRegistroChange}
                           placeholder="Lima"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.provincia
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.provincia
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.provincia && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -804,11 +1005,10 @@ export default function Carrito() {
                         name="distrito"
                         value={registroData.distrito}
                         onChange={handleRegistroChange}
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.distrito
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.distrito
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
                       >
                         <option value="">Seleccionar distrito</option>
                         {DISTRITOS_LIMA.map((d) => (
@@ -835,11 +1035,10 @@ export default function Carrito() {
                         value={registroData.direccion}
                         onChange={handleRegistroChange}
                         placeholder="Calle rosales 432"
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.direccion
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.direccion
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
                       />
                       {registroErrors.direccion && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -860,11 +1059,10 @@ export default function Carrito() {
                           value={registroData.numeroDpto}
                           onChange={handleRegistroChange}
                           placeholder="201"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.numeroDpto
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.numeroDpto
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.numeroDpto && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -883,11 +1081,10 @@ export default function Carrito() {
                           value={registroData.referencia}
                           onChange={handleRegistroChange}
                           placeholder="Frente al parque"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.referencia
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.referencia
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.referencia && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -910,11 +1107,10 @@ export default function Carrito() {
                           value={registroData.email}
                           onChange={handleRegistroChange}
                           placeholder="ejemplo@correo.com"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.email
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.email
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.email && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -935,11 +1131,10 @@ export default function Carrito() {
                             value={registroData.password}
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
-                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                              registroErrors.password
-                                ? "border-red-500"
-                                : "border-gray-200"
-                            }`}
+                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.password
+                              ? "border-red-500"
+                              : "border-gray-200"
+                              }`}
                           />
                           {registroErrors.password && (
                             <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -958,11 +1153,10 @@ export default function Carrito() {
                             value={registroData.confirmarPassword}
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
-                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                              registroErrors.confirmarPassword
-                                ? "border-red-500"
-                                : "border-gray-200"
-                            }`}
+                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.confirmarPassword
+                              ? "border-red-500"
+                              : "border-gray-200"
+                              }`}
                           />
                           {registroErrors.confirmarPassword && (
                             <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1023,9 +1217,343 @@ export default function Carrito() {
                     >
                       Continuar como invitado
                     </Button>
+
+                    <div className="text-center pt-4">
+                      <p className="text-sm text-gray-600">
+                        ¿Ya tienes cuenta?{" "}
+                        <button
+                          onClick={() => setActiveTab("login")}
+                          className="text-primary hover:text-primary-dark font-semibold transition-all"
+                        >
+                          Inicia sesión aquí
+                        </button>
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
+
+              {/* TAB DE INVITADO */}
+              {activeTab === "guest" && (
+                <div className="animate-fade-in max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+                    Ingresa tus datos
+                  </h2>
+                  <p className="text-gray-600 text-center mb-6">
+                    Completa tus datos para continuar con tu compra
+                  </p>
+
+                  <form onSubmit={handleGuestSubmit} className="space-y-4">
+                    {/* Datos Personales */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Nombre
+                        </label>
+                        <input
+                          type="text"
+                          name="nombre"
+                          value={guestData.nombre}
+                          onChange={handleGuestChange}
+                          placeholder="Gonzalo"
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.nombre
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
+                        />
+                        {guestErrors.nombre && (
+                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                            <PiWarningCircleFill size={16} />{" "}
+                            {guestErrors.nombre}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Apellido
+                        </label>
+                        <input
+                          type="text"
+                          name="apellido"
+                          value={guestData.apellido}
+                          onChange={handleGuestChange}
+                          placeholder="Vera"
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.apellido
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
+                        />
+                        {guestErrors.apellido && (
+                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                            <PiWarningCircleFill size={16} />{" "}
+                            {guestErrors.apellido}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Documento */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tipo de documento
+                      </label>
+                      <select
+                        name="tipoDocumento"
+                        value={guestData.tipoDocumento}
+                        onChange={(e) =>
+                          setGuestData({
+                            ...guestData,
+                            tipoDocumento: e.target.value as
+                              | "DNI"
+                              | "CE"
+                              | "Pasaporte",
+                          })
+                        }
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.tipoDocumento
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
+                      >
+                        <option value="DNI">DNI</option>
+                        <option value="CE">Carnet de Extranjería</option>
+                        <option value="Pasaporte">Pasaporte</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Número de Documento
+                      </label>
+                      <input
+                        type="text"
+                        name="numeroDocumento"
+                        value={guestData.numeroDocumento}
+                        onChange={handleGuestChange}
+                        placeholder="74218601"
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.numeroDocumento
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
+                      />
+                      {guestErrors.numeroDocumento && (
+                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                          <PiWarningCircleFill size={16} />{" "}
+                          {guestErrors.numeroDocumento}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Teléfonos */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Celular
+                        </label>
+                        <input
+                          type="tel"
+                          name="celular"
+                          value={guestData.celular}
+                          onChange={handleGuestChange}
+                          placeholder="973 820 088"
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.celular
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
+                        />
+                        {guestErrors.celular && (
+                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                            <PiWarningCircleFill size={16} />{" "}
+                            {guestErrors.celular}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Teléfono opcional
+                        </label>
+                        <input
+                          type="tel"
+                          name="telefonoOpcional"
+                          value={guestData.telefonoOpcional}
+                          onChange={handleGuestChange}
+                          placeholder="973 820 088"
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.telefonoOpcional
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Ubicación */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Departamento
+                        </label>
+                        <select
+                          name="departamento"
+                          value={guestData.departamento}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setGuestData(prev => ({ ...prev, departamento: val, provincia: "", distrito: "" }));
+                            guestLocations.handleDeptChange(val);
+                          }}
+                          className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm bg-white"
+                        >
+                          <option value="">Seleccionar</option>
+                          {guestLocations.departments.map((d) => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Provincia
+                        </label>
+                        <select
+                          name="provincia"
+                          value={guestData.provincia}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setGuestData(prev => ({ ...prev, provincia: val, distrito: "" }));
+                            guestLocations.handleProvChange(val);
+                          }}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm bg-white transition ${guestErrors.provincia
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
+                          disabled={!guestData.departamento}
+                        >
+                          <option value="">Seleccionar</option>
+                          {guestLocations.provinces.map((p) => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
+                        {guestErrors.provincia && (
+                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                            <PiWarningCircleFill size={16} />{" "}
+                            {guestErrors.provincia}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Distrito
+                      </label>
+                      <select
+                        name="distrito"
+                        value={guestData.distrito}
+                        onChange={(e) => {
+                          handleGuestChange(e);
+                          guestLocations.handleDistChange(e.target.value);
+                        }}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.distrito
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
+                        disabled={!guestData.provincia}
+                      >
+                        <option value="">Seleccionar</option>
+                        {guestLocations.districts.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                      {guestErrors.distrito && (
+                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                          <PiWarningCircleFill size={16} />{" "}
+                          {guestErrors.distrito}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Dirección
+                      </label>
+                      <input
+                        type="text"
+                        name="direccion"
+                        value={guestData.direccion}
+                        onChange={handleGuestChange}
+                        placeholder="Calle rosales 432"
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.direccion
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
+                      />
+                      {guestErrors.direccion && (
+                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                          <PiWarningCircleFill size={16} />{" "}
+                          {guestErrors.direccion}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Nro. de dpto. / Piso
+                        </label>
+                        <input
+                          type="text"
+                          name="numeroDpto"
+                          value={guestData.numeroDpto}
+                          onChange={handleGuestChange}
+                          placeholder="Ate"
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.numeroDpto
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Referencia
+                        </label>
+                        <input
+                          type="text"
+                          name="referencia"
+                          value={guestData.referencia}
+                          onChange={handleGuestChange}
+                          placeholder="Ate"
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.referencia
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
+                        />
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="primary"
+                      size="md"
+                      className="w-full"
+                      type="submit"
+                    >
+                      Siguiente
+                    </Button>
+
+                    <div className="text-center pt-4">
+                      <p className="text-sm text-gray-600">
+                        ¿Ya tienes cuenta?{" "}
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("login")}
+                          className="text-primary hover:text-primary-dark font-semibold transition-all"
+                        >
+                          Inicia sesión aquí
+                        </button>
+                      </p>
+                    </div>
+                  </form>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
@@ -1066,18 +1594,16 @@ export default function Carrito() {
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setMetodoEnvio("delivery")}
-                  className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${
-                    metodoEnvio === "delivery"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${metodoEnvio === "delivery"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
                   <FaTruck
-                    className={`text-2xl ${
-                      metodoEnvio === "delivery"
-                        ? "text-primary"
-                        : "text-gray-400"
-                    }`}
+                    className={`text-2xl ${metodoEnvio === "delivery"
+                      ? "text-primary"
+                      : "text-gray-400"
+                      }`}
                   />
                   <div className="text-left">
                     <p className="font-semibold">Delivery</p>
@@ -1087,18 +1613,16 @@ export default function Carrito() {
 
                 <button
                   onClick={handleCambiarARetiro}
-                  className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${
-                    metodoEnvio === "retiro"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${metodoEnvio === "retiro"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
                   <FaStore
-                    className={`text-2xl ${
-                      metodoEnvio === "retiro"
-                        ? "text-primary"
-                        : "text-gray-400"
-                    }`}
+                    className={`text-2xl ${metodoEnvio === "retiro"
+                      ? "text-primary"
+                      : "text-gray-400"
+                      }`}
                   />
                   <div className="text-left">
                     <p className="font-semibold">Retiro en tienda</p>
@@ -1149,46 +1673,50 @@ export default function Carrito() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
                         />
                         <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            value={direccionEnvio.distrito}
-                            onChange={(e) =>
-                              setDireccionEnvio({
-                                ...direccionEnvio,
-                                distrito: e.target.value,
-                              })
-                            }
-                            placeholder="Distrito"
-                            className="px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                          />
-                          <input
-                            type="text"
+                          <select
+                            value={direccionEnvio.departamento}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDireccionEnvio({ ...direccionEnvio, departamento: val, ciudad: "", distrito: "" });
+                              userLocations.handleDeptChange(val);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+                          >
+                            <option value="">Departamento</option>
+                            {userLocations.departments.map(d => <option key={d} value={d}>{d}</option>)}
+                          </select>
+
+                          <select
                             value={direccionEnvio.ciudad}
-                            onChange={(e) =>
-                              setDireccionEnvio({
-                                ...direccionEnvio,
-                                ciudad: e.target.value,
-                              })
-                            }
-                            placeholder="Ciudad"
-                            className="px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                          />
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDireccionEnvio({ ...direccionEnvio, ciudad: val, distrito: "" });
+                              userLocations.handleProvChange(val);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+                            disabled={!direccionEnvio.departamento}
+                          >
+                            <option value="">Provincia</option>
+                            {userLocations.provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                          </select>
                         </div>
-                        <input
-                          type="text"
-                          value={direccionEnvio.departamento}
-                          onChange={(e) =>
-                            setDireccionEnvio({
-                              ...direccionEnvio,
-                              departamento: e.target.value,
-                            })
-                          }
-                          placeholder="Departamento"
+
+                        <select
+                          value={direccionEnvio.distrito}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDireccionEnvio({ ...direccionEnvio, distrito: val });
+                            userLocations.handleDistChange(val);
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                        />
+                          disabled={!direccionEnvio.ciudad}
+                        >
+                          <option value="">Distrito</option>
+                          {userLocations.districts.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
                         <button
-                          onClick={() => setEditandoDireccion(false)}
-                          className="w-full bg-primary text-white py-2 rounded-sm text-sm font-semibold hover:bg-primary-dark transition"
+                          onClick={handleSaveAddress}
+                          className="w-full bg-primary text-white py-2 rounded-full text-sm font-semibold hover:bg-primary-dark transition"
                         >
                           Guardar dirección
                         </button>
@@ -1330,11 +1858,10 @@ export default function Carrito() {
                       return (
                         <div
                           key={tienda.id_store}
-                          className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${
-                            tiendaSeleccionada === tienda.id_store
-                              ? "border-primary bg-primary/5"
-                              : "border-gray-200 hover:border-primary/50"
-                          }`}
+                          className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${tiendaSeleccionada === tienda.id_store
+                            ? "border-primary bg-primary/5"
+                            : "border-gray-200 hover:border-primary/50"
+                            }`}
                           onClick={() => setTiendaSeleccionada(tienda.id_store)}
                         >
                           <div className="flex items-start justify-between">
@@ -1483,9 +2010,9 @@ export default function Carrito() {
                         );
                       const stockDisponible = tiendaSeleccionada
                         ? getStockEnTienda(
-                            item.product.id.toString(),
-                            tiendaSeleccionada
-                          )
+                          item.product.id.toString(),
+                          tiendaSeleccionada
+                        )
                         : 0;
 
                       return (
@@ -1579,9 +2106,8 @@ export default function Carrito() {
 
                               <div className="flex-1">
                                 <Link
-                                  href={`/tienda/${
-                                    item.product.productId || item.product.id
-                                  }`}
+                                  href={`/tienda/${item.product.id || item.product.productId
+                                    }`}
                                 >
                                   <h3 className="font-semibold text-lg mb-2 hover:text-primary transition">
                                     {getProductName(item.product)}
@@ -1758,19 +2284,64 @@ export default function Carrito() {
                 </span>
               </div>
 
+              {/* Checkboxes de términos y condiciones */}
+              <div className="space-y-3 mb-6 pb-6 border-b">
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    id="acceptTerms"
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
+                  />
+                  <label htmlFor="acceptTerms" className="text-sm text-gray-700 cursor-pointer">
+                    Acepto los{" "}
+                    <Link href="/estaticas/terminos-y-condiciones" className="text-primary hover:underline" target="_blank">
+                      Términos y Condiciones
+                    </Link>{" "}
+                    y la{" "}
+                    <Link href="/estaticas/politicas" className="text-primary hover:underline" target="_blank">
+                      Política de Privacidad
+                    </Link>
+                  </label>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    id="acceptNewsletter"
+                    checked={acceptNewsletter}
+                    onChange={(e) => setAcceptNewsletter(e.target.checked)}
+                    className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
+                  />
+                  <label htmlFor="acceptNewsletter" className="text-sm text-gray-500 cursor-pointer">
+                    Quiero recibir ofertas y beneficios exclusivos
+                  </label>
+                </div>
+              </div>
+
               <Button
-                href="/checkout"
+                href={isGuest && !guestDataCompleted ? undefined : "/checkout"}
                 variant="primary"
                 size="md"
                 className="w-full mb-3"
                 disabled={
-                  (metodoEnvio === "retiro" && !tiendaSeleccionada) ||
-                  (!isLoggedIn && !isGuest)
+                  (!isLoggedIn && !isGuest) ||
+                  (isGuest && !guestDataCompleted ? false : !acceptTerms || (metodoEnvio === "retiro" && !tiendaSeleccionada))
+                }
+                onClick={
+                  isGuest && !guestDataCompleted
+                    ? () => setShowLoginModal(true)
+                    : undefined
                 }
               >
                 {!isLoggedIn && !isGuest
                   ? "Inicia sesión para continuar"
-                  : "Finalizar compra"}
+                  : isGuest && !guestDataCompleted
+                    ? "Completa tus datos para continuar"
+                    : !acceptTerms
+                      ? "Acepta los términos para continuar"
+                      : "Finalizar compra"}
               </Button>
 
               <Button

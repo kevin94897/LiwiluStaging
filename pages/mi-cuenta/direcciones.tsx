@@ -11,6 +11,7 @@ import Textarea from '@/components/ui/Textarea';
 import { direccionSchema, DireccionSchemaType } from '@/lib/mi-cuenta/direccionSchema';
 import { FaPencil, FaTrash } from 'react-icons/fa6';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { useLocations } from "@/hooks/useLocations";
 
 interface Address {
 	id: string;
@@ -47,10 +48,14 @@ export default function Direcciones() {
 	const [errors, setErrors] = useState<Partial<Record<keyof DireccionSchemaType, string>>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
+	const locations = useLocations();
+
 	// Cargar direcciones al montar el componente
 	useEffect(() => {
 		fetchDirecciones();
 	}, []);
+
+
 
 	const fetchDirecciones = async () => {
 		try {
@@ -87,17 +92,7 @@ export default function Direcciones() {
 		}
 	};
 
-	const handleChange = (
-		e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-	) => {
-		const { name, value, type } = e.target;
-		setFormData(prev => ({
-			...prev,
-			[name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-		}));
-		// Limpiar error del campo
-		setErrors(prev => ({ ...prev, [name]: undefined }));
-	};
+
 
 	const handleCodigoPostalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const value = e.target.value.replace(/\D/g, ''); // Solo números
@@ -166,6 +161,28 @@ export default function Direcciones() {
 				isMain: formData.esPrincipal,
 			};
 
+			// Si se establece como principal, desmarcar la anterior
+			if (formData.esPrincipal && direccionPrincipal && direccionPrincipal.id !== direccionEditando) {
+				const prevPrincipalData = {
+					department: direccionPrincipal.department,
+					province: direccionPrincipal.province,
+					district: direccionPrincipal.district,
+					address: direccionPrincipal.address,
+					apartment: direccionPrincipal.apartment,
+					reference: direccionPrincipal.reference || '',
+					isMain: false,
+				};
+
+				await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/addresses/${direccionPrincipal.id}`, {
+					method: 'PUT',
+					headers: {
+						'Authorization': `Bearer ${accessToken}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(prevPrincipalData),
+				});
+			}
+
 			const url = direccionEditando
 				? `${process.env.NEXT_PUBLIC_API_URL}/users/addresses/${direccionEditando}`
 				: `${process.env.NEXT_PUBLIC_API_URL}/users/addresses`;
@@ -207,6 +224,18 @@ export default function Direcciones() {
 		}
 	};
 
+	const handleChange = (
+		e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+	) => {
+		const { name, value, type } = e.target;
+		setFormData(prev => ({
+			...prev,
+			[name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+		}));
+		// Limpiar error del campo
+		setErrors(prev => ({ ...prev, [name]: undefined }));
+	};
+
 	const resetFormulario = () => {
 		setFormData({
 			titulo: '',
@@ -219,6 +248,7 @@ export default function Direcciones() {
 			telefono: '',
 			esPrincipal: false,
 		});
+		locations.setLocationValues("", "", "");
 	};
 
 	const abrirFormularioNuevo = () => {
@@ -240,6 +270,7 @@ export default function Direcciones() {
 			telefono: '',
 			esPrincipal: address.isMain,
 		});
+		locations.setLocationValues(address.department, address.province, address.district);
 		setDireccionEditando(address.id);
 		setMostrarFormulario(true);
 		setErrors({});
@@ -482,46 +513,75 @@ export default function Direcciones() {
 
 												{/* Ciudad, Provincia, Distrito */}
 												<div className="grid md:grid-cols-3 gap-6">
-													<div>
-														<Input
-															label="Departamento *"
-															type="text"
+													<div className="flex flex-col gap-1">
+														<label htmlFor="ciudad" className="text-sm font-medium text-gray-700">
+															Departamento *
+														</label>
+														<select
 															id="ciudad"
 															name="ciudad"
 															value={formData.ciudad}
-															onChange={handleChange}
-															placeholder="Lima"
-															maxLength={50}
-															error={errors.ciudad}
-														/>
+															onChange={(e) => {
+																const val = e.target.value;
+																setFormData(prev => ({ ...prev, ciudad: val, provincia: "", distrito: "" }));
+																locations.handleDeptChange(val);
+															}}
+															className="w-full px-4 py-2 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none bg-white"
+														>
+															<option value="">Seleccionar</option>
+															{locations.departments.map((d) => (
+																<option key={d} value={d}>{d}</option>
+															))}
+														</select>
+														{errors.ciudad && <span className="text-red-500 text-xs">{errors.ciudad}</span>}
 													</div>
 
-													<div>
-														<Input
-															label="Provincia *"
-															type="text"
+													<div className="flex flex-col gap-1">
+														<label htmlFor="provincia" className="text-sm font-medium text-gray-700">
+															Provincia *
+														</label>
+														<select
 															id="provincia"
 															name="provincia"
 															value={formData.provincia}
-															onChange={handleChange}
-															placeholder="Lima"
-															maxLength={50}
-															error={errors.provincia}
-														/>
+															onChange={(e) => {
+																const val = e.target.value;
+																setFormData(prev => ({ ...prev, provincia: val, distrito: "" }));
+																locations.handleProvChange(val);
+															}}
+															className="w-full px-4 py-2 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none bg-white"
+															disabled={!formData.ciudad}
+														>
+															<option value="">Seleccionar</option>
+															{locations.provinces.map((p) => (
+																<option key={p} value={p}>{p}</option>
+															))}
+														</select>
+														{errors.provincia && <span className="text-red-500 text-xs">{errors.provincia}</span>}
 													</div>
 
-													<div>
-														<Input
-															label="Distrito *"
-															type="text"
+													<div className="flex flex-col gap-1">
+														<label htmlFor="distrito" className="text-sm font-medium text-gray-700">
+															Distrito *
+														</label>
+														<select
 															id="distrito"
 															name="distrito"
 															value={formData.distrito}
-															onChange={handleChange}
-															placeholder="San Isidro"
-															maxLength={50}
-															error={errors.distrito}
-														/>
+															onChange={(e) => {
+																const val = e.target.value;
+																setFormData(prev => ({ ...prev, distrito: val }));
+																locations.handleDistChange(val);
+															}}
+															className="w-full px-4 py-2 border border-gray-300 rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none bg-white"
+															disabled={!formData.provincia}
+														>
+															<option value="">Seleccionar</option>
+															{locations.districts.map((d) => (
+																<option key={d} value={d}>{d}</option>
+															))}
+														</select>
+														{errors.distrito && <span className="text-red-500 text-xs">{errors.distrito}</span>}
 													</div>
 												</div>
 

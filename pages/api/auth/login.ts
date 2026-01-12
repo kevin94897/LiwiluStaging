@@ -1,6 +1,7 @@
 // pages/api/auth/login.ts
 
 import { startTokenRefresh } from '@/lib/auth/tokenManager';
+import { mergeCart } from '@/lib/cart';
 
 // ============================================
 // Definición de usuario para correcta tipificación
@@ -59,6 +60,15 @@ export const loginUser = async (
     if (response.data?.user) {
       localStorage.setItem("user", JSON.stringify(response.data.user));
       console.log("✅ Usuario guardado:", response.data.user);
+    }
+
+    // 🛒 Intentar fusionar el carrito (merge cart)
+    try {
+      await mergeCart();
+      console.log("🛒 Carrito fusionado exitosamente");
+    } catch (cartError) {
+      console.warn("⚠️ No se pudo fusionar el carrito:", cartError);
+      // No bloqueamos el login si falla el merge del carrito
     }
 
     // 🆕 Iniciar sistema de renovación automática de tokens
