@@ -26,7 +26,7 @@ export default function Nosotros() {
                     <div className="absolute bottom-20 right-20 w-40 h-40 border-2 border-green-200 rounded-full opacity-40"></div>
 
                     <div className="max-w-6xl mx-auto relative z-10">
-                        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 text-center mb-8">
+                        <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 text-center mb-8">
                             ¿Quiénes somos?
                         </h1>
 
@@ -78,7 +78,7 @@ export default function Nosotros() {
                             {/* Misión */}
                             <div id='mision'>
                                 <div className="mb-4">
-                                    <h2 className="text-3xl md:text-4xl font-bold text-primary-dark relative inline-block">
+                                    <h2 className="text-3xl md:text-4xl font-semibold text-primary-dark relative inline-block">
                                         Nuestra Misión
                                         <span className="absolute -bottom-2 left-0 w-full h-1 bg-primary-dark"></span>
                                     </h2>
@@ -93,7 +93,7 @@ export default function Nosotros() {
                             {/* Visión */}
                             <div id='vision'>
                                 <div className="mb-4">
-                                    <h2 className="text-3xl md:text-4xl font-bold text-primary-dark relative inline-block">
+                                    <h2 className="text-3xl md:text-4xl font-semibold text-primary-dark relative inline-block">
                                         Nuestra Visión
                                         <span className="absolute -bottom-2 left-0 w-full h-1 bg-primary-dark"></span>
                                     </h2>
@@ -111,7 +111,7 @@ export default function Nosotros() {
                 {/* Valores Section */}
                 <div className="py-16 px-4">
                     <div className="max-w-6xl mx-auto">
-                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 text-center mb-12">
+                        <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 text-center mb-12">
                             Nuestros Valores
                         </h2>
 
@@ -123,7 +123,7 @@ export default function Nosotros() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 text-center mb-3">Calidad</h3>
+                                <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">Calidad</h3>
                                 <p className="text-gray-700 text-center">
                                     Nos comprometemos a ofrecer productos de la más alta calidad que superen las expectativas de nuestros clientes.
                                 </p>
@@ -136,7 +136,7 @@ export default function Nosotros() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                     </svg>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 text-center mb-3">Confianza</h3>
+                                <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">Confianza</h3>
                                 <p className="text-gray-700 text-center">
                                     Construimos relaciones duraderas basadas en la transparencia, honestidad y cumplimiento de nuestras promesas.
                                 </p>
@@ -149,7 +149,7 @@ export default function Nosotros() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                     </svg>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 text-center mb-3">Innovación</h3>
+                                <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">Innovación</h3>
                                 <p className="text-gray-700 text-center">
                                     Mejoramos continuamente nuestros procesos y servicios para ofrecer la mejor experiencia de compra digital.
                                 </p>
@@ -161,7 +161,7 @@ export default function Nosotros() {
                 {/* CTA Section */}
                 <div className="max-w-6xl mx-auto px-4 py-16">
                     <div className="bg-primary rounded-3xl p-8 md:p-12 text-center shadow-2xl">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                        <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4">
                             ¿Listo para trabajar con nosotros?
                         </h2>
                         <p className="text-green-50 text-lg mb-8 max-w-2xl mx-auto">

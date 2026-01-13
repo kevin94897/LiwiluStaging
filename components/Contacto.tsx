@@ -129,7 +129,7 @@ export default function Contacto() {
 			{/* Lado Derecho - Formulario */}
 			<div className="relative w-full md:w-1/2 bg-primary flex items-center justify-center p-10 md:-ml-12 z-20 rounded-tl-xl rounded-bl-xl">
 				<form onSubmit={handleSubmit} className="w-full max-w-md text-white space-y-6">
-					<h2 className="text-3xl md:text-6xl font-bold text-white text-left md:text-left">
+					<h2 className="text-3xl md:text-6xl font-semibold text-white text-left md:text-left">
 						¿Estás interesado(a)?
 					</h2>
 

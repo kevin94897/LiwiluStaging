@@ -22,7 +22,7 @@ export default function Politicas() {
                 <div className="relative py-16 px-4 overflow-hidden">
 
                     <div className="max-w-6xl mx-auto relative z-10">
-                        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 text-center mb-8">
+                        <h1 className="text-3xl md:text-4xl font-semibold text-gray-900 text-center mb-8">
                             Políticas de envío y recojo de productos
                         </h1>
 
@@ -46,7 +46,7 @@ export default function Politicas() {
                         {/* Política 1 */}
                         <div className="bg-white rounded-md p-6 md:p-8 shadow-lg">
                             <div className="mb-4">
-                                <h2 className="text-xl md:text-2xl font-bold relative inline-block">
+                                <h2 className="text-xl md:text-2xl font-semibold relative inline-block">
                                     1. ¿Cuáles son los tipos de entrega de pedido?
                                 </h2>
                             </div>
@@ -59,7 +59,7 @@ export default function Politicas() {
                         {/* Política 2 */}
                         <div className="rounded-md p-6 md:p-8 shadow-lg">
                             <div className="mb-4">
-                                <h2 className="text-xl md:text-2xl font-bold relative inline-block">
+                                <h2 className="text-xl md:text-2xl font-semibold relative inline-block">
                                     2. ¿Cuáles son los puntos de recojo de pedidos?
                                 </h2>
                             </div>
@@ -72,7 +72,7 @@ export default function Politicas() {
                         {/* Política 3 */}
                         <div className="rounded-md p-6 md:p-8 shadow-lg">
                             <div className="mb-4">
-                                <h2 className="text-xl md:text-2xl font-bold relative inline-block">
+                                <h2 className="text-xl md:text-2xl font-semibold relative inline-block">
                                     3. ¿Cuánto tardará en llegar mi pedido si solicité un envío a domicilio?
                                 </h2>
                             </div>
@@ -91,7 +91,7 @@ export default function Politicas() {
                         {/* Política 4 */}
                         <div className="rounded-md p-6 md:p-8 shadow-lg">
                             <div className="mb-4">
-                                <h2 className="text-xl md:text-2xl font-bold relative inline-block">
+                                <h2 className="text-xl md:text-2xl font-semibold relative inline-block">
                                     4. ¿Y si solicité recogerlo en un punto autorizado?
                                 </h2>
                             </div>
@@ -111,7 +111,7 @@ export default function Politicas() {
                         {/* Política 5 */}
                         <div className="rounded-md p-6 md:p-8 shadow-lg">
                             <div className="mb-4">
-                                <h2 className="text-xl md:text-2xl font-bold relative inline-block">
+                                <h2 className="text-xl md:text-2xl font-semibold relative inline-block">
                                     5. ¿Por qué me están cobrando doble delivery?
                                 </h2>
                             </div>
@@ -123,7 +123,7 @@ export default function Politicas() {
                         {/* Política 6 */}
                         <div className="rounded-md p-6 md:p-8 shadow-lg">
                             <div className="mb-4">
-                                <h2 className="text-xl md:text-2xl font-bold relative inline-block">
+                                <h2 className="text-xl md:text-2xl font-semibold relative inline-block">
                                     6. Mi pedido debería haber llegado, pero aún no lo he recibido ¿Qué puedo hacer?
                                 </h2>
                             </div>
@@ -137,7 +137,7 @@ export default function Politicas() {
                 {/* Info adicional Section */}
                 <div className="py-16 px-4">
                     <div className="max-w-6xl mx-auto">
-                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 text-center mb-12">
+                        <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 text-center mb-12">
                             Información importante
                         </h2>
 
@@ -149,7 +149,7 @@ export default function Politicas() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 text-center mb-3">Tiempo de entrega</h3>
+                                <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">Tiempo de entrega</h3>
                                 <p className="text-gray-700 text-center">
                                     5 días hábiles desde la emisión de su comprobante de pago
                                 </p>
@@ -163,7 +163,7 @@ export default function Politicas() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 text-center mb-3">Puntos de recojo</h3>
+                                <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">Puntos de recojo</h3>
                                 <p className="text-gray-700 text-center">
                                     Disponibles en Lima y provincia para su comodidad
                                 </p>
@@ -176,7 +176,7 @@ export default function Politicas() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                     </svg>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 text-center mb-3">Compra segura</h3>
+                                <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">Compra segura</h3>
                                 <p className="text-gray-700 text-center">
                                     Seguimiento completo de su pedido desde la compra hasta la entrega
                                 </p>
@@ -188,7 +188,7 @@ export default function Politicas() {
                 {/* CTA Section */}
                 <div className="max-w-6xl mx-auto px-4 py-16">
                     <div className="bg-primary rounded-3xl p-8 md:p-12 text-center shadow-2xl">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                        <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4">
                             ¿Tienes alguna duda?
                         </h2>
                         <p className="text-green-50 text-lg mb-8 max-w-2xl mx-auto">

@@ -24,6 +24,22 @@ export function useAuth() {
       } finally {
         setIsLoading(false);
       }
+
+      // Si tenemos token pero no usuario (o usuario incompleto), intentamos rehidratar desde API
+      const token = localStorage.getItem('accessToken');
+      const localUser = localStorage.getItem('user');
+
+      if (token && (!localUser || localUser === 'undefined')) {
+        import('@/lib/auth/apiClient').then(({ fetchUserProfile }) => {
+          fetchUserProfile().then((apiUser) => {
+            if (apiUser) {
+              // saveSession ya normaliza el usuario, así que lo leemos de nuevo
+              const { getCurrentUser } = require('@/lib/auth/authUtils');
+              setUser(getCurrentUser());
+            }
+          });
+        });
+      }
     };
 
     loadUser();

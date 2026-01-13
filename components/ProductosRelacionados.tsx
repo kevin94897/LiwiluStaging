@@ -256,7 +256,7 @@ export default function ProductosRelacionados({
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.4, ...transitions.bounce }}
                     >
-                      <span className="text-white font-bold text-xl">
+                      <span className="text-white font-semibold text-xl">
                         {formatPrice(product.price || 0)}
                       </span>
                       <span className="text-white text-sm line-through">

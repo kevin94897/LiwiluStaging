@@ -13,7 +13,7 @@ export default function Custom404() {
 
                     <div className="relative p-10 md:p-16 ">
 
-                        <p className="text-4xl font-bold text-gray-800 mb-6">
+                        <p className="text-4xl font-semibold text-gray-800 mb-6">
                             ¡Uy!
                         </p>
 
@@ -23,7 +23,7 @@ export default function Custom404() {
                             </h1>
                         </div>
 
-                        <h2 className="text-3xl md:text-4xl font-bold text-primary-dark mb-4">
+                        <h2 className="text-3xl md:text-4xl font-semibold text-primary-dark mb-4">
                             Página no encontrada
                         </h2>
 

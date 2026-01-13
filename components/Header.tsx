@@ -176,7 +176,7 @@ function QuickActions({
         <Link href="/carrito" className="relative">
           <FaShoppingCart size={18} />
           {cartCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-primary text-[#0b2d2d] font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center">
+            <span className="absolute -top-2 -right-2 bg-primary text-[#0b2d2d] font-semibold text-[10px] w-5 h-5 rounded-full flex items-center justify-center">
               {cartCount}
             </span>
           )}
@@ -253,7 +253,7 @@ function QuickActions({
       >
         <FaUser />
         <span>
-          {isAuthenticated && user?.firstName ? user.firstName : "Mi cuenta"}
+          {isAuthenticated ? (user?.firstName || user?.email?.split('@')[0] || "Mi cuenta") : "Mi cuenta"}
         </span>
       </button>
 
@@ -312,11 +312,13 @@ function QuickActions({
             // Menu para usuarios AUTENTICADOS
             <div className="absolute top-5 right-0 mt-3 w-64 rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
               {/* Header del menú */}
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <p className="text-sm font-semibold text-gray-900">
-                  {user?.firstName} {user?.lastName}
+              <div className="px-4 py-4 bg-gray-50 border-b border-gray-200">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {user?.firstName || user?.email?.split('@')[0] || "Usuario"} {user?.lastName || ""}
                 </p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
+                {user?.email && (
+                  <p className="text-xs text-gray-500 truncate mt-0.5">{user.email}</p>
+                )}
               </div>
 
               {/* Opciones del menú */}
@@ -635,7 +637,7 @@ export default function Header() {
                               className={`group flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
                                 ? "bg-primary text-white hover:bg-primary-light"
                                 : c.highlightBottom
-                                  ? "bg-gray-100 font-bold hover:bg-primary hover:text-white"
+                                  ? "bg-gray-100 font-semibold hover:bg-primary hover:text-white"
                                   : "hover:bg-primary hover:text-white"
                                 }`}
                             >

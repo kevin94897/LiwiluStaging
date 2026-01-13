@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { getProductImageUrl, formatPrice, getProductName } from "@/lib/utils";
@@ -33,18 +34,13 @@ import { useLocations } from "@/hooks/useLocations";
 import { z } from "zod";
 import { PiWarningCircleFill } from "react-icons/pi";
 import { FaPencil } from "react-icons/fa6";
-import { getCarriers, CartCarrier, getWarehouseDistricts, WarehouseDistrict } from "@/lib/cart";
+import { getCarriers, CartCarrier, getWarehouseDistricts, WarehouseDistrict, getWarehouseMap, WarehouseMapItem } from "@/lib/cart";
 
-// Interfaz de tienda
-interface Tienda {
-  id_store: string;
-  name: string;
-  district: string;
-  address: string;
-  phone?: string;
-  schedule?: string;
-  stock?: number;
-}
+const WarehouseMap = dynamic(() => import("@/components/WarehouseMap"), {
+  ssr: false,
+  loading: () => <div className="h-full w-full bg-gray-100 animate-pulse flex items-center justify-center">Cargando mapa...</div>
+});
+
 
 // Distritos disponibles
 
@@ -56,7 +52,7 @@ interface Tienda {
 export default function Carrito() {
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const [recordarme, setRecordarme] = useState(false);
-  const { items, removeFromCart, updateQuantity, clearCart, getCartTotal, updateCarrier, selectedCarrier: contextCarrier, totals } =
+  const { items, removeFromCart, updateQuantity, clearCart, getCartTotal, updateCarrier, selectedCarrier: contextCarrier, totals, cartExpired } =
     useCart();
   const [couponCode, setCouponCode] = useState("");
   const [metodoEnvio, setMetodoEnvio] = useState<"delivery" | "retiro">(
@@ -64,6 +60,7 @@ export default function Carrito() {
   );
   const [carriers, setCarriers] = useState<CartCarrier[]>([]);
   const [warehouseDistricts, setWarehouseDistricts] = useState<WarehouseDistrict[]>([]);
+  const [mapWarehouses, setMapWarehouses] = useState<WarehouseMapItem[]>([]);
   const [loadingCarriers, setLoadingCarriers] = useState(false);
   const [selectedCarrier, setSelectedCarrier] = useState<CartCarrier | null>(null);
   const [distritoSeleccionado, setDistritoSeleccionado] = useState("");
@@ -71,9 +68,6 @@ export default function Carrito() {
     null
   );
   const [mostrarMapa, setMostrarMapa] = useState(false);
-  const [productosEnTiendas, setProductosEnTiendas] = useState<
-    Record<string, Tienda[]>
-  >({});
   const [loadingStores, setLoadingStores] = useState(false);
   const [direccionEnvio, setDireccionEnvio] = useState({
     calle: "Calle continental 145",
@@ -82,8 +76,6 @@ export default function Carrito() {
     departamento: "Lima",
   });
   const [editandoDireccion, setEditandoDireccion] = useState(false);
-  const [validandoStock, setValidandoStock] = useState(false);
-  const [stockValidado, setStockValidado] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptNewsletter, setAcceptNewsletter] = useState(false);
 
@@ -339,10 +331,27 @@ export default function Carrito() {
     setDistritoSeleccionado("");
   };
 
-  const handleSeleccionarDistrito = (distrito: string) => {
+  const handleSeleccionarDistrito = async (distrito: string) => {
     setDistritoSeleccionado(distrito);
     setMostrarMapa(true);
     setTiendaSeleccionada(null);
+    setLoadingStores(true);
+
+    try {
+      // Find the codUbigeoAlm for the selected district
+      const district = warehouseDistricts.find(d => d.desDistrito === distrito);
+      if (district) {
+        console.log(`📍 Buscando almacenes para: ${distrito} (${district.codUbigeoAlm})`);
+        const response = await getWarehouseMap(district.codUbigeoAlm);
+        if (response.success) {
+          setMapWarehouses(response.data);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching map warehouses:", error);
+    } finally {
+      setLoadingStores(false);
+    }
   };
 
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -373,27 +382,6 @@ export default function Carrito() {
     setRegistroErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  const validarStockProductos = async () => {
-    setValidandoStock(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const todosConStock = items.every((item) => {
-        return item.quantity > 0 && item.quantity <= 100;
-      });
-      setStockValidado(todosConStock);
-
-      if (todosConStock) {
-        showToastMessage("Stock disponible para todos los productos");
-      } else {
-        showToastMessage("Algunos productos no tienen stock suficiente");
-      }
-    } catch (error) {
-      console.error("Error al validar stock:", error);
-      showToastMessage("Error al validar stock");
-    } finally {
-      setValidandoStock(false);
-    }
-  };
 
   const showToastMessage = (message: string) => {
     showToast(message, message.toLowerCase().includes("error") ? "error" : "success");
@@ -515,37 +503,6 @@ export default function Carrito() {
     showToast("¡Datos guardados! Continúa con tu compra.", "success");
   };
 
-  // Obtener tiendas por distrito
-  const getTiendasPorDistrito = (distrito: string): Tienda[] => {
-    const tiendasDelDistrito: Tienda[] = [];
-    Object.entries(productosEnTiendas).forEach(([_productId, tiendas]) => {
-      tiendas.forEach((tienda) => {
-        if (tienda.district === distrito) {
-          const existe = tiendasDelDistrito.find(
-            (t) => t.id_store === tienda.id_store
-          );
-          if (!existe) {
-            tiendasDelDistrito.push(tienda);
-          }
-        }
-      });
-    });
-    return tiendasDelDistrito;
-  };
-
-  // Verificar si un producto tiene stock en una tienda específica
-  const checkStockEnTienda = (productId: string, tiendaId: string): boolean => {
-    const tiendasDelProducto = productosEnTiendas[productId] || [];
-    const tienda = tiendasDelProducto.find((t) => t.id_store === tiendaId);
-    return tienda ? (tienda.stock || 0) > 0 : false;
-  };
-
-  // Obtener stock de un producto en una tienda
-  const getStockEnTienda = (productId: string, tiendaId: string): number => {
-    const tiendasDelProducto = productosEnTiendas[productId] || [];
-    const tienda = tiendasDelProducto.find((t) => t.id_store === tiendaId);
-    return tienda?.stock || 0;
-  };
 
   const subtotal = totals.subtotal;
   const envio = totals.shipping;
@@ -569,11 +526,8 @@ export default function Carrito() {
     return acc;
   }, 0);
 
-  const tiendasDisponibles = distritoSeleccionado
-    ? getTiendasPorDistrito(distritoSeleccionado)
-    : [];
-  const infoTiendaSeleccionada = tiendasDisponibles.find(
-    (t) => t.id_store === tiendaSeleccionada
+  const infoTiendaSeleccionada = mapWarehouses.find(
+    (w) => w.idAlmacen.toString() === tiendaSeleccionada
   );
 
   if (items.length === 0) {
@@ -598,7 +552,7 @@ export default function Carrito() {
                 d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
-            <h2 className="text-3xl font-bold text-primary-dark mb-4">
+            <h2 className="text-3xl font-semibold text-primary-dark mb-4">
               Tu carrito está vacío
             </h2>
             <p className="text-gray-600 mb-8">
@@ -609,6 +563,39 @@ export default function Carrito() {
               className="inline-block bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-3 rounded-full transition"
             >
               Ir a la tienda
+            </Link>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (cartExpired) {
+    return (
+      <Layout
+        title="Sesión Expirada - Liwilu"
+        description="Tu sesión de carrito ha expirado"
+        background={true}
+      >
+        <div className="max-w-7xl mx-auto px-6 py-16 my-32">
+          <div className="text-center animate-fade-in">
+            <div className="mx-auto h-24 w-24 text-primary/40 mb-6 flex items-center justify-center">
+              <FaRegClock size={80} />
+            </div>
+            <h2 className="text-3xl font-semibold text-primary-dark mb-4">
+              Tu sesión ha expirado
+            </h2>
+            <p className="text-gray-600 mb-2 max-w-md mx-auto">
+              Por tu seguridad, tu carrito de compras se ha limpiado automáticamente debido a inactividad.
+            </p>
+            <p className="text-gray-500 mb-8 max-w-md mx-auto text-sm">
+              ¡No te preocupes! Puedes volver a agregar tus productos favoritos a la tienda.
+            </p>
+            <Link
+              href="/productos"
+              className="inline-block bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-3 rounded-full transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            >
+              Volver a la tienda
             </Link>
           </div>
         </div>
@@ -741,7 +728,7 @@ export default function Carrito() {
               {/* TAB DE LOGIN */}
               {activeTab === "login" && (
                 <div className="animate-fade-in">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-2 text-center">
                     ¡Bienvenido de vuelta!
                   </h2>
                   <p className="text-gray-600 text-center mb-6">
@@ -850,7 +837,7 @@ export default function Carrito() {
               {/* TAB DE REGISTRO */}
               {activeTab === "registro" && (
                 <div className="animate-fade-in max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-2 text-center">
                     Crea tu cuenta
                   </h2>
                   <p className="text-gray-600 text-center mb-6">
@@ -1288,7 +1275,7 @@ export default function Carrito() {
               {/* TAB DE INVITADO */}
               {activeTab === "guest" && (
                 <div className="animate-fade-in max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-2 text-center">
                     Ingresa tus datos
                   </h2>
                   <p className="text-gray-600 text-center mb-6">
@@ -1616,9 +1603,9 @@ export default function Carrito() {
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold animate-fade-in">
+            <h1 className="md:text-3xl text-2xl font-semibold animate-fade-in">
               Carrito de compras{" "}
-              <span className="text-gray-500 text-xl">
+              <span className="text-gray-500 md:text-xl text-lg md:inline-block block">
                 ({items.length} productos)
               </span>
             </h1>
@@ -1631,7 +1618,7 @@ export default function Carrito() {
                 >
                   <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
                 </svg>
-                <span>{isLoggedIn ? loginData.email : "Invitado"}</span>
+                <span>Mi Cuenta</span>
               </div>
             )}
           </div>
@@ -1642,7 +1629,7 @@ export default function Carrito() {
           <div className="lg:col-span-2 space-y-6">
             {/* Método de envío */}
             <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in">
-              <h2 className="text-lg font-bold mb-4">
+              <h2 className="text-lg font-semibold mb-4">
                 Selecciona tu método de entrega
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1804,39 +1791,6 @@ export default function Carrito() {
                     )}
                   </div>
 
-                  {/* Validar Stock */}
-                  <div className="border-2 border-primary/20 rounded-sm p-4 bg-primary/5">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-gray-900 text-sm">
-                        Verificar disponibilidad
-                      </h3>
-                      {stockValidado && (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
-                          ✓ Verificado
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-600 mb-3">
-                      Valida que todos los productos tengan stock disponible
-                      antes de continuar
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={validarStockProductos}
-                      disabled={validandoStock}
-                    >
-                      {validandoStock ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                          Validando...
-                        </span>
-                      ) : (
-                        "Validar disponibilidad"
-                      )}
-                    </Button>
-                  </div>
                 </div>
               )}
 
@@ -1886,17 +1840,16 @@ export default function Carrito() {
                   </p>
                 </div>
 
-                {/* Mapa simulado */}
-                <div className="relative h-64 bg-gray-200 rounded-sm mb-6 overflow-hidden">
-                  <Image
-                    src="https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&h=400&fit=crop"
-                    alt="Mapa"
-                    fill
-                    className="object-cover opacity-70"
+                {/* Mapa Interactivo */}
+                <div className="relative h-96 bg-gray-100 rounded-sm mb-6 overflow-hidden border">
+                  <WarehouseMap
+                    warehouses={mapWarehouses}
+                    center={mapWarehouses.find(w => w.idAlmacen.toString() === tiendaSeleccionada) ?
+                      [
+                        mapWarehouses.find(w => w.idAlmacen.toString() === tiendaSeleccionada)!.latitud,
+                        mapWarehouses.find(w => w.idAlmacen.toString() === tiendaSeleccionada)!.longitud
+                      ] : undefined}
                   />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <FaMapMarkerAlt className="text-red-500 text-4xl animate-bounce" />
-                  </div>
                 </div>
 
                 {/* Lista de tiendas */}
@@ -1907,7 +1860,7 @@ export default function Carrito() {
                       Cargando tiendas disponibles...
                     </p>
                   </div>
-                ) : tiendasDisponibles.length === 0 ? (
+                ) : mapWarehouses.length === 0 ? (
                   <div className="text-center py-8 bg-amber-50 rounded-sm">
                     <FaTimesCircle className="text-amber-500 text-4xl mx-auto mb-3" />
                     <p className="text-amber-800 font-semibold">
@@ -1919,37 +1872,29 @@ export default function Carrito() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {tiendasDisponibles.map((tienda) => {
-                      const todosDisponibles = items.every((item) =>
-                        checkStockEnTienda(
-                          item.product.id.toString(),
-                          tienda.id_store
-                        )
-                      );
+                    {mapWarehouses.map((tienda) => {
+                      const todosDisponibles = true; // No tenemos stock por tienda en este API aún
 
                       return (
                         <div
-                          key={tienda.id_store}
-                          className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${tiendaSeleccionada === tienda.id_store
+                          key={tienda.idAlmacen}
+                          className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${tiendaSeleccionada === tienda.idAlmacen.toString()
                             ? "border-primary bg-primary/5"
                             : "border-gray-200 hover:border-primary/50"
                             }`}
-                          onClick={() => setTiendaSeleccionada(tienda.id_store)}
+                          onClick={() => setTiendaSeleccionada(tienda.idAlmacen.toString())}
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <h3 className="font-semibold text-gray-900">
-                                {tienda.name}
+                                {tienda.desAlmacen}
                               </h3>
-                              <p className="text-sm text-gray-600">
-                                {tienda.address}
-                              </p>
                               <p className="text-xs text-gray-500 mt-1">
-                                {tienda.schedule}
+                                Ubigeo: {tienda.codUbigeoAlm}
                               </p>
                             </div>
                             <div className="ml-4">
-                              {tiendaSeleccionada === tienda.id_store && (
+                              {tiendaSeleccionada === tienda.idAlmacen.toString() && (
                                 <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                                   <FaCheck className="text-white text-xs" />
                                 </div>
@@ -1957,52 +1902,11 @@ export default function Carrito() {
                             </div>
                           </div>
 
-                          {/* Disponibilidad de productos */}
+                          {/* Disponibilidad de productos (Simulada para almacenes dinámicos) */}
                           <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-xs font-semibold text-gray-700 mb-2">
-                              Disponibilidad:
+                            <p className="text-xs font-semibold text-green-700">
+                              ✓ Disponible para recojo en tienda
                             </p>
-                            <div className="space-y-1">
-                              {items.map((item) => {
-                                const disponible = checkStockEnTienda(
-                                  item.product.id.toString(),
-                                  tienda.id_store
-                                );
-                                const stock = getStockEnTienda(
-                                  item.product.id.toString(),
-                                  tienda.id_store
-                                );
-
-                                return (
-                                  <div
-                                    key={item.product.id}
-                                    className="flex items-center justify-between gap-2 text-xs"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      {disponible ? (
-                                        <FaCheck className="text-green-500 flex-shrink-0" />
-                                      ) : (
-                                        <FaTimes className="text-red-500 flex-shrink-0" />
-                                      )}
-                                      <span
-                                        className={
-                                          disponible
-                                            ? "text-gray-700"
-                                            : "text-gray-500"
-                                        }
-                                      >
-                                        {getProductName(item.product)}
-                                      </span>
-                                    </div>
-                                    {disponible && (
-                                      <span className="text-green-600 font-semibold">
-                                        {stock} unid.
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
                           </div>
 
                           {!todosDisponibles && (
@@ -2074,18 +1978,7 @@ export default function Carrito() {
                           : parseFloat(item.product.price || "0");
                       const precioTotal = precioUnitario * item.quantity;
 
-                      const enTiendaSeleccionada =
-                        tiendaSeleccionada &&
-                        checkStockEnTienda(
-                          item.product.id.toString(),
-                          tiendaSeleccionada
-                        );
-                      const stockDisponible = tiendaSeleccionada
-                        ? getStockEnTienda(
-                          item.product.id.toString(),
-                          tiendaSeleccionada
-                        )
-                        : 0;
+
 
                       return (
                         <div
@@ -2094,24 +1987,10 @@ export default function Carrito() {
                           style={{ animationDelay: `${index * 100}ms` }}
                         >
                           <div>
-                            {metodoEnvio === "retiro" && tiendaSeleccionada ? (
-                              enTiendaSeleccionada ? (
-                                <FaCheckCircle
-                                  size={25}
-                                  className="text-primary"
-                                />
-                              ) : (
-                                <FaTimesCircle
-                                  size={25}
-                                  className="text-red-500"
-                                />
-                              )
-                            ) : (
-                              <FaCheckCircle
-                                size={25}
-                                className="text-primary"
-                              />
-                            )}
+                            <FaCheckCircle
+                              size={25}
+                              className="text-primary"
+                            />
                           </div>
 
                           <div className="w-full">
@@ -2128,45 +2007,32 @@ export default function Carrito() {
                                       priority
                                     />
                                     <span className="font-semibold">
-                                      {infoTiendaSeleccionada.name}
+                                      {infoTiendaSeleccionada.desAlmacen}
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-between">
                                     <div className="text-neutral-grayLighter text-sm">
-                                      <p className="pb-1">
-                                        {infoTiendaSeleccionada.address}
+                                      <p className="pb-1 text-xs text-gray-500">
+                                        Ubigeo: {infoTiendaSeleccionada.codUbigeoAlm}
                                       </p>
                                       <div className="flex items-center gap-4">
-                                        {enTiendaSeleccionada ? (
-                                          <>
-                                            <span className="text-primary inline-flex gap-1 items-center">
-                                              <FaRegClock size={15} />{" "}
-                                              Disponible
-                                            </span>
-                                            <span>
-                                              {infoTiendaSeleccionada.schedule}
-                                            </span>
-                                            <span className="text-green-600 font-semibold">
-                                              {stockDisponible} en stock
-                                            </span>
-                                          </>
-                                        ) : (
-                                          <span className="text-red-500 inline-flex gap-1 items-center">
-                                            <FaTimes size={15} /> No disponible
-                                            en esta tienda
-                                          </span>
-                                        )}
+                                        <span className="text-primary inline-flex gap-1 items-center">
+                                          <FaRegClock size={15} />{" "}
+                                          Disponible para recojo
+                                        </span>
                                       </div>
                                     </div>
-                                    <div className="font-bold text-green-600">
+                                    <div className="font-semibold text-green-600">
                                       GRATIS
                                     </div>
                                   </div>
                                 </div>
                               )}
 
-                            <div className="flex gap-6">
-                              <div className="relative w-32 h-32 flex-shrink-0 bg-gray-50 rounded-sm overflow-hidden">
+                            <div className="flex flex-col-reverse md:flex-row gap-6">
+
+                              {/* Imagen */}
+                              <div className="relative w-32 h-32 shrink-0 bg-gray-50 rounded-sm overflow-hidden">
                                 <Image
                                   src={imageUrl}
                                   alt={getProductName(item.product)}
@@ -2176,20 +2042,34 @@ export default function Carrito() {
                                 />
                               </div>
 
-                              <div className="flex-1">
-                                <Link
-                                  href={`/tienda/${item.product.id || item.product.productId
-                                    }`}
-                                >
+                              {/* Contenido */}
+                              <div className="flex flex-1 items-start gap-6">
+
+                                {/* Info producto */}
+                                <div className="flex flex-col flex-1 min-w-0">
                                   <h3 className="font-semibold text-lg mb-2 hover:text-primary transition">
                                     {getProductName(item.product)}
                                   </h3>
-                                </Link>
-                                <p className="text-gray-600 text-sm mb-4">
-                                  SKU: {item.product.reference || "N/A"}
-                                </p>
 
-                                <div className="flex items-center justify-between">
+                                  <p className="text-gray-600 text-sm mb-4">
+                                    SKU: {item.product.reference || "N/A"}
+                                  </p>
+
+                                  <button
+                                    onClick={() =>
+                                      removeFromCart(item.product.id.toString())
+                                    }
+                                    className="text-red-500 hover:text-red-700 text-sm font-medium flex items-center gap-2 mt-auto"
+                                  >
+                                    <FaRegTrashAlt size={18} />
+                                    Eliminar
+                                  </button>
+                                </div>
+
+                                {/* Precio + cantidad */}
+                                <div className="flex flex-col items-end justify-between shrink-0 gap-4">
+
+                                  {/* Cantidad */}
                                   <div className="flex items-center border border-gray-300 rounded-sm">
                                     <button
                                       onClick={() =>
@@ -2202,9 +2082,11 @@ export default function Carrito() {
                                     >
                                       -
                                     </button>
+
                                     <span className="px-4 py-1 border-x">
                                       {item.quantity}
                                     </span>
+
                                     <button
                                       onClick={() =>
                                         handleUpdateQuantity(
@@ -2218,39 +2100,27 @@ export default function Carrito() {
                                     </button>
                                   </div>
 
+                                  {/* Precio */}
                                   <div className="text-right">
-                                    {/* Mostrar precio original tachado si hay descuento */}
                                     {item.product.originalPrice &&
-                                      parseFloat(
-                                        item.product.originalPrice.toString()
-                                      ) > precioUnitario && (
+                                      parseFloat(item.product.originalPrice.toString()) > precioUnitario && (
                                         <p className="text-sm text-gray-400 line-through">
-                                          {formatPrice(
-                                            item.product.originalPrice.toString()
-                                          )}
+                                          {formatPrice(item.product.originalPrice.toString())}
                                         </p>
                                       )}
 
-                                    <p className="text-2xl font-bold text-primary-dark">
+                                    <p className="text-2xl font-semibold text-primary-dark">
                                       {formatPrice(precioTotal.toString())}
                                     </p>
+
                                     <p className="text-xs text-gray-500">
-                                      {formatPrice(precioUnitario.toString())}{" "}
-                                      c/u
+                                      {formatPrice(precioUnitario.toString())} c/u
                                     </p>
                                   </div>
                                 </div>
-
-                                <button
-                                  onClick={() =>
-                                    removeFromCart(item.product.id.toString())
-                                  }
-                                  className="mt-4 text-red-500 hover:text-red-700 text-sm font-medium flex gap-2"
-                                >
-                                  <FaRegTrashAlt size={18} /> Eliminar
-                                </button>
                               </div>
                             </div>
+
                           </div>
                         </div>
                       );
@@ -2271,12 +2141,12 @@ export default function Carrito() {
               </button>
             </div>
             <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in">
-              <h2 className="text-lg font-bold mb-2 text-primary-dark">
+              <h2 className="text-lg font-semibold mb-2 text-primary-dark">
                 Persona autorizada a retirar
               </h2>
               <div className="">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="font-semibold text-[#606060]">
+                  <div className="text-dark">
                     <p>Nombre: Gonzalo Vera </p>
                     <p>DNI: 70255456</p>
                   </div>
@@ -2291,30 +2161,35 @@ export default function Carrito() {
             </div>
           </div>
 
-          {/* Resumen del pedido */}
-          <div className="lg:col-span-1 z-10">
-            <div className="bg-white rounded-sm shadow-lg p-6 sticky top-32 animate-fade-in">
-              <h2 className="text-xl font-bold mb-6">Resumen del pedido</h2>
+          {/* Sidebar Checkout */}
+          <div className="lg:col-span-1 z-10 space-y-6">
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Código de cupón
-                </label>
-                <div className="flex w-full">
-                  <input
-                    type="text"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    placeholder="Ingresa tu cupón"
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-l-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
+            {/* === SECCIÓN CUPÓN === */}
+            <div className="bg-white rounded-sm shadow-lg p-6 animate-fade-in">
+              <h3 className="text-lg font-semibold mb-4">Código de cupón</h3>
 
-                  <button className="bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-r-sm border border-primary">
-                    Aplicar
-                  </button>
-                </div>
+              <div className="flex flex-col sm:flex-row md:gap-0 gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder="Ingresa tu cupón"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-full md:rounded-r-none md:rounded-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+
+                <button
+                  className="w-full sm:w-auto bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-2 md:rounded-l-none rounded-full md:rounded-sm border border-primary transition-colors"
+                >
+                  Aplicar
+                </button>
               </div>
+            </div>
 
+            {/* === SECCIÓN RESUMEN === */}
+            <div className="bg-white rounded-sm shadow-lg p-6 lg:sticky lg:top-32 animate-fade-in">
+              <h2 className="text-xl font-semibold mb-6">Resumen del pedido</h2>
+
+              {/* Detalle */}
               <div className="space-y-3 mb-6 pb-6 border-b">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
@@ -2342,6 +2217,7 @@ export default function Carrito() {
                     )}
                   </span>
                 </div>
+
                 {metodoEnvio === "delivery" && selectedCarrier?.isFree && (
                   <p className="text-xs text-green-600 font-medium">
                     ¡Este método de envío es gratuito!
@@ -2349,14 +2225,15 @@ export default function Carrito() {
                 )}
               </div>
 
-              <div className="flex justify-between text-2xl font-bold mb-6">
+              {/* Total */}
+              <div className="flex justify-between text-2xl font-semibold mb-6">
                 <span>Total</span>
                 <span className="text-primary">
                   {formatPrice(total.toString())}
                 </span>
               </div>
 
-              {/* Checkboxes de términos y condiciones */}
+              {/* Términos */}
               <div className="space-y-3 mb-6 pb-6 border-b">
                 <div className="flex items-start gap-2">
                   <input
@@ -2392,6 +2269,7 @@ export default function Carrito() {
                 </div>
               </div>
 
+              {/* CTA */}
               <Button
                 href={isGuest && !guestDataCompleted ? undefined : "/checkout"}
                 variant="primary"
@@ -2399,7 +2277,7 @@ export default function Carrito() {
                 className="w-full mb-3"
                 disabled={
                   (!isLoggedIn && !isGuest) ||
-                  (isGuest && !guestDataCompleted ? false : !acceptTerms || (metodoEnvio === "retiro" && !tiendaSeleccionada))
+                  (!acceptTerms || (metodoEnvio === "retiro" && !tiendaSeleccionada))
                 }
                 onClick={
                   isGuest && !guestDataCompleted
@@ -2411,21 +2289,15 @@ export default function Carrito() {
                   ? "Inicia sesión para continuar"
                   : isGuest && !guestDataCompleted
                     ? "Completa tus datos para continuar"
-                    : !acceptTerms
-                      ? "Acepta los términos para continuar"
-                      : "Finalizar compra"}
+                    : "Finalizar compra"}
               </Button>
 
-              <Button
-                href="/productos"
-                variant="outline"
-                size="md"
-                className="w-full"
-              >
+              <Button href="/productos" variant="outline" size="md" className="w-full">
                 Seguir comprando
               </Button>
             </div>
           </div>
+
         </div>
       </div>
 

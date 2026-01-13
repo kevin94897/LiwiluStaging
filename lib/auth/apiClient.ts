@@ -142,6 +142,48 @@ export const validateToken = async (): Promise<boolean> => {
 };
 
 /**
+ * Obtiene el perfil del usuario desde la API y actualiza localStorage
+ * Útil para rehidratar la sesión si faltan datos locales
+ */
+export const fetchUserProfile = async (): Promise<any | null> => {
+    try {
+        const accessToken = localStorage.getItem('accessToken');
+        if (!accessToken) return null;
+
+        console.log('🔄 Fetching user profile from API...');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/profile`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            // Asegurarnos de tener la estructura de usuario correcta
+            // La API puede devolver { success: true, data: user } o directamente user
+            const userData = data.data || data;
+
+            if (userData) {
+                // Importar dinámicamente para evitar dependencias circulares si es necesario, 
+                // o usar la lógica de guardado localmente aquí
+                const { saveSession } = await import('./authUtils');
+                const refreshToken = localStorage.getItem('refreshToken') || '';
+
+                // Guardar sesión actualizada
+                saveSession(userData, accessToken, refreshToken);
+                return userData;
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error('❌ Error fetching user profile:', error);
+        return null;
+    }
+};
+
+/**
  * Hook para proteger rutas
  * Valida el token antes de mostrar el contenido
  */

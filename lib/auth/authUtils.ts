@@ -19,13 +19,22 @@ export interface User {
  * Handles both camelCase (firstName) and lowercase (firstname) field names.
  */
 export const mapApiUserToUser = (userData: any): User | null => {
-    if (!userData) return null;
+    // Si existe el campo genérico 'name' pero no firstName/lastName, intentamos dividirlo
+    let firstName = userData.firstName || userData.firstname || '';
+    let lastName = userData.lastName || userData.lastname || '';
+    const fullName = userData.name || '';
+
+    if (!firstName && fullName) {
+        const parts = fullName.trim().split(' ');
+        firstName = parts[0];
+        lastName = parts.slice(1).join(' ');
+    }
 
     return {
         id: String(userData.id || userData.uuid || ''),
         email: userData.email || '',
-        firstName: userData.firstName || userData.firstname || '',
-        lastName: userData.lastName || userData.lastname || '',
+        firstName: firstName,
+        lastName: lastName,
         role: userData.role || '',
         electronicSignatureUrl: userData.electronicSignatureUrl || null,
         emailVerified: !!userData.emailVerified

@@ -151,7 +151,7 @@ export default function LoginModal({
 					<div className="p-8">
 						{/* Header */}
 						<div className="mb-6">
-							<h2 className="text-3xl font-bold text-primary-dark mb-2">
+							<h2 className="text-3xl font-semibold text-primary-dark mb-2">
 								Inicia sesión
 							</h2>
 							<p className="text-gray-600 text-sm">

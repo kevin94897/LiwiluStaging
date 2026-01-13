@@ -178,11 +178,11 @@ export default function NuestrosProductos({
 			<Link href={`/tienda/${producto.id}`}>
 				<div className="bg-white rounded-md shadow-lg overflow-hidden hover:shadow-xl transition h-full">
 					<div className="relative">
-						<span className="absolute top-2 left-2 bg-primary text-white px-3 py-1 rounded-full text-xs font-bold z-10">
+						<span className="absolute top-2 left-2 bg-primary text-white px-3 py-1 rounded-full text-xs font-semibold z-10">
 							OFERTA
 						</span>
 						{(producto.quantity ?? 0) <= 0 && (
-							<span className="absolute top-2 right-2 md:right-auto md:left-2 md:top-10 bg-red-400 text-white px-3 py-1 rounded-full text-xs font-bold z-20 shadow-md">
+							<span className="absolute top-2 right-2 md:right-auto md:left-2 md:top-10 bg-red-400 text-white px-3 py-1 rounded-full text-xs font-semibold z-20 shadow-md">
 								AGOTADO
 							</span>
 						)}
@@ -227,7 +227,7 @@ export default function NuestrosProductos({
 									parseFloat((producto.price || 0).toString()) * 1.2
 								)}
 							</span>
-							<span className="text-white font-bold text-lg">
+							<span className="text-white font-semibold text-lg">
 								{formatPrice(producto.price || 0)}
 							</span>
 						</div>

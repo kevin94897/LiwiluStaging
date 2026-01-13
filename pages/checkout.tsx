@@ -193,7 +193,7 @@ export default function Checkout() {
         background={true}
       >
         <div className="max-w-7xl mx-auto px-6 py-16 mt-32 text-center">
-          <h2 className="text-2xl font-bold mb-4">
+          <h2 className="text-2xl font-semibold mb-4">
             No hay productos en el carrito
           </h2>
           <button
@@ -247,7 +247,7 @@ export default function Checkout() {
 
             {/* Tipo de Comprobante */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
-              <h2 className="text-xl font-bold mb-2 text-gray-900">Comprobante de Pago</h2>
+              <h2 className="text-xl font-semibold mb-2 text-gray-900">Comprobante de Pago</h2>
               <p className="text-gray-500 mb-8">
                 Selecciona el tipo de documento para tu compra
               </p>
@@ -390,7 +390,7 @@ export default function Checkout() {
 
             {/* Tipo de pago */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
-              <h2 className="text-xl font-bold mb-2 text-gray-900">Método de pago</h2>
+              <h2 className="text-xl font-semibold mb-2 text-gray-900">Método de pago</h2>
               <p className="text-gray-500 mb-8">
                 Elige la opción más conveniente para ti
               </p>
@@ -480,7 +480,7 @@ export default function Checkout() {
                 <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xl">🧪</span>
-                    <p className="text-sm font-bold text-blue-900">
+                    <p className="text-sm font-semibold text-blue-900">
                       Modo de pruebas activo
                     </p>
                   </div>
@@ -527,7 +527,7 @@ export default function Checkout() {
                   {['VISA', 'MC', 'AMEX'].map((card) => (
                     <div
                       key={card}
-                      className="px-2 py-1 bg-gray-50 border border-gray-200 rounded text-[9px] font-bold tracking-wider shadow-sm"
+                      className="px-2 py-1 bg-gray-50 border border-gray-200 rounded text-[9px] font-semibold tracking-wider shadow-sm"
                     >
                       {card}
                     </div>
@@ -543,7 +543,7 @@ export default function Checkout() {
           {/* Columna derecha - Resumen */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-md shadow-lg p-6 sticky top-24">
-              <h2 className="text-xl font-bold mb-6">Resumen del pedido</h2>
+              <h2 className="text-xl font-semibold mb-6">Resumen del pedido</h2>
 
               <div className="space-y-4 mb-6">
                 {items.map((item) => {
@@ -628,7 +628,7 @@ export default function Checkout() {
                     {formatPrice(envio.toString())}
                   </span>
                 </div>
-                <div className="flex justify-between text-lg font-bold pt-4 border-t border-gray-100">
+                <div className="flex justify-between text-lg font-semibold pt-4 border-t border-gray-100">
                   <span className="text-gray-900">Total</span>
                   <span className="text-primary">
                     {formatPrice(total.toString())}
@@ -643,7 +643,7 @@ export default function Checkout() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-[11px] font-bold text-gray-800 uppercase tracking-tight">Compra 100% Segura</p>
+                      <p className="text-[11px] font-semibold text-gray-800 uppercase tracking-tight">Compra 100% Segura</p>
                       <p className="text-[10px] text-gray-500 line-clamp-2">Protegemos tus datos con los más altos estándares de seguridad (PCI DSS).</p>
                     </div>
                   </div>

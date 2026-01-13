@@ -160,7 +160,7 @@ export default function ForgotPasswordModal({
                         <div className="mb-6">
                             {!emailSent ? (
                                 <>
-                                    <h2 className="text-3xl font-bold text-primary-dark mb-2">
+                                    <h2 className="text-3xl font-semibold text-primary-dark mb-2">
                                         ¿Olvidaste tu contraseña?
                                     </h2>
                                     <p className="text-gray-600 text-sm">
@@ -183,7 +183,7 @@ export default function ForgotPasswordModal({
                                             />
                                         </svg>
                                     </div>
-                                    <h2 className="text-2xl font-bold text-primary-dark mb-2 text-center">
+                                    <h2 className="text-2xl font-semibold text-primary-dark mb-2 text-center">
                                         ¡Correo enviado!
                                     </h2>
                                 </>

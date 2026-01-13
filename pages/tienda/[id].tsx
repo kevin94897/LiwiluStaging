@@ -830,7 +830,7 @@ export default function ProductDetail({
               <div className="md:p-6">
                 {/* Badge condición */}
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="bg-[#D3D3D3] text-greendark-500 px-3 py-1 rounded-full text-xs font-bold uppercase">
+                  <span className="bg-[#D3D3D3] text-greendark-500 px-3 py-1 rounded-full text-xs font-semibold uppercase">
                     {basicData.condition === "new"
                       ? "Nuevo"
                       : basicData.condition === "used"
@@ -842,7 +842,7 @@ export default function ProductDetail({
                 </div>
 
                 {/* Título */}
-                <h1 className="text-2xl md:text-4xl font-bold mb-2 text-primary-dark">
+                <h1 className="text-2xl md:text-4xl font-semibold mb-2 text-primary-dark">
                   {basicData.name}
                 </h1>
 
@@ -859,7 +859,7 @@ export default function ProductDetail({
 
                 {/* Precio */}
                 <div className="flex items-center gap-4 mb-6">
-                  <span className="text-4xl font-bold text-primary-dark">
+                  <span className="text-4xl font-semibold text-primary-dark">
                     {formatPrice(getCurrentPrice.priceWithTax)}
                   </span>
                   <span className="text-lg text-[#D3D3D3] line-through font-bold">

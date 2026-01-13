@@ -422,7 +422,7 @@ export default function Tienda({
             <span className="text-[12px] md:text-sm font-light mb-2 block animate-fade-in">
               NUEVO
             </span>
-            <h1 className="text-2xl md:text-5xl font-bold mb-2 text-primary-light leading-tight animate-slide-up">
+            <h1 className="text-2xl md:text-5xl font-semibold mb-2 text-primary-light leading-tight animate-slide-up">
               MacBook Pro de 14 pulgadas M4
             </h1>
             <p className="text-[12px] md:text-sm font-light text-secondary animate-fade-in-delay">
@@ -696,7 +696,7 @@ export default function Tienda({
                     />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-2 animate-slide-up text-center">
+                <h3 className="text-2xl font-semibold text-gray-800 mb-2 animate-slide-up text-center">
                   No se encontraron productos
                 </h3>
                 <p className="text-gray-500 text-center mb-6 max-w-md animate-fade-in-delay">
@@ -758,7 +758,7 @@ export default function Tienda({
                           <div className="relative w-full h-56 bg-gray-100 overflow-hidden">
                             {/* {(product.quantity ?? 0) <= 0 && (
                               <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 pointer-events-none">
-                                <span className="bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg transform -rotate-12 scale-110">
+                                <span className="bg-red-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg transform -rotate-12 scale-110">
                                   AGOTADO
                                 </span>
                               </div>
@@ -792,7 +792,7 @@ export default function Tienda({
                           </div>
 
                           <div className="flex items-center gap-2 mb-6">
-                            <span className="text-white font-bold text-xl">
+                            <span className="text-white font-semibold text-xl">
                               {formatPrice(product.price || 0)}
                             </span>
                             <span className="text-white text-sm line-Categorías">

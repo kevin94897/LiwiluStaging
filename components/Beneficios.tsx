@@ -62,7 +62,7 @@ export default function Beneficios() {
 				{features.map((feature, index) => (
 					<div key={index} className="flex flex-col items-center space-y-4">
 						{feature.icon}
-						<p className="text-gray-500 text-sm leading-normal max-w-[180px] font-bold uppercase h-10">
+						<p className="text-gray-500 text-sm leading-normal max-w-[180px] font-semibold uppercase h-10">
 							{feature.text}
 						</p>
 					</div>

@@ -97,7 +97,7 @@ export function TrimegistoDNIModal({
                 >
                     <div className="p-8">
                         <div className="mb-8 text-center">
-                            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                            <h2 className="text-3xl font-semibold text-gray-900 mb-2">
                                 Ingresa tu DNI
                             </h2>
                             <p className="text-gray-600 text-sm">
@@ -295,7 +295,7 @@ export function TrimegistoRegisterModal({
                 >
                     <div className="p-8">
                         <div className="mb-6">
-                            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                            <h2 className="text-3xl font-semibold text-gray-900 mb-2">
                                 Crea tu cuenta
                             </h2>
                             <p className="text-gray-600 text-sm">

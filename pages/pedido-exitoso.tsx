@@ -73,13 +73,13 @@ export default function PedidoExitoso() {
 
                             {/* Mensaje de éxito */}
                             <div className="space-y-4">
-                                <h1 className="text-4xl font-bold text-gray-900">
+                                <h1 className="text-4xl font-semibold text-gray-900">
                                     GRACIAS {nombreCliente}
                                 </h1>
 
                                 <div className="bg-white rounded-2xl shadow-lg p-6 max-w-md mx-auto">
                                     <p className="text-gray-700 text-lg mb-2">
-                                        Tu pedido N° <span className="font-bold text-primary">{numeroPedido}</span>
+                                        Tu pedido N° <span className="font-semibold text-primary">{numeroPedido}</span>
                                     </p>
                                     <p className="text-gray-700 text-lg font-semibold">
                                         ha sido registrado con éxito
@@ -116,7 +116,7 @@ export default function PedidoExitoso() {
                         {/* Columna derecha - Resumen del pedido */}
                         <div className="animate-fade-in-right">
                             <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-gray-100 sticky top-24">
-                                <h2 className="text-2xl font-bold mb-6 pb-4 border-b-2 border-gray-100">
+                                <h2 className="text-2xl font-semibold mb-6 pb-4 border-b-2 border-gray-100">
                                     Resumen del pedido
                                 </h2>
 
@@ -142,7 +142,7 @@ export default function PedidoExitoso() {
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="font-bold text-gray-900">
+                                                <p className="font-semibold text-gray-900">
                                                     {formatPrice((producto.precio * producto.cantidad).toString())}
                                                 </p>
                                             </div>
@@ -166,7 +166,7 @@ export default function PedidoExitoso() {
                                         </span>
                                     </div>
 
-                                    <div className="flex justify-between text-2xl font-bold text-gray-900 pt-4 border-t-2 border-gray-100">
+                                    <div className="flex justify-between text-2xl font-semibold text-gray-900 pt-4 border-t-2 border-gray-100">
                                         <span>Total</span>
                                         <span className="text-primary">
                                             S/ {pedidoData.total.toFixed(2)}
@@ -175,10 +175,10 @@ export default function PedidoExitoso() {
 
                                     <div className="bg-green-50 rounded-sm p-4 border-2 border-green-200">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-lg font-bold text-green-800">
+                                            <span className="text-lg font-semibold text-green-800">
                                                 Pagado
                                             </span>
-                                            <span className="text-xl font-bold text-green-600">
+                                            <span className="text-xl font-semibold text-green-600">
                                                 S/ {pedidoData.total.toFixed(2)}
                                             </span>
                                         </div>
@@ -189,7 +189,7 @@ export default function PedidoExitoso() {
                                 <div className="mt-8 pt-6 border-t-2 border-gray-100 space-y-3">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Número de pedido:</span>
-                                        <span className="font-bold text-gray-900">#{numeroPedido}</span>
+                                        <span className="font-semibold text-gray-900">#{numeroPedido}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Fecha:</span>
@@ -238,7 +238,7 @@ export default function PedidoExitoso() {
 
                     {/* Sección de ayuda */}
                     <div className="mt-12 bg-white rounded-2xl shadow-lg p-8 text-center">
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-4">
                             ¿Necesitas ayuda con tu pedido?
                         </h3>
                         <p className="text-gray-600 mb-6">

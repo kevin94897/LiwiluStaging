@@ -210,7 +210,7 @@ export default function RastreoPedido() {
                         <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-green-400 to-green-600"></div>
 
                         <div className="relative">
-                            <h1 className="text-3xl font-bold text-gray-900 mb-3">
+                            <h1 className="text-3xl font-semibold text-gray-900 mb-3">
                                 Rastrea tu pedido
                             </h1>
                             <p className="text-gray-600 mb-6">
@@ -232,7 +232,7 @@ export default function RastreoPedido() {
                                 {/* <button
                                     onClick={handleBuscarPedido}
                                     disabled={buscando}
-                                    className="bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-4 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-8 py-4 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {buscando ? 'Buscando...' : 'Buscar'}
                                 </button> */}
@@ -259,7 +259,7 @@ export default function RastreoPedido() {
                                 <div className="h-2 bg-gradient-to-r from-green-400 to-green-600"></div>
                                 <div className="relative">
                                     <div className="p-8">
-                                        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                                        <h2 className="text-2xl font-semibold text-gray-900 mb-6">
                                             Pedido en camino
                                         </h2>
 
@@ -270,7 +270,7 @@ export default function RastreoPedido() {
                                                 <p className="text-sm text-gray-500 mb-1">
                                                     {pedidoEncontrado.producto.talla}
                                                 </p>
-                                                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                                                <h3 className="text-2xl font-semibold text-gray-900 mb-2">
                                                     PD. {pedidoEncontrado.numero}
                                                 </h3>
                                                 <p className="text-gray-600 mb-4">
@@ -293,11 +293,11 @@ export default function RastreoPedido() {
 
                                                 {/* Precio */}
                                                 <div className="text-left sm:max-w-[40%] self-center">
-                                                    <h4 className="text-2xl font-bold text-gray-900 mb-1">
+                                                    <h4 className="text-2xl font-semibold text-gray-900 mb-1">
                                                         {pedidoEncontrado.producto.nombre}
                                                     </h4>
                                                     <div className="flex items-center gap-2 justify-start">
-                                                        <span className="text-2xl font-bold text-gray-900">
+                                                        <span className="text-2xl font-semibold text-gray-900">
                                                             s/{pedidoEncontrado.producto.precio.toFixed(2)}
                                                         </span>
                                                         {pedidoEncontrado.producto.precioAnterior && (
@@ -327,7 +327,7 @@ export default function RastreoPedido() {
                                                     <div className="w-32 flex-shrink-0 pt-1 md:block hidden">
                                                         {estado.fecha && (
                                                             <>
-                                                                <p className="text-lg font-bold text-gray-900">
+                                                                <p className="text-lg font-semibold text-gray-900">
                                                                     {estado.fecha}
                                                                 </p>
                                                                 <p className="text-sm text-gray-600">
@@ -352,7 +352,7 @@ export default function RastreoPedido() {
                                                     {/* Contenido */}
                                                     <div className="flex-1 pt-1">
                                                         <h3
-                                                            className={`text-xl font-bold mb-2 ${estado.completado || estado.activo
+                                                            className={`text-xl font-semibold mb-2 ${estado.completado || estado.activo
                                                                 ? 'text-gray-900'
                                                                 : 'text-gray-500'
                                                                 }`}
@@ -391,7 +391,7 @@ export default function RastreoPedido() {
                                         </svg>
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-gray-900 mb-1">
+                                        <h3 className="font-semibold text-gray-900 mb-1">
                                             ¿Tienes alguna pregunta sobre tu pedido?
                                         </h3>
                                         <p className="text-sm text-gray-700 mb-3">

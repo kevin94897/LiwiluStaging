@@ -99,7 +99,7 @@ export default function Aptitudes() {
 						<div key={index}>
 							<div className="flex flex-col items-center text-center space-y-4 px-6">
 								{feature.icon}
-								<p className="text-gray-500 text-sm max-w-[180px] font-bold mx-auto">
+								<p className="text-gray-500 text-sm max-w-[180px] font-semibold mx-auto">
 									{feature.text}
 								</p>
 							</div>

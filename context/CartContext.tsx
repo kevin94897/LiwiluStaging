@@ -35,6 +35,7 @@ interface CartContextType {
   selectedCarrier: CartCarrier | null;
   totals: { subtotal: number; shipping: number; total: number };
   isLoading: boolean;
+  cartExpired: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -44,6 +45,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [totals, setTotals] = useState({ subtotal: 0, shipping: 0, total: 0 });
   const [selectedCarrier, setSelectedCarrier] = useState<CartCarrier | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [cartExpired, setCartExpired] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Cargar carrito y sesión desde localStorage al iniciar
@@ -116,6 +118,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const response = await apiGetCart();
 
       if (response.success) {
+        setCartExpired(false);
         // Actualizar Session ID si viene en la respuesta
         updateSessionId(response.data.sessionId);
 
@@ -133,6 +136,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         setTotals(response.data.totals);
         setSelectedCarrier(response.data.carrier);
+      } else if (response.isExpired) {
+        console.warn("⚠️ Local cart expired, clearing...");
+        setCartExpired(true);
+        setItems([]);
+        setTotals({ subtotal: 0, shipping: 0, total: 0 });
+        setSelectedCarrier(null);
+        localStorage.removeItem("liwilu_cart");
+        localStorage.removeItem("liwilu_session_id");
+        setSessionId(null);
       }
     } catch (error: any) {
       // If not authenticated or error, keep local cart
@@ -377,6 +389,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         selectedCarrier,
         totals,
         isLoading,
+        cartExpired,
       }}
     >
       {children}

@@ -123,7 +123,7 @@ export default function AddToCartModal({
 									{getProductName(product)}
 								</h4>
 								<div className="flex items-baseline gap-2">
-									<span className="text-2xl font-bold text-primary-dark">
+									<span className="text-2xl font-semibold text-primary-dark">
 										{formatPrice(product.price || 0)}
 									</span>
 									<span className="text-sm text-gray-400 line-through">

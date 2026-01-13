@@ -152,7 +152,7 @@ export default function Home({
 						</motion.span>
 
 						<motion.h1
-							className="md:text-6xl text-4xl font-bold mb-4 text-primary-light"
+							className="md:text-6xl text-4xl font-semibold mb-4 text-primary-light"
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: 0.4, duration: 0.6 }}
@@ -177,7 +177,7 @@ export default function Home({
 							transition={{ delay: 0.6, duration: 0.5 }}
 						>
 							Compra desde:{' '}
-							<span className="text-xl md:text-3xl font-bold border-2 p-2 rounded-lg border-primary whitespace-nowrap leading-[65px]">
+							<span className="text-xl md:text-3xl font-semibold border-2 p-2 rounded-lg border-primary whitespace-nowrap leading-[65px]">
 								S/ 3,500
 							</span>
 						</motion.p>

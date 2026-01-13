@@ -200,7 +200,7 @@ export default function LibroReclamaciones() {
                         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                             <FaCheckCircle className="text-4xl text-green-600" />
                         </div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
                             ¡Reclamo enviado exitosamente!
                         </h2>
                         <p className="text-gray-600 mb-6">
@@ -213,7 +213,7 @@ export default function LibroReclamaciones() {
                         </div>
                         <Link
                             href="/"
-                            className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-full transition-all duration-300"
+                            className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold px-8 py-3 rounded-full transition-all duration-300"
                         >
                             Volver al inicio
                         </Link>
@@ -231,7 +231,7 @@ export default function LibroReclamaciones() {
                     <div className="bg-white rounded-3xl shadow-lg p-8 mb-8 z-10 relative">
                         <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-6">
                             <div className="flex-1">
-                                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+                                <h1 className="text-3xl md:text-4xl font-semibold text-gray-900 mb-2">
                                     Libro de Reclamaciones
                                 </h1>
                                 <p className="text-gray-600">
@@ -240,7 +240,7 @@ export default function LibroReclamaciones() {
                             </div>
                             <div className="flex-shrink-0">
                                 <div className="w-32 h-32 bg-gray-100 rounded-sm flex items-center justify-center">
-                                    <span className="text-4xl font-bold text-green-600">LIWILU</span>
+                                    <span className="text-4xl font-semibold text-green-600">LIWILU</span>
                                 </div>
                             </div>
                         </div>
@@ -256,7 +256,7 @@ export default function LibroReclamaciones() {
                     <div className="bg-white rounded-3xl shadow-lg p-8 space-y-8">
                         {/* Datos del Consumidor */}
                         <div>
-                            <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-green-500">
+                            <h2 className="text-2xl font-semibold text-gray-900 mb-6 pb-2 border-b-2 border-green-500">
                                 1. Datos del Consumidor Reclamante
                             </h2>
 
@@ -388,7 +388,7 @@ export default function LibroReclamaciones() {
 
                         {/* Identificación del Bien Contratado */}
                         <div>
-                            <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-green-500">
+                            <h2 className="text-2xl font-semibold text-gray-900 mb-6 pb-2 border-b-2 border-green-500">
                                 2. Identificación del Bien Contratado
                             </h2>
 
@@ -448,7 +448,7 @@ export default function LibroReclamaciones() {
 
                         {/* Detalle del Reclamo */}
                         <div>
-                            <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-green-500">
+                            <h2 className="text-2xl font-semibold text-gray-900 mb-6 pb-2 border-b-2 border-green-500">
                                 3. Detalle de la Reclamación o Queja
                             </h2>
 
@@ -508,7 +508,7 @@ export default function LibroReclamaciones() {
 
                         {/* Información Legal */}
                         <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-sm">
-                            <h3 className="font-bold text-gray-900 mb-3 flex items-center">
+                            <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
                                 <svg className="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                 </svg>

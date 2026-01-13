@@ -15,6 +15,7 @@ export interface CartProduct {
     quantity: number;
     coverImage: string;
     subtotal: number;
+    codArticle: string | null;
 }
 
 /**
@@ -138,7 +139,7 @@ export async function addToCart(productId: number, quantity: number): Promise<Ad
  * Get the current cart
  * @returns Promise with the cart data
  */
-export async function getCart(): Promise<GetCartResponse> {
+export async function getCart(): Promise<GetCartResponse & { isExpired?: boolean }> {
     try {
         // Check if user is authenticated
         const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -149,6 +150,17 @@ export async function getCart(): Promise<GetCartResponse> {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+
+            // Si es 404 o el mensaje indica que no existe/expiró, lo tratamos como expirado
+            if (response.status === 404 || errorData.message?.toLowerCase().includes('expired') || errorData.message?.toLowerCase().includes('not found')) {
+                console.warn('🛒 Cart session expired or not found');
+                return {
+                    success: false,
+                    isExpired: true,
+                    data: { products: [], carrier: null, totals: { subtotal: 0, shipping: 0, total: 0 }, expiresAt: null }
+                };
+            }
+
             throw new Error(errorData.message || `Error fetching cart: ${response.statusText}`);
         }
 

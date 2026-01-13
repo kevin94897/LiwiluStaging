@@ -10,7 +10,7 @@ const TrabajaConNosotros = () => {
 
             <div className="relative z-10 max-w-2xl mx-auto p-6 md:p-12 w-full my-24">
 
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-12 text-center">
+                <h1 className="text-3xl md:text-4xl font-semibold text-gray-800 mb-12 text-center">
                     Trabajemos juntos
                 </h1>
 
