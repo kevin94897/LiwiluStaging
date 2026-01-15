@@ -9,7 +9,8 @@ export interface Product {
     description?: Array<{ value: string }> | string;
     price?: string | number;
     quantity?: number;
-    reference?: string;
+    reference?: string | null;
+    sku?: string | null;
     id_category_default?: string | number;
     category_name?: string;
     associations?: {
@@ -19,6 +20,7 @@ export interface Product {
     coverImage?: string;
     originalPrice?: string | number;
     productId?: string | number;
+    prestashopCombinationId?: number | null;
 }
 
 /**

@@ -29,12 +29,14 @@ import {
   carritoRegisterSchema,
   CarritoRegisterSchemaType,
 } from "@/lib/carritoRegisterSchema";
+import { loginUser } from "@/pages/api/auth/login";
+import { registerUser } from "@/pages/api/auth/register";
 import { guestDataSchema, GuestDataSchemaType } from "@/lib/guestDataSchema";
 import { useLocations } from "@/hooks/useLocations";
 import { z } from "zod";
 import { PiWarningCircleFill } from "react-icons/pi";
 import { FaPencil } from "react-icons/fa6";
-import { getCarriers, CartCarrier, getWarehouseDistricts, WarehouseDistrict, getWarehouseMap, WarehouseMapItem } from "@/lib/cart";
+import { getCarriers, CartCarrier, getWarehouseDistricts, WarehouseDistrict, getWarehouseMap, WarehouseMapItem, validateStock, StockValidationResponse } from "@/lib/cart";
 
 const WarehouseMap = dynamic(() => import("@/components/WarehouseMap"), {
   ssr: false,
@@ -82,11 +84,16 @@ export default function Carrito() {
   // Estados para autenticación
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isLoginLoading, setIsLoginLoading] = useState(false);
 
   const [mainAddressId, setMainAddressId] = useState<string | null>(null);
 
   const [isGuest, setIsGuest] = useState(false);
   const [showGuestForm, setShowGuestForm] = useState(false);
+
+  // States for stock validation
+  const [isValidatingStock, setIsValidatingStock] = useState(false);
+  const [stockValidationResult, setStockValidationResult] = useState<StockValidationResponse | null>(null);
 
   // Estados para formulario de invitado
   const [guestData, setGuestData] = useState<GuestDataSchemaType>({
@@ -127,7 +134,9 @@ export default function Carrito() {
   // Cargar dirección principal si el usuario está logueado
   useEffect(() => {
     const fetchMainAddress = async () => {
+      // 🔹 Re-verificar autenticación al cargar componentes
       if (isAuthenticated && ((user && 'token' in user) || localStorage.getItem('accessToken'))) {
+        setIsLoggedIn(true); // Asegurar que UI refleje logueo
         try {
           const token = localStorage.getItem('accessToken');
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/addresses`, {
@@ -298,15 +307,20 @@ export default function Carrito() {
     Partial<Record<keyof LoginSchemaType, string>>
   >({});
 
-  // Cargar tiendas cuando cambia el carrito
+  // Automatic stock validation when dependencies change
   useEffect(() => {
-    if (items.length > 0) {
-      const productIds = items
-        .filter((item) => item.product && item.product.id != null)
-        .map((item) => item.product.id.toString());
-      // fetchTiendasConStock(productIds);
-    }
-  }, [items]);
+    const triggerValidation = async () => {
+      if (metodoEnvio === "retiro" && tiendaSeleccionada) {
+        await performStockValidation([parseInt(tiendaSeleccionada)]);
+      } else if (metodoEnvio === "delivery" && mapWarehouses.length > 0) {
+        await performStockValidation(mapWarehouses.map(w => w.idAlmacen));
+      } else {
+        setStockValidationResult(null);
+      }
+    };
+
+    triggerValidation();
+  }, [items, tiendaSeleccionada, metodoEnvio, mapWarehouses]);
 
   useEffect(() => {
     if (activeTab === "login") {
@@ -316,12 +330,13 @@ export default function Carrito() {
     }
   }, [activeTab]);
 
-  const handleUpdateQuantity = (productId: string, newQuantity: number) => {
+  const handleUpdateQuantity = async (productId: string, newQuantity: number) => {
     if (newQuantity < 1) {
       removeFromCart(productId);
       return;
     }
-    updateQuantity(productId, newQuantity);
+    await updateQuantity(productId, newQuantity);
+    // The useEffect will handle the re-validation when 'items' state updates
   };
 
   const handleCambiarARetiro = () => {
@@ -345,6 +360,7 @@ export default function Carrito() {
         const response = await getWarehouseMap(district.codUbigeoAlm);
         if (response.success) {
           setMapWarehouses(response.data);
+          // The useEffect will handle the re-validation when 'mapWarehouses' state updates
         }
       }
     } catch (error) {
@@ -410,11 +426,31 @@ export default function Carrito() {
     }
 
     // Si es válido
+    // Si es válido
     setLoginErrors({});
-    // Aquí harías la validación real con tu API
-    setIsLoggedIn(true);
-    setShowLoginModal(false);
-    showToast("¡Bienvenido de vuelta!", "success");
+
+    // 🔹 Llamada REAL a la API
+    const performLogin = async () => {
+      setIsLoginLoading(true);
+      try {
+        await loginUser(loginData, { redirectTo: "/carrito" });
+
+        // Login exitoso
+        setIsLoggedIn(true);
+        setShowLoginModal(false);
+        // showToast("¡Bienvenido de vuelta!", "success"); // Toast eliminado por solicitud
+
+      } catch (error: any) {
+        console.error("Error en login:", error);
+        setLoginErrors({
+          password: error.message || "Error al iniciar sesión. Verifica tus credenciales."
+        });
+      } finally {
+        setIsLoginLoading(false);
+      }
+    };
+
+    performLogin();
   };
 
   // NUEVO: Manejo de registro
@@ -443,11 +479,44 @@ export default function Carrito() {
     }
 
     // Si es válido
+    // Si es válido
     setRegistroErrors({});
-    console.log("Registro exitoso:", registroData);
-    setIsLoggedIn(true);
-    setShowLoginModal(false);
-    showToast("¡Cuenta creada exitosamente!", "success");
+    console.log("Enviando registro...", registroData);
+
+    const performRegister = async () => {
+      try {
+        await registerUser({
+          firstName: registroData.nombre,
+          lastName: registroData.apellido,
+          email: registroData.email,
+          confirmEmail: registroData.email, // Asumimos mismo email pues el form no tiene confirm
+          password: registroData.password,
+          confirmPassword: registroData.confirmarPassword,
+          acceptTerms: registroData.aceptoTerminos,
+          receiveOffers: false // Default o agregar checkbox en UI
+        });
+
+        // Autologin after register or show success message
+        setIsLoggedIn(true);
+        setShowLoginModal(false);
+        showToast("¡Cuenta creada exitosamente! Bienvenido.", "success");
+
+        // Opcional: recargar para asegurar estado global limpio
+        if (typeof window !== 'undefined') window.location.reload();
+
+      } catch (error: any) {
+        console.error("Error en registro:", error);
+
+        if (error.message?.includes("correo")) {
+          setRegistroErrors({ email: error.message });
+        } else {
+          // Mostrar error general en algún campo o toast
+          showToast(error.message || "Error al registrar usuario", "error");
+        }
+      }
+    };
+
+    performRegister();
   };
 
   const handleContinueAsGuest = () => {
@@ -501,6 +570,75 @@ export default function Carrito() {
     setShowLoginModal(false);
     setShowGuestForm(false);
     showToast("¡Datos guardados! Continúa con tu compra.", "success");
+  };
+
+  const performStockValidation = async (warehouses?: number[], products?: { reference: string; quantity: number }[]) => {
+    // Prepare products for validation using the literal reference field
+    const productsToValidate = products || items
+      .filter(item => item.product && item.product.reference)
+      .map(item => ({
+        reference: item.product.reference as string,
+        quantity: item.quantity
+      }));
+
+    if (productsToValidate.length === 0) {
+      return null;
+    }
+
+    // Determine warehouses to validate against
+    let idAlmacenes = warehouses;
+    if (!idAlmacenes) {
+      if (metodoEnvio === "retiro") {
+        if (!tiendaSeleccionada) return null;
+        idAlmacenes = [parseInt(tiendaSeleccionada)];
+      } else {
+        if (mapWarehouses.length === 0) return null;
+        idAlmacenes = mapWarehouses.map(w => w.idAlmacen);
+      }
+    }
+
+    setIsValidatingStock(true);
+    setStockValidationResult(null);
+
+    try {
+      const result = await validateStock(idAlmacenes, productsToValidate);
+      setStockValidationResult(result);
+      return result;
+    } catch (error: any) {
+      console.error("Error validating stock:", error);
+      showToast(error.message || "Error al validar stock", "error");
+      return null;
+    } finally {
+      setIsValidatingStock(false);
+    }
+  };
+
+  const handleCheckoutSubmit = async (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    if (isGuest && !guestDataCompleted) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    // If we already have a result and it's successful, we can just proceed
+    // or we can re-validate once to be sure. The user said Finale is not the trigger.
+    // However, we MUST ensure validation has passed.
+
+    if (stockValidationResult?.success) {
+      router.push("/checkout");
+      return;
+    }
+
+    // If no result or failed result, try validating one last time
+    const result = await performStockValidation();
+    if (result?.success) {
+      router.push("/checkout");
+    } else if (result) {
+      showToast("Algunos productos no tienen stock suficiente", "error");
+    } else {
+      showToast("Por favor selecciona una ubicación de entrega válida", "error");
+    }
   };
 
 
@@ -805,10 +943,15 @@ export default function Carrito() {
                     <Button
                       variant="primary"
                       size="md"
-                      className="w-full"
+                      className="w-full flex justify-center items-center gap-2"
                       onClick={handleLogin}
+                      disabled={isLoginLoading}
                     >
-                      Iniciar Sesión
+                      {isLoginLoading ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        "Iniciar Sesión"
+                      )}
                     </Button>
                     <Button
                       variant="outline"
@@ -1873,7 +2016,10 @@ export default function Carrito() {
                 ) : (
                   <div className="space-y-3">
                     {mapWarehouses.map((tienda) => {
-                      const todosDisponibles = true; // No tenemos stock por tienda en este API aún
+                      const warehouseResult = stockValidationResult?.resultadosPorAlmacen.find(
+                        w => w.idAlmacen === tienda.idAlmacen
+                      );
+                      const isAvailable = warehouseResult ? warehouseResult.todosDisponibles : true;
 
                       return (
                         <div
@@ -1902,17 +2048,27 @@ export default function Carrito() {
                             </div>
                           </div>
 
-                          {/* Disponibilidad de productos (Simulada para almacenes dinámicos) */}
+                          {/* Disponibilidad de productos */}
                           <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-xs font-semibold text-green-700">
-                              ✓ Disponible para recojo en tienda
-                            </p>
+                            {isAvailable ? (
+                              <p className="text-xs font-semibold text-green-700">
+                                ✓ Disponible para recojo en tienda
+                              </p>
+                            ) : (
+                              <p className="text-xs font-semibold text-red-600">
+                                ✕ No hay stock suficiente en esta tienda
+                              </p>
+                            )}
                           </div>
 
-                          {!todosDisponibles && (
-                            <div className="mt-2 p-2 bg-amber-50 rounded text-xs text-amber-800">
-                              ⚠️ Algunos productos no están disponibles en esta
-                              tienda
+                          {!isAvailable && warehouseResult && (
+                            <div className="mt-2 p-2 bg-red-50 rounded text-[10px] text-red-800">
+                              <p className="font-bold mb-1">Productos sin stock:</p>
+                              <ul className="list-disc pl-3">
+                                {warehouseResult.productos.filter(p => !p.disponible).map((p, i) => (
+                                  <li key={i}>{p.nomArticulo}: {p.mensaje}</li>
+                                ))}
+                              </ul>
                             </div>
                           )}
                         </div>
@@ -2016,10 +2172,23 @@ export default function Carrito() {
                                         Ubigeo: {infoTiendaSeleccionada.codUbigeoAlm}
                                       </p>
                                       <div className="flex items-center gap-4">
-                                        <span className="text-primary inline-flex gap-1 items-center">
-                                          <FaRegClock size={15} />{" "}
-                                          Disponible para recojo
-                                        </span>
+                                        {(() => {
+                                          const isAvailable = stockValidationResult?.resultadosPorAlmacen.find(
+                                            w => w.idAlmacen.toString() === tiendaSeleccionada
+                                          )?.productos.find(p => p.reference === item.product.reference)?.disponible !== false;
+
+                                          return isAvailable ? (
+                                            <span className="text-primary inline-flex gap-1 items-center">
+                                              <FaRegClock size={15} />{" "}
+                                              Disponible para recojo
+                                            </span>
+                                          ) : (
+                                            <span className="text-red-500 inline-flex gap-1 items-center font-semibold">
+                                              <FaTimesCircle size={15} />{" "}
+                                              No hay stock
+                                            </span>
+                                          );
+                                        })()}
                                       </div>
                                     </div>
                                     <div className="font-semibold text-green-600">
@@ -2047,13 +2216,60 @@ export default function Carrito() {
 
                                 {/* Info producto */}
                                 <div className="flex flex-col flex-1 min-w-0">
-                                  <h3 className="font-semibold text-lg mb-2 hover:text-primary transition">
-                                    {getProductName(item.product)}
-                                  </h3>
+                                  <Link
+                                    href={`/tienda/${item.product.id || item.product.productId
+                                      }`}
+                                  >
+                                    <h3 className="font-semibold text-lg mb-1 hover:text-primary transition">
+                                      {getProductName(item.product)}
+                                    </h3>
+                                  </Link>
 
-                                  <p className="text-gray-600 text-sm mb-4">
-                                    SKU: {item.product.reference || "N/A"}
-                                  </p>
+                                  {/* Error de Stock Inline */}
+                                  {(() => {
+                                    if (!stockValidationResult) return null;
+
+                                    let productIssue = null;
+                                    if (metodoEnvio === "retiro") {
+                                      const selectedWh = stockValidationResult.resultadosPorAlmacen.find(
+                                        w => w.idAlmacen.toString() === tiendaSeleccionada
+                                      );
+                                      productIssue = selectedWh?.productos.find(p => p.reference === item.product.reference && !p.disponible);
+                                    } else {
+                                      // Para delivery, si success es false, buscamos si este producto falla en TODOS los almacenes
+                                      // o simplemente mostramos si hay algún problema con él
+                                      const allFailed = stockValidationResult.resultadosPorAlmacen.every(
+                                        w => w.productos.find(p => p.reference === item.product.reference && !p.disponible)
+                                      );
+                                      if (allFailed) {
+                                        productIssue = stockValidationResult.resultadosPorAlmacen[0]?.productos.find(p => p.reference === item.product.reference);
+                                      }
+                                    }
+
+                                    if (productIssue) {
+                                      return (
+                                        <div className="flex items-center gap-1.5 text-red-600 font-medium text-xs mb-2">
+                                          <FaTimesCircle className="shrink-0" />
+                                          <span>{productIssue.mensaje}</span>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                  <div className="space-y-1 mb-4">
+                                    <p className="text-gray-600 text-xs font-mono">
+                                      Prestashop ID: {item.product.productId || item.product.id || "null"}
+                                    </p>
+                                    <p className="text-gray-600 text-xs font-mono">
+                                      Reference: {item.product.reference || "null"}
+                                    </p>
+                                    <p className="text-gray-600 text-xs font-mono">
+                                      SKU: {item.product.sku || "null"}
+                                    </p>
+                                    <p className="text-gray-600 text-xs font-mono">
+                                      Combination ID: {item.product.prestashopCombinationId ?? "null"}
+                                    </p>
+                                  </div>
 
                                   <button
                                     onClick={() =>
@@ -2269,27 +2485,31 @@ export default function Carrito() {
                 </div>
               </div>
 
+
               {/* CTA */}
               <Button
-                href={isGuest && !guestDataCompleted ? undefined : "/checkout"}
                 variant="primary"
                 size="md"
-                className="w-full mb-3"
+                className="w-full mb-3 flex justify-center items-center gap-2"
                 disabled={
                   (!isLoggedIn && !isGuest) ||
-                  (!acceptTerms || (metodoEnvio === "retiro" && !tiendaSeleccionada))
+                  (!acceptTerms || (metodoEnvio === "retiro" && !tiendaSeleccionada)) ||
+                  isValidatingStock
                 }
-                onClick={
-                  isGuest && !guestDataCompleted
-                    ? () => setShowLoginModal(true)
-                    : undefined
-                }
+                onClick={handleCheckoutSubmit}
               >
-                {!isLoggedIn && !isGuest
-                  ? "Inicia sesión para continuar"
-                  : isGuest && !guestDataCompleted
-                    ? "Completa tus datos para continuar"
-                    : "Finalizar compra"}
+                {isValidatingStock ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Validando stock...
+                  </>
+                ) : !isLoggedIn && !isGuest ? (
+                  "Inicia sesión para continuar"
+                ) : isGuest && !guestDataCompleted ? (
+                  "Completa tus datos para continuar"
+                ) : (
+                  "Finalizar compra"
+                )}
               </Button>
 
               <Button href="/productos" variant="outline" size="md" className="w-full">

@@ -106,7 +106,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       originalPrice: cartProduct.priceWithTax,
       quantity: cartProduct.quantity,
       coverImage: cartProduct.coverImage,
-      reference: `${cartProduct.prestashopId}`,
+      reference: cartProduct.reference || null,
+      sku: cartProduct.codArticle || null,
+      prestashopCombinationId: cartProduct.prestashopCombinationId ?? cartProduct.idArticle,
     };
   };
 

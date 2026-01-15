@@ -16,6 +16,8 @@ export interface CartProduct {
     coverImage: string;
     subtotal: number;
     codArticle: string | null;
+    reference: string | null;
+    prestashopCombinationId?: number | null;
 }
 
 /**
@@ -418,6 +420,71 @@ export async function getWarehouseMap(ubigeo: string): Promise<{ success: boolea
         return await response.json();
     } catch (error) {
         console.error('Error in getWarehouseMap:', error);
+        throw error;
+    }
+}
+/**
+ * Stock Validation Result Product Interface
+ */
+export interface StockValidationProduct {
+    reference: string;
+    nomArticulo: string;
+    stock: number;
+    stockSeleccionado: number;
+    disponible: boolean;
+    mensaje: string;
+    coverImage: string;
+}
+
+/**
+ * Stock Validation Result Warehouse Interface
+ */
+export interface StockValidationWarehouseResult {
+    idAlmacen: number;
+    desAlmacen: string;
+    direccion: string;
+    atencion: string;
+    productos: StockValidationProduct[];
+    todosDisponibles: boolean;
+}
+
+/**
+ * Stock Validation Response Interface
+ */
+export interface StockValidationResponse {
+    success: boolean;
+    message: string;
+    totalAlmacenes: number;
+    totalProductos: number;
+    resultadosPorAlmacen: StockValidationWarehouseResult[];
+}
+
+/**
+ * Validate stock for products in the cart across specified warehouses
+ * @param idAlmacenes - Array of warehouse IDs to validate against
+ * @param products - Array of product objects with reference and quantity
+ * @returns Promise with the stock validation results
+ */
+export async function validateStock(
+    idAlmacenes: number[],
+    products: { reference: string; quantity: number }[]
+): Promise<StockValidationResponse> {
+    try {
+        const response = await apiPost('/orders/validar-stock', {
+            idAlmacenes,
+            productos: products
+        }, {
+            skipAuth: true // Explicitly public or handled by apiClient session
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error validating stock: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in validateStock:', error);
         throw error;
     }
 }
