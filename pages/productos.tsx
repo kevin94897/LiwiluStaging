@@ -4,13 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { GetServerSideProps } from "next";
 import Layout from "@/components/Layout";
-import useEmblaCarousel from "embla-carousel-react";
-import Autoplay from "embla-carousel-autoplay";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { showToast } from "@/lib/notifications";
 import Contacto from "@/components/Contacto";
 import AddToCartModal from "@/components/AddToCartModal";
+import CategorySidebar from "@/components/CategorySidebar";
+import CategorySlider from "@/components/CategorySlider";
 
 import { useCart } from "@/context/CartContext";
 import { formatPrice, getProductName, getProductImageUrl } from "@/lib/utils";
@@ -109,12 +109,23 @@ export default function Tienda({
   pagination,
 }: TiendaProps & { pagination: any }) {
   const router = useRouter();
-  const [openCategories, setOpenCategories] = useState<string[]>(["Categoria"]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const productsTopRef = useRef<HTMLDivElement>(null);
+  const isFirstRender = useRef(true);
 
-  const [emblaRef] = useEmblaCarousel({ loop: true, align: 'start' }, [
-    Autoplay({ delay: 3000, stopOnInteraction: false })
-  ]);
+  // Scroll to top of grid when page changes (skip initial render)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (productsTopRef.current) {
+      const top = productsTopRef.current.getBoundingClientRect().top + window.scrollY - 100; // Offset for header
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  }, [pagination?.page]);
+
+
 
   // Sync state with URL query
   useEffect(() => {
@@ -221,13 +232,7 @@ export default function Tienda({
     checkCurrentPageFavorites();
   }, [products]);
 
-  const toggleCategory = (category: string) => {
-    setOpenCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
-    );
-  };
+
 
   const toggleFavorito = async (e: React.MouseEvent, productId: string) => {
     e.preventDefault();
@@ -278,10 +283,16 @@ export default function Tienda({
 
     try {
       setLoadingCart(producto.id.toString());
-      // Ensure prestashopCombinationId is null if not present (simple products)
+
+      // Check if product has default variation
+      let combinationId = producto.prestashopCombinationId ?? null;
+      if (producto.hasVariations && producto.defaultVariation) {
+        combinationId = producto.defaultVariation.prestashopCombinationId;
+      }
+
       const cartProduct = {
         ...producto,
-        prestashopCombinationId: producto.prestashopCombinationId ?? null
+        prestashopCombinationId: combinationId
       };
       addToCart(cartProduct, 1);
       setModalProduct(cartProduct);
@@ -372,185 +383,24 @@ export default function Tienda({
       </section>
 
       {/* Breadcrumb y categorías circulares */}
-      <section className="py-6 relative overflow-hidden bg-gradient-to-r from-primary to-primary">
-        <div className="absolute -left-10 md:-left-60 -bottom-18 md:-bottom-80 w-32 md:w-full z-0 pointer-events-none">
-          <Image
-            src="/images/vectores/liwilu_banner_productos_vector_03.png"
-            alt="MacBook Pro"
-            width={654}
-            height={499}
-            quality={100}
-            className="h-auto"
-            priority
-          />
-        </div>
-
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-white text-sm mb-3 animate-fade-in">
-            <Link href="/" className="hover:underline">
-              Inicio
-            </Link>
-            <span className="mx-2">|</span>
-            <span>Tienda virtual</span>
-          </div>
-
-          {/* Slider Categorias */}
-          <div className="max-w-6xl mx-auto px-4 md:px-0">
-            <div className="embla" ref={emblaRef}>
-              <div className="embla__container">
-                {levelTwoCategories.map((cat, index) => {
-                  let emoji = "🏷️";
-                  const name = cat.name;
-                  if (name.includes("Libro")) emoji = "📚";
-                  else if (name.includes("Hogar") || name.includes("Limpieza"))
-                    emoji = "🧹";
-                  else if (name.includes("Uniforme")) emoji = "👕";
-                  else if (name.includes("Útil")) emoji = "✏️";
-                  else if (name.includes("Tecnolog")) emoji = "💻";
-
-                  return (
-                    <div key={cat.id} className="embla__slide flex-[0_0_50%] sm:flex-[0_0_33.33%] md:flex-[0_0_16.66%] lg:flex-[0_0_16.66%] xl:flex-[0_0_16.66%] px-2 py-3 focus:outline-none">
-                      <div
-                        onClick={() =>
-                          updateFilters({ categoryIds: cat.id.toString() })
-                        }
-                        className="flex flex-col items-center cursor-pointer transition-transform duration-300"
-                      >
-                        <div
-                          className={`bg-white relative w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden shadow-lg mb-2 mx-auto transition-all ${selectedCategory === cat.id.toString()
-                            ? "ring-4 ring-white scale-105"
-                            : "bg-white"
-                            }`}
-                        >
-                          {cat.coverImage ? (
-                            <Image
-                              src={cat.coverImage}
-                              alt={cat.name}
-                              fill
-                              sizes="(max-width: 768px) 80px, 128px"
-                              className="object-cover"
-                              priority={false}
-                            />
-                          ) : (
-                            <span className="absolute inset-0 flex items-center justify-center text-2xl md:text-5xl">
-                              {emoji}
-                            </span>
-                          )}
-                        </div>
-
-                        <span className="text-white md:text-lg text-xs pt-1 text-center block w-full px-1 !leading-[1.2]">
-                          {cat.name}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <CategorySlider
+        levelTwoCategories={levelTwoCategories}
+        selectedCategory={selectedCategory}
+        onCategorySelect={(categoryId) => updateFilters({ categoryIds: categoryId })}
+      />
 
       {/* Menu Categorias */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex flex-col md:flex-row gap-20">
           {/* Sidebar con animación */}
-          <aside className="w-full md:w-64 flex-shrink-0 md:block hidden">
-            <div className="bg-white rounded-2xl shadow-lg p-5 divide-y divide-gray-200">
-              {hierarchy?.hierarchy.parentGroups
-                .filter((group) =>
-                  hierarchy.hierarchy.items.some(
-                    (item) => item.nameParent === group.nameParent
-                  )
-                )
-                .map((group) => {
-                  const groupName = group.name;
-                  const isOpen = openCategories.includes(groupName);
-                  const items = hierarchy.hierarchy.items.filter(
-                    (item) => item.nameParent === group.nameParent
-                  );
-
-                  return (
-                    <div key={groupName} className="py-4">
-                      <button
-                        onClick={() => toggleCategory(groupName)}
-                        className="w-full flex justify-between items-center font-semibold text-sm text-primary-dark"
-                      >
-                        <span>{groupName}</span>
-                        <span className="text-2xl font-light text-primary-dark">
-                          {isOpen ? (
-                            <FaMinus className="w-3 h-3 transition" />
-                          ) : (
-                            <FaPlus className="w-3 h-3 transition" />
-                          )}
-                        </span>
-                      </button>
-
-                      {isOpen && (
-                        <ul className="space-y-3 mt-4">
-                          {/* Add "Ver todos" option for Categoria group */}
-                          {groupName === "Categoria" && (
-                            <li>
-                              <button
-                                onClick={() => {
-                                  updateFilters({ categoryIds: undefined });
-                                }}
-                                className={`w-full text-left transition-colors flex items-center justify-between ${selectedCategory === "all"
-                                  ? "text-primary"
-                                  : "text-gray-500 hover:text-primary-dark"
-                                  }`}
-                              >
-                                <span className="text-sm">Ver todos</span>
-                                {selectedCategory === "all" && (
-                                  <span className="w-2 h-2 bg-primary rounded-full"></span>
-                                )}
-                              </button>
-                            </li>
-                          )}
-                          {items.map((item) => (
-                            <li key={item.id}>
-                              <button
-                                onClick={() => {
-                                  updateFilters({
-                                    categoryIds: item.id.toString(),
-                                  });
-                                }}
-                                className={`w-full text-left transition-colors flex items-center justify-between ${selectedCategory === item.id.toString()
-                                  ? "text-primary"
-                                  : "text-gray-500 hover:text-primary-dark"
-                                  }`}
-                              >
-                                <span className="text-sm">{item.name}</span>
-                                {selectedCategory === item.id.toString() && (
-                                  <span className="w-2 h-2 bg-primary rounded-full"></span>
-                                )}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
-
-            <div className="hidden md:block mt-6 bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="relative h-64">
-                <Image
-                  src="https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400&h=500&fit=crop"
-                  alt="Banner"
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute top-4 left-4 bg-primary text-white px-3 py-1 rounded-full text-xs font-bold">
-                  Nuevo
-                </div>
-              </div>
-            </div>
-          </aside>
+          <CategorySidebar
+            hierarchy={hierarchy}
+            selectedCategory={selectedCategory}
+            onCategorySelect={(categoryId) => updateFilters({ categoryIds: categoryId })}
+          />
 
           {/* Grid de productos con animaciones */}
-          <main className="flex-1">
+          <main className="flex-1" ref={productsTopRef}>
             <div
               className={`bg-white rounded-sm shadow-md mb-14 overflow-hidden transition-all duration-700 transform hover:shadow-xl ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
                 }`}

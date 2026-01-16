@@ -137,9 +137,16 @@ export default function NuestrosProductos({
 
 		try {
 			setLoadingCart(producto.id.toString());
+
+			// Check if product has default variation
+			let combinationId = producto.prestashopCombinationId ?? null;
+			if (producto.hasVariations && producto.defaultVariation) {
+				combinationId = producto.defaultVariation.prestashopCombinationId;
+			}
+
 			const cartProduct = {
 				...producto,
-				prestashopCombinationId: producto.prestashopCombinationId ?? null
+				prestashopCombinationId: combinationId
 			};
 			addToCart(cartProduct, 1);
 			setModalProduct(producto);

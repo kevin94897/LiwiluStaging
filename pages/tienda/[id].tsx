@@ -25,6 +25,7 @@ import {
   checkMultipleFavorites,
 } from "@/lib/catalog";
 import { formatPrice } from "@/lib/utils";
+import Button from "@/components/ui/Button";
 
 interface ProductDetailProps {
   productId: string;
@@ -512,7 +513,7 @@ export default function ProductDetail({
     Especificaciones: (
       <div className="overflow-x-auto">
         {basicData.features && basicData.features.length > 0 ? (
-          <table className="min-w-full border border-gray-200 rounded-lg">
+          <table className="min-w-full border border-gray-200 rounded-md">
             <tbody className="divide-y divide-gray-200">
               {basicData.features.map((feature, idx) => (
                 <tr key={idx}>
@@ -534,7 +535,7 @@ export default function ProductDetail({
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Guía de Tallas (cm)
         </h3>
-        <table className="min-w-full border border-gray-200 rounded-lg text-sm">
+        <table className="min-w-full border border-gray-200 rounded-md text-sm">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-2 text-left font-semibold text-gray-700">
@@ -660,7 +661,7 @@ export default function ProductDetail({
                       thumbnailScrollPosition > 0 && (
                         <button
                           onClick={handleScrollUp}
-                          className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition"
+                          className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-md mb-2 transition"
                           aria-label="Scroll up thumbnails"
                         >
                           <svg
@@ -694,7 +695,7 @@ export default function ProductDetail({
                             <div
                               key={actualIndex}
                               onClick={() => setSelectedImageIndex(actualIndex)}
-                              className={`relative aspect-square bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
+                              className={`relative aspect-square bg-white rounded-md shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
 																${isSelected
                                   ? "ring-2 ring-primary scale-105"
                                   : "hover:shadow-lg hover:scale-105"
@@ -719,7 +720,7 @@ export default function ProductDetail({
                       thumbnailScrollPosition < maxScroll && (
                         <button
                           onClick={handleScrollDown}
-                          className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-lg mt-2 transition"
+                          className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-md mt-2 transition"
                           aria-label="Scroll down thumbnails"
                         >
                           <svg
@@ -879,7 +880,7 @@ export default function ProductDetail({
                   <div className="flex flex-col gap-6 mb-6">
                     {variationsData.attributes.map((attr) => (
                       <div key={attr.type}>
-                        <label className="block text-gray-700 font-medium mb-3">
+                        <label className="block text-dark font-medium mb-3">
                           {attr.name || attr.type}:
                           {currentVariation && (
                             <span className="ml-2 text-primary-dark font-normal">
@@ -891,7 +892,7 @@ export default function ProductDetail({
                             </span>
                           )}
                         </label>
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-1 md:gap-3">
                           {attr.values?.map((val) => {
                             // Validar si esta opción debe mostrarse
                             const isAvailable =
@@ -925,7 +926,7 @@ export default function ProductDetail({
                                         ? "border-primary border-4 scale-110"
                                         : "border-gray-300 hover:scale-105"
                                       }`
-                                      : `px-5 py-2 border rounded-lg font-medium transition ${isSelected
+                                      : `px-5 py-2 border rounded-md font-medium transition ${isSelected
                                         ? "bg-primary-dark text-white border-gray-900"
                                         : "border-gray-300 text-gray-700 hover:bg-gray-100"
                                       }`
@@ -944,7 +945,7 @@ export default function ProductDetail({
                                   previewVariation &&
                                   !isSelected && (
                                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                      <div className="bg-white rounded-lg shadow-xl border-2 border-gray-200 p-2">
+                                      <div className="bg-white rounded-md shadow-xl border-2 border-gray-200 p-2">
                                         <div className="relative w-24 h-24">
                                           <Image
                                             src={
@@ -985,7 +986,7 @@ export default function ProductDetail({
                             <button
                               key={v.id}
                               onClick={() => setCurrentVariation(v)}
-                              className={`px-4 py-2 border rounded-lg font-medium transition ${isSelected
+                              className={`px-4 py-2 border rounded-md font-medium transition ${isSelected
                                 ? "bg-primary-dark text-white border-gray-900"
                                 : "border-gray-300 text-gray-700 hover:bg-gray-100"
                                 }`}
@@ -1030,19 +1031,17 @@ export default function ProductDetail({
 
                 {/* Botones de acción */}
                 <div className="flex gap-2 md:gap-4">
-                  <button
-                    className="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-5 px-6 rounded-full transition flex items-center justify-center gap-2 h-full disabled:opacity-50 disabled:cursor-not-allowed"
+                  <Button
+                    className="disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={getAvailableQuantity === 0}
                     onClick={handleAddToCart}
-                  >
-                    {getAvailableQuantity > 0
-                      ? "Agregar al carrito"
-                      : "Sin stock"}
-                  </button>
+                  >{getAvailableQuantity > 0
+                    ? "Agregar al carrito"
+                    : "Sin stock"}</Button>
                   <button
                     onClick={handleToggleFavorite}
                     disabled={loadingFavorite}
-                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold w-[56px] h-[56px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
+                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
                       }`}
                   >
                     {loadingFavorite ? (

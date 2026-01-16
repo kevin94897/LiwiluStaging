@@ -21,6 +21,15 @@ export interface Product {
     originalPrice?: string | number;
     productId?: string | number;
     prestashopCombinationId?: number | null;
+    hasVariations?: boolean;
+    defaultVariation?: {
+        prestashopCombinationId: number;
+        name: string;
+        reference: string;
+        price: number;
+        priceWithTax: number;
+        queryString: string;
+    } | null;
 }
 
 /**
@@ -52,6 +61,15 @@ export interface CatalogProduct {
     quantity: number;
     condition: string;
     coverImage: string;
+    hasVariations?: boolean;
+    defaultVariation?: {
+        prestashopCombinationId: number;
+        name: string;
+        reference: string;
+        price: number;
+        priceWithTax: number;
+        queryString: string;
+    } | null;
 }
 
 export interface CatalogResponse {

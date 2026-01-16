@@ -111,10 +111,16 @@ export default function ProductosRelacionados({
 
     try {
       setLoadingCart(producto.id.toString());
-      // Ensure prestashopCombinationId is null if not present (simple products)
+
+      // Check if product has default variation
+      let combinationId = producto.prestashopCombinationId ?? null;
+      if (producto.hasVariations && producto.defaultVariation) {
+        combinationId = producto.defaultVariation.prestashopCombinationId;
+      }
+
       const cartProduct = {
         ...producto,
-        prestashopCombinationId: producto.prestashopCombinationId ?? null
+        prestashopCombinationId: combinationId
       };
       addToCart(cartProduct, 1);
       setModalProduct(producto);
