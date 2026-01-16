@@ -11,13 +11,18 @@ export interface CartProduct {
     name: string;
     price: number;
     priceWithTax: number;
-    discountPrice: number | null;
+    discountPrice?: number | null; // Changed to optional
     quantity: number;
     coverImage: string;
     subtotal: number;
     codArticle: string | null;
-    reference: string | null;
-    prestashopCombinationId?: number | null;
+    reference: string; // Changed from string | null to string
+    prestashopCombinationId: number | null; // Changed from optional to required
+    variationImage?: string | null; // Added
+    variationPrice?: number | null; // Added
+    variationReference?: string | null; // Added
+    variationAttributes?: any[]; // Added
+    variationPriceWithTax?: number | null; // Added
 }
 
 /**
@@ -66,12 +71,16 @@ export interface WarehouseMapItem {
  * Cart Data Interface
  */
 export interface CartData {
-    cartId?: string;
+    cartId: string; // Changed from optional to required
     sessionId?: string;
     products: CartProduct[];
-    carrier: CartCarrier | null;
-    totals: CartTotals;
-    expiresAt: string | null;
+    carrier?: any; // Changed from CartCarrier | null to any
+    totals: { // Changed to inline interface
+        total: number;
+        shipping: number;
+        subtotal: number;
+    };
+    expiresAt?: string; // Changed from string | null to optional string
 }
 
 /**
@@ -97,6 +106,7 @@ export interface GetCartResponse {
 export interface AddToCartRequest {
     productId: number;
     quantity: number;
+    prestashopCombinationId: number | null;
 }
 
 /**
@@ -105,14 +115,15 @@ export interface AddToCartRequest {
  * @param quantity - The quantity to add
  * @returns Promise with the cart response
  */
-export async function addToCart(productId: number, quantity: number): Promise<AddToCartResponse> {
+export async function addToCart(productId: number, quantity: number, prestashopCombinationId: number | null = null): Promise<AddToCartResponse> {
     try {
         // Check if user is authenticated
         const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
         const response = await apiPost('/cart/add', {
             productId,
-            quantity
+            quantity,
+            prestashopCombinationId
         }, {
             skipAuth: !accessToken // Skip auth if no token (guest mode)
         });
@@ -154,12 +165,12 @@ export async function getCart(): Promise<GetCartResponse & { isExpired?: boolean
             const errorData = await response.json().catch(() => ({}));
 
             // Si es 404 o el mensaje indica que no existe/expiró, lo tratamos como expirado
-            if (response.status === 404 || errorData.message?.toLowerCase().includes('expired') || errorData.message?.toLowerCase().includes('not found')) {
+            if (response.status === 404 || errorData.message?.toLowerCase().includes('expired') || errorData.message?.toLowerCase().includes('not found') || errorData.message?.toLowerCase().includes('expirado')) {
                 console.warn('🛒 Cart session expired or not found');
                 return {
                     success: false,
                     isExpired: true,
-                    data: { products: [], carrier: null, totals: { subtotal: 0, shipping: 0, total: 0 }, expiresAt: null }
+                    data: { cartId: "", products: [], carrier: null, totals: { subtotal: 0, shipping: 0, total: 0 }, expiresAt: undefined }
                 };
             }
 

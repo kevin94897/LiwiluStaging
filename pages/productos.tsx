@@ -4,9 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { GetServerSideProps } from "next";
 import Layout from "@/components/Layout";
-import Slider from "react-slick";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
+import useEmblaCarousel from "embla-carousel-react";
+import Autoplay from "embla-carousel-autoplay";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { showToast } from "@/lib/notifications";
@@ -74,6 +73,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         brandIds,
         inStock,
         sortBy: params.sortBy,
+        search: params.search,
         limit: 20,
       }),
       getLevelTwoCategories(),
@@ -111,6 +111,10 @@ export default function Tienda({
   const router = useRouter();
   const [openCategories, setOpenCategories] = useState<string[]>(["Categoria"]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  const [emblaRef] = useEmblaCarousel({ loop: true, align: 'start' }, [
+    Autoplay({ delay: 3000, stopOnInteraction: false })
+  ]);
 
   // Sync state with URL query
   useEffect(() => {
@@ -155,10 +159,6 @@ export default function Tienda({
   const [togglingFavorite, setTogglingFavorite] = useState<string | null>(null);
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  // const productsPerPage = 9; // Backend handles pagination now with limit 20, but UI was using 9.
-  // We should probably rely on backend pagination which returns 20.
-  // If we want 9, we should request limit=9. getServerSideProps sets limit: 20.
-  // For now, let's use what backend returns.
   const productsPerPage = 20;
 
   const { addToCart } = useCart();
@@ -210,10 +210,6 @@ export default function Tienda({
 
           // Add confirmed favorites
           confirmedFavorites.forEach((id) => newFavorites.add(id));
-
-          // Optionally remove ones that are explicitly false?
-          // Ideally we trust the check-multiple for currently visible items.
-          // But we might want to keep others.
 
           return Array.from(newFavorites);
         });
@@ -282,8 +278,13 @@ export default function Tienda({
 
     try {
       setLoadingCart(producto.id.toString());
-      addToCart(producto, 1);
-      setModalProduct(producto);
+      // Ensure prestashopCombinationId is null if not present (simple products)
+      const cartProduct = {
+        ...producto,
+        prestashopCombinationId: producto.prestashopCombinationId ?? null
+      };
+      addToCart(cartProduct, 1);
+      setModalProduct(cartProduct);
     } catch (error) {
       console.error("Error al agregar al carrito:", error);
       showToast("Error al agregar el producto al carrito", "error");
@@ -298,94 +299,6 @@ export default function Tienda({
   // Use pagination from backend if available, otherwise calculate
   const currentPage = pagination?.page || 1;
   const totalPages = pagination?.totalPages || 1;
-
-  // const getCategoryName = (categoryId: string) => {
-  // 	const category = categories.find((c) => c.id === categoryId);
-  // 	return category?.name?.[0]?.value || 'Categoría';
-  // };
-
-  // Settings for category slider
-  const categorySliderSettings = {
-    dots: false,
-    infinite: true,
-    speed: 3000, // Faster continuous speed feel or standard transition
-    autoplay: true,
-    autoplaySpeed: 0, // Continuous scroll often uses css linear, but standard autoplay is requested: "Run automatically"
-    // User said "run automatically" which usually implies standard autoplay.
-    // "speed: 500, autoplaySpeed: 3000" is standard.
-    // However, for a "ticker" like effect, css mode is different.
-    // I will use standard autoplay as it's safer unless "continuous marquee" is requested.
-    // Re-reading: "corra de forma automatica". I will use standard autoplay.
-    // Let's stick to the user's specific constraints: desktop 6 options.
-    slidesToShow: 6,
-    slidesToScroll: 1,
-    cssEase: "linear", // Smooths it out if we want continuous, but let's stick to standard first or mix.
-    // Actually, usually "autoplaySpeed: 0 + speed: >2000 + cssEase: linear" makes it continuous.
-    // If they want pagination-like, standard is best. I will use standard autoplay with decent speed.
-    arrows: false,
-    pauseOnHover: true,
-    responsive: [
-      {
-        breakpoint: 1024,
-        settings: {
-          slidesToShow: 4,
-        },
-      },
-      {
-        breakpoint: 768,
-        settings: {
-          slidesToShow: 3,
-        },
-      },
-      {
-        breakpoint: 480,
-        settings: {
-          slidesToShow: 2, // Or 3 depending on size
-        },
-      },
-    ],
-  };
-
-  // Override for smooth auto run if desired:
-  // If the user wants it to "flow" continuously, the settings are:
-  // speed: 2000, autoplaySpeed: 2000, cssEase: "linear"
-  // I'll stick to a standard auto-advance for now: speed 500, autoplaySpeed 3000.
-  const sliderSettings = {
-    dots: false,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 6,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    arrows: false,
-    responsive: [
-      {
-        breakpoint: 1280,
-        settings: {
-          slidesToShow: 5,
-        },
-      },
-      {
-        breakpoint: 1024,
-        settings: {
-          slidesToShow: 4,
-        },
-      },
-      {
-        breakpoint: 768,
-        settings: {
-          slidesToShow: 3,
-        },
-      },
-      {
-        breakpoint: 480,
-        settings: {
-          slidesToShow: 2,
-        },
-      },
-    ],
-  };
 
   return (
     <Layout title="Tienda - Liwilu" description="Productos al por mayor">
@@ -483,55 +396,57 @@ export default function Tienda({
 
           {/* Slider Categorias */}
           <div className="max-w-6xl mx-auto px-4 md:px-0">
-            <Slider {...sliderSettings} className="slider-categories">
-              {levelTwoCategories.map((cat, index) => {
-                let emoji = "🏷️";
-                const name = cat.name;
-                if (name.includes("Libro")) emoji = "📚";
-                else if (name.includes("Hogar") || name.includes("Limpieza"))
-                  emoji = "🧹";
-                else if (name.includes("Uniforme")) emoji = "👕";
-                else if (name.includes("Útil")) emoji = "✏️";
-                else if (name.includes("Tecnolog")) emoji = "💻";
+            <div className="embla" ref={emblaRef}>
+              <div className="embla__container">
+                {levelTwoCategories.map((cat, index) => {
+                  let emoji = "🏷️";
+                  const name = cat.name;
+                  if (name.includes("Libro")) emoji = "📚";
+                  else if (name.includes("Hogar") || name.includes("Limpieza"))
+                    emoji = "🧹";
+                  else if (name.includes("Uniforme")) emoji = "👕";
+                  else if (name.includes("Útil")) emoji = "✏️";
+                  else if (name.includes("Tecnolog")) emoji = "💻";
 
-                return (
-                  <div key={cat.id} className="px-2 py-3 focus:outline-none">
-                    <div
-                      onClick={() =>
-                        updateFilters({ categoryIds: cat.id.toString() })
-                      }
-                      className="flex flex-col items-center cursor-pointer transition-transform duration-300"
-                    >
+                  return (
+                    <div key={cat.id} className="embla__slide flex-[0_0_50%] sm:flex-[0_0_33.33%] md:flex-[0_0_16.66%] lg:flex-[0_0_16.66%] xl:flex-[0_0_16.66%] px-2 py-3 focus:outline-none">
                       <div
-                        className={`bg-white relative w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden shadow-lg mb-2 mx-auto transition-all ${selectedCategory === cat.id.toString()
-                          ? "ring-4 ring-white scale-105"
-                          : "bg-white"
-                          }`}
+                        onClick={() =>
+                          updateFilters({ categoryIds: cat.id.toString() })
+                        }
+                        className="flex flex-col items-center cursor-pointer transition-transform duration-300"
                       >
-                        {cat.coverImage ? (
-                          <Image
-                            src={cat.coverImage}
-                            alt={cat.name}
-                            fill
-                            sizes="(max-width: 768px) 80px, 128px"
-                            className="object-cover"
-                            priority={false}
-                          />
-                        ) : (
-                          <span className="absolute inset-0 flex items-center justify-center text-2xl md:text-5xl">
-                            {emoji}
-                          </span>
-                        )}
-                      </div>
+                        <div
+                          className={`bg-white relative w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden shadow-lg mb-2 mx-auto transition-all ${selectedCategory === cat.id.toString()
+                            ? "ring-4 ring-white scale-105"
+                            : "bg-white"
+                            }`}
+                        >
+                          {cat.coverImage ? (
+                            <Image
+                              src={cat.coverImage}
+                              alt={cat.name}
+                              fill
+                              sizes="(max-width: 768px) 80px, 128px"
+                              className="object-cover"
+                              priority={false}
+                            />
+                          ) : (
+                            <span className="absolute inset-0 flex items-center justify-center text-2xl md:text-5xl">
+                              {emoji}
+                            </span>
+                          )}
+                        </div>
 
-                      <span className="text-white md:text-lg text-xs pt-1 text-center block w-full px-1 !leading-[1.2]">
-                        {cat.name}
-                      </span>
+                        <span className="text-white md:text-lg text-xs pt-1 text-center block w-full px-1 !leading-[1.2]">
+                          {cat.name}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </Slider>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </section>

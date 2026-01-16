@@ -134,9 +134,11 @@ export default function ProductDetail({
       if (defaultVar) {
         const initialAttrs: Record<string, number> = {};
         // Updated: variations attributes are now an array of objects {id, type, name, value...}
-        defaultVar.attributes.forEach((attr) => {
-          initialAttrs[attr.type] = attr.id;
-        });
+        if (defaultVar.attributes && Array.isArray(defaultVar.attributes)) {
+          defaultVar.attributes.forEach((attr) => {
+            initialAttrs[attr.type] = attr.id;
+          });
+        }
 
         setSelectedAttributes(initialAttrs);
         setCurrentVariation(defaultVar);
@@ -319,12 +321,15 @@ export default function ProductDetail({
 
     // Construct the product name with attributes if a variation is selected
     let productName = basicData.name;
-    if (currentVariation && currentVariation.attributes) {
-      const attributesString = currentVariation.attributes
-        .map((attr) => `${attr.name}: ${attr.value}`)
-        .join(", ");
-      if (attributesString) {
+    if (currentVariation) {
+      if (currentVariation.attributes && currentVariation.attributes.length > 0) {
+        const attributesString = currentVariation.attributes
+          .map((attr) => `${attr.name}: ${attr.value}`)
+          .join(", ");
         productName += ` (${attributesString})`;
+      } else if (currentVariation.name) {
+        // Fallback to variation name if no specific attributes are structured
+        productName += ` (${currentVariation.name})`;
       }
     }
 
@@ -346,6 +351,7 @@ export default function ProductDetail({
     const finalProduct: Product = {
       id: cartItemId, // ✅ Use productId for base, or productId_variant for variations
       productId: productId, // ✅ Use URL productId for correct cart links
+      prestashopCombinationId: currentVariation ? currentVariation.prestashopCombinationId : null,
       name: productName,
       price: priceInfo.priceWithTax, // Use price with tax as the selling price
       originalPrice: priceInfo.priceWithTax * 1.5, // Emulate the mockup logic from the UI
@@ -867,104 +873,131 @@ export default function ProductDetail({
                   </span>
                 </div>
 
-                {/* Opciones de personalización - Solo si hay variaciones */}
+                {/* Opciones de personalización */}
                 {variationsData.attributes &&
-                  variationsData.attributes.length > 0 && (
-                    <div className="flex flex-col gap-6 mb-6">
-                      {variationsData.attributes.map((attr) => (
-                        <div key={attr.name}>
-                          <label className="block text-gray-700 font-medium mb-3">
-                            {attr.name}:
-                            {currentVariation && (
-                              <span className="ml-2 text-primary-dark font-normal">
-                                {
-                                  currentVariation.attributes.find(
-                                    (a) => a.type === attr.type
-                                  )?.value
-                                }
-                              </span>
-                            )}
-                          </label>
-                          <div className="flex flex-wrap items-center gap-3">
-                            {attr.values?.map((val) => {
-                              // Validar si esta opción debe mostrarse
-                              // USER REQUEST: Solo filtrar las tallas por color (no filtrar los colores por talla)
-                              const isAvailable =
-                                attr.type === "color" ||
-                                checkAttributeAvailability(attr.type, val.id);
+                  variationsData.attributes.length > 0 ? (
+                  <div className="flex flex-col gap-6 mb-6">
+                    {variationsData.attributes.map((attr) => (
+                      <div key={attr.type}>
+                        <label className="block text-gray-700 font-medium mb-3">
+                          {attr.name || attr.type}:
+                          {currentVariation && (
+                            <span className="ml-2 text-primary-dark font-normal">
+                              {
+                                currentVariation.attributes.find(
+                                  (a) => a.type === attr.type
+                                )?.value
+                              }
+                            </span>
+                          )}
+                        </label>
+                        <div className="flex flex-wrap items-center gap-3">
+                          {attr.values?.map((val) => {
+                            // Validar si esta opción debe mostrarse
+                            const isAvailable =
+                              attr.type === "color" ||
+                              checkAttributeAvailability(attr.type, val.id);
 
-                              if (!isAvailable) return null;
+                            if (!isAvailable) return null;
 
-                              const isSelected =
-                                selectedAttributes[attr.type] === val.id;
+                            const isSelected =
+                              selectedAttributes[attr.type] === val.id;
 
-                              // Encontrar la variación que tendría este valor
-                              const previewVariation =
-                                variationsData.variations.find((v) =>
-                                  v.attributes.some(
-                                    (a) =>
-                                      a.type === attr.type && a.id === val.id
-                                  )
-                                );
-
-                              return (
-                                <div key={val.id} className="relative group">
-                                  <button
-                                    title={val.value}
-                                    onClick={() =>
-                                      handleAttributeChange(attr.type, val.id)
-                                    }
-                                    className={
-                                      attr.type === "color"
-                                        ? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
-                                          ? "border-primary border-4 scale-110"
-                                          : "border-gray-300 hover:scale-105"
-                                        }`
-                                        : `px-5 py-2 border rounded-lg font-medium transition ${isSelected
-                                          ? "bg-primary-dark text-white border-gray-900"
-                                          : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                        }`
-                                    }
-                                    style={
-                                      attr.type === "color" && val.colorHex
-                                        ? { backgroundColor: val.colorHex }
-                                        : {}
-                                    }
-                                  >
-                                    {attr.type !== "color" && val.value}
-                                  </button>
-
-                                  {/* Preview de imagen al hacer hover (solo para colores) */}
-                                  {attr.type === "color" &&
-                                    previewVariation &&
-                                    !isSelected && (
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                        <div className="bg-white rounded-lg shadow-xl border-2 border-gray-200 p-2">
-                                          <div className="relative w-24 h-24">
-                                            <Image
-                                              src={getVariationPreviewImage(
-                                                previewVariation
-                                              )}
-                                              alt={val.value}
-                                              fill
-                                              className="object-contain rounded"
-                                              unoptimized
-                                            />
-                                          </div>
-                                          <p className="text-xs text-center mt-1 text-gray-600">
-                                            {val.value}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    )}
-                                </div>
+                            // Encontrar la variación que tendría este valor para el preview
+                            const previewVariation =
+                              variationsData.variations.find((v) =>
+                                v.attributes?.some(
+                                  (a) =>
+                                    a.type === attr.type && a.id === val.id
+                                )
                               );
-                            })}
-                          </div>
+
+                            return (
+                              <div key={val.id} className="relative group">
+                                <button
+                                  title={val.value}
+                                  onClick={() =>
+                                    handleAttributeChange(attr.type, val.id)
+                                  }
+                                  className={
+                                    attr.type === "color"
+                                      ? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
+                                        ? "border-primary border-4 scale-110"
+                                        : "border-gray-300 hover:scale-105"
+                                      }`
+                                      : `px-5 py-2 border rounded-lg font-medium transition ${isSelected
+                                        ? "bg-primary-dark text-white border-gray-900"
+                                        : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                      }`
+                                  }
+                                  style={
+                                    attr.type === "color" && val.colorHex
+                                      ? { backgroundColor: val.colorHex }
+                                      : {}
+                                  }
+                                >
+                                  {attr.type !== "color" && val.value}
+                                </button>
+
+                                {/* Preview de imagen al hacer hover (solo para colores) */}
+                                {attr.type === "color" &&
+                                  previewVariation &&
+                                  !isSelected && (
+                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                      <div className="bg-white rounded-lg shadow-xl border-2 border-gray-200 p-2">
+                                        <div className="relative w-24 h-24">
+                                          <Image
+                                            src={
+                                              previewVariation.images?.[0]?.url ||
+                                              variationsData.media?.coverImage?.url ||
+                                              "/images/placeholder-product.jpg"
+                                            }
+                                            alt={val.value}
+                                            fill
+                                            className="object-contain rounded"
+                                            unoptimized
+                                          />
+                                        </div>
+                                        <p className="text-[10px] text-center mt-1 text-gray-600 font-bold uppercase truncate max-w-[90px]">
+                                          {val.value}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  /* Fallback logic for flat variations (no attribute groups) */
+                  variationsData.variations && variationsData.variations.length > 1 && (
+                    <div className="flex flex-col gap-4 mb-6">
+                      <label className="block text-gray-700 font-medium">
+                        Opciones disponibles:
+                      </label>
+                      <div className="flex flex-wrap gap-3">
+                        {variationsData.variations.map((v) => {
+                          const isSelected = currentVariation?.id === v.id;
+                          return (
+                            <button
+                              key={v.id}
+                              onClick={() => setCurrentVariation(v)}
+                              className={`px-4 py-2 border rounded-lg font-medium transition ${isSelected
+                                ? "bg-primary-dark text-white border-gray-900"
+                                : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                }`}
+                            >
+                              {v.name || v.reference || `Opción ${v.prestashopCombinationId}`}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  )}
+                  )
+                )}
 
                 {/* Cantidad */}
                 <div className="mb-6">

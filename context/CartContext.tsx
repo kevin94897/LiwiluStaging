@@ -102,11 +102,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       id: cartProduct.id,
       productId: cartProduct.prestashopId,
       name: cartProduct.name,
-      price: cartProduct.discountPrice || cartProduct.priceWithTax,
+      price: cartProduct.variationPriceWithTax || cartProduct.discountPrice || cartProduct.priceWithTax,
       originalPrice: cartProduct.priceWithTax,
       quantity: cartProduct.quantity,
-      coverImage: cartProduct.coverImage,
-      reference: cartProduct.reference || null,
+      coverImage: cartProduct.variationImage || cartProduct.coverImage,
+      reference: cartProduct.variationReference || cartProduct.reference || null,
       sku: cartProduct.codArticle || null,
       prestashopCombinationId: cartProduct.prestashopCombinationId ?? cartProduct.idArticle,
     };
@@ -140,6 +140,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setSelectedCarrier(response.data.carrier);
       } else if (response.isExpired) {
         console.warn("⚠️ Local cart expired, clearing...");
+        import("@/lib/notifications").then(({ showToast }) => {
+          showToast("El carrito ha expirado. Por favor, vuelve a agregar los productos.", "error");
+        });
         setCartExpired(true);
         setItems([]);
         setTotals({ subtotal: 0, shipping: 0, total: 0 });
@@ -174,10 +177,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw new Error("ID de producto no válido");
       }
 
-      console.log(`🛒 Adding to cart: ID ${productId}, Quantity ${cleanQuantity}`);
+      console.log(`🛒 Adding to cart: ID ${productId}, Combination ID ${product.prestashopCombinationId ?? null}, Quantity ${cleanQuantity}`);
 
       // Call backend API
-      const response = await apiAddToCart(productId, cleanQuantity);
+      const response = await apiAddToCart(productId, cleanQuantity, product.prestashopCombinationId ?? null);
 
       if (response.success) {
         // Actualizar Session ID si el backend retorna uno nuevo

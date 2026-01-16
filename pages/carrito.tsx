@@ -87,6 +87,7 @@ export default function Carrito() {
   const [isLoginLoading, setIsLoginLoading] = useState(false);
 
   const [mainAddressId, setMainAddressId] = useState<string | null>(null);
+  const [userAddresses, setUserAddresses] = useState<any[]>([]);
 
   const [isGuest, setIsGuest] = useState(false);
   const [showGuestForm, setShowGuestForm] = useState(false);
@@ -131,9 +132,9 @@ export default function Carrito() {
     }
   }, [isAuthenticated, authLoading]);
 
-  // Cargar dirección principal si el usuario está logueado
+  // Cargar direcciones si el usuario está logueado
   useEffect(() => {
-    const fetchMainAddress = async () => {
+    const fetchAddresses = async () => {
       // 🔹 Re-verificar autenticación al cargar componentes
       if (isAuthenticated && ((user && 'token' in user) || localStorage.getItem('accessToken'))) {
         setIsLoggedIn(true); // Asegurar que UI refleje logueo
@@ -148,7 +149,10 @@ export default function Carrito() {
           if (response.ok) {
             const result = await response.json();
             if (result.success && result.data) {
-              const mainAddress = result.data.find((addr: any) => addr.isMain);
+              const addresses = result.data;
+              setUserAddresses(addresses);
+
+              const mainAddress = addresses.find((addr: any) => addr.isMain);
               if (mainAddress) {
                 setMainAddressId(mainAddress.id);
                 setDireccionEnvio({
@@ -162,16 +166,19 @@ export default function Carrito() {
                   mainAddress.province,
                   mainAddress.district
                 );
+              } else if (addresses.length > 0) {
+                // If no main address, don't set a default yet, we'll show a dropdown
+                setMainAddressId(null);
               }
             }
           }
         } catch (error) {
-          console.error("Error al cargar dirección principal:", error);
+          console.error("Error al cargar direcciones:", error);
         }
       }
     };
 
-    fetchMainAddress();
+    fetchAddresses();
   }, [isAuthenticated, user]);
 
   useEffect(() => {
@@ -345,6 +352,33 @@ export default function Carrito() {
     setTiendaSeleccionada(null);
     setDistritoSeleccionado("");
   };
+
+  // Sync mapWarehouses with shipping district when in delivery mode
+  useEffect(() => {
+    const syncWarehouses = async () => {
+      const currentDist = (isLoggedIn || mainAddressId) ? direccionEnvio.distrito : guestData.distrito;
+      if (!currentDist || warehouseDistricts.length === 0) return;
+
+      const district = warehouseDistricts.find(
+        (d) => d.desDistrito.toLowerCase() === currentDist.toLowerCase()
+      );
+
+      if (district) {
+        try {
+          const response = await getWarehouseMap(district.codUbigeoAlm);
+          if (response.success) {
+            setMapWarehouses(response.data);
+          }
+        } catch (error) {
+          console.error("Error syncing delivery warehouses:", error);
+        }
+      }
+    };
+
+    if (metodoEnvio === "delivery") {
+      syncWarehouses();
+    }
+  }, [metodoEnvio, direccionEnvio.distrito, guestData.distrito, warehouseDistricts, isLoggedIn, mainAddressId]);
 
   const handleSeleccionarDistrito = async (distrito: string) => {
     setDistritoSeleccionado(distrito);
@@ -773,11 +807,14 @@ export default function Carrito() {
         return;
       }
 
-
       // Limpiar errores si pasa validación
       setAddressErrors({});
 
       const token = localStorage.getItem('accessToken');
+
+      // Check if we're editing the main address
+      const isEditingMainAddress = mainAddressId && userAddresses.find(addr => addr.id === mainAddressId)?.isMain;
+
       const addressData = {
         department: direccionEnvio.departamento,
         province: direccionEnvio.ciudad,
@@ -785,7 +822,7 @@ export default function Carrito() {
         address: direccionEnvio.calle,
         apartment: "Dirección Carrito", // Valor por defecto
         reference: "",
-        isMain: true
+        isMain: isEditingMainAddress || false // Preservar isMain si es la dirección principal
       };
 
       let response;
@@ -813,16 +850,28 @@ export default function Carrito() {
       }
 
       if (response && response.ok) {
-        if (!mainAddressId) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            setMainAddressId(result.data.id);
+        const result = await response.json();
+        console.log("Dirección guardada correctamente");
+
+        // Refresh addresses
+        const refreshedResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/addresses`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (refreshedResponse.ok) {
+          const refreshedResult = await refreshedResponse.json();
+          if (refreshedResult.success) {
+            setUserAddresses(refreshedResult.data);
+            // Update mainAddressId to the saved/created address
+            if (result.data?.id) {
+              setMainAddressId(result.data.id);
+            }
           }
         }
-        console.log("Dirección actualizada correctamente");
+
         setEditandoDireccion(false);
       } else {
         console.error("Error al guardar dirección en backend");
+        showToast("Error al guardar la dirección", "error");
       }
 
     } catch (error) {
@@ -1852,15 +1901,17 @@ export default function Carrito() {
                       <h3 className="font-semibold text-gray-900">
                         Dirección de envío
                       </h3>
-                      <button
-                        onClick={() => setEditandoDireccion(!editandoDireccion)}
-                        className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
-                      >
-                        <FaPencil className="text-sm" /> Editar
-                      </button>
+                      {!editandoDireccion && !(isLoggedIn && userAddresses.length === 0) && !(isLoggedIn && !mainAddressId && userAddresses.length > 0) && (
+                        <button
+                          onClick={() => setEditandoDireccion(!editandoDireccion)}
+                          className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
+                        >
+                          <FaPencil className="text-sm" /> Editar
+                        </button>
+                      )}
                     </div>
 
-                    {editandoDireccion ? (
+                    {editandoDireccion || (isLoggedIn && userAddresses.length === 0) ? (
                       <div className="space-y-3">
                         <input
                           type="text"
@@ -1923,13 +1974,57 @@ export default function Carrito() {
                           Guardar dirección
                         </button>
                       </div>
+                    ) : isLoggedIn && !mainAddressId && userAddresses.length > 0 ? (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600 mb-2">Selecciona una de tus direcciones:</p>
+                        <select
+                          onChange={async (e) => {
+                            const addrId = e.target.value;
+                            const selected = userAddresses.find(a => a.id.toString() === addrId);
+                            if (selected) {
+                              setMainAddressId(selected.id);
+                              setDireccionEnvio({
+                                calle: selected.address,
+                                distrito: selected.district,
+                                ciudad: selected.province,
+                                departamento: selected.department
+                              });
+                              userLocations.setLocationValues(selected.department, selected.province, selected.district);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+                        >
+                          <option value="">Seleccionar dirección...</option>
+                          {userAddresses.map(addr => (
+                            <option key={addr.id} value={addr.id}>
+                              {addr.address}, {addr.district}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => setEditandoDireccion(true)}
+                          className="text-primary text-xs font-medium hover:underline"
+                        >
+                          + Agregar nueva dirección
+                        </button>
+                      </div>
                     ) : (
-                      <div className="text-sm text-gray-700">
-                        <p className="font-medium">{direccionEnvio.calle}</p>
-                        <p>
-                          {direccionEnvio.distrito}, {direccionEnvio.ciudad},{" "}
-                          {direccionEnvio.departamento}
-                        </p>
+                      <div className="space-y-2">
+                        <div className="text-sm text-gray-700">
+                          <p className="font-medium">{direccionEnvio.calle}</p>
+                          <p>
+                            {direccionEnvio.distrito}, {direccionEnvio.ciudad},{" "}
+                            {direccionEnvio.departamento}
+                          </p>
+                        </div>
+                        {isLoggedIn && userAddresses.length > 1 && (
+                          <button
+                            onClick={() => setMainAddressId(null)}
+                            className="text-primary text-xs font-medium hover:underline"
+                          >
+                            Elegir otra dirección
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2362,7 +2457,7 @@ export default function Carrito() {
               </h2>
               <div className="">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-dark">
+                  <div className="text-dark text-sm space-y-1">
                     <p>Nombre: Gonzalo Vera </p>
                     <p>DNI: 70255456</p>
                   </div>

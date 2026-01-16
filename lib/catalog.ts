@@ -104,6 +104,7 @@ export async function searchProducts(params: FilterParams = {}): Promise<Catalog
     if (params.inStock !== undefined) queryParts.push(`inStock=${params.inStock}`);
     if (params.sortBy) queryParts.push(`sortBy=${params.sortBy}`);
     if (params.sortOrder) queryParts.push(`sortOrder=${params.sortOrder}`);
+    if (params.search) queryParts.push(`search=${encodeURIComponent(params.search)}`);
 
     // Ensure we have a base URL
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -443,6 +444,7 @@ export interface ProductVariation {
     prestashopCombinationId: number;
     sku: string;
     reference: string;
+    name?: string;
     price: ProductPrice;
     stock: ProductStock;
     attributes: ProductAttribute[];

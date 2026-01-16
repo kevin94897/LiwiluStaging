@@ -92,9 +92,9 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
 
         // Tamaños
         const sizes = {
-            sm: 'px-4 py-3 text-sm rounded-full',
-            md: 'px-8 py-3 text-base rounded-full',
-            lg: 'px-8 py-4 text-lg rounded-full'
+            sm: 'px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm rounded-full',
+            md: 'px-6 py-2.5 sm:px-8 sm:py-3 text-sm sm:text-base rounded-full',
+            lg: 'px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg rounded-full'
         };
 
         // Ancho completo
