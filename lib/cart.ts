@@ -11,11 +11,18 @@ export interface CartProduct {
     name: string;
     price: number;
     priceWithTax: number;
-    discountPrice: number | null;
+    discountPrice?: number | null; // Changed to optional
     quantity: number;
     coverImage: string;
     subtotal: number;
     codArticle: string | null;
+    reference: string; // Changed from string | null to string
+    prestashopCombinationId: number | null; // Changed from optional to required
+    variationImage?: string | null; // Added
+    variationPrice?: number | null; // Added
+    variationReference?: string | null; // Added
+    variationAttributes?: any[]; // Added
+    variationPriceWithTax?: number | null; // Added
 }
 
 /**
@@ -64,12 +71,16 @@ export interface WarehouseMapItem {
  * Cart Data Interface
  */
 export interface CartData {
-    cartId?: string;
+    cartId: string; // Changed from optional to required
     sessionId?: string;
     products: CartProduct[];
-    carrier: CartCarrier | null;
-    totals: CartTotals;
-    expiresAt: string | null;
+    carrier?: any; // Changed from CartCarrier | null to any
+    totals: { // Changed to inline interface
+        total: number;
+        shipping: number;
+        subtotal: number;
+    };
+    expiresAt?: string; // Changed from string | null to optional string
 }
 
 /**
@@ -95,6 +106,7 @@ export interface GetCartResponse {
 export interface AddToCartRequest {
     productId: number;
     quantity: number;
+    prestashopCombinationId: number | null;
 }
 
 /**
@@ -103,14 +115,15 @@ export interface AddToCartRequest {
  * @param quantity - The quantity to add
  * @returns Promise with the cart response
  */
-export async function addToCart(productId: number, quantity: number): Promise<AddToCartResponse> {
+export async function addToCart(productId: number, quantity: number, prestashopCombinationId: number | null = null): Promise<AddToCartResponse> {
     try {
         // Check if user is authenticated
         const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
         const response = await apiPost('/cart/add', {
             productId,
-            quantity
+            quantity,
+            prestashopCombinationId
         }, {
             skipAuth: !accessToken // Skip auth if no token (guest mode)
         });
@@ -152,12 +165,12 @@ export async function getCart(): Promise<GetCartResponse & { isExpired?: boolean
             const errorData = await response.json().catch(() => ({}));
 
             // Si es 404 o el mensaje indica que no existe/expiró, lo tratamos como expirado
-            if (response.status === 404 || errorData.message?.toLowerCase().includes('expired') || errorData.message?.toLowerCase().includes('not found')) {
+            if (response.status === 404 || errorData.message?.toLowerCase().includes('expired') || errorData.message?.toLowerCase().includes('not found') || errorData.message?.toLowerCase().includes('expirado')) {
                 console.warn('🛒 Cart session expired or not found');
                 return {
                     success: false,
                     isExpired: true,
-                    data: { products: [], carrier: null, totals: { subtotal: 0, shipping: 0, total: 0 }, expiresAt: null }
+                    data: { cartId: "", products: [], carrier: null, totals: { subtotal: 0, shipping: 0, total: 0 }, expiresAt: undefined }
                 };
             }
 
@@ -418,6 +431,71 @@ export async function getWarehouseMap(ubigeo: string): Promise<{ success: boolea
         return await response.json();
     } catch (error) {
         console.error('Error in getWarehouseMap:', error);
+        throw error;
+    }
+}
+/**
+ * Stock Validation Result Product Interface
+ */
+export interface StockValidationProduct {
+    reference: string;
+    nomArticulo: string;
+    stock: number;
+    stockSeleccionado: number;
+    disponible: boolean;
+    mensaje: string;
+    coverImage: string;
+}
+
+/**
+ * Stock Validation Result Warehouse Interface
+ */
+export interface StockValidationWarehouseResult {
+    idAlmacen: number;
+    desAlmacen: string;
+    direccion: string;
+    atencion: string;
+    productos: StockValidationProduct[];
+    todosDisponibles: boolean;
+}
+
+/**
+ * Stock Validation Response Interface
+ */
+export interface StockValidationResponse {
+    success: boolean;
+    message: string;
+    totalAlmacenes: number;
+    totalProductos: number;
+    resultadosPorAlmacen: StockValidationWarehouseResult[];
+}
+
+/**
+ * Validate stock for products in the cart across specified warehouses
+ * @param idAlmacenes - Array of warehouse IDs to validate against
+ * @param products - Array of product objects with reference and quantity
+ * @returns Promise with the stock validation results
+ */
+export async function validateStock(
+    idAlmacenes: number[],
+    products: { reference: string; quantity: number }[]
+): Promise<StockValidationResponse> {
+    try {
+        const response = await apiPost('/orders/validar-stock', {
+            idAlmacenes,
+            productos: products
+        }, {
+            skipAuth: true // Explicitly public or handled by apiClient session
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error validating stock: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in validateStock:', error);
         throw error;
     }
 }

@@ -19,7 +19,8 @@ export interface LoginResponse {
 }
 
 export const loginUser = async (
-  data: { email: string; password: string }
+  data: { email: string; password: string },
+  options: { skipRedirect?: boolean; redirectTo?: string } = {}
 ): Promise<LoginResponse> => {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
@@ -55,9 +56,9 @@ export const loginUser = async (
     // 🆕 Iniciar sistema de renovación automática de tokens
     startTokenRefresh();
 
-    // 🔹 Recargar la página después del login exitoso
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
+    // 🔹 Recargar la página después del login exitoso (si no se indica lo contrario)
+    if (typeof window !== "undefined" && !options.skipRedirect) {
+      window.location.href = options.redirectTo || "/";
     }
 
     return response;

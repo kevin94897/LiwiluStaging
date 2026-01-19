@@ -32,15 +32,15 @@ import {
 import Button from "./ui/Button";
 
 const topLinks = [
-  { href: "/nosotros", label: "Nosotros" },
-  { href: "/campanas", label: "Tiendas campañas 2026" },
-  { href: "/registro", label: "Regístrate" },
+  { href: "/estaticas/nosotros", label: "Nosotros" },
+  { href: "/estaticas/campanas", label: "Tiendas campañas 2026" },
+  { href: "/login?redirect=/registro", label: "Regístrate" },
   {
     href: "/mi-cuenta/mis-favoritos",
     label: "Mis favoritos",
     icon: <FaRegHeart size={12} />,
   },
-  { href: "/politicas", label: "Políticas de compra" },
+  { href: "/estaticas/politicas", label: "Políticas de compra" },
 ];
 
 interface LogoProps {
@@ -68,8 +68,19 @@ function Logo({ className = "", width = 120, height = 48 }: LogoProps) {
 
 
 function SearchBar({ isMobile = false }) {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/productos?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   return (
-    <div
+    <form
+      onSubmit={handleSearch}
       className={`flex items-center bg-white rounded-full ${isMobile
         ? "px-4 py-2"
         : "px-3 py-1 w-full max-w-md xl:min-w-[300px] lg:max-w-[250px]"
@@ -77,6 +88,8 @@ function SearchBar({ isMobile = false }) {
     >
       <input
         type="search"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="¿Qué estás buscando?"
         className={`flex-grow px-2 outline-none bg-transparent ${isMobile
           ? "text-[15px] placeholder-gray-400 text-gray-800"
@@ -84,12 +97,13 @@ function SearchBar({ isMobile = false }) {
           }`}
       />
       <button
+        type="submit"
         className={`${isMobile ? "ml-2 hover:text-primary-light" : ""
           } text-gray-700 transition-colors`}
       >
         <FaSearch size={18} />
       </button>
-    </div>
+    </form>
   );
 }
 

@@ -1,8 +1,8 @@
 import Image from 'next/image';
 import { GetServerSideProps } from 'next';
 import Layout from '@/components/Layout';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
+// import 'slick-carousel/slick/slick.css';
+// import 'slick-carousel/slick/slick-theme.css';
 import { motion } from 'framer-motion';
 
 import Contacto from '@/components/Contacto';
@@ -221,7 +221,7 @@ export default function Home({
 							src="/images/liwilu_home_categoria_01.png"
 							alt="Imagen principal"
 							fill
-							className="object-cover rounded-xl shadow-lg"
+							className="object-cover rounded-md md:rounded-xl shadow-lg"
 							priority
 						/>
 						<div className="absolute bottom-2 right-2 text-white text-2xl md:text-4xl px-4 py-2 rounded-tl-lg font-semibold">
@@ -243,7 +243,7 @@ export default function Home({
 								src="/images/liwilu_home_categoria_02.png"
 								alt="Imagen 1"
 								fill
-								className="object-cover rounded-xl shadow-md"
+								className="object-cover rounded-md md:rounded-xl shadow-md"
 							/>
 							<div className="absolute bottom-1 left-1 text-white text-lg md:text-xl px-4 py-2 rounded-tl-lg font-semibold">
 								LIBROS
@@ -260,7 +260,7 @@ export default function Home({
 								src="/images/liwilu_home_categoria_03.png"
 								alt="Imagen 2"
 								fill
-								className="object-cover rounded-xl shadow-md"
+								className="object-cover rounded-md md:rounded-xl shadow-md"
 							/>
 							<div className="absolute bottom-1 left-1 text-white text-md md:text-xl px-4 py-2 rounded-tl-lg font-semibold">
 								HOGAR Y LIMPIEZA
@@ -277,7 +277,7 @@ export default function Home({
 								src="/images/liwilu_home_categoria_04.png"
 								alt="Imagen 3"
 								fill
-								className="object-cover rounded-xl shadow-md"
+								className="object-cover rounded-md md:rounded-xl shadow-md"
 							/>
 							<div className="absolute bottom-1 left-1 text-white text-lg md:text-xl px-4 py-2 rounded-tl-lg font-semibold">
 								TECNOLOGÍA
@@ -294,7 +294,7 @@ export default function Home({
 								src="/images/liwilu_home_categoria_05.png"
 								alt="Imagen 4"
 								fill
-								className="object-cover rounded-xl shadow-md"
+								className="object-cover rounded-md md:rounded-xl shadow-md"
 							/>
 							<div className="absolute bottom-1 left-1 text-white text-lg md:text-xl px-4 py-2 rounded-tl-lg font-semibold">
 								ÚTILES

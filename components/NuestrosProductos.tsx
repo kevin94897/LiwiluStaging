@@ -1,28 +1,22 @@
-// components/NuestrosProductos.tsx
 'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import Slider from 'react-slick';
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Product } from '@/lib/catalog';
 import { getProductImageUrl, formatPrice, getProductName } from '@/lib/utils';
 import { toggleFavorite, getFavorites } from '@/lib/catalog';
 import { useCart } from '@/context/CartContext';
-import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/router';
 import {
 	fadeInUp,
-	staggerContainer,
-	staggerItem,
-	cardHover,
 	transitions,
 	viewportConfig
 } from '@/lib/motionVariants';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
 import Button from './ui/Button';
 import AddToCartModal from '@/components/AddToCartModal';
 import { FaHeart, FaShoppingCart } from 'react-icons/fa';
@@ -42,6 +36,17 @@ export default function NuestrosProductos({
 	const { addToCart } = useCart();
 	const router = useRouter();
 
+	const [emblaRef] = useEmblaCarousel(
+		{
+			loop: true,
+			align: 'start',
+			skipSnaps: false,
+			dragFree: false,
+			containScroll: 'trimSnaps'
+		},
+		[Autoplay({ delay: 3000, stopOnInteraction: false })]
+	);
+
 	// Detectar si es mobile
 	useEffect(() => {
 		const checkMobile = () => {
@@ -60,12 +65,10 @@ export default function NuestrosProductos({
 			try {
 				const response = await getFavorites();
 				if (response.success) {
-					// Map favorite products to their IDs
 					const favoriteIds = response.data.map(fav => fav.id.toString());
 					setFavoritos(favoriteIds);
 				}
 			} catch (error) {
-				// Silently fail if user is not authenticated
 				console.log('Could not load favorites:', error);
 			}
 		}
@@ -78,10 +81,8 @@ export default function NuestrosProductos({
 		try {
 			setTogglingFavorite(id);
 
-			// Call API to toggle favorite
 			const result = await toggleFavorite(parseInt(id));
 
-			// Update local state based on API response
 			if (result.isFavorite) {
 				setFavoritos((prev) => [...prev, id]);
 				toast.success('Producto agregado a favoritos', {
@@ -106,7 +107,6 @@ export default function NuestrosProductos({
 		} catch (error) {
 			console.error('Error toggling favorite:', error);
 
-			// Check if it's an authentication error
 			if (error instanceof Error && error.message.includes('No hay sesión activa')) {
 				toast.error('Debes iniciar sesión para agregar favoritos', {
 					duration: 3000,
@@ -137,12 +137,19 @@ export default function NuestrosProductos({
 
 		try {
 			setLoadingCart(producto.id.toString());
-			addToCart(producto, 1);
 
-			// Abrir modal
+			// Check if product has default variation
+			let combinationId = producto.prestashopCombinationId ?? null;
+			if (producto.hasVariations && producto.defaultVariation) {
+				combinationId = producto.defaultVariation.prestashopCombinationId;
+			}
+
+			const cartProduct = {
+				...producto,
+				prestashopCombinationId: combinationId
+			};
+			addToCart(cartProduct, 1);
 			setModalProduct(producto);
-
-
 		} catch (error) {
 			console.error('Error al agregar al carrito:', error);
 			toast.error('Error al agregar el producto al carrito');
@@ -151,23 +158,7 @@ export default function NuestrosProductos({
 		}
 	};
 
-	// Configuración del slider para mobile
-	const sliderSettings = {
-		dots: false,
-		infinite: true,
-		speed: 500,
-		slidesToShow: 1,
-		slidesToScroll: 1,
-		autoplay: true,
-		autoplaySpeed: 3000,
-		arrows: false,
-		centerMode: true,
-		centerPadding: '20px',
-		dotsClass: 'slick-dots custom-dots',
-	};
-
 	const ProductCard = ({ producto }: { producto: Product }) => {
-		// Priority to coverImage if available (from catalog)
 		const imageUrl = producto.coverImage || (
 			producto.associations?.images?.[0]?.id
 				? getProductImageUrl(producto.id.toString(), producto.associations.images[0].id)
@@ -176,7 +167,7 @@ export default function NuestrosProductos({
 
 		return (
 			<Link href={`/tienda/${producto.id}`}>
-				<div className="bg-white rounded-md shadow-lg overflow-hidden hover:shadow-xl transition h-full">
+				<div className="bg-white rounded-md shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 h-full">
 					<div className="relative">
 						<span className="absolute top-2 left-2 bg-primary text-white px-3 py-1 rounded-full text-xs font-semibold z-10">
 							OFERTA
@@ -290,10 +281,10 @@ export default function NuestrosProductos({
 	}
 
 	return (
-		<section className="bg-gray-50 py-5 md:py-16">
-			<div className="max-w-7xl mx-auto px-6">
+		<section className="bg-gray-50 py-8 sm:py-12 md:py-16">
+			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<motion.h2
-					className="text-2xl md:text-4xl font-semibold text-center mb-5 md:mb-12 text-primary-dark"
+					className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-6 sm:mb-8 md:mb-12 text-primary-dark"
 					initial="hidden"
 					whileInView="visible"
 					viewport={viewportConfig}
@@ -306,45 +297,40 @@ export default function NuestrosProductos({
 				{/* Slider para Mobile */}
 				{isMobile ? (
 					<motion.div
-						className="mb-12"
+						className="mb-6 sm:mb-8"
 						initial="hidden"
 						whileInView="visible"
 						viewport={viewportConfig}
 						variants={fadeInUp}
 						transition={transitions.smooth}
 					>
-						<Slider {...sliderSettings}>
-							{productosAMostrar.map((producto) => (
-								<div key={producto.id}>
-									<ProductCard producto={producto} />
-								</div>
-							))}
-						</Slider>
+						<div className="overflow-hidden" ref={emblaRef}>
+							<div className="flex touch-pan-y touch-pinch-zoom -ml-3 sm:-ml-4">
+								{productosAMostrar.map((producto) => (
+									<div
+										key={producto.id}
+										className="flex-[0_0_85%] min-w-0 pl-3 sm:flex-[0_0_50%] sm:pl-4"
+									>
+										<ProductCard producto={producto} />
+									</div>
+								))}
+							</div>
+						</div>
 					</motion.div>
 				) : (
 					/* Grid para Desktop */
-					<motion.div
-						className="grid sm:grid-cols-2 md:grid-cols-4 gap-6 mb-12"
-						initial="hidden"
-						whileInView="visible"
-						viewport={viewportConfig}
-						variants={staggerContainer}
-					>
+					<div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
 						{productosAMostrar.map((producto) => (
-							<motion.div
-								key={producto.id}
-								variants={staggerItem}
-								transition={transitions.smooth}
-							>
+							<div key={producto.id}>
 								<ProductCard producto={producto} />
-							</motion.div>
+							</div>
 						))}
-					</motion.div>
+					</div>
 				)}
 
 				{/* Botón Ir a la Tienda */}
 				<motion.div
-					className="flex justify-center"
+					className="flex justify-center px-4 sm:px-6"
 					initial="hidden"
 					whileInView="visible"
 					viewport={viewportConfig}
@@ -370,20 +356,6 @@ export default function NuestrosProductos({
 					product={modalProduct}
 				/>
 			)}
-
-			{/* CSS personalizado para los dots del slider */}
-			<style jsx global>{`
-				.custom-dots {
-					bottom: -40px;
-				}
-				.custom-dots li button:before {
-					font-size: 12px;
-					color: #d1d5db;
-				}
-				.custom-dots li.slick-active button:before {
-					color: var(--primary-color, #2563eb);
-				}
-			`}</style>
 		</section>
 	);
 }

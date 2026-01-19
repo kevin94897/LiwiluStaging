@@ -474,3 +474,86 @@ body {
   display: block;
   background-image: url("/images/vectores/arrow-right.svg");
 }
+
+/* ============================================
+   TABS SINGLE PRODUCT
+   ============================================ */
+
+/* Base */
+.liwilu-tabs table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.liwilu-tabs thead {
+  background: #f9fafb;
+}
+
+.liwilu-tabs th,
+.liwilu-tabs td {
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.liwilu-tabs th {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.liwilu-tabs td {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.liwilu-tabs tbody tr:hover {
+  background: #f9fafb;
+}
+
+.liwilu-tabs tbody td:first-child {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* RESPONSIVE */
+@media (max-width: 640px) {
+  .liwilu-tabs thead {
+    display: none;
+  }
+
+  .liwilu-tabs table,
+  .liwilu-tabs tbody,
+  .liwilu-tabs tr {
+    display: block;
+    width: 100%;
+  }
+
+  .liwilu-tabs tbody tr {
+    padding: 12px 0;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .liwilu-tabs tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: none;
+  }
+
+  .liwilu-tabs tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #6b7280;
+  }
+}

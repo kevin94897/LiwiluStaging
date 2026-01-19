@@ -9,7 +9,8 @@ export interface Product {
     description?: Array<{ value: string }> | string;
     price?: string | number;
     quantity?: number;
-    reference?: string;
+    reference?: string | null;
+    sku?: string | null;
     id_category_default?: string | number;
     category_name?: string;
     associations?: {
@@ -19,6 +20,16 @@ export interface Product {
     coverImage?: string;
     originalPrice?: string | number;
     productId?: string | number;
+    prestashopCombinationId?: number | null;
+    hasVariations?: boolean;
+    defaultVariation?: {
+        prestashopCombinationId: number;
+        name: string;
+        reference: string;
+        price: number;
+        priceWithTax: number;
+        queryString: string;
+    } | null;
 }
 
 /**
@@ -50,6 +61,15 @@ export interface CatalogProduct {
     quantity: number;
     condition: string;
     coverImage: string;
+    hasVariations?: boolean;
+    defaultVariation?: {
+        prestashopCombinationId: number;
+        name: string;
+        reference: string;
+        price: number;
+        priceWithTax: number;
+        queryString: string;
+    } | null;
 }
 
 export interface CatalogResponse {
@@ -102,6 +122,7 @@ export async function searchProducts(params: FilterParams = {}): Promise<Catalog
     if (params.inStock !== undefined) queryParts.push(`inStock=${params.inStock}`);
     if (params.sortBy) queryParts.push(`sortBy=${params.sortBy}`);
     if (params.sortOrder) queryParts.push(`sortOrder=${params.sortOrder}`);
+    if (params.search) queryParts.push(`search=${encodeURIComponent(params.search)}`);
 
     // Ensure we have a base URL
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -441,6 +462,7 @@ export interface ProductVariation {
     prestashopCombinationId: number;
     sku: string;
     reference: string;
+    name?: string;
     price: ProductPrice;
     stock: ProductStock;
     attributes: ProductAttribute[];
