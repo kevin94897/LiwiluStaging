@@ -14,7 +14,7 @@ import {
   getCart as apiGetCart,
   CartData,
   CartProduct,
-  CartCarrier
+  CartCarrier,
 } from "@/lib/cart";
 
 export interface CartItem {
@@ -43,7 +43,9 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [totals, setTotals] = useState({ subtotal: 0, shipping: 0, total: 0 });
-  const [selectedCarrier, setSelectedCarrier] = useState<CartCarrier | null>(null);
+  const [selectedCarrier, setSelectedCarrier] = useState<CartCarrier | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [cartExpired, setCartExpired] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -99,16 +101,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
    */
   const convertCartProductToProduct = (cartProduct: CartProduct): Product => {
     return {
-      id: cartProduct.id,
+      id: cartProduct.idProductCart, // Use idProductCart as the main ID
       productId: cartProduct.prestashopId,
       name: cartProduct.name,
-      price: cartProduct.variationPriceWithTax || cartProduct.discountPrice || cartProduct.priceWithTax,
+      price:
+        cartProduct.variationPriceWithTax ||
+        cartProduct.discountPrice ||
+        cartProduct.priceWithTax,
       originalPrice: cartProduct.priceWithTax,
       quantity: cartProduct.quantity,
       coverImage: cartProduct.variationImage || cartProduct.coverImage,
-      reference: cartProduct.variationReference || cartProduct.reference || null,
+      reference:
+        cartProduct.variationReference || cartProduct.reference || null,
       sku: cartProduct.codArticle || null,
-      prestashopCombinationId: cartProduct.prestashopCombinationId ?? cartProduct.idArticle,
+      prestashopCombinationId:
+        cartProduct.prestashopCombinationId ?? cartProduct.idArticle,
+      idVariation: cartProduct.idVariation, // Include idVariation for variation-specific operations
+      variationAttributes: cartProduct.variationAttributes,
     };
   };
 
@@ -126,10 +135,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         if (response.data.products.length > 0) {
           // Convert backend products to frontend format
-          const backendItems: CartItem[] = response.data.products.map(product => ({
-            product: convertCartProductToProduct(product),
-            quantity: product.quantity
-          }));
+          const backendItems: CartItem[] = response.data.products.map(
+            (product) => ({
+              product: convertCartProductToProduct(product),
+              quantity: product.quantity,
+            }),
+          );
 
           setItems(backendItems);
         } else {
@@ -141,7 +152,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       } else if (response.isExpired) {
         console.warn("⚠️ Local cart expired, clearing...");
         import("@/lib/notifications").then(({ showToast }) => {
-          showToast("El carrito ha expirado. Por favor, vuelve a agregar los productos.", "error");
+          showToast(
+            "El carrito ha expirado. Por favor, vuelve a agregar los productos.",
+            "error",
+          );
         });
         setCartExpired(true);
         setItems([]);
@@ -166,9 +180,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       // Extract the actual product ID (prestashopId)
       // We prioritize productId if available, otherwise fallback to id
-      let productId = typeof product.productId === 'number'
-        ? product.productId
-        : parseInt(String(product.productId || product.id));
+      let productId =
+        typeof product.productId === "number"
+          ? product.productId
+          : parseInt(String(product.productId || product.id));
 
       const cleanQuantity = Math.max(1, Math.floor(quantity));
 
@@ -177,19 +192,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw new Error("ID de producto no válido");
       }
 
-      console.log(`🛒 Adding to cart: ID ${productId}, Combination ID ${product.prestashopCombinationId ?? null}, Quantity ${cleanQuantity}`);
+      console.log(
+        `🛒 Adding to cart: ID ${productId}, Combination ID ${product.prestashopCombinationId ?? null}, Quantity ${cleanQuantity}`,
+      );
 
       // Call backend API
-      const response = await apiAddToCart(productId, cleanQuantity, product.prestashopCombinationId ?? null);
+      const response = await apiAddToCart(
+        productId,
+        cleanQuantity,
+        product.prestashopCombinationId ?? null,
+      );
 
       if (response.success) {
         // Actualizar Session ID si el backend retorna uno nuevo
         updateSessionId(response.data.sessionId);
 
         // Update local state with backend response
-        const backendItems: CartItem[] = response.data.products.map(p => ({
+        const backendItems: CartItem[] = response.data.products.map((p) => ({
           product: convertCartProductToProduct(p),
-          quantity: p.quantity
+          quantity: p.quantity,
         }));
 
         setItems(backendItems);
@@ -202,7 +223,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Fallback to local cart if API fails
       setItems((prevItems) => {
         const existingItem = prevItems.find(
-          (item) => String(item.product.id) === String(product.id)
+          (item) => String(item.product.id) === String(product.id),
         );
 
         if (existingItem) {
@@ -210,7 +231,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           return prevItems.map((item) =>
             String(item.product.id) === String(product.id)
               ? { ...item, quantity: item.quantity + quantity }
-              : item
+              : item,
           );
         } else {
           // Si es nuevo, agregarlo
@@ -228,36 +249,61 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const removeFromCart = async (productId: string) => {
     setIsLoading(true);
     try {
-      const numericId = parseInt(productId);
-      if (isNaN(numericId)) {
-        console.error("Invalid Product ID for removal:", productId);
-        return;
-      }
+      // Find the item to determine if it has a variation
+      const item = items.find(
+        (item) => String(item.product.id) === String(productId),
+      );
 
-      // Call backend API
-      const { removeFromCart: apiRemoveFromCart } = await import("@/lib/cart");
-      const response = await apiRemoveFromCart(numericId);
+      if (item?.product.idVariation) {
+        // Use variation-specific endpoint
+        const { removeCartVariation } = await import("@/lib/cart");
+        const response = await removeCartVariation(item.product.idVariation);
 
-      if (response.success) {
-        // Update session ID if returned
-        updateSessionId(response.data.sessionId);
+        if (response.success) {
+          updateSessionId(response.data.sessionId);
 
-        // Update local state with backend response
-        const backendItems: CartItem[] = response.data.products.map(p => ({
-          product: convertCartProductToProduct(p),
-          quantity: p.quantity
-        }));
+          const backendItems: CartItem[] = response.data.products.map((p) => ({
+            product: convertCartProductToProduct(p),
+            quantity: p.quantity,
+          }));
 
-        setItems(backendItems);
-        setTotals(response.data.totals);
-        setSelectedCarrier(response.data.carrier);
+          setItems(backendItems);
+          setTotals(response.data.totals);
+          setSelectedCarrier(response.data.carrier);
+        }
+      } else {
+        // Use standard product endpoint
+        const numericId = parseInt(productId);
+        if (isNaN(numericId)) {
+          console.error("Invalid Product ID for removal:", productId);
+          return;
+        }
+
+        const { removeFromCart: apiRemoveFromCart } =
+          await import("@/lib/cart");
+        const response = await apiRemoveFromCart(numericId);
+
+        if (response.success) {
+          updateSessionId(response.data.sessionId);
+
+          const backendItems: CartItem[] = response.data.products.map((p) => ({
+            product: convertCartProductToProduct(p),
+            quantity: p.quantity,
+          }));
+
+          setItems(backendItems);
+          setTotals(response.data.totals);
+          setSelectedCarrier(response.data.carrier);
+        }
       }
     } catch (error: any) {
       console.error("Error removing from cart via API:", error);
 
       // Fallback to local removal
       setItems((prevItems) =>
-        prevItems.filter((item) => String(item.product.id) !== String(productId))
+        prevItems.filter(
+          (item) => String(item.product.id) !== String(productId),
+        ),
       );
     } finally {
       setIsLoading(false);
@@ -272,29 +318,54 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true);
     try {
-      const numericId = parseInt(productId);
-      if (isNaN(numericId)) {
-        console.error("Invalid Product ID for update:", productId);
-        return;
-      }
+      // Find the item to determine if it has a variation
+      const item = items.find(
+        (item) => String(item.product.id) === String(productId),
+      );
 
-      // Call backend API
-      const { updateCartQuantity } = await import("@/lib/cart");
-      const response = await updateCartQuantity(numericId, quantity);
+      if (item?.product.idVariation) {
+        // Use variation-specific endpoint
+        const { updateCartVariationQuantity } = await import("@/lib/cart");
+        const response = await updateCartVariationQuantity(
+          item.product.idVariation,
+          quantity,
+        );
 
-      if (response.success) {
-        // Update session ID if returned
-        updateSessionId(response.data.sessionId);
+        if (response.success) {
+          updateSessionId(response.data.sessionId);
 
-        // Update local state with backend response
-        const backendItems: CartItem[] = response.data.products.map(p => ({
-          product: convertCartProductToProduct(p),
-          quantity: p.quantity
-        }));
+          const backendItems: CartItem[] = response.data.products.map((p) => ({
+            product: convertCartProductToProduct(p),
+            quantity: p.quantity,
+          }));
 
-        setItems(backendItems);
-        setTotals(response.data.totals);
-        setSelectedCarrier(response.data.carrier);
+          setItems(backendItems);
+          setTotals(response.data.totals);
+          setSelectedCarrier(response.data.carrier);
+        }
+      } else {
+        // Use standard product endpoint
+        const numericId = parseInt(productId);
+        if (isNaN(numericId)) {
+          console.error("Invalid Product ID for update:", productId);
+          return;
+        }
+
+        const { updateCartQuantity } = await import("@/lib/cart");
+        const response = await updateCartQuantity(numericId, quantity);
+
+        if (response.success) {
+          updateSessionId(response.data.sessionId);
+
+          const backendItems: CartItem[] = response.data.products.map((p) => ({
+            product: convertCartProductToProduct(p),
+            quantity: p.quantity,
+          }));
+
+          setItems(backendItems);
+          setTotals(response.data.totals);
+          setSelectedCarrier(response.data.carrier);
+        }
       }
     } catch (error: any) {
       console.error("Error updating quantity via API:", error);
@@ -304,8 +375,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         prevItems.map((item) =>
           String(item.product.id) === String(productId)
             ? { ...item, quantity }
-            : item
-        )
+            : item,
+        ),
       );
     } finally {
       setIsLoading(false);
@@ -349,9 +420,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         updateSessionId(response.data.sessionId);
 
         // Convert backend products to frontend format
-        const backendItems: CartItem[] = response.data.products.map(p => ({
+        const backendItems: CartItem[] = response.data.products.map((p) => ({
           product: convertCartProductToProduct(p),
-          quantity: p.quantity
+          quantity: p.quantity,
         }));
 
         setItems(backendItems);
@@ -409,4 +480,3 @@ export function useCart() {
   }
   return context;
 }
-

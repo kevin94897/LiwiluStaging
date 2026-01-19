@@ -21,6 +21,10 @@ export const guestDataSchema = z.object({
         .min(9, "El celular debe tener al menos 9 dígitos")
         .regex(/^[0-9]+$/, "El celular solo puede contener números"),
 
+    email: z.string()
+        .min(1, "El correo electrónico es obligatorio")
+        .email("Ingresa un correo electrónico válido"),
+
     telefonoOpcional: z.string().optional(),
 
     departamento: z.string().min(1, "El departamento es obligatorio"),

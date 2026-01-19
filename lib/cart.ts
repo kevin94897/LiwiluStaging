@@ -6,8 +6,10 @@ import { apiPost, apiGet, apiDelete, apiPut } from './auth/apiClient';
  */
 export interface CartProduct {
     id: number;
+    idProductCart: number; // ID of the cart item
     prestashopId: number;
     idArticle: number | null;
+    idVariation?: number | null; // ID for variation-specific operations
     name: string;
     price: number;
     priceWithTax: number;
@@ -274,6 +276,69 @@ export async function removeFromCart(productId: number): Promise<AddToCartRespon
 }
 
 /**
+ * Update quantity of a product variation in the cart
+ * @param idVariation - The ID of the variation to update
+ * @param quantity - The new quantity
+ * @returns Promise with the updated cart response
+ */
+export async function updateCartVariationQuantity(idVariation: number, quantity: number): Promise<AddToCartResponse> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiPut(`/cart/variation/${idVariation}`, { quantity }, {
+            skipAuth: !accessToken
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error updating cart variation: ${response.statusText}`);
+        }
+
+        const data: AddToCartResponse = await response.json();
+
+        // Update session ID if returned
+        if (data?.data?.sessionId && typeof window !== 'undefined') {
+            localStorage.setItem('liwilu_session_id', data.data.sessionId);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error in updateCartVariationQuantity:', error);
+        throw error;
+    }
+}
+
+/**
+ * Remove a product variation from the cart
+ * @param idVariation - The ID of the variation to remove
+ * @returns Promise with the updated cart response
+ */
+export async function removeCartVariation(idVariation: number): Promise<AddToCartResponse> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiDelete(`/cart/variation/${idVariation}`, {
+            skipAuth: !accessToken
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error removing cart variation: ${response.statusText}`);
+        }
+
+        const data: AddToCartResponse = await response.json();
+
+        // Update session ID if returned
+        if (data?.data?.sessionId && typeof window !== 'undefined') {
+            localStorage.setItem('liwilu_session_id', data.data.sessionId);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error in removeCartVariation:', error);
+        throw error;
+    }
+}
+
+/**
  * Clear the entire cart
  * @returns Promise with the empty cart response
  */
@@ -496,6 +561,168 @@ export async function validateStock(
         return await response.json();
     } catch (error) {
         console.error('Error in validateStock:', error);
+        throw error;
+    }
+}
+
+/**
+ * Save guest personal data
+ * @param data - The guest personal data
+ * @returns Promise with the response
+ */
+export async function saveGuestPersonalData(data: any): Promise<{ success: boolean; message: string }> {
+    try {
+        // X-Session-Id is automatically added by apiClient.ts from liwilu_session_id
+        const response = await apiPut('/cart/personal-data', data, {
+            skipAuth: true
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error saving guest data: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in saveGuestPersonalData:', error);
+        throw error;
+    }
+}
+
+
+/**
+ * Delivery Zone Interface
+ */
+export interface DeliveryZone {
+    zoneId: number;
+    zoneName: string;
+    idCarrier: number;
+    price: number;
+}
+
+/**
+ * Delivery Zones Response Interface
+ */
+export interface DeliveryZonesResponse {
+    success: boolean;
+    carrierId: number;
+    carrierName: string;
+    isFree: boolean;
+    total: number;
+    zones: DeliveryZone[];
+}
+
+/**
+ * Get delivery zones and prices for a specific carrier
+ * @param carrierId - The ID of the carrier
+ * @returns Promise with the delivery zones data
+ */
+export async function getDeliveryZones(carrierId: number): Promise<DeliveryZonesResponse> {
+    try {
+        const response = await apiGet(`/cart/delivery-zones/${carrierId}`, {
+            skipAuth: true 
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error fetching delivery zones: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in getDeliveryZones:', error);
+        throw error;
+    }
+}
+
+/**
+ * Save delivery address to the cart
+ * @param data - The address data (distritoSeleccionado, direccion, numeroDptoPiso, referencia)
+ * @returns Promise with the response
+ */
+export async function saveCartDeliveryAddress(data: {
+    distritoSeleccionado: string;
+    direccion: string;
+    numeroDptoPiso: string;
+    referencia: string;
+}): Promise<{ success: boolean; message: string }> {
+    try {
+        const response = await apiPut('/cart/delivery-address', data, {
+            skipAuth: true // Handled by sessionId header in apiClient
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error saving delivery address: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in saveCartDeliveryAddress:', error);
+        throw error;
+    }
+}
+
+/**
+ * Savar Stock Validation Result Interface
+ */
+export interface SavarStockValidationResult {
+    success: boolean;
+    reference: string;
+    descripcion: string;
+    stock: number;
+    stockSeleccionado: number;
+    estado: string;
+    mensaje: string;
+    disponible: boolean;
+}
+
+/**
+ * Validate stock for a single product via Savar endpoint
+ * @param reference - Product reference code
+ * @param quantity - Selected quantity
+ * @returns Promise with validation results
+ */
+export async function validateSavarStock(reference: string, quantity: number): Promise<SavarStockValidationResult> {
+    try {
+        const response = await apiGet(`/cart/validate-stock-savar?reference=${reference}&stockSeleccionado=${quantity}`, {
+            skipAuth: true 
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error validating Savar stock: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in validateSavarStock:', error);
+        throw error;
+    }
+}
+
+/**
+ * Save delivery price and zone to the cart session
+ */
+export async function saveCartDeliveryPrice(data: {
+    carrierId: number;
+    shippingCost: number;
+    zoneId: number;
+    zoneName: string;
+}): Promise<{ success: boolean; message: string }> {
+    try {
+        const response = await apiPut('/cart/delivery-price', data, {
+            skipAuth: true // Handled by sessionId header in apiClient
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error saving delivery price: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in saveCartDeliveryPrice:', error);
         throw error;
     }
 }

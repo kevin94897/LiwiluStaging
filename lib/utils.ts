@@ -17,20 +17,32 @@ export function formatPrice(price: string | number): string {
 }
 
 /**
- * Extracts product name from legacy or new product objects
+ * Extracts product name from legacy or new product objects,
+ * appending variation attributes if present (e.g. "GORRO - Rojo")
  */
 export function getProductName(product: any): string {
     if (!product) return '';
 
+    let baseName = '';
     if (typeof product.name === 'string') {
-        return product.name;
+        baseName = product.name;
+    } else if (Array.isArray(product.name) && product.name.length > 0) {
+        baseName = product.name[0].value || '';
     }
 
-    if (Array.isArray(product.name) && product.name.length > 0) {
-        return product.name[0].value || '';
+    // Append variation attributes if present
+    if (product.variationAttributes && Array.isArray(product.variationAttributes) && product.variationAttributes.length > 0) {
+        const attributes = product.variationAttributes
+            .map((attr: any) => attr.value)
+            .filter(Boolean)
+            .join(', ');
+        
+        if (attributes) {
+            return `${baseName} - ${attributes}`;
+        }
     }
 
-    return '';
+    return baseName;
 }
 
 /**

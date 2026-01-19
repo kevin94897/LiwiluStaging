@@ -21,7 +21,9 @@ export interface Product {
     originalPrice?: string | number;
     productId?: string | number;
     prestashopCombinationId?: number | null;
+    idVariation?: number | null; // ID for variation-specific cart operations
     hasVariations?: boolean;
+    variationAttributes?: any[];
     defaultVariation?: {
         prestashopCombinationId: number;
         name: string;

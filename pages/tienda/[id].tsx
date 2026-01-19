@@ -431,7 +431,10 @@ export default function ProductDetail({
     // Buscar variación que coincida EXACTAMENTE
     const foundVariation = variationsData.variations.find((v) => {
       // Debe tener exactamente los mismos atributos
-      if (v.attributes.length !== Object.keys(newAttrs).length) {
+      if (
+        !v.attributes ||
+        v.attributes.length !== Object.keys(newAttrs).length
+      ) {
         return false;
       }
 
@@ -441,18 +444,18 @@ export default function ProductDetail({
     if (foundVariation) {
       setCurrentVariation(foundVariation);
     } else {
-      // Opción A: Mantener variación anterior (comportamiento actual)
-      // No hacer nada
-
       // Opción B: Buscar variación PARCIAL (más flexible)
-      const partialVariation = variationsData.variations.find((v) =>
-        v.attributes.every((attr) => {
-          // Si el atributo está en newAttrs, debe coincidir
-          if (newAttrs[attr.type] !== undefined) {
-            return newAttrs[attr.type] === attr.id;
-          }
-          return true; // Si no está, lo ignoramos
-        }),
+      const partialVariation = variationsData.variations.find(
+        (v) =>
+          v.attributes &&
+          v.attributes.length > 0 &&
+          v.attributes.every((attr) => {
+            // Si el atributo está en newAttrs, debe coincidir
+            if (newAttrs[attr.type] !== undefined) {
+              return newAttrs[attr.type] === attr.id;
+            }
+            return true; // Si no está, lo ignoramos
+          }),
       );
 
       if (partialVariation) {
@@ -473,7 +476,8 @@ export default function ProductDetail({
     attributeType: string,
     attributeValueId: number,
   ) => {
-    if (!variationsData?.variations) return true;
+    if (!variationsData?.variations || variationsData.variations.length === 0)
+      return true;
 
     const proposedSelection = {
       ...selectedAttributes,
@@ -481,22 +485,24 @@ export default function ProductDetail({
     };
 
     return variationsData.variations.some((v) => {
-      // ✅ FIXED: Check if variation is COMPATIBLE with proposed selection
-      // A variation is compatible if all of its attributes match the proposed selection
-      // (but the variation doesn't need to have all proposed attributes)
-      const isCompatible = v.attributes.every((attr) => {
-        const proposedValue = proposedSelection[attr.type];
-        // If we have a value for this attribute type, it must match
-        return proposedValue === undefined || proposedValue === attr.id;
-      });
+      // Ignorar variaciones sin atributos para esta validación, ya que estamos
+      // validando la disponibilidad de un atributo específico (talla, color, etc.)
+      if (!v.attributes || v.attributes.length === 0) {
+        return false;
+      }
 
-      if (!isCompatible) return false;
+      // La variación debe tener TODOS los atributos de la selección propuesta
+      const matchesProposed = Object.entries(proposedSelection).every(
+        ([type, valId]) => {
+          return v.attributes.some((a) => a.type === type && a.id === valId);
+        },
+      );
 
-      // ✅ VALIDAR TANTO STOCK COMO PRECIO
+      if (!matchesProposed) return false;
+
+      // Validar Stock y Precio
       const hasStock = v.stock?.inStock && v.stock?.quantity > 0;
-      const hasValidPrice =
-        (v.price?.amount && v.price.amount > 0) ||
-        (v.price?.amountWithTax && v.price.amountWithTax > 0);
+      const hasValidPrice = (v.price?.amount ?? 0) > 0;
 
       return hasStock && hasValidPrice;
     });
@@ -883,138 +889,159 @@ export default function ProductDetail({
                 </div>
 
                 {/* Opciones de personalización */}
+                {/* Opciones de personalización (Atributos) */}
                 {variationsData.attributes &&
-                variationsData.attributes.length > 0 ? (
-                  <div className="flex flex-col gap-6 mb-6">
-                    {variationsData.attributes.map((attr) => (
-                      <div key={attr.type}>
-                        <label className="block text-dark font-medium mb-3">
-                          {attr.name || attr.type}:
-                          {currentVariation && (
-                            <span className="ml-2 text-primary-dark font-normal">
-                              {
-                                currentVariation.attributes.find(
-                                  (a) => a.type === attr.type,
-                                )?.value
-                              }
-                            </span>
-                          )}
-                        </label>
-                        <div className="flex flex-wrap items-center gap-1 md:gap-3">
-                          {attr.values?.map((val) => {
-                            // Validar si esta opción debe mostrarse
-                            const isAvailable =
-                              attr.type === "color" ||
-                              checkAttributeAvailability(attr.type, val.id);
-
-                            if (!isAvailable) return null;
-
-                            const isSelected =
-                              selectedAttributes[attr.type] === val.id;
-
-                            // Encontrar la variación que tendría este valor para el preview
-                            const previewVariation =
-                              variationsData.variations.find((v) =>
-                                v.attributes?.some(
-                                  (a) =>
-                                    a.type === attr.type && a.id === val.id,
-                                ),
-                              );
-
-                            return (
-                              <div key={val.id} className="relative group">
-                                <button
-                                  title={val.value}
-                                  onClick={() =>
-                                    handleAttributeChange(attr.type, val.id)
+                  variationsData.attributes.length > 0 && (
+                    <div className="flex flex-col gap-6 mb-6">
+                      {variationsData.attributes.map((attr) => (
+                        <div key={attr.type}>
+                          <label className="block text-dark font-medium mb-3">
+                            {attr.name || attr.type}:
+                            {currentVariation &&
+                              currentVariation.attributes?.length > 0 && (
+                                <span className="ml-2 text-primary-dark font-normal">
+                                  {
+                                    currentVariation.attributes.find(
+                                      (a) => a.type === attr.type,
+                                    )?.value
                                   }
-                                  className={
-                                    attr.type === "color"
-                                      ? `w-10 h-10 rounded-full border-2 transition relative ${
-                                          isSelected
-                                            ? "border-primary border-4 scale-110"
-                                            : "border-gray-300 hover:scale-105"
-                                        }`
-                                      : `px-5 py-2 border rounded-md font-medium transition ${
-                                          isSelected
-                                            ? "bg-primary-dark text-white border-gray-900"
-                                            : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                        }`
-                                  }
-                                  style={
-                                    attr.type === "color" && val.colorHex
-                                      ? { backgroundColor: val.colorHex }
-                                      : {}
-                                  }
-                                >
-                                  {attr.type !== "color" && val.value}
-                                </button>
+                                </span>
+                              )}
+                          </label>
+                          <div className="flex flex-wrap items-center gap-1 md:gap-3">
+                            {attr.values?.map((val) => {
+                              const isActuallyAvailable =
+                                val.available ??
+                                checkAttributeAvailability(attr.type, val.id);
 
-                                {/* Preview de imagen al hacer hover (solo para colores) */}
-                                {attr.type === "color" &&
-                                  previewVariation &&
-                                  !isSelected && (
-                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                      <div className="bg-white rounded-md shadow-xl border-2 border-gray-200 p-2">
-                                        <div className="relative w-24 h-24">
-                                          <Image
-                                            src={
-                                              previewVariation.images?.[0]
-                                                ?.url ||
-                                              variationsData.media?.coverImage
-                                                ?.url ||
-                                              "/images/placeholder-product.jpg"
-                                            }
-                                            alt={val.value}
-                                            fill
-                                            className="object-contain rounded"
-                                            unoptimized
-                                          />
+                              if (!isActuallyAvailable) return null;
+
+                              const isSelected =
+                                selectedAttributes[attr.type] === val.id;
+
+                              const previewVariation =
+                                variationsData.variations.find((v) =>
+                                  v.attributes?.some(
+                                    (a) =>
+                                      a.type === attr.type && a.id === val.id,
+                                  ),
+                                );
+
+                              return (
+                                <div key={val.id} className="relative group">
+                                  <button
+                                    title={val.value}
+                                    onClick={() =>
+                                      handleAttributeChange(attr.type, val.id)
+                                    }
+                                    className={
+                                      attr.type === "color"
+                                        ? `w-10 h-10 rounded-full border-2 transition relative ${
+                                            isSelected
+                                              ? "border-primary border-4 scale-110"
+                                              : "border-gray-300 hover:scale-105"
+                                          }`
+                                        : `px-5 py-2 border rounded-md font-medium transition ${
+                                            isSelected
+                                              ? "bg-primary-dark text-white border-gray-900"
+                                              : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                          }`
+                                    }
+                                    style={
+                                      attr.type === "color" && val.colorHex
+                                        ? { backgroundColor: val.colorHex }
+                                        : {}
+                                    }
+                                  >
+                                    {attr.type !== "color" && val.value}
+                                  </button>
+                                  {attr.type === "color" &&
+                                    previewVariation &&
+                                    !isSelected && (
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                        <div className="bg-white rounded-md shadow-xl border-2 border-gray-200 p-2">
+                                          <div className="relative w-24 h-24">
+                                            <Image
+                                              src={getImageUrl(
+                                                previewVariation.images?.[0] ||
+                                                  variationsData.media
+                                                    ?.coverImage,
+                                              )}
+                                              alt={val.value}
+                                              fill
+                                              className="object-contain rounded"
+                                              unoptimized
+                                            />
+                                          </div>
+                                          <p className="text-[10px] text-center mt-1 text-gray-600 font-bold uppercase truncate max-w-[90px]">
+                                            {val.value}
+                                          </p>
                                         </div>
-                                        <p className="text-[10px] text-center mt-1 text-gray-600 font-bold uppercase truncate max-w-[90px]">
-                                          {val.value}
-                                        </p>
                                       </div>
-                                    </div>
-                                  )}
-                              </div>
-                            );
-                          })}
+                                    )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  /* Fallback logic for flat variations (no attribute groups) */
-                  variationsData.variations &&
-                  variationsData.variations.length > 1 && (
-                    <div className="flex flex-col gap-4 mb-6">
-                      <label className="block text-gray-700 font-medium">
-                        Opciones disponibles:
+                      ))}
+                    </div>
+                  )}
+
+                {/* Variaciones Standalone (Sin atributos) */}
+                {(() => {
+                  const standaloneVariations = variationsData.variations.filter(
+                    (v) => !v.attributes || v.attributes.length === 0,
+                  );
+
+                  if (standaloneVariations.length === 0) return null;
+
+                  return (
+                    <div className="flex flex-col gap-4 mb-6 pt-4 border-t border-gray-100">
+                      <label className="block text-primary-dark font-medium">
+                        {variationsData.attributes?.length > 0
+                          ? "Otras versiones:"
+                          : "Opciones disponibles:"}
                       </label>
                       <div className="flex flex-wrap gap-3">
-                        {variationsData.variations.map((v) => {
+                        {standaloneVariations.map((v) => {
                           const isSelected = currentVariation?.id === v.id;
                           return (
                             <button
                               key={v.id}
-                              onClick={() => setCurrentVariation(v)}
+                              onClick={() => {
+                                setCurrentVariation(v);
+                                setSelectedAttributes({});
+                              }}
                               className={`px-4 py-2 border rounded-md font-medium transition ${
                                 isSelected
-                                  ? "bg-primary-dark text-white border-gray-900"
+                                  ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
                                   : "border-gray-300 text-gray-700 hover:bg-gray-100"
                               }`}
                             >
-                              {v.name ||
-                                v.reference ||
-                                `Opción ${v.prestashopCombinationId}`}
+                              <div className="flex flex-col items-center">
+                                <span className="text-sm font-bold">
+                                  {v.name && v.name !== basicData.name
+                                    ? v.name
+                                    : v.sku || v.reference || `Opción ${v.id}`}
+                                </span>
+                                {v.price?.amount > 0 && (
+                                  <span
+                                    className={`text-[10px] ${isSelected ? "text-white/80" : "text-gray-500"}`}
+                                  >
+                                    {formatPrice(
+                                      v.price.amountWithTax || v.price.amount,
+                                    )}
+                                  </span>
+                                )}
+                              </div>
                             </button>
                           );
                         })}
                       </div>
                     </div>
-                  )
-                )}
+                  );
+                })()}
 
                 {/* Cantidad */}
                 <div className="mb-6">

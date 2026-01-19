@@ -36,6 +36,8 @@ import { useLocations } from "@/hooks/useLocations";
 import { z } from "zod";
 import { PiWarningCircleFill } from "react-icons/pi";
 import { FaPencil } from "react-icons/fa6";
+import AutorizacionModal from "@/components/cart/AutorizacionModal";
+import { AutorizacionSchemaType } from "@/lib/autorizacionSchema";
 import {
   getCarriers,
   CartCarrier,
@@ -45,6 +47,13 @@ import {
   WarehouseMapItem,
   validateStock,
   StockValidationResponse,
+  saveGuestPersonalData,
+  getDeliveryZones,
+  DeliveryZone,
+  saveCartDeliveryAddress,
+  validateSavarStock,
+  saveCartDeliveryPrice,
+  SavarStockValidationResult,
 } from "@/lib/cart";
 
 const WarehouseMap = dynamic(() => import("@/components/WarehouseMap"), {
@@ -91,11 +100,14 @@ export default function Carrito() {
   );
   const [mostrarMapa, setMostrarMapa] = useState(false);
   const [loadingStores, setLoadingStores] = useState(false);
+  const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
   const [direccionEnvio, setDireccionEnvio] = useState({
     calle: "Calle continental 145",
     distrito: "Ate",
     ciudad: "Lima",
     departamento: "Lima",
+    numeroDptoPiso: "",
+    referencia: "",
   });
   const [editandoDireccion, setEditandoDireccion] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -116,6 +128,12 @@ export default function Carrito() {
   const [isValidatingStock, setIsValidatingStock] = useState(false);
   const [stockValidationResult, setStockValidationResult] =
     useState<StockValidationResponse | null>(null);
+  const [isValidatingSavar, setIsValidatingSavar] = useState(false);
+  const [savarStockResults, setSavarStockResults] = useState<
+    SavarStockValidationResult[]
+  >([]);
+  const [showSavarStockModal, setShowSavarStockModal] = useState(false);
+  const [showPickupStockModal, setShowPickupStockModal] = useState(false);
 
   // Estados para formulario de invitado
   const [guestData, setGuestData] = useState<GuestDataSchemaType>({
@@ -124,6 +142,7 @@ export default function Carrito() {
     tipoDocumento: "DNI",
     numeroDocumento: "",
     celular: "",
+    email: "", // Added email initial state
     telefonoOpcional: "",
     departamento: "Lima",
     provincia: "Lima",
@@ -137,16 +156,18 @@ export default function Carrito() {
   >({});
   const [guestDataCompleted, setGuestDataCompleted] = useState(false);
 
-  // Hooks de ubicación
-  const guestLocations = useLocations("Lima", "Lima", "");
-  const userLocations = useLocations(
-    direccionEnvio.departamento || "Lima",
-    direccionEnvio.ciudad || "Lima",
-    direccionEnvio.distrito,
-  );
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>(
     {},
   );
+
+  // Estados para autorización de retiro
+  const [showAutorizacionModal, setShowAutorizacionModal] = useState(false);
+  const [autorizacionData, setAutorizacionData] =
+    useState<AutorizacionSchemaType | null>(null);
+
+  // Hooks de ubicación
+  const guestLocations = useLocations("Lima", "Lima", "");
+  const userLocations = useLocations("Lima", "Lima", direccionEnvio.distrito);
 
   // Sincronizar estado local con hook de auth
   useEffect(() => {
@@ -154,6 +175,65 @@ export default function Carrito() {
       setIsLoggedIn(isAuthenticated);
     }
   }, [isAuthenticated, authLoading]);
+
+  // Fetch delivery zones for carrier 250
+  useEffect(() => {
+    const fetchZones = async () => {
+      try {
+        const response = await getDeliveryZones(250);
+        if (response.success) {
+          setDeliveryZones(response.zones);
+        }
+      } catch (error) {
+        console.error("Error fetching delivery zones:", error);
+      }
+    };
+    fetchZones();
+  }, []);
+
+  // Trigger Savar stock validation when delivery is selected or district changes
+  useEffect(() => {
+    if (metodoEnvio === "delivery" && items.length > 0) {
+      performSavarStockValidation();
+    }
+  }, [metodoEnvio, items.length, direccionEnvio.distrito, guestData.distrito]);
+  // Sync delivery price with backend when district changes
+  useEffect(() => {
+    const syncDeliveryPrice = async () => {
+      if (
+        metodoEnvio === "delivery" &&
+        selectedCarrier?.id === 250 &&
+        direccionEnvio.distrito &&
+        deliveryZones.length > 0
+      ) {
+        const matchingZone = deliveryZones.find(
+          (z) =>
+            z.zoneName.toLowerCase() === direccionEnvio.distrito.toLowerCase(),
+        );
+
+        if (matchingZone) {
+          try {
+            await saveCartDeliveryPrice({
+              carrierId: 250,
+              shippingCost: matchingZone.price,
+              zoneId: matchingZone.zoneId,
+              zoneName: matchingZone.zoneName,
+            });
+            console.log("Delivery price synced to API:", matchingZone.zoneName);
+          } catch (error) {
+            console.error("Error syncing delivery price:", error);
+          }
+        }
+      }
+    };
+
+    syncDeliveryPrice();
+  }, [
+    metodoEnvio,
+    selectedCarrier?.id,
+    direccionEnvio.distrito,
+    deliveryZones,
+  ]);
 
   // Cargar direcciones si el usuario está logueado
   useEffect(() => {
@@ -227,6 +307,24 @@ export default function Carrito() {
     guestDataCompleted,
     authLoading,
   ]);
+
+  // Cargar datos de autorización
+  useEffect(() => {
+    const saved = localStorage.getItem("liwilu_autorizacion");
+    if (saved) {
+      try {
+        setAutorizacionData(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error al cargar autorización:", e);
+      }
+    }
+  }, []);
+
+  const handleSaveAutorizacion = (data: AutorizacionSchemaType) => {
+    setAutorizacionData(data);
+    localStorage.setItem("liwilu_autorizacion", JSON.stringify(data));
+    showToast("Autorización guardada correctamente");
+  };
 
   // Fetch carriers
   useEffect(() => {
@@ -362,7 +460,11 @@ export default function Carrito() {
     const triggerValidation = async () => {
       if (metodoEnvio === "retiro" && tiendaSeleccionada) {
         await performStockValidation([parseInt(tiendaSeleccionada)]);
-      } else if (metodoEnvio === "delivery" && mapWarehouses.length > 0) {
+      } else if (
+        metodoEnvio === "delivery" &&
+        !isGuest &&
+        mapWarehouses.length > 0
+      ) {
         await performStockValidation(mapWarehouses.map((w) => w.idAlmacen));
       } else {
         setStockValidationResult(null);
@@ -370,7 +472,7 @@ export default function Carrito() {
     };
 
     triggerValidation();
-  }, [items, tiendaSeleccionada, metodoEnvio, mapWarehouses]);
+  }, [items, tiendaSeleccionada, metodoEnvio, mapWarehouses, isGuest]);
 
   useEffect(() => {
     if (activeTab === "login") {
@@ -670,12 +772,41 @@ export default function Carrito() {
 
     // Si es válido
     setGuestErrors({});
-    console.log("Datos de invitado:", guestData);
-    setIsGuest(true);
-    setGuestDataCompleted(true);
-    setShowLoginModal(false);
-    setShowGuestForm(false);
-    showToast("¡Datos guardados! Continúa con tu compra.", "success");
+
+    // Save to API
+    const saveToApi = async () => {
+      try {
+        const payload = {
+          nombre: guestData.nombre,
+          apellido: guestData.apellido,
+          tipoDocumento: guestData.tipoDocumento,
+          numeroDocumento: guestData.numeroDocumento,
+          celular: guestData.celular,
+          telefono: guestData.telefonoOpcional || "",
+          email: guestData.email,
+          departamento: guestData.departamento,
+          provincia: guestData.provincia,
+          distrito: guestData.distrito,
+          direccion: guestData.direccion,
+          numeroDptoPiso: guestData.numeroDpto || "",
+          referencia: guestData.referencia || "",
+        };
+
+        await saveGuestPersonalData(payload);
+
+        console.log("Datos de invitado guardados:", guestData);
+        setIsGuest(true);
+        setGuestDataCompleted(true);
+        setShowLoginModal(false);
+        setShowGuestForm(false);
+        showToast("¡Datos guardados! Continúa con tu compra.", "success");
+      } catch (error: any) {
+        console.error("Error saving guest data:", error);
+        showToast(error.message || "Error al guardar datos", "error");
+      }
+    };
+
+    saveToApi();
   };
 
   const performStockValidation = async (
@@ -723,13 +854,83 @@ export default function Carrito() {
       setIsValidatingStock(false);
     }
   };
+  const performSavarStockValidation = async () => {
+    const productsToValidate = items
+      .filter((item) => item.product && item.product.reference)
+      .map((item) => ({
+        reference: item.product.reference as string,
+        quantity: item.quantity,
+      }));
+
+    if (productsToValidate.length === 0) {
+      return null;
+    }
+
+    setIsValidatingSavar(true);
+    setSavarStockResults([]);
+
+    try {
+      const results = await Promise.all(
+        productsToValidate.map((p) =>
+          validateSavarStock(p.reference, p.quantity),
+        ),
+      );
+      setSavarStockResults(results);
+      return results;
+    } catch (error: any) {
+      console.error("Error validating Savar stock:", error);
+      showToast(error.message || "Error al validar stock de despacho", "error");
+      return null;
+    } finally {
+      setIsValidatingSavar(false);
+    }
+  };
 
   const handleCheckoutSubmit = async (e: React.MouseEvent) => {
     e.preventDefault();
 
-    if (isGuest && !guestDataCompleted) {
+    if (!acceptTerms) {
+      showToast(
+        "Debes aceptar los términos y condiciones para continuar.",
+        "error",
+      );
+      return;
+    }
+
+    if ((isGuest && !guestDataCompleted) || (!isLoggedIn && !isGuest)) {
       setShowLoginModal(true);
       return;
+    }
+
+    // Savar Stock Check for Delivery
+    if (metodoEnvio === "delivery") {
+      const itemsNoDisponibles = savarStockResults.filter((r) => !r.disponible);
+      if (itemsNoDisponibles.length > 0) {
+        setShowSavarStockModal(true);
+        return;
+      }
+      // If Savar check passes and is guest, proceed directly
+      if (isGuest) {
+        router.push("/checkout");
+        return;
+      }
+    }
+
+    // New: Pickup Stock Check for "Retiro en Tienda"
+    if (metodoEnvio === "retiro") {
+      const selectedWh = stockValidationResult?.resultadosPorAlmacen.find(
+        (w) => w.idAlmacen.toString() === tiendaSeleccionada,
+      );
+
+      if (selectedWh) {
+        const itemsNoDisponibles = selectedWh.productos.filter(
+          (p) => !p.disponible,
+        );
+        if (itemsNoDisponibles.length > 0) {
+          setShowPickupStockModal(true);
+          return;
+        }
+      }
     }
 
     // If we already have a result and it's successful, we can just proceed
@@ -746,7 +947,11 @@ export default function Carrito() {
     if (result?.success) {
       router.push("/checkout");
     } else if (result) {
-      showToast("Algunos productos no tienen stock suficiente", "error");
+      if (metodoEnvio === "retiro") {
+        setShowPickupStockModal(true);
+      } else {
+        showToast("Algunos productos no tienen stock suficiente", "error");
+      }
     } else {
       showToast(
         "Por favor selecciona una ubicación de entrega válida",
@@ -756,8 +961,21 @@ export default function Carrito() {
   };
 
   const subtotal = totals.subtotal;
-  const envio = totals.shipping;
-  const total = totals.total;
+
+  // Override shipping cost for carrier 250 based on zone
+  const getEnvioCost = () => {
+    if (selectedCarrier?.id === 250 && deliveryZones.length > 0) {
+      const zone = deliveryZones.find(
+        (z) =>
+          z.zoneName.toLowerCase() === direccionEnvio.distrito.toLowerCase(),
+      );
+      if (zone) return zone.price;
+    }
+    return totals.shipping;
+  };
+
+  const envio = getEnvioCost();
+  const total = subtotal + envio;
 
   // Calculate savings
   const totalSavings = items.reduce((acc, item) => {
@@ -857,7 +1075,20 @@ export default function Carrito() {
   }
 
   const handleSaveAddress = async () => {
-    // Si no está autenticado o es invitado, solo actualiza el estado local
+    // Save to cart session API regardless of auth status
+    try {
+      await saveCartDeliveryAddress({
+        distritoSeleccionado: direccionEnvio.distrito,
+        direccion: direccionEnvio.calle,
+        numeroDptoPiso: direccionEnvio.numeroDptoPiso,
+        referencia: direccionEnvio.referencia,
+      });
+      console.log("Cart delivery address saved to API");
+    } catch (apiError) {
+      console.error("Error saving address to cart API:", apiError);
+    }
+
+    // Si no está autenticado o es invitado, solo actualiza el estado local para la UI
     if (!isAuthenticated || isGuest) {
       setEditandoDireccion(false);
       return;
@@ -1687,6 +1918,30 @@ export default function Carrito() {
                       )}
                     </div>
 
+                    {/* Email */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Correo electrónico
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={guestData.email}
+                        onChange={handleGuestChange}
+                        placeholder="ejemplo@correo.com"
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                          guestErrors.email
+                            ? "border-red-500"
+                            : "border-gray-200"
+                        }`}
+                      />
+                      {guestErrors.email && (
+                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                          <PiWarningCircleFill size={16} /> {guestErrors.email}
+                        </p>
+                      )}
+                    </div>
+
                     {/* Teléfonos */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -1750,7 +2005,8 @@ export default function Carrito() {
                             }));
                             guestLocations.handleDeptChange(val);
                           }}
-                          className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm bg-white"
+                          className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm bg-gray-50"
+                          disabled
                         >
                           <option value="">Seleccionar</option>
                           {guestLocations.departments.map((d) => (
@@ -1776,12 +2032,8 @@ export default function Carrito() {
                             }));
                             guestLocations.handleProvChange(val);
                           }}
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm bg-white transition ${
-                            guestErrors.provincia
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
-                          disabled={!guestData.departamento}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm bg-gray-50 transition border-gray-200`}
+                          disabled
                         >
                           <option value="">Seleccionar</option>
                           {guestLocations.provinces.map((p) => (
@@ -1979,6 +2231,9 @@ export default function Carrito() {
                             handleCambiarARetiro();
                           } else {
                             setMetodoEnvio("delivery");
+                            if (isGuest) {
+                              performSavarStockValidation();
+                            }
                           }
                         }}
                         className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${
@@ -2003,9 +2258,22 @@ export default function Carrito() {
                         <div className="text-left">
                           <p className="font-semibold">{carrier.name}</p>
                           <p className="text-xs text-gray-500">
-                            {carrier.shippingCost === 0
-                              ? "Gratis"
-                              : carrier.delay || "Disponible"}
+                            {carrier.id === 250 && deliveryZones.length > 0
+                              ? (() => {
+                                  const zone = deliveryZones.find(
+                                    (z) =>
+                                      z.zoneName.toLowerCase() ===
+                                      direccionEnvio.distrito.toLowerCase(),
+                                  );
+                                  return zone
+                                    ? formatPrice(zone.price)
+                                    : carrier.shippingCost === 0
+                                      ? "Gratis"
+                                      : carrier.delay || "Disponible";
+                                })()
+                              : carrier.shippingCost === 0
+                                ? "Gratis"
+                                : carrier.delay || "Disponible"}
                           </p>
                         </div>
                       </button>
@@ -2084,7 +2352,8 @@ export default function Carrito() {
                               });
                               userLocations.handleDeptChange(val);
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary bg-gray-50"
+                            disabled
                           >
                             <option value="">Departamento</option>
                             {userLocations.departments.map((d) => (
@@ -2105,8 +2374,8 @@ export default function Carrito() {
                               });
                               userLocations.handleProvChange(val);
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                            disabled={!direccionEnvio.departamento}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary bg-gray-50"
+                            disabled
                           >
                             <option value="">Provincia</option>
                             {userLocations.provinces.map((p) => (
@@ -2137,6 +2406,34 @@ export default function Carrito() {
                             </option>
                           ))}
                         </select>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={direccionEnvio.numeroDptoPiso}
+                            onChange={(e) =>
+                              setDireccionEnvio({
+                                ...direccionEnvio,
+                                numeroDptoPiso: e.target.value,
+                              })
+                            }
+                            placeholder="Dpto / Piso / Of."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+                          />
+                          <input
+                            type="text"
+                            value={direccionEnvio.referencia}
+                            onChange={(e) =>
+                              setDireccionEnvio({
+                                ...direccionEnvio,
+                                referencia: e.target.value,
+                              })
+                            }
+                            placeholder="Referencia"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+
                         <button
                           onClick={handleSaveAddress}
                           className="w-full bg-primary text-white py-2 rounded-full text-sm font-semibold hover:bg-primary-dark transition"
@@ -2236,6 +2533,77 @@ export default function Carrito() {
               )}
             </div>
 
+            {/* Resumen de datos para invitados */}
+            {isGuest && guestDataCompleted && (
+              <div className="bg-white rounded-sm shadow-md p-6 mt-6 animate-fade-in-up">
+                <div className="flex items-center justify-between mb-4 border-b pb-3">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Datos de contacto
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setActiveTab("guest");
+                      setShowGuestForm(true);
+                      setShowLoginModal(true);
+                    }}
+                    className="text-primary text-sm hover:text-primary-dark flex items-center gap-1 font-medium bg-primary/5 px-3 py-1 rounded-full transition-colors"
+                  >
+                    <FaPencil className="text-sm" /> Editar datos
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Información Personal */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Información Personal
+                    </p>
+                    <div className="text-sm text-gray-800 space-y-1">
+                      <p className="font-semibold text-base">
+                        {guestData.nombre} {guestData.apellido}
+                      </p>
+                      <p>
+                        <span className="text-gray-500">
+                          {guestData.tipoDocumento}:
+                        </span>{" "}
+                        {guestData.numeroDocumento}
+                      </p>
+                      <p>
+                        <span className="text-gray-500">Email:</span>{" "}
+                        {guestData.email}
+                      </p>
+                      <p>
+                        <span className="text-gray-500">Celular:</span>{" "}
+                        {guestData.celular}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Dirección de Entrega */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Dirección
+                    </p>
+                    <div className="text-sm text-gray-800 space-y-1">
+                      <p className="font-semibold">
+                        {guestData.direccion} {guestData.numeroDpto}
+                      </p>
+                      <p>
+                        {guestData.distrito}, {guestData.provincia},{" "}
+                        {guestData.departamento}
+                      </p>
+                      {guestData.referencia && (
+                        <p className="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded-sm border-l-2 border-gray-200">
+                          <span className="font-medium not-italic">Ref:</span>{" "}
+                          {guestData.referencia}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Mapa y tiendas disponibles */}
             {metodoEnvio === "retiro" && mostrarMapa && (
               <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in-up">
@@ -2311,13 +2679,17 @@ export default function Carrito() {
                       const isAvailable = warehouseResult
                         ? warehouseResult.todosDisponibles
                         : true;
+                      const isSelected =
+                        tiendaSeleccionada === tienda.idAlmacen.toString();
 
                       return (
                         <div
                           key={tienda.idAlmacen}
                           className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${
-                            tiendaSeleccionada === tienda.idAlmacen.toString()
-                              ? "border-primary bg-primary/5"
+                            isSelected
+                              ? isAvailable
+                                ? "border-primary bg-primary/5"
+                                : "border-red-500 bg-red-50"
                               : "border-gray-200 hover:border-primary/50"
                           }`}
                           onClick={() =>
@@ -2334,9 +2706,12 @@ export default function Carrito() {
                               </p>
                             </div>
                             <div className="ml-4">
-                              {tiendaSeleccionada ===
-                                tienda.idAlmacen.toString() && (
-                                <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                              {isSelected && (
+                                <div
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                                    isAvailable ? "bg-primary" : "bg-red-500"
+                                  }`}
+                                >
                                   <FaCheck className="text-white text-xs" />
                                 </div>
                               )}
@@ -2355,23 +2730,6 @@ export default function Carrito() {
                               </p>
                             )}
                           </div>
-
-                          {!isAvailable && warehouseResult && (
-                            <div className="mt-2 p-2 bg-red-50 rounded text-[10px] text-red-800">
-                              <p className="font-bold mb-1">
-                                Productos sin stock:
-                              </p>
-                              <ul className="list-disc pl-3">
-                                {warehouseResult.productos
-                                  .filter((p) => !p.disponible)
-                                  .map((p, i) => (
-                                    <li key={i}>
-                                      {p.nomArticulo}: {p.mensaje}
-                                    </li>
-                                  ))}
-                              </ul>
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -2435,15 +2793,62 @@ export default function Carrito() {
                           : parseFloat(item.product.price || "0");
                       const precioTotal = precioUnitario * item.quantity;
 
+                      // Determine the stock status for the item: available, outOfStock, or neutral
+                      const itemStockStatus = (() => {
+                        if (metodoEnvio === "delivery") {
+                          if (savarStockResults.length === 0) return "neutral";
+                          const savarResult = savarStockResults.find(
+                            (r) => r.reference === item.product.reference,
+                          );
+                          if (!savarResult) return "neutral";
+                          return savarResult.disponible
+                            ? "available"
+                            : "outOfStock";
+                        }
+
+                        if (metodoEnvio === "retiro") {
+                          if (!tiendaSeleccionada || !stockValidationResult)
+                            return "neutral";
+                          const selectedWh =
+                            stockValidationResult.resultadosPorAlmacen.find(
+                              (w) =>
+                                w.idAlmacen.toString() === tiendaSeleccionada,
+                            );
+                          if (!selectedWh) return "neutral";
+                          const productInWh = selectedWh.productos.find(
+                            (p) => p.reference === item.product.reference,
+                          );
+                          if (!productInWh) return "neutral";
+                          return productInWh.disponible
+                            ? "available"
+                            : "outOfStock";
+                        }
+
+                        return "neutral";
+                      })();
+
                       return (
                         <div
                           key={item.product.id}
                           className="bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up"
                           style={{ animationDelay: `${index * 100}ms` }}
                         >
-                          <div>
-                            <FaCheckCircle size={25} className="text-primary" />
-                          </div>
+                          {itemStockStatus !== "neutral" && (
+                            <div className="w-[25px] flex justify-center shrink-0">
+                              {itemStockStatus === "outOfStock" && (
+                                <FaTimesCircle
+                                  size={25}
+                                  className="text-red-500 animate-pulse"
+                                />
+                              )}
+                              {itemStockStatus === "available" && (
+                                <FaCheckCircle
+                                  size={25}
+                                  className="text-primary"
+                                />
+                              )}
+                            </div>
+                          )}
 
                           <div className="w-full">
                             {metodoEnvio === "retiro" &&
@@ -2497,7 +2902,7 @@ export default function Carrito() {
                                         })()}
                                       </div>
                                     </div>
-                                    <div className="font-semibold text-green-600">
+                                    <div className="font-semibold text-dark">
                                       GRATIS
                                     </div>
                                   </div>
@@ -2532,53 +2937,66 @@ export default function Carrito() {
 
                                   {/* Error de Stock Inline */}
                                   {(() => {
-                                    if (!stockValidationResult) return null;
+                                    if (itemStockStatus === "neutral")
+                                      return null;
 
-                                    let productIssue = null;
-                                    if (metodoEnvio === "retiro") {
+                                    if (metodoEnvio === "delivery") {
+                                      const savarResult =
+                                        savarStockResults.find(
+                                          (r) =>
+                                            r.reference ===
+                                            item.product.reference,
+                                        );
+                                      if (
+                                        savarResult &&
+                                        !savarResult.disponible
+                                      ) {
+                                        return (
+                                          <div className="flex items-center gap-1.5 text-red-600 font-bold text-xs mb-2 animate-pulse">
+                                            <FaTimesCircle className="shrink-0" />
+                                            <span>No hay stock</span>
+                                          </div>
+                                        );
+                                      } else if (
+                                        savarResult &&
+                                        savarResult.disponible
+                                      ) {
+                                        return (
+                                          <div className="flex items-center gap-1.5 text-primary font-bold text-xs mb-2">
+                                            <FaCheckCircle className="shrink-0 font-bold" />
+                                            <span>Stock disponible</span>
+                                          </div>
+                                        );
+                                      }
+                                    }
+
+                                    if (
+                                      metodoEnvio === "retiro" &&
+                                      stockValidationResult
+                                    ) {
                                       const selectedWh =
                                         stockValidationResult.resultadosPorAlmacen.find(
                                           (w) =>
                                             w.idAlmacen.toString() ===
                                             tiendaSeleccionada,
                                         );
-                                      productIssue = selectedWh?.productos.find(
-                                        (p) =>
-                                          p.reference ===
-                                            item.product.reference &&
-                                          !p.disponible,
-                                      );
-                                    } else {
-                                      // Para delivery, si success es false, buscamos si este producto falla en TODOS los almacenes
-                                      // o simplemente mostramos si hay algún problema con él
-                                      const allFailed =
-                                        stockValidationResult.resultadosPorAlmacen.every(
-                                          (w) =>
-                                            w.productos.find(
-                                              (p) =>
-                                                p.reference ===
-                                                  item.product.reference &&
-                                                !p.disponible,
-                                            ),
+                                      const productIssue =
+                                        selectedWh?.productos.find(
+                                          (p) =>
+                                            p.reference ===
+                                              item.product.reference &&
+                                            !p.disponible,
                                         );
-                                      if (allFailed) {
-                                        productIssue =
-                                          stockValidationResult.resultadosPorAlmacen[0]?.productos.find(
-                                            (p) =>
-                                              p.reference ===
-                                              item.product.reference,
-                                          );
+                                      if (productIssue) {
+                                        return (
+                                          <div className="flex items-center gap-1.5 text-red-600 font-medium text-xs mb-2">
+                                            <FaTimesCircle className="shrink-0" />
+                                            <span>{productIssue.mensaje}</span>
+                                          </div>
+                                        );
                                       }
                                     }
 
-                                    if (productIssue) {
-                                      return (
-                                        <div className="flex items-center gap-1.5 text-red-600 font-medium text-xs mb-2">
-                                          <FaTimesCircle className="shrink-0" />
-                                          <span>{productIssue.mensaje}</span>
-                                        </div>
-                                      );
-                                    }
                                     return null;
                                   })()}
                                   <div className="space-y-1 mb-4">
@@ -2693,25 +3111,37 @@ export default function Carrito() {
                 <FaRegTrashAlt size={18} /> Vaciar carrito
               </button>
             </div>
-            <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in">
-              <h2 className="text-lg font-semibold mb-2 text-primary-dark">
-                Persona autorizada a retirar
-              </h2>
-              <div className="">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-dark text-sm space-y-1">
-                    <p>Nombre: Gonzalo Vera </p>
-                    <p>DNI: 70255456</p>
+            {metodoEnvio === "retiro" && (
+              <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in">
+                <h2 className="text-lg font-semibold mb-2 text-primary-dark">
+                  Persona autorizada a retirar
+                </h2>
+                <div className="">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-dark text-sm space-y-1">
+                      {autorizacionData ? (
+                        <>
+                          <p>Nombre: {autorizacionData.fullName}</p>
+                          <p>
+                            {autorizacionData.documentType}:{" "}
+                            {autorizacionData.documentNumber}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-gray-500 italic">No asignado</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowAutorizacionModal(true)}
+                      className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
+                    >
+                      <FaPencil className="text-sm" />{" "}
+                      {autorizacionData ? "Editar" : "Asignar"}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => router.push("/autorizacion")}
-                    className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
-                  >
-                    <FaPencil className="text-sm" /> Editar
-                  </button>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Sidebar Checkout */}
@@ -2749,7 +3179,7 @@ export default function Carrito() {
                 </div>
 
                 {totalSavings > 0 && (
-                  <div className="flex justify-between text-green-600 animate-pulse">
+                  <div className="flex justify-between text-primary animate-pulse">
                     <span>Ahorro total</span>
                     <span className="font-bold">
                       -{formatPrice(totalSavings.toString())}
@@ -2761,7 +3191,7 @@ export default function Carrito() {
                   <span>Envío ({selectedCarrier?.name || "Pendiente"})</span>
                   <span className="font-semibold">
                     {envio === 0 ? (
-                      <span className="text-green-600">Gratis ✓</span>
+                      <span className="text-primary">Gratis ✓</span>
                     ) : (
                       formatPrice(envio.toString())
                     )}
@@ -2769,7 +3199,7 @@ export default function Carrito() {
                 </div>
 
                 {metodoEnvio === "delivery" && selectedCarrier?.isFree && (
-                  <p className="text-xs text-green-600 font-medium">
+                  <p className="text-xs text-primary font-medium">
                     ¡Este método de envío es gratuito!
                   </p>
                 )}
@@ -2839,8 +3269,6 @@ export default function Carrito() {
                 size="md"
                 className="w-full mb-3 flex justify-center items-center gap-2"
                 disabled={
-                  (!isLoggedIn && !isGuest) ||
-                  !acceptTerms ||
                   (metodoEnvio === "retiro" && !tiendaSeleccionada) ||
                   isValidatingStock
                 }
@@ -2848,13 +3276,11 @@ export default function Carrito() {
               >
                 {isValidatingStock ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Validando stock...
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Validando stock...
+                    </div>
                   </>
-                ) : !isLoggedIn && !isGuest ? (
-                  "Inicia sesión para continuar"
-                ) : isGuest && !guestDataCompleted ? (
-                  "Completa tus datos para continuar"
                 ) : (
                   "Finalizar compra"
                 )}
@@ -2914,6 +3340,66 @@ export default function Carrito() {
           background: #555;
         }
       `}</style>
+
+      <AutorizacionModal
+        isOpen={showAutorizacionModal}
+        onClose={() => setShowAutorizacionModal(false)}
+        onSave={handleSaveAutorizacion}
+        initialData={autorizacionData}
+      />
+
+      {/* Savar Stock Modal */}
+      {showSavarStockModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-sm shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-fade-in-up">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaTimesCircle className="text-red-600 text-3xl" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Productos sin stock para despacho
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Debes eliminar los productos que no tengan stock en el carrito
+                para poder continuar con el checkout.
+              </p>
+              <button
+                onClick={() => setShowSavarStockModal(false)}
+                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-full transition-all shadow-lg hover:shadow-xl active:scale-95"
+              >
+                Entendido, ir al carrito
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pickup Stock Modal */}
+      {showPickupStockModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-sm shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-fade-in-up">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaTimesCircle className="text-red-600 text-3xl" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Productos sin stock en tienda
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Algunos productos no están disponibles en la tienda
+                seleccionada. Debes eliminarlos o elegir otra tienda para
+                continuar.
+              </p>
+              <button
+                onClick={() => setShowPickupStockModal(false)}
+                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-full transition-all shadow-lg hover:shadow-xl active:scale-95"
+              >
+                Entendido, ir al carrito
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
