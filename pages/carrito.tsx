@@ -36,38 +36,58 @@ import { useLocations } from "@/hooks/useLocations";
 import { z } from "zod";
 import { PiWarningCircleFill } from "react-icons/pi";
 import { FaPencil } from "react-icons/fa6";
-import { getCarriers, CartCarrier, getWarehouseDistricts, WarehouseDistrict, getWarehouseMap, WarehouseMapItem, validateStock, StockValidationResponse } from "@/lib/cart";
+import {
+  getCarriers,
+  CartCarrier,
+  getWarehouseDistricts,
+  WarehouseDistrict,
+  getWarehouseMap,
+  WarehouseMapItem,
+  validateStock,
+  StockValidationResponse,
+} from "@/lib/cart";
 
 const WarehouseMap = dynamic(() => import("@/components/WarehouseMap"), {
   ssr: false,
-  loading: () => <div className="h-full w-full bg-gray-100 animate-pulse flex items-center justify-center">Cargando mapa...</div>
+  loading: () => (
+    <div className="h-full w-full bg-gray-100 animate-pulse flex items-center justify-center">
+      Cargando mapa...
+    </div>
+  ),
 });
 
-
 // Distritos disponibles
-
-
-
-
-
 
 export default function Carrito() {
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const [recordarme, setRecordarme] = useState(false);
-  const { items, removeFromCart, updateQuantity, clearCart, getCartTotal, updateCarrier, selectedCarrier: contextCarrier, totals, cartExpired } =
-    useCart();
+  const {
+    items,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    getCartTotal,
+    updateCarrier,
+    selectedCarrier: contextCarrier,
+    totals,
+    cartExpired,
+  } = useCart();
   const [couponCode, setCouponCode] = useState("");
   const [metodoEnvio, setMetodoEnvio] = useState<"delivery" | "retiro">(
-    "delivery"
+    "delivery",
   );
   const [carriers, setCarriers] = useState<CartCarrier[]>([]);
-  const [warehouseDistricts, setWarehouseDistricts] = useState<WarehouseDistrict[]>([]);
+  const [warehouseDistricts, setWarehouseDistricts] = useState<
+    WarehouseDistrict[]
+  >([]);
   const [mapWarehouses, setMapWarehouses] = useState<WarehouseMapItem[]>([]);
   const [loadingCarriers, setLoadingCarriers] = useState(false);
-  const [selectedCarrier, setSelectedCarrier] = useState<CartCarrier | null>(null);
+  const [selectedCarrier, setSelectedCarrier] = useState<CartCarrier | null>(
+    null,
+  );
   const [distritoSeleccionado, setDistritoSeleccionado] = useState("");
   const [tiendaSeleccionada, setTiendaSeleccionada] = useState<string | null>(
-    null
+    null,
   );
   const [mostrarMapa, setMostrarMapa] = useState(false);
   const [loadingStores, setLoadingStores] = useState(false);
@@ -94,7 +114,8 @@ export default function Carrito() {
 
   // States for stock validation
   const [isValidatingStock, setIsValidatingStock] = useState(false);
-  const [stockValidationResult, setStockValidationResult] = useState<StockValidationResponse | null>(null);
+  const [stockValidationResult, setStockValidationResult] =
+    useState<StockValidationResponse | null>(null);
 
   // Estados para formulario de invitado
   const [guestData, setGuestData] = useState<GuestDataSchemaType>({
@@ -121,9 +142,11 @@ export default function Carrito() {
   const userLocations = useLocations(
     direccionEnvio.departamento || "Lima",
     direccionEnvio.ciudad || "Lima",
-    direccionEnvio.distrito
+    direccionEnvio.distrito,
   );
-  const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
+  const [addressErrors, setAddressErrors] = useState<Record<string, string>>(
+    {},
+  );
 
   // Sincronizar estado local con hook de auth
   useEffect(() => {
@@ -136,15 +159,21 @@ export default function Carrito() {
   useEffect(() => {
     const fetchAddresses = async () => {
       // 🔹 Re-verificar autenticación al cargar componentes
-      if (isAuthenticated && ((user && 'token' in user) || localStorage.getItem('accessToken'))) {
+      if (
+        isAuthenticated &&
+        ((user && "token" in user) || localStorage.getItem("accessToken"))
+      ) {
         setIsLoggedIn(true); // Asegurar que UI refleje logueo
         try {
-          const token = localStorage.getItem('accessToken');
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/addresses`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
+          const token = localStorage.getItem("accessToken");
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/users/addresses`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          );
 
           if (response.ok) {
             const result = await response.json();
@@ -164,7 +193,7 @@ export default function Carrito() {
                 userLocations.setLocationValues(
                   mainAddress.department,
                   mainAddress.province,
-                  mainAddress.district
+                  mainAddress.district,
                 );
               } else if (addresses.length > 0) {
                 // If no main address, don't set a default yet, we'll show a dropdown
@@ -182,10 +211,22 @@ export default function Carrito() {
   }, [isAuthenticated, user]);
 
   useEffect(() => {
-    if (!authLoading && items.length > 0 && !isAuthenticated && !isLoggedIn && !guestDataCompleted) {
+    if (
+      !authLoading &&
+      items.length > 0 &&
+      !isAuthenticated &&
+      !isLoggedIn &&
+      !guestDataCompleted
+    ) {
       setShowLoginModal(true);
     }
-  }, [items.length, isAuthenticated, isLoggedIn, guestDataCompleted, authLoading]);
+  }, [
+    items.length,
+    isAuthenticated,
+    isLoggedIn,
+    guestDataCompleted,
+    authLoading,
+  ]);
 
   // Fetch carriers
   useEffect(() => {
@@ -247,7 +288,9 @@ export default function Carrito() {
   }, [contextCarrier]);
 
   // NUEVO: Estado para el tab activo (login o registro)
-  const [activeTab, setActiveTab] = useState<"login" | "registro" | "guest">("login");
+  const [activeTab, setActiveTab] = useState<"login" | "registro" | "guest">(
+    "login",
+  );
 
   // NUEVO: Estados para registro
   const [registroData, setRegistroData] = useState<CarritoRegisterSchemaType>({
@@ -320,7 +363,7 @@ export default function Carrito() {
       if (metodoEnvio === "retiro" && tiendaSeleccionada) {
         await performStockValidation([parseInt(tiendaSeleccionada)]);
       } else if (metodoEnvio === "delivery" && mapWarehouses.length > 0) {
-        await performStockValidation(mapWarehouses.map(w => w.idAlmacen));
+        await performStockValidation(mapWarehouses.map((w) => w.idAlmacen));
       } else {
         setStockValidationResult(null);
       }
@@ -337,7 +380,10 @@ export default function Carrito() {
     }
   }, [activeTab]);
 
-  const handleUpdateQuantity = async (productId: string, newQuantity: number) => {
+  const handleUpdateQuantity = async (
+    productId: string,
+    newQuantity: number,
+  ) => {
     if (newQuantity < 1) {
       removeFromCart(productId);
       return;
@@ -356,11 +402,14 @@ export default function Carrito() {
   // Sync mapWarehouses with shipping district when in delivery mode
   useEffect(() => {
     const syncWarehouses = async () => {
-      const currentDist = (isLoggedIn || mainAddressId) ? direccionEnvio.distrito : guestData.distrito;
+      const currentDist =
+        isLoggedIn || mainAddressId
+          ? direccionEnvio.distrito
+          : guestData.distrito;
       if (!currentDist || warehouseDistricts.length === 0) return;
 
       const district = warehouseDistricts.find(
-        (d) => d.desDistrito.toLowerCase() === currentDist.toLowerCase()
+        (d) => d.desDistrito.toLowerCase() === currentDist.toLowerCase(),
       );
 
       if (district) {
@@ -378,7 +427,14 @@ export default function Carrito() {
     if (metodoEnvio === "delivery") {
       syncWarehouses();
     }
-  }, [metodoEnvio, direccionEnvio.distrito, guestData.distrito, warehouseDistricts, isLoggedIn, mainAddressId]);
+  }, [
+    metodoEnvio,
+    direccionEnvio.distrito,
+    guestData.distrito,
+    warehouseDistricts,
+    isLoggedIn,
+    mainAddressId,
+  ]);
 
   const handleSeleccionarDistrito = async (distrito: string) => {
     setDistritoSeleccionado(distrito);
@@ -388,9 +444,13 @@ export default function Carrito() {
 
     try {
       // Find the codUbigeoAlm for the selected district
-      const district = warehouseDistricts.find(d => d.desDistrito === distrito);
+      const district = warehouseDistricts.find(
+        (d) => d.desDistrito === distrito,
+      );
       if (district) {
-        console.log(`📍 Buscando almacenes para: ${distrito} (${district.codUbigeoAlm})`);
+        console.log(
+          `📍 Buscando almacenes para: ${distrito} (${district.codUbigeoAlm})`,
+        );
         const response = await getWarehouseMap(district.codUbigeoAlm);
         if (response.success) {
           setMapWarehouses(response.data);
@@ -412,7 +472,7 @@ export default function Carrito() {
 
   // Manejador para Registro
   const handleRegistroChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     let { name, value, type } = e.target;
 
@@ -423,7 +483,12 @@ export default function Carrito() {
     } else {
       if (name === "numeroDocumento") {
         value = value.replace(/\D/g, "");
-        const maxLength = registroData.tipoDocumento === "RUC" ? 11 : (registroData.tipoDocumento === "DNI" ? 8 : 20);
+        const maxLength =
+          registroData.tipoDocumento === "RUC"
+            ? 11
+            : registroData.tipoDocumento === "DNI"
+              ? 8
+              : 20;
         if (value.length > maxLength) value = value.slice(0, maxLength);
       }
       setRegistroData((prev) => ({ ...prev, [name]: value }));
@@ -432,9 +497,11 @@ export default function Carrito() {
     setRegistroErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-
   const showToastMessage = (message: string) => {
-    showToast(message, message.toLowerCase().includes("error") ? "error" : "success");
+    showToast(
+      message,
+      message.toLowerCase().includes("error") ? "error" : "success",
+    );
   };
 
   // NUEVO: Manejo de login
@@ -473,11 +540,12 @@ export default function Carrito() {
         setIsLoggedIn(true);
         setShowLoginModal(false);
         // showToast("¡Bienvenido de vuelta!", "success"); // Toast eliminado por solicitud
-
       } catch (error: any) {
         console.error("Error en login:", error);
         setLoginErrors({
-          password: error.message || "Error al iniciar sesión. Verifica tus credenciales."
+          password:
+            error.message ||
+            "Error al iniciar sesión. Verifica tus credenciales.",
         });
       } finally {
         setIsLoginLoading(false);
@@ -527,7 +595,7 @@ export default function Carrito() {
           password: registroData.password,
           confirmPassword: registroData.confirmarPassword,
           acceptTerms: registroData.aceptoTerminos,
-          receiveOffers: false // Default o agregar checkbox en UI
+          receiveOffers: false, // Default o agregar checkbox en UI
         });
 
         // Autologin after register or show success message
@@ -536,8 +604,7 @@ export default function Carrito() {
         showToast("¡Cuenta creada exitosamente! Bienvenido.", "success");
 
         // Opcional: recargar para asegurar estado global limpio
-        if (typeof window !== 'undefined') window.location.reload();
-
+        if (typeof window !== "undefined") window.location.reload();
       } catch (error: any) {
         console.error("Error en registro:", error);
 
@@ -560,13 +627,18 @@ export default function Carrito() {
   };
 
   const handleGuestChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     let { name, value } = e.target;
 
     if (name === "numeroDocumento") {
       value = value.replace(/\D/g, "");
-      const maxLength = guestData.tipoDocumento === "RUC" ? 11 : (guestData.tipoDocumento === "DNI" ? 8 : 20);
+      const maxLength =
+        guestData.tipoDocumento === "RUC"
+          ? 11
+          : guestData.tipoDocumento === "DNI"
+            ? 8
+            : 20;
       if (value.length > maxLength) value = value.slice(0, maxLength);
     }
 
@@ -606,14 +678,19 @@ export default function Carrito() {
     showToast("¡Datos guardados! Continúa con tu compra.", "success");
   };
 
-  const performStockValidation = async (warehouses?: number[], products?: { reference: string; quantity: number }[]) => {
+  const performStockValidation = async (
+    warehouses?: number[],
+    products?: { reference: string; quantity: number }[],
+  ) => {
     // Prepare products for validation using the literal reference field
-    const productsToValidate = products || items
-      .filter(item => item.product && item.product.reference)
-      .map(item => ({
-        reference: item.product.reference as string,
-        quantity: item.quantity
-      }));
+    const productsToValidate =
+      products ||
+      items
+        .filter((item) => item.product && item.product.reference)
+        .map((item) => ({
+          reference: item.product.reference as string,
+          quantity: item.quantity,
+        }));
 
     if (productsToValidate.length === 0) {
       return null;
@@ -627,7 +704,7 @@ export default function Carrito() {
         idAlmacenes = [parseInt(tiendaSeleccionada)];
       } else {
         if (mapWarehouses.length === 0) return null;
-        idAlmacenes = mapWarehouses.map(w => w.idAlmacen);
+        idAlmacenes = mapWarehouses.map((w) => w.idAlmacen);
       }
     }
 
@@ -671,10 +748,12 @@ export default function Carrito() {
     } else if (result) {
       showToast("Algunos productos no tienen stock suficiente", "error");
     } else {
-      showToast("Por favor selecciona una ubicación de entrega válida", "error");
+      showToast(
+        "Por favor selecciona una ubicación de entrega válida",
+        "error",
+      );
     }
   };
-
 
   const subtotal = totals.subtotal;
   const envio = totals.shipping;
@@ -699,7 +778,7 @@ export default function Carrito() {
   }, 0);
 
   const infoTiendaSeleccionada = mapWarehouses.find(
-    (w) => w.idAlmacen.toString() === tiendaSeleccionada
+    (w) => w.idAlmacen.toString() === tiendaSeleccionada,
   );
 
   if (items.length === 0) {
@@ -758,10 +837,12 @@ export default function Carrito() {
               Tu sesión ha expirado
             </h2>
             <p className="text-gray-600 mb-2 max-w-md mx-auto">
-              Por tu seguridad, tu carrito de compras se ha limpiado automáticamente debido a inactividad.
+              Por tu seguridad, tu carrito de compras se ha limpiado
+              automáticamente debido a inactividad.
             </p>
             <p className="text-gray-500 mb-8 max-w-md mx-auto text-sm">
-              ¡No te preocupes! Puedes volver a agregar tus productos favoritos a la tienda.
+              ¡No te preocupes! Puedes volver a agregar tus productos favoritos
+              a la tienda.
             </p>
             <Link
               href="/productos"
@@ -810,10 +891,12 @@ export default function Carrito() {
       // Limpiar errores si pasa validación
       setAddressErrors({});
 
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem("accessToken");
 
       // Check if we're editing the main address
-      const isEditingMainAddress = mainAddressId && userAddresses.find(addr => addr.id === mainAddressId)?.isMain;
+      const isEditingMainAddress =
+        mainAddressId &&
+        userAddresses.find((addr) => addr.id === mainAddressId)?.isMain;
 
       const addressData = {
         department: direccionEnvio.departamento,
@@ -822,31 +905,37 @@ export default function Carrito() {
         address: direccionEnvio.calle,
         apartment: "Dirección Carrito", // Valor por defecto
         reference: "",
-        isMain: isEditingMainAddress || false // Preservar isMain si es la dirección principal
+        isMain: isEditingMainAddress || false, // Preservar isMain si es la dirección principal
       };
 
       let response;
 
       if (mainAddressId) {
         // Actualizar existente
-        response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/addresses/${mainAddressId}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+        response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/users/addresses/${mainAddressId}`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(addressData),
           },
-          body: JSON.stringify(addressData)
-        });
+        );
       } else {
         // Crear nueva
-        response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/addresses`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+        response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/users/addresses`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(addressData),
           },
-          body: JSON.stringify(addressData)
-        });
+        );
       }
 
       if (response && response.ok) {
@@ -854,9 +943,12 @@ export default function Carrito() {
         console.log("Dirección guardada correctamente");
 
         // Refresh addresses
-        const refreshedResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/addresses`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const refreshedResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/users/addresses`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
         if (refreshedResponse.ok) {
           const refreshedResult = await refreshedResponse.json();
           if (refreshedResult.success) {
@@ -873,7 +965,6 @@ export default function Carrito() {
         console.error("Error al guardar dirección en backend");
         showToast("Error al guardar la dirección", "error");
       }
-
     } catch (error) {
       console.error("Error al guardar dirección:", error);
     }
@@ -936,10 +1027,11 @@ export default function Carrito() {
                         value={loginData.email}
                         onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
                         placeholder="ejemplo@correo.com"
-                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.email
-                          ? "border-red-500"
-                          : "border-gray-200"
-                          }`}
+                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${
+                          loginErrors.email
+                            ? "border-red-500"
+                            : "border-gray-200"
+                        }`}
                       />
                       {loginErrors.email && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -958,10 +1050,11 @@ export default function Carrito() {
                         value={loginData.password}
                         onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
                         placeholder="••••••••"
-                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.password
-                          ? "border-red-500"
-                          : "border-gray-200"
-                          }`}
+                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${
+                          loginErrors.password
+                            ? "border-red-500"
+                            : "border-gray-200"
+                        }`}
                       />
                       {loginErrors.password && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1049,10 +1142,11 @@ export default function Carrito() {
                           value={registroData.nombre}
                           onChange={handleRegistroChange} // ✅ Cambiar
                           placeholder="Gonzalo"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.nombre
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            registroErrors.nombre
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {registroErrors.nombre && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1071,10 +1165,11 @@ export default function Carrito() {
                           value={registroData.apellido}
                           onChange={handleRegistroChange} // ✅ Cambiar
                           placeholder="Vera"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.apellido
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            registroErrors.apellido
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {registroErrors.apellido && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1103,10 +1198,11 @@ export default function Carrito() {
                               | "Pasaporte", // ✅ Type assertion
                           })
                         }
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.tipoDocumento
-                          ? "border-red-500"
-                          : "border-gray-200"
-                          }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                          registroErrors.tipoDocumento
+                            ? "border-red-500"
+                            : "border-gray-200"
+                        }`}
                       >
                         <option value="DNI">DNI</option>
                         <option value="RUC">RUC</option>
@@ -1123,10 +1219,11 @@ export default function Carrito() {
                           value={registroData.numeroDocumento}
                           onChange={handleRegistroChange}
                           placeholder="12345678"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.numeroDocumento
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            registroErrors.numeroDocumento
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {registroErrors.numeroDocumento && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1155,10 +1252,11 @@ export default function Carrito() {
                           value={registroData.celular}
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.celular
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            registroErrors.celular
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {registroErrors.celular && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1177,10 +1275,11 @@ export default function Carrito() {
                           value={registroData.telefonoOpcional}
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.telefonoOpcional
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            registroErrors.telefonoOpcional
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {registroErrors.telefonoOpcional && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1214,10 +1313,11 @@ export default function Carrito() {
                           value={registroData.provincia}
                           onChange={handleRegistroChange}
                           placeholder="Lima"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.provincia
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            registroErrors.provincia
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {registroErrors.provincia && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1236,10 +1336,11 @@ export default function Carrito() {
                         name="distrito"
                         value={registroData.distrito}
                         onChange={handleRegistroChange}
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.distrito
-                          ? "border-red-500"
-                          : "border-gray-200"
-                          }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                          registroErrors.distrito
+                            ? "border-red-500"
+                            : "border-gray-200"
+                        }`}
                       >
                         <option value="">Seleccionar distrito</option>
                         {warehouseDistricts.map((d) => (
@@ -1266,10 +1367,11 @@ export default function Carrito() {
                         value={registroData.direccion}
                         onChange={handleRegistroChange}
                         placeholder="Calle rosales 432"
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.direccion
-                          ? "border-red-500"
-                          : "border-gray-200"
-                          }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                          registroErrors.direccion
+                            ? "border-red-500"
+                            : "border-gray-200"
+                        }`}
                       />
                       {registroErrors.direccion && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1290,10 +1392,11 @@ export default function Carrito() {
                           value={registroData.numeroDpto}
                           onChange={handleRegistroChange}
                           placeholder="201"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.numeroDpto
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            registroErrors.numeroDpto
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {registroErrors.numeroDpto && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1312,10 +1415,11 @@ export default function Carrito() {
                           value={registroData.referencia}
                           onChange={handleRegistroChange}
                           placeholder="Frente al parque"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.referencia
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            registroErrors.referencia
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {registroErrors.referencia && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1338,10 +1442,11 @@ export default function Carrito() {
                           value={registroData.email}
                           onChange={handleRegistroChange}
                           placeholder="ejemplo@correo.com"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.email
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            registroErrors.email
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {registroErrors.email && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1362,10 +1467,11 @@ export default function Carrito() {
                             value={registroData.password}
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
-                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.password
-                              ? "border-red-500"
-                              : "border-gray-200"
-                              }`}
+                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                              registroErrors.password
+                                ? "border-red-500"
+                                : "border-gray-200"
+                            }`}
                           />
                           {registroErrors.password && (
                             <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1384,10 +1490,11 @@ export default function Carrito() {
                             value={registroData.confirmarPassword}
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
-                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.confirmarPassword
-                              ? "border-red-500"
-                              : "border-gray-200"
-                              }`}
+                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                              registroErrors.confirmarPassword
+                                ? "border-red-500"
+                                : "border-gray-200"
+                            }`}
                           />
                           {registroErrors.confirmarPassword && (
                             <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1487,10 +1594,11 @@ export default function Carrito() {
                           value={guestData.nombre}
                           onChange={handleGuestChange}
                           placeholder="Gonzalo"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.nombre
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            guestErrors.nombre
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {guestErrors.nombre && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1509,10 +1617,11 @@ export default function Carrito() {
                           value={guestData.apellido}
                           onChange={handleGuestChange}
                           placeholder="Vera"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.apellido
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            guestErrors.apellido
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {guestErrors.apellido && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1541,10 +1650,11 @@ export default function Carrito() {
                               | "Pasaporte",
                           })
                         }
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.tipoDocumento
-                          ? "border-red-500"
-                          : "border-gray-200"
-                          }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                          guestErrors.tipoDocumento
+                            ? "border-red-500"
+                            : "border-gray-200"
+                        }`}
                       >
                         <option value="DNI">DNI</option>
                         <option value="RUC">RUC</option>
@@ -1563,10 +1673,11 @@ export default function Carrito() {
                         value={guestData.numeroDocumento}
                         onChange={handleGuestChange}
                         placeholder="74218601"
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.numeroDocumento
-                          ? "border-red-500"
-                          : "border-gray-200"
-                          }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                          guestErrors.numeroDocumento
+                            ? "border-red-500"
+                            : "border-gray-200"
+                        }`}
                       />
                       {guestErrors.numeroDocumento && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1588,10 +1699,11 @@ export default function Carrito() {
                           value={guestData.celular}
                           onChange={handleGuestChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.celular
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            guestErrors.celular
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                         {guestErrors.celular && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1610,10 +1722,11 @@ export default function Carrito() {
                           value={guestData.telefonoOpcional}
                           onChange={handleGuestChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.telefonoOpcional
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            guestErrors.telefonoOpcional
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                       </div>
                     </div>
@@ -1629,14 +1742,21 @@ export default function Carrito() {
                           value={guestData.departamento}
                           onChange={(e) => {
                             const val = e.target.value;
-                            setGuestData(prev => ({ ...prev, departamento: val, provincia: "", distrito: "" }));
+                            setGuestData((prev) => ({
+                              ...prev,
+                              departamento: val,
+                              provincia: "",
+                              distrito: "",
+                            }));
                             guestLocations.handleDeptChange(val);
                           }}
                           className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm bg-white"
                         >
                           <option value="">Seleccionar</option>
                           {guestLocations.departments.map((d) => (
-                            <option key={d} value={d}>{d}</option>
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -1649,18 +1769,25 @@ export default function Carrito() {
                           value={guestData.provincia}
                           onChange={(e) => {
                             const val = e.target.value;
-                            setGuestData(prev => ({ ...prev, provincia: val, distrito: "" }));
+                            setGuestData((prev) => ({
+                              ...prev,
+                              provincia: val,
+                              distrito: "",
+                            }));
                             guestLocations.handleProvChange(val);
                           }}
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm bg-white transition ${guestErrors.provincia
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm bg-white transition ${
+                            guestErrors.provincia
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                           disabled={!guestData.departamento}
                         >
                           <option value="">Seleccionar</option>
                           {guestLocations.provinces.map((p) => (
-                            <option key={p} value={p}>{p}</option>
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
                           ))}
                         </select>
                         {guestErrors.provincia && (
@@ -1683,10 +1810,11 @@ export default function Carrito() {
                           handleGuestChange(e);
                           guestLocations.handleDistChange(e.target.value);
                         }}
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.distrito
-                          ? "border-red-500"
-                          : "border-gray-200"
-                          }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                          guestErrors.distrito
+                            ? "border-red-500"
+                            : "border-gray-200"
+                        }`}
                         disabled={!guestData.provincia}
                       >
                         <option value="">Seleccionar</option>
@@ -1714,10 +1842,11 @@ export default function Carrito() {
                         value={guestData.direccion}
                         onChange={handleGuestChange}
                         placeholder="Calle rosales 432"
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.direccion
-                          ? "border-red-500"
-                          : "border-gray-200"
-                          }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                          guestErrors.direccion
+                            ? "border-red-500"
+                            : "border-gray-200"
+                        }`}
                       />
                       {guestErrors.direccion && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1738,10 +1867,11 @@ export default function Carrito() {
                           value={guestData.numeroDpto}
                           onChange={handleGuestChange}
                           placeholder="Ate"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.numeroDpto
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            guestErrors.numeroDpto
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                       </div>
                       <div>
@@ -1754,10 +1884,11 @@ export default function Carrito() {
                           value={guestData.referencia}
                           onChange={handleGuestChange}
                           placeholder="Ate"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.referencia
-                            ? "border-red-500"
-                            : "border-gray-200"
-                            }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
+                            guestErrors.referencia
+                              ? "border-red-500"
+                              : "border-gray-200"
+                          }`}
                         />
                       </div>
                     </div>
@@ -1786,7 +1917,6 @@ export default function Carrito() {
                   </form>
                 </div>
               )}
-
             </div>
           </div>
         </div>
@@ -1828,11 +1958,15 @@ export default function Carrito() {
                 {loadingCarriers ? (
                   <div className="col-span-2 py-8 flex flex-col items-center justify-center bg-gray-50 rounded-sm">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <p className="mt-2 text-sm text-gray-500">Cargando métodos de envío...</p>
+                    <p className="mt-2 text-sm text-gray-500">
+                      Cargando métodos de envío...
+                    </p>
                   </div>
                 ) : carriers.length > 0 ? (
                   carriers.map((carrier) => {
-                    const isRetiro = carrier.name.toLowerCase().includes("retiro");
+                    const isRetiro = carrier.name
+                      .toLowerCase()
+                      .includes("retiro");
                     const isSelected = selectedCarrier?.id === carrier.id;
 
                     return (
@@ -1847,30 +1981,31 @@ export default function Carrito() {
                             setMetodoEnvio("delivery");
                           }
                         }}
-                        className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${isSelected
-                          ? "border-primary bg-primary/5"
-                          : "border-gray-200 hover:border-primary/50"
-                          }`}
+                        className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${
+                          isSelected
+                            ? "border-primary bg-primary/5"
+                            : "border-gray-200 hover:border-primary/50"
+                        }`}
                       >
                         {isRetiro ? (
                           <FaStore
-                            className={`text-2xl ${isSelected
-                              ? "text-primary"
-                              : "text-gray-400"
-                              }`}
+                            className={`text-2xl ${
+                              isSelected ? "text-primary" : "text-gray-400"
+                            }`}
                           />
                         ) : (
                           <FaTruck
-                            className={`text-2xl ${isSelected
-                              ? "text-primary"
-                              : "text-gray-400"
-                              }`}
+                            className={`text-2xl ${
+                              isSelected ? "text-primary" : "text-gray-400"
+                            }`}
                           />
                         )}
                         <div className="text-left">
                           <p className="font-semibold">{carrier.name}</p>
                           <p className="text-xs text-gray-500">
-                            {carrier.shippingCost === 0 ? "Gratis" : carrier.delay || "Disponible"}
+                            {carrier.shippingCost === 0
+                              ? "Gratis"
+                              : carrier.delay || "Disponible"}
                           </p>
                         </div>
                       </button>
@@ -1887,7 +2022,9 @@ export default function Carrito() {
                 <div className="mt-4 space-y-4 animate-fade-in">
                   <div className="p-4 bg-blue-50 rounded-sm">
                     <p className="text-sm text-gray-700">
-                      📦 {selectedCarrier?.delay || "El envío se realizará en el transcurso de unos días hábiles."}
+                      📦{" "}
+                      {selectedCarrier?.delay ||
+                        "El envío se realizará en el transcurso de unos días hábiles."}
                     </p>
                     <p className="text-sm font-semibold text-primary mt-2">
                       Costo:{" "}
@@ -1901,17 +2038,26 @@ export default function Carrito() {
                       <h3 className="font-semibold text-gray-900">
                         Dirección de envío
                       </h3>
-                      {!editandoDireccion && !(isLoggedIn && userAddresses.length === 0) && !(isLoggedIn && !mainAddressId && userAddresses.length > 0) && (
-                        <button
-                          onClick={() => setEditandoDireccion(!editandoDireccion)}
-                          className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
-                        >
-                          <FaPencil className="text-sm" /> Editar
-                        </button>
-                      )}
+                      {!editandoDireccion &&
+                        !(isLoggedIn && userAddresses.length === 0) &&
+                        !(
+                          isLoggedIn &&
+                          !mainAddressId &&
+                          userAddresses.length > 0
+                        ) && (
+                          <button
+                            onClick={() =>
+                              setEditandoDireccion(!editandoDireccion)
+                            }
+                            className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
+                          >
+                            <FaPencil className="text-sm" /> Editar
+                          </button>
+                        )}
                     </div>
 
-                    {editandoDireccion || (isLoggedIn && userAddresses.length === 0) ? (
+                    {editandoDireccion ||
+                    (isLoggedIn && userAddresses.length === 0) ? (
                       <div className="space-y-3">
                         <input
                           type="text"
@@ -1930,27 +2076,44 @@ export default function Carrito() {
                             value={direccionEnvio.departamento}
                             onChange={(e) => {
                               const val = e.target.value;
-                              setDireccionEnvio({ ...direccionEnvio, departamento: val, ciudad: "", distrito: "" });
+                              setDireccionEnvio({
+                                ...direccionEnvio,
+                                departamento: val,
+                                ciudad: "",
+                                distrito: "",
+                              });
                               userLocations.handleDeptChange(val);
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
                           >
                             <option value="">Departamento</option>
-                            {userLocations.departments.map(d => <option key={d} value={d}>{d}</option>)}
+                            {userLocations.departments.map((d) => (
+                              <option key={d} value={d}>
+                                {d}
+                              </option>
+                            ))}
                           </select>
 
                           <select
                             value={direccionEnvio.ciudad}
                             onChange={(e) => {
                               const val = e.target.value;
-                              setDireccionEnvio({ ...direccionEnvio, ciudad: val, distrito: "" });
+                              setDireccionEnvio({
+                                ...direccionEnvio,
+                                ciudad: val,
+                                distrito: "",
+                              });
                               userLocations.handleProvChange(val);
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
                             disabled={!direccionEnvio.departamento}
                           >
                             <option value="">Provincia</option>
-                            {userLocations.provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                            {userLocations.provinces.map((p) => (
+                              <option key={p} value={p}>
+                                {p}
+                              </option>
+                            ))}
                           </select>
                         </div>
 
@@ -1958,14 +2121,21 @@ export default function Carrito() {
                           value={direccionEnvio.distrito}
                           onChange={(e) => {
                             const val = e.target.value;
-                            setDireccionEnvio({ ...direccionEnvio, distrito: val });
+                            setDireccionEnvio({
+                              ...direccionEnvio,
+                              distrito: val,
+                            });
                             userLocations.handleDistChange(val);
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
                           disabled={!direccionEnvio.ciudad}
                         >
                           <option value="">Distrito</option>
-                          {userLocations.districts.map(d => <option key={d} value={d}>{d}</option>)}
+                          {userLocations.districts.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
                         </select>
                         <button
                           onClick={handleSaveAddress}
@@ -1974,28 +2144,38 @@ export default function Carrito() {
                           Guardar dirección
                         </button>
                       </div>
-                    ) : isLoggedIn && !mainAddressId && userAddresses.length > 0 ? (
+                    ) : isLoggedIn &&
+                      !mainAddressId &&
+                      userAddresses.length > 0 ? (
                       <div className="space-y-3">
-                        <p className="text-sm text-gray-600 mb-2">Selecciona una de tus direcciones:</p>
+                        <p className="text-sm text-gray-600 mb-2">
+                          Selecciona una de tus direcciones:
+                        </p>
                         <select
                           onChange={async (e) => {
                             const addrId = e.target.value;
-                            const selected = userAddresses.find(a => a.id.toString() === addrId);
+                            const selected = userAddresses.find(
+                              (a) => a.id.toString() === addrId,
+                            );
                             if (selected) {
                               setMainAddressId(selected.id);
                               setDireccionEnvio({
                                 calle: selected.address,
                                 distrito: selected.district,
                                 ciudad: selected.province,
-                                departamento: selected.department
+                                departamento: selected.department,
                               });
-                              userLocations.setLocationValues(selected.department, selected.province, selected.district);
+                              userLocations.setLocationValues(
+                                selected.department,
+                                selected.province,
+                                selected.district,
+                              );
                             }
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
                         >
                           <option value="">Seleccionar dirección...</option>
-                          {userAddresses.map(addr => (
+                          {userAddresses.map((addr) => (
                             <option key={addr.id} value={addr.id}>
                               {addr.address}, {addr.district}
                             </option>
@@ -2028,7 +2208,6 @@ export default function Carrito() {
                       </div>
                     )}
                   </div>
-
                 </div>
               )}
 
@@ -2045,7 +2224,10 @@ export default function Carrito() {
                   >
                     <option value="">Seleccionar distrito</option>
                     {warehouseDistricts.map((district) => (
-                      <option key={district.codUbigeoAlm} value={district.desDistrito}>
+                      <option
+                        key={district.codUbigeoAlm}
+                        value={district.desDistrito}
+                      >
                         {district.desDistrito}
                       </option>
                     ))}
@@ -2082,11 +2264,22 @@ export default function Carrito() {
                 <div className="relative h-96 bg-gray-100 rounded-sm mb-6 overflow-hidden border">
                   <WarehouseMap
                     warehouses={mapWarehouses}
-                    center={mapWarehouses.find(w => w.idAlmacen.toString() === tiendaSeleccionada) ?
-                      [
-                        mapWarehouses.find(w => w.idAlmacen.toString() === tiendaSeleccionada)!.latitud,
-                        mapWarehouses.find(w => w.idAlmacen.toString() === tiendaSeleccionada)!.longitud
-                      ] : undefined}
+                    center={
+                      mapWarehouses.find(
+                        (w) => w.idAlmacen.toString() === tiendaSeleccionada,
+                      )
+                        ? [
+                            mapWarehouses.find(
+                              (w) =>
+                                w.idAlmacen.toString() === tiendaSeleccionada,
+                            )!.latitud,
+                            mapWarehouses.find(
+                              (w) =>
+                                w.idAlmacen.toString() === tiendaSeleccionada,
+                            )!.longitud,
+                          ]
+                        : undefined
+                    }
                   />
                 </div>
 
@@ -2111,19 +2304,25 @@ export default function Carrito() {
                 ) : (
                   <div className="space-y-3">
                     {mapWarehouses.map((tienda) => {
-                      const warehouseResult = stockValidationResult?.resultadosPorAlmacen.find(
-                        w => w.idAlmacen === tienda.idAlmacen
-                      );
-                      const isAvailable = warehouseResult ? warehouseResult.todosDisponibles : true;
+                      const warehouseResult =
+                        stockValidationResult?.resultadosPorAlmacen.find(
+                          (w) => w.idAlmacen === tienda.idAlmacen,
+                        );
+                      const isAvailable = warehouseResult
+                        ? warehouseResult.todosDisponibles
+                        : true;
 
                       return (
                         <div
                           key={tienda.idAlmacen}
-                          className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${tiendaSeleccionada === tienda.idAlmacen.toString()
-                            ? "border-primary bg-primary/5"
-                            : "border-gray-200 hover:border-primary/50"
-                            }`}
-                          onClick={() => setTiendaSeleccionada(tienda.idAlmacen.toString())}
+                          className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${
+                            tiendaSeleccionada === tienda.idAlmacen.toString()
+                              ? "border-primary bg-primary/5"
+                              : "border-gray-200 hover:border-primary/50"
+                          }`}
+                          onClick={() =>
+                            setTiendaSeleccionada(tienda.idAlmacen.toString())
+                          }
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -2135,7 +2334,8 @@ export default function Carrito() {
                               </p>
                             </div>
                             <div className="ml-4">
-                              {tiendaSeleccionada === tienda.idAlmacen.toString() && (
+                              {tiendaSeleccionada ===
+                                tienda.idAlmacen.toString() && (
                                 <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                                   <FaCheck className="text-white text-xs" />
                                 </div>
@@ -2158,11 +2358,17 @@ export default function Carrito() {
 
                           {!isAvailable && warehouseResult && (
                             <div className="mt-2 p-2 bg-red-50 rounded text-[10px] text-red-800">
-                              <p className="font-bold mb-1">Productos sin stock:</p>
+                              <p className="font-bold mb-1">
+                                Productos sin stock:
+                              </p>
                               <ul className="list-disc pl-3">
-                                {warehouseResult.productos.filter(p => !p.disponible).map((p, i) => (
-                                  <li key={i}>{p.nomArticulo}: {p.mensaje}</li>
-                                ))}
+                                {warehouseResult.productos
+                                  .filter((p) => !p.disponible)
+                                  .map((p, i) => (
+                                    <li key={i}>
+                                      {p.nomArticulo}: {p.mensaje}
+                                    </li>
+                                  ))}
                               </ul>
                             </div>
                           )}
@@ -2178,10 +2384,10 @@ export default function Carrito() {
             <div className="space-y-4">
               {(() => {
                 const validItems = items.filter(
-                  (item) => item.product && item.product.id != null
+                  (item) => item.product && item.product.id != null,
                 );
                 const invalidItems = items.filter(
-                  (item) => !item.product || item.product.id == null
+                  (item) => !item.product || item.product.id == null,
                 );
 
                 return (
@@ -2216,7 +2422,7 @@ export default function Carrito() {
                         if (imageId) {
                           imageUrl = getProductImageUrl(
                             item.product.id.toString(),
-                            imageId
+                            imageId,
                           );
                         } else {
                           imageUrl = "/images/placeholder-product.jpg"; // Use consistent placeholder
@@ -2229,8 +2435,6 @@ export default function Carrito() {
                           : parseFloat(item.product.price || "0");
                       const precioTotal = precioUnitario * item.quantity;
 
-
-
                       return (
                         <div
                           key={item.product.id}
@@ -2238,10 +2442,7 @@ export default function Carrito() {
                           style={{ animationDelay: `${index * 100}ms` }}
                         >
                           <div>
-                            <FaCheckCircle
-                              size={25}
-                              className="text-primary"
-                            />
+                            <FaCheckCircle size={25} className="text-primary" />
                           </div>
 
                           <div className="w-full">
@@ -2264,13 +2465,23 @@ export default function Carrito() {
                                   <div className="flex items-center justify-between">
                                     <div className="text-neutral-grayLighter text-sm">
                                       <p className="pb-1 text-xs text-gray-500">
-                                        Ubigeo: {infoTiendaSeleccionada.codUbigeoAlm}
+                                        Ubigeo:{" "}
+                                        {infoTiendaSeleccionada.codUbigeoAlm}
                                       </p>
                                       <div className="flex items-center gap-4">
                                         {(() => {
-                                          const isAvailable = stockValidationResult?.resultadosPorAlmacen.find(
-                                            w => w.idAlmacen.toString() === tiendaSeleccionada
-                                          )?.productos.find(p => p.reference === item.product.reference)?.disponible !== false;
+                                          const isAvailable =
+                                            stockValidationResult?.resultadosPorAlmacen
+                                              .find(
+                                                (w) =>
+                                                  w.idAlmacen.toString() ===
+                                                  tiendaSeleccionada,
+                                              )
+                                              ?.productos.find(
+                                                (p) =>
+                                                  p.reference ===
+                                                  item.product.reference,
+                                              )?.disponible !== false;
 
                                           return isAvailable ? (
                                             <span className="text-primary inline-flex gap-1 items-center">
@@ -2279,8 +2490,8 @@ export default function Carrito() {
                                             </span>
                                           ) : (
                                             <span className="text-red-500 inline-flex gap-1 items-center font-semibold">
-                                              <FaTimesCircle size={15} />{" "}
-                                              No hay stock
+                                              <FaTimesCircle size={15} /> No hay
+                                              stock
                                             </span>
                                           );
                                         })()}
@@ -2294,7 +2505,6 @@ export default function Carrito() {
                               )}
 
                             <div className="flex flex-col-reverse md:flex-row gap-6">
-
                               {/* Imagen */}
                               <div className="relative w-32 h-32 shrink-0 bg-gray-50 rounded-sm overflow-hidden">
                                 <Image
@@ -2308,12 +2518,12 @@ export default function Carrito() {
 
                               {/* Contenido */}
                               <div className="flex flex-1 items-start gap-6">
-
                                 {/* Info producto */}
                                 <div className="flex flex-col flex-1 min-w-0">
                                   <Link
-                                    href={`/tienda/${item.product.id || item.product.productId
-                                      }`}
+                                    href={`/tienda/${
+                                      item.product.id || item.product.productId
+                                    }`}
                                   >
                                     <h3 className="font-semibold text-lg mb-1 hover:text-primary transition">
                                       {getProductName(item.product)}
@@ -2326,18 +2536,38 @@ export default function Carrito() {
 
                                     let productIssue = null;
                                     if (metodoEnvio === "retiro") {
-                                      const selectedWh = stockValidationResult.resultadosPorAlmacen.find(
-                                        w => w.idAlmacen.toString() === tiendaSeleccionada
+                                      const selectedWh =
+                                        stockValidationResult.resultadosPorAlmacen.find(
+                                          (w) =>
+                                            w.idAlmacen.toString() ===
+                                            tiendaSeleccionada,
+                                        );
+                                      productIssue = selectedWh?.productos.find(
+                                        (p) =>
+                                          p.reference ===
+                                            item.product.reference &&
+                                          !p.disponible,
                                       );
-                                      productIssue = selectedWh?.productos.find(p => p.reference === item.product.reference && !p.disponible);
                                     } else {
                                       // Para delivery, si success es false, buscamos si este producto falla en TODOS los almacenes
                                       // o simplemente mostramos si hay algún problema con él
-                                      const allFailed = stockValidationResult.resultadosPorAlmacen.every(
-                                        w => w.productos.find(p => p.reference === item.product.reference && !p.disponible)
-                                      );
+                                      const allFailed =
+                                        stockValidationResult.resultadosPorAlmacen.every(
+                                          (w) =>
+                                            w.productos.find(
+                                              (p) =>
+                                                p.reference ===
+                                                  item.product.reference &&
+                                                !p.disponible,
+                                            ),
+                                        );
                                       if (allFailed) {
-                                        productIssue = stockValidationResult.resultadosPorAlmacen[0]?.productos.find(p => p.reference === item.product.reference);
+                                        productIssue =
+                                          stockValidationResult.resultadosPorAlmacen[0]?.productos.find(
+                                            (p) =>
+                                              p.reference ===
+                                              item.product.reference,
+                                          );
                                       }
                                     }
 
@@ -2353,16 +2583,25 @@ export default function Carrito() {
                                   })()}
                                   <div className="space-y-1 mb-4">
                                     <p className="text-gray-600 text-xs font-mono">
-                                      Prestashop ID: {item.product.productId || item.product.id || "null"}
+                                      ID del artículo: {item.product.id}
                                     </p>
                                     <p className="text-gray-600 text-xs font-mono">
-                                      Reference: {item.product.reference || "null"}
+                                      Prestashop ID:{" "}
+                                      {item.product.productId ||
+                                        item.product.id ||
+                                        "null"}
+                                    </p>
+                                    <p className="text-gray-600 text-xs font-mono">
+                                      Reference:{" "}
+                                      {item.product.reference || "null"}
                                     </p>
                                     <p className="text-gray-600 text-xs font-mono">
                                       SKU: {item.product.sku || "null"}
                                     </p>
                                     <p className="text-gray-600 text-xs font-mono">
-                                      Combination ID: {item.product.prestashopCombinationId ?? "null"}
+                                      Combination ID:{" "}
+                                      {item.product.prestashopCombinationId ??
+                                        "null"}
                                     </p>
                                   </div>
 
@@ -2379,14 +2618,13 @@ export default function Carrito() {
 
                                 {/* Precio + cantidad */}
                                 <div className="flex flex-col items-end justify-between shrink-0 gap-4">
-
                                   {/* Cantidad */}
                                   <div className="flex items-center border border-gray-300 rounded-sm">
                                     <button
                                       onClick={() =>
                                         handleUpdateQuantity(
                                           item.product.id.toString(),
-                                          item.quantity - 1
+                                          item.quantity - 1,
                                         )
                                       }
                                       className="px-3 py-1 hover:bg-gray-100 transition"
@@ -2402,7 +2640,7 @@ export default function Carrito() {
                                       onClick={() =>
                                         handleUpdateQuantity(
                                           item.product.id.toString(),
-                                          item.quantity + 1
+                                          item.quantity + 1,
                                         )
                                       }
                                       className="px-3 py-1 hover:bg-gray-100 transition"
@@ -2414,9 +2652,13 @@ export default function Carrito() {
                                   {/* Precio */}
                                   <div className="text-right">
                                     {item.product.originalPrice &&
-                                      parseFloat(item.product.originalPrice.toString()) > precioUnitario && (
+                                      parseFloat(
+                                        item.product.originalPrice.toString(),
+                                      ) > precioUnitario && (
                                         <p className="text-sm text-gray-400 line-through">
-                                          {formatPrice(item.product.originalPrice.toString())}
+                                          {formatPrice(
+                                            item.product.originalPrice.toString(),
+                                          )}
                                         </p>
                                       )}
 
@@ -2425,13 +2667,13 @@ export default function Carrito() {
                                     </p>
 
                                     <p className="text-xs text-gray-500">
-                                      {formatPrice(precioUnitario.toString())} c/u
+                                      {formatPrice(precioUnitario.toString())}{" "}
+                                      c/u
                                     </p>
                                   </div>
                                 </div>
                               </div>
                             </div>
-
                           </div>
                         </div>
                       );
@@ -2474,7 +2716,6 @@ export default function Carrito() {
 
           {/* Sidebar Checkout */}
           <div className="lg:col-span-1 z-10 space-y-6">
-
             {/* === SECCIÓN CUPÓN === */}
             <div className="bg-white rounded-sm shadow-lg p-6 animate-fade-in">
               <h3 className="text-lg font-semibold mb-4">Código de cupón</h3>
@@ -2488,9 +2729,7 @@ export default function Carrito() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-full md:rounded-r-none md:rounded-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
 
-                <button
-                  className="w-full sm:w-auto bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-2 md:rounded-l-none rounded-full md:rounded-sm border border-primary transition-colors"
-                >
+                <button className="w-full sm:w-auto bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-2 md:rounded-l-none rounded-full md:rounded-sm border border-primary transition-colors">
                   Aplicar
                 </button>
               </div>
@@ -2554,13 +2793,24 @@ export default function Carrito() {
                     onChange={(e) => setAcceptTerms(e.target.checked)}
                     className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
                   />
-                  <label htmlFor="acceptTerms" className="text-sm text-gray-700 cursor-pointer">
+                  <label
+                    htmlFor="acceptTerms"
+                    className="text-sm text-gray-700 cursor-pointer"
+                  >
                     Acepto los{" "}
-                    <Link href="/estaticas/terminos-y-condiciones" className="text-primary hover:underline" target="_blank">
+                    <Link
+                      href="/estaticas/terminos-y-condiciones"
+                      className="text-primary hover:underline"
+                      target="_blank"
+                    >
                       Términos y Condiciones
                     </Link>{" "}
                     y la{" "}
-                    <Link href="/estaticas/politicas" className="text-primary hover:underline" target="_blank">
+                    <Link
+                      href="/estaticas/politicas"
+                      className="text-primary hover:underline"
+                      target="_blank"
+                    >
                       Política de Privacidad
                     </Link>
                   </label>
@@ -2574,12 +2824,14 @@ export default function Carrito() {
                     onChange={(e) => setAcceptNewsletter(e.target.checked)}
                     className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
                   />
-                  <label htmlFor="acceptNewsletter" className="text-sm text-gray-500 cursor-pointer">
+                  <label
+                    htmlFor="acceptNewsletter"
+                    className="text-sm text-gray-500 cursor-pointer"
+                  >
                     Quiero recibir ofertas y beneficios exclusivos
                   </label>
                 </div>
               </div>
-
 
               {/* CTA */}
               <Button
@@ -2588,7 +2840,8 @@ export default function Carrito() {
                 className="w-full mb-3 flex justify-center items-center gap-2"
                 disabled={
                   (!isLoggedIn && !isGuest) ||
-                  (!acceptTerms || (metodoEnvio === "retiro" && !tiendaSeleccionada)) ||
+                  !acceptTerms ||
+                  (metodoEnvio === "retiro" && !tiendaSeleccionada) ||
                   isValidatingStock
                 }
                 onClick={handleCheckoutSubmit}
@@ -2607,12 +2860,16 @@ export default function Carrito() {
                 )}
               </Button>
 
-              <Button href="/productos" variant="outline" size="md" className="w-full">
+              <Button
+                href="/productos"
+                variant="outline"
+                size="md"
+                className="w-full"
+              >
                 Seguir comprando
               </Button>
             </div>
           </div>
-
         </div>
       </div>
 
