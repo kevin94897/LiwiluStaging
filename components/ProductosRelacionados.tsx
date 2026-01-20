@@ -20,6 +20,9 @@ import {
   transitions,
   viewportConfig,
 } from "@/lib/motionVariants";
+import { FaHeart, FaShoppingCart } from "react-icons/fa";
+import { toggleFavorite, getFavorites } from "@/lib/catalog";
+import Button from "./ui/Button";
 
 interface ProductProps {
   productId: string | number;
@@ -31,18 +34,40 @@ export default function ProductosRelacionados({
   initialRelatedProducts = [],
 }: ProductProps) {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>(
-    initialRelatedProducts
+    initialRelatedProducts,
   );
   const [loading, setLoading] = useState(!initialRelatedProducts.length);
   const [error, setError] = useState<string | null>(null);
   const [loadingCart, setLoadingCart] = useState<string | null>(null);
+  const [togglingFavorite, setTogglingFavorite] = useState<string | null>(null);
+  const [favoritos, setFavoritos] = useState<string[]>([]);
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const { addToCart } = useCart();
+  const router = useRouter();
 
-  const [emblaRef] = useEmblaCarousel({ loop: true, align: 'start' }, [
-    Autoplay({ delay: 3000, stopOnInteraction: false })
-  ]);
+  // Detectar si es mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
 
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const [emblaRef] = useEmblaCarousel(
+    {
+      loop: true,
+      align: "start",
+      skipSnaps: false,
+      dragFree: false,
+      containScroll: "trimSnaps",
+    },
+    [Autoplay({ delay: 3000, stopOnInteraction: false })],
+  );
 
   useEffect(() => {
     const fetchRelated = async () => {
@@ -91,6 +116,88 @@ export default function ProductosRelacionados({
     fetchRelated();
   }, [productId]);
 
+  // Cargar favoritos al montar
+  useEffect(() => {
+    async function loadFavorites() {
+      try {
+        const response = await getFavorites();
+        if (response.success) {
+          const favoriteIds = response.data.map((fav) => fav.id.toString());
+          setFavoritos(favoriteIds);
+        }
+      } catch (error) {
+        console.log("Could not load favorites:", error);
+      }
+    }
+
+    loadFavorites();
+  }, []);
+
+  const toggleFavorito = async (
+    e: React.MouseEvent<HTMLButtonElement>,
+    productId: string,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      setTogglingFavorite(productId);
+
+      const result = await toggleFavorite(parseInt(productId));
+
+      if (result.isFavorite) {
+        setFavoritos((prev) => [...prev, productId]);
+        toast.success("Producto agregado a favoritos", {
+          duration: 2000,
+          position: "bottom-right",
+          style: {
+            fontSize: "14px",
+            fontFamily: "Outfit",
+          },
+        });
+      } else {
+        setFavoritos((prev) => prev.filter((id) => id !== productId));
+        toast.success("Producto eliminado de favoritos", {
+          duration: 2000,
+          position: "bottom-right",
+          style: {
+            fontSize: "14px",
+            fontFamily: "Outfit",
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+
+      if (
+        error instanceof Error &&
+        error.message.includes("No hay sesión activa")
+      ) {
+        toast.error("Debes iniciar sesión para agregar favoritos", {
+          duration: 3000,
+          style: {
+            fontSize: "14px",
+            fontFamily: "Outfit",
+          },
+        });
+        router.push(
+          {
+            pathname: router.pathname,
+            query: { ...router.query, login: "true" },
+          },
+          undefined,
+          { shallow: true },
+        );
+      } else {
+        toast.error(
+          "Error al actualizar favoritos. Por favor, intenta de nuevo.",
+        );
+      }
+    } finally {
+      setTogglingFavorite(null);
+    }
+  };
+
   if (loading) {
     return (
       <section className="max-w-7xl mx-auto px-6 py-8">
@@ -105,7 +212,10 @@ export default function ProductosRelacionados({
     return null;
   }
 
-  const handleAddToCart = async (e: React.MouseEvent, producto: Product) => {
+  const handleAddToCart = async (
+    e: React.MouseEvent<HTMLButtonElement>,
+    producto: Product,
+  ) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -120,12 +230,10 @@ export default function ProductosRelacionados({
 
       const cartProduct = {
         ...producto,
-        prestashopCombinationId: combinationId
+        prestashopCombinationId: combinationId,
       };
       addToCart(cartProduct, 1);
       setModalProduct(producto);
-
-
     } catch (error) {
       console.error("Error al agregar al carrito:", error);
       toast.error("Error al agregar el producto al carrito");
@@ -134,161 +242,144 @@ export default function ProductosRelacionados({
     }
   };
 
-  return (
-    <section className="max-w-7xl mx-auto px-6 py-8">
-      <motion.h2
-        className="text-2xl md:text-4xl font-semibold text-center mb-8 text-primary-dark"
-        initial="hidden"
-        whileInView="visible"
-        viewport={viewportConfig}
-        variants={fadeInUp}
-        transition={transitions.smooth}
-      >
-        Productos relacionados
-      </motion.h2>
+  const ProductCard = ({ product }: { product: Product }) => {
+    const imageUrl =
+      product.coverImage ||
+      (product.associations?.images?.[0]?.id
+        ? getProductImageUrl(
+            product.id.toString(),
+            product.associations.images[0].id,
+          )
+        : "/no-image.png");
 
-      {error && (
-        <motion.div
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={transitions.fast}
-        >
-          <strong>Error:</strong> {error}
-        </motion.div>
-      )}
+    return (
+      <Link href={`/tienda/${product.id}`}>
+        <div className="bg-white rounded-md shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 h-full">
+          <div className="relative">
+            <span className="absolute top-2 left-2 bg-primary text-white px-3 py-1 rounded-full text-xs font-semibold z-10">
+              OFERTA
+            </span>
+            <div className="relative w-full h-48">
+              <Image
+                src={imageUrl}
+                alt={getProductName(product)}
+                fill
+                unoptimized
+                className="object-cover"
+              />
+            </div>
+            <button
+              className="absolute top-2 right-2 bg-white rounded-full p-2 hover:bg-gray-100 z-10 transition-transform hover:scale-110 disabled:opacity-50"
+              onClick={(e) => toggleFavorito(e, product.id.toString())}
+              disabled={togglingFavorite === product.id.toString()}
+            >
+              {togglingFavorite === product.id.toString() ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
+              ) : (
+                <FaHeart
+                  className={`w-5 h-5 transition ${
+                    favoritos.includes(product.id.toString())
+                      ? "text-red-500 fill-current"
+                      : "text-gray-400 hover:text-red-500"
+                  }`}
+                />
+              )}
+            </button>
+          </div>
 
-      <motion.div
-        initial="hidden"
-        whileInView="visible"
-        viewport={viewportConfig}
-        variants={fadeInUp}
-        transition={transitions.smooth}
-      >
-        <div className="embla" ref={emblaRef}>
-          <div className="embla__container">
-            {relatedProducts.map((product) => {
-              const imageUrl =
-                product.coverImage ||
-                (product.associations?.images?.[0]?.id
-                  ? getProductImageUrl(
-                    product.id.toString(),
-                    product.associations.images[0].id
-                  )
-                  : "/no-image.png");
-
-              return (
-                <div key={product.id} className="embla__slide flex-[0_0_100%] sm:flex-[0_0_50%] md:flex-[0_0_33.33%] lg:flex-[0_0_25%] px-2 py-4">
-                  <motion.div
-                    className="bg-transparent rounded-md shadow-lg overflow-hidden transition h-full"
-                    initial="initial"
-                    whileTap={{ scale: 0.98 }}
-                    variants={cardHover}
+          <div className="p-4 flex flex-col justify-between h-44 bg-primary">
+            <h2 className="font-semibold leading-tight text-lg mb-2 line-clamp-2 h-12 text-white">
+              {getProductName(product)}
+            </h2>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-white text-sm line-through">
+                {formatPrice(parseFloat((product.price || 0).toString()) * 1.5)}
+              </span>
+              <span className="text-white font-semibold text-lg">
+                {formatPrice(product.price || 0)}
+              </span>
+            </div>
+            <Button
+              size="sm"
+              className="w-full"
+              variant="secondary"
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
+                handleAddToCart(e, product)
+              }
+              disabled={loadingCart === product.id.toString()}
+            >
+              {loadingCart === product.id.toString() ? (
+                <div className="flex items-center justify-center gap-2">
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
                   >
-                    <Link href={`/tienda/${product.id}`}>
-                      <motion.div
-                        className="relative w-full h-48"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.5 }}
-                        whileHover={{ scale: 1.05 }}
-                      >
-                        <Image
-                          src={imageUrl}
-                          alt={getProductName(product)}
-                          fill
-                          unoptimized
-                          className="object-cover"
-                        />
-                      </motion.div>
-                    </Link>
-
-                    <motion.div
-                      className="p-4 bg-primary"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2, ...transitions.smooth }}
-                    >
-                      <div className="mb-0">
-                        <span className="text-white text-sm font-normal">
-                          Liwilu
-                        </span>
-                      </div>
-
-                      <h3 className="font-normal text-lg mb-2 line-clamp-2 h-10 text-white leading-5">
-                        {getProductName(product)}
-                      </h3>
-
-                      <motion.div
-                        className="flex items-center gap-1 mb-0"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                      >
-                        <div className="flex text-yellow-400 text-sm">
-                          {"★".repeat(5)}
-                        </div>
-                      </motion.div>
-
-                      <motion.div
-                        className="flex items-center gap-2 mb-6"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.4, ...transitions.bounce }}
-                      >
-                        <span className="text-white font-semibold text-xl">
-                          {formatPrice(product.price || 0)}
-                        </span>
-                        <span className="text-white text-sm line-through">
-                          {formatPrice(
-                            parseFloat((product.price || 0).toString()) * 1.5
-                          )}
-                        </span>
-                      </motion.div>
-
-                      <motion.button
-                        className="w-full bg-white text-primary font-semibold py-3 rounded-xl transition hover:bg-gray-100 flex items-center justify-center gap-2"
-                        onClick={(e) => handleAddToCart(e, product)}
-                        disabled={loadingCart === product.id.toString()}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        {loadingCart === product.id.toString() ? (
-                          <>
-                            <svg
-                              className="animate-spin h-5 w-5"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              />
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              />
-                            </svg>
-                            <span>Agregando...</span>
-                          </>
-                        ) : (
-                          <span>Agregar al carrito</span>
-                        )}
-                      </motion.button>
-                    </motion.div>
-                  </motion.div>
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  <span>...</span>
                 </div>
-              );
-            })}
+              ) : (
+                <span className="flex items-center gap-2">
+                  <FaShoppingCart className="w-4 h-4" />
+                  <span>Agregar al carrito</span>
+                </span>
+              )}
+            </Button>
           </div>
         </div>
-      </motion.div>
+      </Link>
+    );
+  };
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16">
+      <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-6 sm:mb-8 md:mb-12 text-primary-dark">
+        Productos relacionados
+      </h2>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {isMobile ? (
+        <div className="overflow-hidden" ref={emblaRef}>
+          <div className="flex touch-pan-y touch-pinch-zoom -ml-3 sm:-ml-4">
+            {relatedProducts.map((product) => (
+              <div
+                key={product.id}
+                className="flex-[0_0_85%] min-w-0 pl-3 sm:flex-[0_0_50%] sm:pl-4"
+              >
+                <div className="py-4 h-full">
+                  <ProductCard product={product} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+          {relatedProducts.map((product) => (
+            <div key={product.id} className="py-2">
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {modalProduct && (
         <AddToCartModal

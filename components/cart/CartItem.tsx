@@ -123,15 +123,23 @@ export default function CartItem({
                   </p>
                   <div className="flex items-center gap-4">
                     {(() => {
-                      const isAvailable =
-                        stockValidationResult?.resultadosPorAlmacen
+                      // Verificar primero si tenemos resultados de validación
+                      if (!stockValidationResult) return null;
+
+                      const productInStore =
+                        stockValidationResult.resultadosPorAlmacen
                           .find(
                             (w) =>
                               w.idAlmacen.toString() === tiendaSeleccionada,
                           )
                           ?.productos.find(
                             (p) => p.reference === item.product.reference,
-                          )?.disponible !== false;
+                          );
+
+                      // Si no encontramos info del producto en la tienda, estado neutro
+                      if (!productInStore) return null;
+
+                      const isAvailable = productInStore.disponible;
 
                       return isAvailable ? (
                         <span className="text-primary inline-flex gap-1 items-center">
@@ -173,6 +181,37 @@ export default function CartItem({
                   {getProductName(item.product)}
                 </h3>
               </Link>
+
+              {/* Variation Attributes */}
+              {item.product.variationAttributes &&
+                item.product.variationAttributes.length > 0 && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1.5 mt-1 mb-3">
+                    {item.product.variationAttributes.map(
+                      (attr: any, i: number) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-sm border border-gray-100"
+                        >
+                          <span className="font-semibold text-gray-400 capitalize">
+                            {attr.name}:
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {attr.colorHex && (
+                              <span
+                                className="w-3.5 h-3.5 rounded-full border border-gray-200 shadow-sm"
+                                style={{ backgroundColor: attr.colorHex }}
+                                title={attr.value}
+                              />
+                            )}
+                            <span className="font-medium text-gray-700">
+                              {attr.value}
+                            </span>
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                )}
 
               {/* Error de Stock Inline */}
               {(() => {
@@ -220,7 +259,7 @@ export default function CartItem({
 
                 return null;
               })()}
-              <div className="space-y-1 mb-4">
+              {/* <div className="space-y-1 mb-4">
                 <p className="text-gray-600 text-xs font-mono">
                   ID del artículo: {item.product.id}
                 </p>
@@ -238,7 +277,7 @@ export default function CartItem({
                   Combination ID:{" "}
                   {item.product.prestashopCombinationId ?? "null"}
                 </p>
-              </div>
+              </div> */}
 
               <button
                 onClick={() => onRemove(item.product.id.toString())}

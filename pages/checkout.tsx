@@ -27,6 +27,7 @@ export default function Checkout() {
   const [metodoPago, setMetodoPago] = useState<MetodoPago | null>(null);
   const [processing, setProcessing] = useState(false);
   const [culqiReady, setCulqiReady] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Datos para Boleta
   const [tipoDocumentoBoleta, setTipoDocumentoBoleta] = useState("DNI");
@@ -44,6 +45,15 @@ export default function Checkout() {
   const subtotal = getCartTotal();
   const envio = 15;
   const total = subtotal + envio;
+
+  // Verificar si Culqi ya está cargado al montar el componente (para navegaciones SPA)
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.Culqi) {
+      console.log("⚡ Culqi ya estaba cargado al montar");
+      const configured = configureCulqi();
+      setCulqiReady(configured);
+    }
+  }, []);
 
   // Configurar Culqi cuando el script esté listo
   const handleCulqiLoad = () => {
@@ -63,23 +73,37 @@ export default function Checkout() {
           setProcessing(true);
 
           // Construir payload para la orden
-          const invoicePayload = {
+          const invoicePayload: any = {
             token: token.id,
             invoiceType: tipoComprobante.toUpperCase(), // "FACTURA" o "BOLETA"
-            invoiceData:
-              tipoComprobante === "factura"
-                ? {
-                    ruc: datosFactura.ruc,
-                    razonSocial: datosFactura.razonSocial,
-                    direccionFiscal: datosFactura.direccionFiscal,
-                  }
-                : {
-                    tipoDocumento: tipoDocumentoBoleta,
-                    numeroDocumento: datosBoletaRUC,
-                  },
           };
 
-          // Llamar al endpoint /orders
+          if (tipoComprobante === "factura") {
+            invoicePayload.invoiceData = {
+              ruc: datosFactura.ruc,
+              razonSocial: datosFactura.razonSocial,
+              direccionFiscal: datosFactura.direccionFiscal,
+            };
+          }
+
+          // Simulación de creación de orden (Endpoint /orders en pausa)
+          console.log(
+            "💰 Simulando procesamiento de orden para token:",
+            token.id,
+          );
+
+          await new Promise((resolve) => setTimeout(resolve, 1500)); // Simular latencia
+
+          closeCulqi();
+          showToast("💳 Pago procesado exitosamente (Simulado)", "success");
+          setIsSuccess(true);
+          clearCart();
+
+          const fakeOrderId = Math.floor(Math.random() * 90000) + 10000;
+          router.push(`/pedido-exitoso?order=${fakeOrderId}`);
+
+          /* 
+          // Llamar al endpoint /orders (Desactivado temporalmente)
           const response = await createOrder(invoicePayload);
 
           if (response.success) {
@@ -93,6 +117,7 @@ export default function Checkout() {
           } else {
             throw new Error(response.message || "Error al crear la orden");
           }
+          */
         } catch (error: any) {
           console.error("❌ Error al procesar cargo/orden:", error);
           showToast(error.message || "Error al procesar el pago", "error");
@@ -172,8 +197,20 @@ export default function Checkout() {
 
     // Si es pago con tarjeta o digital (Culqi)
     if (metodoPago === "tarjeta" || metodoPago === "yape") {
-      if (!culqiReady) {
-        showToast("Inicializando pasarela de pagos segura...", "success");
+      let isReady = culqiReady;
+
+      // Intento final de inicialización si no estaba listo
+      if (!isReady && typeof window !== "undefined" && window.Culqi) {
+        console.log("🔄 Intentando configurar Culqi bajo demanda...");
+        isReady = configureCulqi();
+        setCulqiReady(isReady);
+      }
+
+      if (!isReady) {
+        showToast(
+          "La pasarela de pago no está lista. Por favor, espera un momento o recarga la página.",
+          "error",
+        );
         return;
       }
 
@@ -204,12 +241,13 @@ export default function Checkout() {
       await new Promise((resolve) => setTimeout(resolve, 1500));
       const numeroPedido = Math.floor(Math.random() * 9000) + 1000;
       showToast("Pedido registrado. Paga en efectivo al recibir", "success");
+      setIsSuccess(true);
       clearCart();
       router.push(`/pedido-exitoso?order=${numeroPedido}&method=efectivo`);
     }
   };
 
-  // Formatear número de tarjeta
+  // Format card number
   const formatCardNumber = (value: string) => {
     const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
     const matches = v.match(/\d{4,16}/g);
@@ -223,26 +261,14 @@ export default function Checkout() {
     return parts.length ? parts.join(" ") : value;
   };
 
+  useEffect(() => {
+    if (items.length === 0 && !isSuccess) {
+      router.push("/productos");
+    }
+  }, [items, router, isSuccess]);
+
   if (items.length === 0) {
-    return (
-      <Layout
-        title="Checkout - Liwilu"
-        description="Finalizar compra"
-        background={true}
-      >
-        <div className="max-w-7xl mx-auto px-6 py-16 mt-32 text-center">
-          <h2 className="text-2xl font-semibold mb-4">
-            No hay productos en el carrito
-          </h2>
-          <button
-            onClick={() => router.push("/productos")}
-            className="bg-primary text-white px-6 py-3 rounded-full"
-          >
-            Ir a la tienda
-          </button>
-        </div>
-      </Layout>
-    );
+    return null; // Don't render "Empty Cart" message, just redirect or show nothing
   }
 
   return (

@@ -761,18 +761,13 @@ export async function savePickupPerson(data: {
 export async function createOrder(data: {
     token: string;
     invoiceType: string;
-    invoiceData: any;
+    invoiceData?: any;
 }): Promise<{ success: boolean; orderId?: number; message?: string; [key: string]: any }> {
     try {
-        // El token NO debe ir en el body según el error "property token should not exist"
-        // Lo enviamos en headers por si acaso, y limpiamos el body.
+        // El token NO debe ir en el body ni en el header según requerimiento para evitar errores de CORS
         const { token, ...bodyData } = data;
 
-        const response = await apiPost('/orders', bodyData, {
-            headers: {
-                'X-Culqi-Token': token
-            }
-        });
+        const response = await apiPost('/orders', bodyData);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));

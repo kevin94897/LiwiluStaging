@@ -3,6 +3,7 @@ import { formatPrice } from "@/lib/utils";
 import { PiWarningCircleFill } from "react-icons/pi";
 import { DeliveryZone } from "@/lib/cart";
 import { showToast } from "@/lib/notifications";
+import Button from "../ui/Button";
 
 interface DeliveryAddressFormProps {
   isLoggedIn: boolean;
@@ -190,23 +191,18 @@ export default function DeliveryAddressForm({
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 md:flex-row flex-col">
+            <Button onClick={onSaveAddress} variant="primary">
+              Guardar dirección
+            </Button>
             {!(isLoggedIn && userAddresses.length === 0) && (
-              <button
+              <Button
                 onClick={() => setEditandoDireccion(false)}
-                className="w-1/2 bg-gray-200 text-gray-700 py-2 rounded-full text-sm font-semibold hover:bg-gray-300 transition"
+                variant="outline"
               >
                 Cancelar
-              </button>
+              </Button>
             )}
-            <button
-              onClick={onSaveAddress}
-              className={`${
-                !(isLoggedIn && userAddresses.length === 0) ? "w-1/2" : "w-full"
-              } bg-primary text-white py-2 rounded-full text-sm font-semibold hover:bg-primary-dark transition`}
-            >
-              Guardar dirección
-            </button>
           </div>
         </div>
       ) : isLoggedIn && !mainAddressId && userAddresses.length > 0 ? (
