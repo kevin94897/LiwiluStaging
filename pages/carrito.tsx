@@ -269,6 +269,8 @@ export default function Carrito() {
                   distrito: mainAddress.district,
                   ciudad: mainAddress.province,
                   departamento: mainAddress.department,
+                  numeroDptoPiso: mainAddress.numeroDptoPiso || "",
+                  referencia: mainAddress.referencia || "",
                 });
                 userLocations.setLocationValues(
                   mainAddress.department,
@@ -2461,6 +2463,8 @@ export default function Carrito() {
                                 distrito: selected.district,
                                 ciudad: selected.province,
                                 departamento: selected.department,
+                                numeroDptoPiso: selected.numeroDptoPiso || "",
+                                referencia: selected.referencia || "",
                               });
                               userLocations.setLocationValues(
                                 selected.department,
