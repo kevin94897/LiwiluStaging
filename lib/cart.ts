@@ -711,8 +711,9 @@ export async function saveCartDeliveryPrice(data: {
     zoneName: string;
 }): Promise<{ success: boolean; message: string }> {
     try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
         const response = await apiPut('/cart/delivery-price', data, {
-            skipAuth: true // Handled by sessionId header in apiClient
+            skipAuth: !accessToken // Skip auth if no token (guest mode)
         });
 
         if (!response.ok) {
@@ -723,6 +724,64 @@ export async function saveCartDeliveryPrice(data: {
         return await response.json();
     } catch (error) {
         console.error('Error in saveCartDeliveryPrice:', error);
+        throw error;
+    }
+}
+
+/**
+ * Save authorized person for pickup
+ * @param data - The authorized person data (tipoDocumento, numeroDocumento, nombreCompleto)
+ * @returns Promise with the response
+ */
+export async function savePickupPerson(data: {
+    tipoDocumento: string;
+    numeroDocumento: string;
+    nombreCompleto: string;
+}): Promise<{ success: boolean; message: string }> {
+    try {
+        const response = await apiPut('/cart/pickup-person', data, {
+            skipAuth: true // Handled by sessionId header in apiClient
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error saving pickup person: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in savePickupPerson:', error);
+        throw error;
+    }
+}
+
+/**
+ * Create order with payment token and invoice data
+ */
+export async function createOrder(data: {
+    token: string;
+    invoiceType: string;
+    invoiceData: any;
+}): Promise<{ success: boolean; orderId?: number; message?: string; [key: string]: any }> {
+    try {
+        // El token NO debe ir en el body según el error "property token should not exist"
+        // Lo enviamos en headers por si acaso, y limpiamos el body.
+        const { token, ...bodyData } = data;
+
+        const response = await apiPost('/orders', bodyData, {
+            headers: {
+                'X-Culqi-Token': token
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error creating order: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in createOrder:', error);
         throw error;
     }
 }

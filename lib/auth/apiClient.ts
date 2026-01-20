@@ -27,44 +27,53 @@ export const authenticatedFetch = async (
         ...(fetchOptions.headers as Record<string, string>),
     };
 
-    // Agregar X-Session-Id si existe para identificar carritos de invitados
+    // Obtener tokens/session
+    let accessToken: string | null = null;
+    let sessionId: string | null = null;
+    
     if (typeof window !== 'undefined') {
-        const sessionId = localStorage.getItem('liwilu_session_id');
-        if (sessionId) {
-            console.log('📡 Request with X-Session-Id:', sessionId);
-            baseHeaders['X-Session-Id'] = sessionId;
-        }
+        accessToken = localStorage.getItem('accessToken');
+        sessionId = localStorage.getItem('liwilu_session_id');
     }
 
-    // Si no se debe agregar autenticación, hacer fetch normal
-    if (skipAuth) {
+    // Determinar qué header usar basado en el estado de autenticación
+    if (!skipAuth && accessToken) {
+        // Usuario autenticado - usar Authorization header
+        console.log('📡 Request with Authorization (authenticated user)');
+        baseHeaders['Authorization'] = `Bearer ${accessToken}`;
+    } else if (sessionId) {
+        // Usuario invitado - usar X-Session-Id header
+        console.log('📡 Request with X-Session-Id (guest user):', sessionId);
+        baseHeaders['X-Session-Id'] = sessionId;
+    }
+
+    // Si skipAuth es true pero no hay accessToken, solo usar sessionId si existe
+    if (skipAuth && !accessToken && sessionId) {
+        console.log('📡 Request with X-Session-Id (skipAuth, no accessToken):', sessionId);
+        baseHeaders['X-Session-Id'] = sessionId;
+    }
+
+    // Si no se debe agregar autenticación Y no hay accessToken, hacer fetch normal
+    if (skipAuth && !accessToken) {
         return fetch(url, {
             ...fetchOptions,
             headers: baseHeaders
         });
     }
 
-    // Obtener accessToken
-    const accessToken = localStorage.getItem('accessToken');
-
-    if (!accessToken) {
+    // Si no hay accessToken y skipAuth es false, lanzar error
+    if (!skipAuth && !accessToken) {
         throw new Error('No hay sesión activa');
     }
-
-    // Agregar Authorization header
-    const headers = {
-        ...baseHeaders,
-        'Authorization': `Bearer ${accessToken}`,
-    };
 
     // Hacer la petición
     const response = await fetch(url, {
         ...fetchOptions,
-        headers,
+        headers: baseHeaders,
     });
 
     // Si es 401 (Unauthorized), el token expiró
-    if (response.status === 401 && !skipRetry) {
+    if (response.status === 401 && !skipRetry && accessToken) {
         console.log('⚠️ Token expirado (401), intentando renovar...');
 
         // Intentar renovar el token

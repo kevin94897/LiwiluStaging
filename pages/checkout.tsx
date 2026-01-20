@@ -14,6 +14,7 @@ import Script from "next/script";
 import { openCulqi, configureCulqi, closeCulqi } from "@/lib/culqi";
 import { showToast } from "@/lib/notifications";
 import { validateDNI, validateRUC } from "@/lib/validations";
+import { createOrder } from "@/lib/cart";
 
 type TipoComprobante = "boleta" | "factura";
 type MetodoPago = "tarjeta" | "yape" | "efectivo";
@@ -35,6 +36,7 @@ export default function Checkout() {
   const [datosFactura, setDatosFactura] = useState({
     ruc: "",
     razonSocial: "",
+    direccionFiscal: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -45,7 +47,7 @@ export default function Checkout() {
 
   // Configurar Culqi cuando el script esté listo
   const handleCulqiLoad = () => {
-    console.log('📦 Script de Culqi cargado');
+    console.log("📦 Script de Culqi cargado");
     const configured = configureCulqi();
     setCulqiReady(configured);
   };
@@ -60,21 +62,40 @@ export default function Checkout() {
         try {
           setProcessing(true);
 
-          // Aquí deberías enviar el token al backend para procesar el cargo
-          // Ejemplo: await apiPost('/payments/charge', { token: token.id, amount: total })
+          // Construir payload para la orden
+          const invoicePayload = {
+            token: token.id,
+            invoiceType: tipoComprobante.toUpperCase(), // "FACTURA" o "BOLETA"
+            invoiceData:
+              tipoComprobante === "factura"
+                ? {
+                    ruc: datosFactura.ruc,
+                    razonSocial: datosFactura.razonSocial,
+                    direccionFiscal: datosFactura.direccionFiscal,
+                  }
+                : {
+                    tipoDocumento: tipoDocumentoBoleta,
+                    numeroDocumento: datosBoletaRUC,
+                  },
+          };
 
-          // Simulación de procesamiento
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          // Llamar al endpoint /orders
+          const response = await createOrder(invoicePayload);
 
-          closeCulqi();
-          showToast("💳 Pago procesado exitosamente", "success");
-
-          const numeroPedido = Math.floor(Math.random() * 9000) + 1000;
-          clearCart();
-          router.push(`/pedido-exitoso?order=${numeroPedido}`);
-        } catch (error) {
-          console.error("❌ Error al procesar cargo:", error);
-          showToast("Error al procesar el pago", "error");
+          if (response.success) {
+            closeCulqi();
+            showToast("💳 Pago procesado exitosamente", "success");
+            clearCart();
+            // Usar ID real o fallback
+            const orderId =
+              response.orderId || Math.floor(Math.random() * 9000) + 1000;
+            router.push(`/pedido-exitoso?order=${orderId}`);
+          } else {
+            throw new Error(response.message || "Error al crear la orden");
+          }
+        } catch (error: any) {
+          console.error("❌ Error al procesar cargo/orden:", error);
+          showToast(error.message || "Error al procesar el pago", "error");
           setProcessing(false);
         }
       } else if (window.Culqi.order) {
@@ -95,7 +116,15 @@ export default function Checkout() {
         setProcessing(false);
       }
     };
-  }, [router, clearCart, total]);
+  }, [
+    router,
+    clearCart,
+    total,
+    tipoComprobante,
+    datosFactura,
+    tipoDocumentoBoleta,
+    datosBoletaRUC,
+  ]);
 
   // Validar campos según tipo de comprobante
   const validarDatos = (): boolean => {
@@ -104,9 +133,15 @@ export default function Checkout() {
     if (tipoComprobante === "boleta") {
       if (!datosBoletaRUC) {
         newErrors.rucBoleta = "El número de documento es obligatorio";
-      } else if (tipoDocumentoBoleta === "DNI" && !validateDNI(datosBoletaRUC)) {
+      } else if (
+        tipoDocumentoBoleta === "DNI" &&
+        !validateDNI(datosBoletaRUC)
+      ) {
         newErrors.rucBoleta = "Ingresa un DNI válido (8 números)";
-      } else if (tipoDocumentoBoleta === "RUC" && !validateRUC(datosBoletaRUC)) {
+      } else if (
+        tipoDocumentoBoleta === "RUC" &&
+        !validateRUC(datosBoletaRUC)
+      ) {
         newErrors.rucBoleta = "El RUC debe tener 11 números y empezar con 20";
       }
     } else {
@@ -115,6 +150,9 @@ export default function Checkout() {
       }
       if (!datosFactura.razonSocial) {
         newErrors.razonSocial = "Ingresa la razón social";
+      }
+      if (!datosFactura.direccionFiscal) {
+        newErrors.direccionFiscal = "Ingresa la dirección fiscal";
       }
     }
 
@@ -143,7 +181,7 @@ export default function Checkout() {
         setProcessing(true);
         const numeroPedido = Math.floor(Math.random() * 90000) + 10000;
 
-        console.log('🚀 [Checkout] Iniciando flujo Culqi [CULQI-V6]');
+        console.log("🚀 [Checkout] Iniciando flujo Culqi [CULQI-V6]");
         openCulqi({
           title: "Liwilu",
           currency: "PEN",
@@ -243,11 +281,11 @@ export default function Checkout() {
               </div>
             </div>
 
-
-
             {/* Tipo de Comprobante */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
-              <h2 className="text-xl font-semibold mb-2 text-gray-900">Comprobante de Pago</h2>
+              <h2 className="text-xl font-semibold mb-2 text-gray-900">
+                Comprobante de Pago
+              </h2>
               <p className="text-gray-500 mb-8">
                 Selecciona el tipo de documento para tu compra
               </p>
@@ -255,19 +293,21 @@ export default function Checkout() {
               <div className="flex gap-4 mb-6">
                 <button
                   onClick={() => setTipoComprobante("boleta")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "boleta"
-                    ? "border-primary bg-primary text-white"
-                    : "border-gray-200 text-gray-700 hover:border-primary"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
+                    tipoComprobante === "boleta"
+                      ? "border-primary bg-primary text-white"
+                      : "border-gray-200 text-gray-700 hover:border-primary"
+                  }`}
                 >
                   Boleta
                 </button>
                 <button
                   onClick={() => setTipoComprobante("factura")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "factura"
-                    ? "border-primary bg-primary text-white"
-                    : "border-gray-200 text-gray-700 hover:border-primary"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
+                    tipoComprobante === "factura"
+                      ? "border-primary bg-primary text-white"
+                      : "border-gray-200 text-gray-700 hover:border-primary"
+                  }`}
                 >
                   <span className="flex items-center justify-center gap-2">
                     <svg
@@ -319,9 +359,21 @@ export default function Checkout() {
                       <input
                         type="text"
                         value={datosBoletaRUC}
-                        onChange={(e) => setDatosBoletaRUC(e.target.value.replace(/\D/g, ""))}
-                        placeholder={tipoDocumentoBoleta === "RUC" ? "20123456789" : "12345678"}
-                        maxLength={tipoDocumentoBoleta === "RUC" ? 11 : (tipoDocumentoBoleta === "DNI" ? 8 : 20)}
+                        onChange={(e) =>
+                          setDatosBoletaRUC(e.target.value.replace(/\D/g, ""))
+                        }
+                        placeholder={
+                          tipoDocumentoBoleta === "RUC"
+                            ? "20123456789"
+                            : "12345678"
+                        }
+                        maxLength={
+                          tipoDocumentoBoleta === "RUC"
+                            ? 11
+                            : tipoDocumentoBoleta === "DNI"
+                              ? 8
+                              : 20
+                        }
                         className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
                       />
                       {errors.rucBoleta && (
@@ -337,7 +389,7 @@ export default function Checkout() {
               {/* Formulario Factura */}
               {tipoComprobante === "factura" && (
                 <div className="space-y-4 animate-fade-in">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         RUC
@@ -383,6 +435,28 @@ export default function Checkout() {
                         </p>
                       )}
                     </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Dirección Fiscal
+                      </label>
+                      <input
+                        type="text"
+                        value={datosFactura.direccionFiscal}
+                        onChange={(e) =>
+                          setDatosFactura({
+                            ...datosFactura,
+                            direccionFiscal: e.target.value,
+                          })
+                        }
+                        placeholder="Av. Principal 123"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                      />
+                      {errors.direccionFiscal && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.direccionFiscal}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -390,7 +464,9 @@ export default function Checkout() {
 
             {/* Tipo de pago */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
-              <h2 className="text-xl font-semibold mb-2 text-gray-900">Método de pago</h2>
+              <h2 className="text-xl font-semibold mb-2 text-gray-900">
+                Método de pago
+              </h2>
               <p className="text-gray-500 mb-8">
                 Elige la opción más conveniente para ti
               </p>
@@ -399,22 +475,33 @@ export default function Checkout() {
                 {/* Tarjeta de crédito/débito */}
                 <button
                   onClick={() => setMetodoPago("tarjeta")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "tarjeta"
-                    ? "border-primary bg-primary/5"
-                    : "border-gray-200 hover:border-primary/50"
-                    }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
+                    metodoPago === "tarjeta"
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 hover:border-primary/50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <FaCreditCard className="text-2xl text-gray-600" />
                     <div className="text-left">
                       <p className="font-medium">Tarjeta de crédito/débito</p>
-                      <p className="text-xs text-gray-500">Visa, Mastercard, American Express</p>
+                      <p className="text-xs text-gray-500">
+                        Visa, Mastercard, American Express
+                      </p>
                     </div>
                   </div>
                   {metodoPago === "tarjeta" && (
                     <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                   )}
@@ -423,10 +510,11 @@ export default function Checkout() {
                 {/* Yape */}
                 <button
                   onClick={() => setMetodoPago("yape")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "yape"
-                    ? "border-primary bg-primary/5"
-                    : "border-gray-200 hover:border-primary/50"
-                    }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
+                    metodoPago === "yape"
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 hover:border-primary/50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-purple-600 rounded-sm flex items-center justify-center text-white font-bold">
@@ -434,13 +522,23 @@ export default function Checkout() {
                     </div>
                     <div className="text-left">
                       <p className="font-medium">Yape</p>
-                      <p className="text-xs text-gray-500">Pago mediante código QR</p>
+                      <p className="text-xs text-gray-500">
+                        Pago mediante código QR
+                      </p>
                     </div>
                   </div>
                   {metodoPago === "yape" && (
                     <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                   )}
@@ -449,22 +547,33 @@ export default function Checkout() {
                 {/* Pago Efectivo */}
                 <button
                   onClick={() => setMetodoPago("efectivo")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "efectivo"
-                    ? "border-primary bg-primary/5"
-                    : "border-gray-200 hover:border-primary/50"
-                    }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
+                    metodoPago === "efectivo"
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 hover:border-primary/50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <FaMoneyBillWave className="text-2xl text-green-600" />
                     <div className="text-left">
                       <p className="font-medium">Pago contra entrega</p>
-                      <p className="text-xs text-gray-500">Paga en efectivo al recibir</p>
+                      <p className="text-xs text-gray-500">
+                        Paga en efectivo al recibir
+                      </p>
                     </div>
                   </div>
                   {metodoPago === "efectivo" && (
                     <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                   )}
@@ -487,9 +596,24 @@ export default function Checkout() {
 
                   {metodoPago === "tarjeta" ? (
                     <div className="space-y-2 text-xs text-blue-800">
-                      <p className="flex justify-between"><span>Número:</span> <code className="bg-white px-1.5 py-0.5 rounded border font-bold">4111 1111 1111 1111</code></p>
-                      <p className="flex justify-between"><span>CVV:</span> <code className="bg-white px-1.5 py-0.5 rounded border font-bold">123</code></p>
-                      <p className="flex justify-between"><span>Expiración:</span> <code className="bg-white px-1.5 py-0.5 rounded border font-bold">12 / 2026</code></p>
+                      <p className="flex justify-between">
+                        <span>Número:</span>{" "}
+                        <code className="bg-white px-1.5 py-0.5 rounded border font-bold">
+                          4111 1111 1111 1111
+                        </code>
+                      </p>
+                      <p className="flex justify-between">
+                        <span>CVV:</span>{" "}
+                        <code className="bg-white px-1.5 py-0.5 rounded border font-bold">
+                          123
+                        </code>
+                      </p>
+                      <p className="flex justify-between">
+                        <span>Expiración:</span>{" "}
+                        <code className="bg-white px-1.5 py-0.5 rounded border font-bold">
+                          12 / 2026
+                        </code>
+                      </p>
                       <p className="mt-3 py-2 px-3 bg-white/50 rounded text-[10px] italic">
                         El modal de Culqi procesará estos datos de forma segura.
                       </p>
@@ -497,10 +621,13 @@ export default function Checkout() {
                   ) : (
                     <div className="space-y-3">
                       <p className="text-xs text-amber-700 font-medium leading-relaxed">
-                        ⚠️ <strong className="font-bold">Nota técnica:</strong> El botón de Yape dentro del modal de Culqi requiere un backend real para funcionar.
+                        ⚠️ <strong className="font-bold">Nota técnica:</strong>{" "}
+                        El botón de Yape dentro del modal de Culqi requiere un
+                        backend real para funcionar.
                       </p>
                       <p className="text-[11px] text-blue-800">
-                        Para validar el flujo completo ahora, te recomendamos seleccionar <strong>Tarjeta</strong>.
+                        Para validar el flujo completo ahora, te recomendamos
+                        seleccionar <strong>Tarjeta</strong>.
                       </p>
                     </div>
                   )}
@@ -511,7 +638,11 @@ export default function Checkout() {
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4">
               <div className="order-2 sm:order-1 text-center sm:text-left">
-                <Button onClick={handleProcesarPago} disabled={processing} className="shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow">
+                <Button
+                  onClick={handleProcesarPago}
+                  disabled={processing}
+                  className="shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow"
+                >
                   {processing ? (
                     <span className="flex items-center justify-center gap-3">
                       <div className="animate-spin rounded-full h-4 w-4 border border-white/20 border-b-white"></div>
@@ -524,7 +655,7 @@ export default function Checkout() {
               </div>
               <div className="order-1 sm:order-2 flex items-center gap-4 text-gray-500">
                 <div className="flex -space-x-1">
-                  {['VISA', 'MC', 'AMEX'].map((card) => (
+                  {["VISA", "MC", "AMEX"].map((card) => (
                     <div
                       key={card}
                       className="px-2 py-1 bg-gray-50 border border-gray-200 rounded text-[9px] font-semibold tracking-wider shadow-sm"
@@ -554,7 +685,7 @@ export default function Checkout() {
                     if (imageId) {
                       imageUrl = getProductImageUrl(
                         item.product.id.toString(),
-                        imageId
+                        imageId,
                       );
                     } else {
                       imageUrl = "/images/placeholder-product.jpg";
@@ -585,23 +716,23 @@ export default function Checkout() {
                           {formatPrice(
                             (
                               parseFloat(
-                                (item.product.price || "0").toString()
+                                (item.product.price || "0").toString(),
                               ) * item.quantity
-                            ).toString()
+                            ).toString(),
                           )}
                         </p>
                         {item.product.originalPrice &&
                           parseFloat(item.product.originalPrice.toString()) >
-                          parseFloat(
-                            (item.product.price || "0").toString()
-                          ) && (
+                            parseFloat(
+                              (item.product.price || "0").toString(),
+                            ) && (
                             <p className="text-xs text-gray-400 line-through">
                               {formatPrice(
                                 (
                                   parseFloat(
-                                    item.product.originalPrice.toString()
+                                    item.product.originalPrice.toString(),
                                   ) * item.quantity
-                                ).toString()
+                                ).toString(),
                               )}
                             </p>
                           )}
@@ -638,13 +769,26 @@ export default function Checkout() {
                 <div className="mt-6 pt-6 border-t border-gray-100 hidden lg:block">
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border shadow-sm flex-shrink-0">
-                      <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M2.166 4.9L10 1.554L17.834 4.9c.45.19.73.635.73 1.127v3.5c0 5.474-3.41 10.371-8.288 12.236c-.183.07-.384.07-.567 0C4.244 19.897.834 15 .834 9.527v-3.5c0-.492.28-.936.73-1.127zM10 3.3l-6.5 2.763v2.983c0 4.007 2.353 7.749 6.5 9.45c4.147-1.7 6.5-5.443 6.5-9.45V6.063L10 3.3zm2.983 5.114a.75.75 0 10-1.066-1.053L9 10.3l-1.417-1.554a.75.75 0 00-1.102 1.018l2 2.2a.75.75 0 001.084.017l3.418-3.567z" clipRule="evenodd" />
+                      <svg
+                        className="w-5 h-5 text-green-600"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M2.166 4.9L10 1.554L17.834 4.9c.45.19.73.635.73 1.127v3.5c0 5.474-3.41 10.371-8.288 12.236c-.183.07-.384.07-.567 0C4.244 19.897.834 15 .834 9.527v-3.5c0-.492.28-.936.73-1.127zM10 3.3l-6.5 2.763v2.983c0 4.007 2.353 7.749 6.5 9.45c4.147-1.7 6.5-5.443 6.5-9.45V6.063L10 3.3zm2.983 5.114a.75.75 0 10-1.066-1.053L9 10.3l-1.417-1.554a.75.75 0 00-1.102 1.018l2 2.2a.75.75 0 001.084.017l3.418-3.567z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-gray-800 uppercase tracking-tight">Compra 100% Segura</p>
-                      <p className="text-[10px] text-gray-500 line-clamp-2">Protegemos tus datos con los más altos estándares de seguridad (PCI DSS).</p>
+                      <p className="text-[11px] font-semibold text-gray-800 uppercase tracking-tight">
+                        Compra 100% Segura
+                      </p>
+                      <p className="text-[10px] text-gray-500 line-clamp-2">
+                        Protegemos tus datos con los más altos estándares de
+                        seguridad (PCI DSS).
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -658,7 +802,7 @@ export default function Checkout() {
         src="https://checkout.culqi.com/js/v4"
         strategy="afterInteractive"
         onLoad={handleCulqiLoad}
-        onError={() => console.error('❌ Error al cargar Culqi')}
+        onError={() => console.error("❌ Error al cargar Culqi")}
       />
       <style jsx global>{`
         @keyframes fade-in {

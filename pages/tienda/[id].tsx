@@ -601,6 +601,54 @@ export default function ProductDetail({
     ),
   };
 
+  // ✅ Determinar si mostrar Guía de Tallas
+  const shouldShowSizeGuide = useMemo(() => {
+    // 1. Verificar atributos de Talla
+    if (
+      variationsData?.attributes?.some((attr) => {
+        const type = (attr.type || "").toLowerCase();
+        const name = (attr.name || "").toLowerCase();
+        return (
+          type === "talla" ||
+          name.includes("talla") ||
+          type === "size" ||
+          name.includes("size")
+        );
+      })
+    ) {
+      return true;
+    }
+
+    // 2. Verificar categoría (keywords básicas de ropa)
+    if (basicData?.defaultCategory?.name) {
+      const catName = basicData.defaultCategory.name.toLowerCase();
+      const clothingKeywords = [
+        "ropa",
+        "vestir",
+        "uniforme",
+        "polo",
+        "camisa",
+        "plusa",
+        "pantalón",
+        "pantalon",
+        "falda",
+        "casaca",
+        "short",
+        "polera",
+        "jacket",
+        "t-shirt",
+      ];
+      return clothingKeywords.some((k) => catName.includes(k));
+    }
+
+    return false;
+  }, [variationsData, basicData]);
+
+  const visibleTabs = Object.keys(tabs).filter((tab) => {
+    if (tab === "Guía de tallas") return shouldShowSizeGuide;
+    return true;
+  });
+
   return (
     <Layout
       title={`${basicData.name} - Liwilu`}
@@ -1118,7 +1166,7 @@ export default function ProductDetail({
       {/* Pestañas de información */}
       <div className="max-w-7xl mx-auto px-6 py-4 liwilu-tabs z-10 relative">
         <div className="flex border-b border-gray-200 overflow-x-auto overflow-y-hidden">
-          {Object.keys(tabs).map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as TabKey)}

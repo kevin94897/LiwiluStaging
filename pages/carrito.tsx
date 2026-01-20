@@ -19,7 +19,9 @@ import {
   FaCheckCircle,
   FaRegClock,
   FaTimesCircle,
+  FaPlus,
 } from "react-icons/fa";
+import { PiWarningCircleFill } from "react-icons/pi";
 import router from "next/router";
 import { showToast } from "@/lib/notifications";
 import Button from "@/components/ui/Button";
@@ -34,9 +36,16 @@ import { registerUser } from "@/pages/api/auth/register";
 import { guestDataSchema, GuestDataSchemaType } from "@/lib/guestDataSchema";
 import { useLocations } from "@/hooks/useLocations";
 import { z } from "zod";
-import { PiWarningCircleFill } from "react-icons/pi";
-import { FaPencil } from "react-icons/fa6";
 import AutorizacionModal from "@/components/cart/AutorizacionModal";
+import AuthorizedPersonInfo from "@/components/cart/AuthorizedPersonInfo";
+import CartItem from "@/components/cart/CartItem";
+import CartSummary from "@/components/cart/CartSummary";
+import DeliveryAddressForm from "@/components/cart/DeliveryAddressForm";
+import DeliveryMethodSelector from "@/components/cart/DeliveryMethodSelector";
+import GuestDataSummary from "@/components/cart/GuestDataSummary";
+import GuestDataForm from "@/components/cart/GuestDataForm";
+import StockModals from "@/components/cart/StockModals";
+import StorePickupContent from "@/components/cart/StorePickupContent";
 import { AutorizacionSchemaType } from "@/lib/autorizacionSchema";
 import {
   getCarriers,
@@ -54,16 +63,8 @@ import {
   validateSavarStock,
   saveCartDeliveryPrice,
   SavarStockValidationResult,
+  savePickupPerson,
 } from "@/lib/cart";
-
-const WarehouseMap = dynamic(() => import("@/components/WarehouseMap"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-full w-full bg-gray-100 animate-pulse flex items-center justify-center">
-      Cargando mapa...
-    </div>
-  ),
-});
 
 // Distritos disponibles
 
@@ -102,8 +103,8 @@ export default function Carrito() {
   const [loadingStores, setLoadingStores] = useState(false);
   const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
   const [direccionEnvio, setDireccionEnvio] = useState({
-    calle: "Calle continental 145",
-    distrito: "Ate",
+    calle: "",
+    distrito: "",
     ciudad: "Lima",
     departamento: "Lima",
     numeroDptoPiso: "",
@@ -118,7 +119,7 @@ export default function Carrito() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isLoginLoading, setIsLoginLoading] = useState(false);
 
-  const [mainAddressId, setMainAddressId] = useState<string | null>(null);
+  const [mainAddressId, setMainAddressId] = useState<number | null>(null);
   const [userAddresses, setUserAddresses] = useState<any[]>([]);
 
   const [isGuest, setIsGuest] = useState(false);
@@ -204,7 +205,8 @@ export default function Carrito() {
         metodoEnvio === "delivery" &&
         selectedCarrier?.id === 250 &&
         direccionEnvio.distrito &&
-        deliveryZones.length > 0
+        deliveryZones.length > 0 &&
+        items.length > 0
       ) {
         const matchingZone = deliveryZones.find(
           (z) =>
@@ -220,8 +222,19 @@ export default function Carrito() {
               zoneName: matchingZone.zoneName,
             });
             console.log("Delivery price synced to API:", matchingZone.zoneName);
-          } catch (error) {
-            console.error("Error syncing delivery price:", error);
+          } catch (error: any) {
+            // Silenciar error "Carrito no encontrado" para evitar overlay en desarrollo
+            // Esto ocurre si el frontend tiene items pero el backend perdió la sesión
+            if (
+              error.message?.includes("Carrito no encontrado") ||
+              error.message?.includes("Cart not found")
+            ) {
+              console.warn(
+                "Sync skipped: Backend cart session missing (expected in some guest states).",
+              );
+            } else {
+              console.error("Error syncing delivery price:", error);
+            }
           }
         }
       }
@@ -233,6 +246,7 @@ export default function Carrito() {
     selectedCarrier?.id,
     direccionEnvio.distrito,
     deliveryZones,
+    items.length,
   ]);
 
   // Cargar direcciones si el usuario está logueado
@@ -322,10 +336,50 @@ export default function Carrito() {
     }
   }, []);
 
-  const handleSaveAutorizacion = (data: AutorizacionSchemaType) => {
-    setAutorizacionData(data);
-    localStorage.setItem("liwilu_autorizacion", JSON.stringify(data));
-    showToast("Autorización guardada correctamente");
+  // Cargar datos del invitado
+  useEffect(() => {
+    const saved = localStorage.getItem("liwilu_guestData");
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        setGuestData(data);
+        setGuestDataCompleted(true);
+        setIsGuest(true); // Marcar como invitado
+      } catch (e) {
+        console.error("Error al cargar datos del invitado:", e);
+      }
+    }
+  }, []);
+
+  // Cargar dirección de envío
+  useEffect(() => {
+    const saved = localStorage.getItem("liwilu_direccionEnvio");
+    if (saved) {
+      try {
+        setDireccionEnvio(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error al cargar dirección de envío:", e);
+      }
+    }
+  }, []);
+
+  const handleSaveAutorizacion = async (data: AutorizacionSchemaType) => {
+    try {
+      // API expects Spanish keys: tipoDocumento, numeroDocumento, nombreCompleto
+      await savePickupPerson({
+        tipoDocumento: data.documentType,
+        numeroDocumento: data.documentNumber,
+        nombreCompleto: data.fullName,
+      });
+
+      setAutorizacionData(data);
+      // Keep localStorage as backup/cache
+      localStorage.setItem("liwilu_autorizacion", JSON.stringify(data));
+      showToast("Autorización guardada correctamente");
+    } catch (error) {
+      console.error("Error saving pickup person:", error);
+      showToast("Error al guardar la autorización", "error");
+    }
   };
 
   // Fetch carriers
@@ -797,6 +851,10 @@ export default function Carrito() {
         await saveGuestPersonalData(payload);
 
         console.log("Datos de invitado guardados:", guestData);
+
+        // Guardar en localStorage
+        localStorage.setItem("liwilu_guestData", JSON.stringify(guestData));
+
         setIsGuest(true);
         setGuestDataCompleted(true);
         setShowLoginModal(false);
@@ -888,9 +946,7 @@ export default function Carrito() {
     }
   };
 
-  const handleCheckoutSubmit = async (e: React.MouseEvent) => {
-    e.preventDefault();
-
+  const handleCheckoutSubmit = async () => {
     if (!acceptTerms) {
       showToast(
         "Debes aceptar los términos y condiciones para continuar.",
@@ -1077,17 +1133,55 @@ export default function Carrito() {
   }
 
   const handleSaveAddress = async () => {
-    // Save to cart session API regardless of auth status
-    try {
-      await saveCartDeliveryAddress({
-        distritoSeleccionado: direccionEnvio.distrito,
-        direccion: direccionEnvio.calle,
-        numeroDptoPiso: direccionEnvio.numeroDptoPiso,
-        referencia: direccionEnvio.referencia,
+    // Validar datos con Zod ANTES de cualquier otra lógica
+    const addressSchema = z.object({
+      calle: z.string().min(5, "La dirección debe tener al menos 5 caracteres"),
+      departamento: z.string().min(1, "Selecciona un departamento"),
+      ciudad: z.string().min(1, "Selecciona una provincia"),
+      distrito: z.string().min(1, "Selecciona un distrito"),
+    });
+
+    const validationResult = addressSchema.safeParse(direccionEnvio);
+
+    if (!validationResult.success) {
+      const fieldErrors = validationResult.error.flatten().fieldErrors;
+      const errors: Record<string, string> = {};
+      Object.keys(fieldErrors).forEach((key) => {
+        const messages = fieldErrors[key as keyof typeof fieldErrors];
+        if (messages && messages.length > 0) {
+          errors[key] = messages[0];
+        }
       });
-      console.log("Cart delivery address saved to API");
-    } catch (apiError) {
-      console.error("Error saving address to cart API:", apiError);
+      setAddressErrors(errors);
+      return;
+    }
+
+    // Limpiar errores si pasa validación
+    setAddressErrors({});
+
+    // Save to cart session API only for non-authenticated users OR guests
+    if (!isAuthenticated || isGuest) {
+      try {
+        await saveCartDeliveryAddress({
+          distritoSeleccionado: direccionEnvio.distrito,
+          direccion: direccionEnvio.calle,
+          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
+          referencia: direccionEnvio.referencia,
+        });
+        console.log("Cart delivery address saved to API (Guest/Anonymous)");
+      } catch (apiError) {
+        console.error("Error saving address to cart API:", apiError);
+      }
+    }
+
+    // Guardar en localStorage siempre
+    try {
+      localStorage.setItem(
+        "liwilu_direccionEnvio",
+        JSON.stringify(direccionEnvio),
+      );
+    } catch (e) {
+      console.error("Error saving address to localStorage:", e);
     }
 
     // Si no está autenticado o es invitado, solo actualiza el estado local para la UI
@@ -1098,32 +1192,6 @@ export default function Carrito() {
 
     // Si está autenticado, intentar actualizar/crear en el backend
     try {
-      // Validar datos con Zod
-      const addressSchema = z.object({
-        calle: z.string().min(5, "La dirección es muy corta"),
-        departamento: z.string().min(1, "Selecciona un departamento"),
-        ciudad: z.string().min(1, "Selecciona una provincia"),
-        distrito: z.string().min(1, "Selecciona un distrito"),
-      });
-
-      const validationResult = addressSchema.safeParse(direccionEnvio);
-
-      if (!validationResult.success) {
-        const fieldErrors = validationResult.error.flatten().fieldErrors;
-        const errors: Record<string, string> = {};
-        Object.keys(fieldErrors).forEach((key) => {
-          const messages = fieldErrors[key as keyof typeof fieldErrors];
-          if (messages && messages.length > 0) {
-            errors[key] = messages[0];
-          }
-        });
-        setAddressErrors(errors);
-        return;
-      }
-
-      // Limpiar errores si pasa validación
-      setAddressErrors({});
-
       const token = localStorage.getItem("accessToken");
 
       // Check if we're editing the main address
@@ -1804,373 +1872,16 @@ export default function Carrito() {
                 </div>
               )}
 
-              {/* TAB DE INVITADO */}
-              {activeTab === "guest" && (
-                <div className="animate-fade-in max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-2 text-center">
-                    Ingresa tus datos
-                  </h2>
-                  <p className="text-gray-600 text-center mb-6">
-                    Completa tus datos para continuar con tu compra
-                  </p>
-
-                  <form onSubmit={handleGuestSubmit} className="space-y-4">
-                    {/* Datos Personales */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Nombre
-                        </label>
-                        <input
-                          type="text"
-                          name="nombre"
-                          value={guestData.nombre}
-                          onChange={handleGuestChange}
-                          placeholder="Gonzalo"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            guestErrors.nombre
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
-                        />
-                        {guestErrors.nombre && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {guestErrors.nombre}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Apellido
-                        </label>
-                        <input
-                          type="text"
-                          name="apellido"
-                          value={guestData.apellido}
-                          onChange={handleGuestChange}
-                          placeholder="Vera"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            guestErrors.apellido
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
-                        />
-                        {guestErrors.apellido && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {guestErrors.apellido}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Documento */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tipo de documento
-                      </label>
-                      <select
-                        name="tipoDocumento"
-                        value={guestData.tipoDocumento}
-                        onChange={(e) =>
-                          setGuestData({
-                            ...guestData,
-                            tipoDocumento: e.target.value as
-                              | "DNI"
-                              | "RUC"
-                              | "CE"
-                              | "Pasaporte",
-                          })
-                        }
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          guestErrors.tipoDocumento
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
-                      >
-                        <option value="DNI">DNI</option>
-                        <option value="RUC">RUC</option>
-                        <option value="CE">Carnet de Extranjería</option>
-                        <option value="Pasaporte">Pasaporte</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Número de Documento
-                      </label>
-                      <input
-                        type="text"
-                        name="numeroDocumento"
-                        value={guestData.numeroDocumento}
-                        onChange={handleGuestChange}
-                        placeholder="74218601"
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          guestErrors.numeroDocumento
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
-                      />
-                      {guestErrors.numeroDocumento && (
-                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                          <PiWarningCircleFill size={16} />{" "}
-                          {guestErrors.numeroDocumento}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Correo electrónico
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={guestData.email}
-                        onChange={handleGuestChange}
-                        placeholder="ejemplo@correo.com"
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          guestErrors.email
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
-                      />
-                      {guestErrors.email && (
-                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                          <PiWarningCircleFill size={16} /> {guestErrors.email}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Teléfonos */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Celular
-                        </label>
-                        <input
-                          type="tel"
-                          name="celular"
-                          value={guestData.celular}
-                          onChange={handleGuestChange}
-                          placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            guestErrors.celular
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
-                        />
-                        {guestErrors.celular && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {guestErrors.celular}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Teléfono opcional
-                        </label>
-                        <input
-                          type="tel"
-                          name="telefonoOpcional"
-                          value={guestData.telefonoOpcional}
-                          onChange={handleGuestChange}
-                          placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            guestErrors.telefonoOpcional
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Ubicación */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Departamento
-                        </label>
-                        <select
-                          name="departamento"
-                          value={guestData.departamento}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setGuestData((prev) => ({
-                              ...prev,
-                              departamento: val,
-                              provincia: "",
-                              distrito: "",
-                            }));
-                            guestLocations.handleDeptChange(val);
-                          }}
-                          className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm bg-gray-50"
-                          disabled
-                        >
-                          <option value="">Seleccionar</option>
-                          {guestLocations.departments.map((d) => (
-                            <option key={d} value={d}>
-                              {d}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Provincia
-                        </label>
-                        <select
-                          name="provincia"
-                          value={guestData.provincia}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setGuestData((prev) => ({
-                              ...prev,
-                              provincia: val,
-                              distrito: "",
-                            }));
-                            guestLocations.handleProvChange(val);
-                          }}
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm bg-gray-50 transition border-gray-200`}
-                          disabled
-                        >
-                          <option value="">Seleccionar</option>
-                          {guestLocations.provinces.map((p) => (
-                            <option key={p} value={p}>
-                              {p}
-                            </option>
-                          ))}
-                        </select>
-                        {guestErrors.provincia && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {guestErrors.provincia}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Distrito
-                      </label>
-                      <select
-                        name="distrito"
-                        value={guestData.distrito}
-                        onChange={(e) => {
-                          handleGuestChange(e);
-                          guestLocations.handleDistChange(e.target.value);
-                        }}
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          guestErrors.distrito
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
-                        disabled={!guestData.provincia}
-                      >
-                        <option value="">Seleccionar</option>
-                        {guestLocations.districts.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </select>
-                      {guestErrors.distrito && (
-                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                          <PiWarningCircleFill size={16} />{" "}
-                          {guestErrors.distrito}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Dirección
-                      </label>
-                      <input
-                        type="text"
-                        name="direccion"
-                        value={guestData.direccion}
-                        onChange={handleGuestChange}
-                        placeholder="Calle rosales 432"
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          guestErrors.direccion
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
-                      />
-                      {guestErrors.direccion && (
-                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                          <PiWarningCircleFill size={16} />{" "}
-                          {guestErrors.direccion}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Nro. de dpto. / Piso
-                        </label>
-                        <input
-                          type="text"
-                          name="numeroDpto"
-                          value={guestData.numeroDpto}
-                          onChange={handleGuestChange}
-                          placeholder="Ate"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            guestErrors.numeroDpto
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Referencia
-                        </label>
-                        <input
-                          type="text"
-                          name="referencia"
-                          value={guestData.referencia}
-                          onChange={handleGuestChange}
-                          placeholder="Ate"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            guestErrors.referencia
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
-                        />
-                      </div>
-                    </div>
-
-                    <Button
-                      variant="primary"
-                      size="md"
-                      className="w-full"
-                      type="submit"
-                    >
-                      Siguiente
-                    </Button>
-
-                    <div className="text-center pt-4">
-                      <p className="text-sm text-gray-600">
-                        ¿Ya tienes cuenta?{" "}
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab("login")}
-                          className="text-primary hover:text-primary-dark font-semibold transition-all"
-                        >
-                          Inicia sesión aquí
-                        </button>
-                      </p>
-                    </div>
-                  </form>
-                </div>
-              )}
+              <GuestDataForm
+                activeTab={activeTab}
+                guestData={guestData}
+                guestErrors={guestErrors}
+                onGuestChange={handleGuestChange}
+                onGuestSubmit={handleGuestSubmit}
+                guestLocations={guestLocations}
+                onSetActiveTab={setActiveTab}
+                onSetGuestData={setGuestData}
+              />
             </div>
           </div>
         </div>
@@ -2203,544 +1914,70 @@ export default function Carrito() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           <div className="lg:col-span-2 space-y-6">
-            {/* Método de envío */}
-            <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in">
-              <h2 className="text-lg font-semibold mb-4">
-                Selecciona tu método de entrega
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {loadingCarriers ? (
-                  <div className="col-span-2 py-8 flex flex-col items-center justify-center bg-gray-50 rounded-sm">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <p className="mt-2 text-sm text-gray-500">
-                      Cargando métodos de envío...
-                    </p>
-                  </div>
-                ) : carriers.length > 0 ? (
-                  carriers.map((carrier) => {
-                    const isRetiro = carrier.name
-                      .toLowerCase()
-                      .includes("retiro");
-                    const isSelected = selectedCarrier?.id === carrier.id;
+            {/* Metodo de entrega */}
+            <DeliveryMethodSelector
+              loadingCarriers={loadingCarriers}
+              carriers={carriers}
+              selectedCarrier={selectedCarrier}
+              deliveryZones={deliveryZones}
+              direccionEnvio={direccionEnvio}
+              metodoEnvio={metodoEnvio as any}
+              isGuest={isGuest}
+              envio={envio}
+              onSelectCarrier={(carrier) => {
+                setSelectedCarrier(carrier);
+                updateCarrier(carrier.id);
+                const isRetiro = carrier.name.toLowerCase().includes("retiro");
+                if (isRetiro) {
+                  handleCambiarARetiro();
+                } else {
+                  setMetodoEnvio("delivery");
+                  if (isGuest) {
+                    performSavarStockValidation();
+                  }
+                }
+              }}
+            >
+              <DeliveryAddressForm
+                isLoggedIn={isLoggedIn}
+                userAddresses={userAddresses}
+                mainAddressId={mainAddressId}
+                setMainAddressId={setMainAddressId}
+                direccionEnvio={direccionEnvio}
+                setDireccionEnvio={setDireccionEnvio}
+                editandoDireccion={editandoDireccion}
+                setEditandoDireccion={setEditandoDireccion}
+                userLocations={userLocations}
+                onSaveAddress={handleSaveAddress}
+                addressErrors={addressErrors}
+                deliveryZones={deliveryZones}
+              />
+            </DeliveryMethodSelector>
 
-                    return (
-                      <button
-                        key={carrier.id}
-                        onClick={() => {
-                          setSelectedCarrier(carrier);
-                          updateCarrier(carrier.id);
-                          if (isRetiro) {
-                            handleCambiarARetiro();
-                          } else {
-                            setMetodoEnvio("delivery");
-                            if (isGuest) {
-                              performSavarStockValidation();
-                            }
-                          }
-                        }}
-                        className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${
-                          isSelected
-                            ? "border-primary bg-primary/5"
-                            : "border-gray-200 hover:border-primary/50"
-                        }`}
-                      >
-                        {isRetiro ? (
-                          <FaStore
-                            className={`text-2xl ${
-                              isSelected ? "text-primary" : "text-gray-400"
-                            }`}
-                          />
-                        ) : (
-                          <FaTruck
-                            className={`text-2xl ${
-                              isSelected ? "text-primary" : "text-gray-400"
-                            }`}
-                          />
-                        )}
-                        <div className="text-left">
-                          <p className="font-semibold">{carrier.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {carrier.id === 250 && deliveryZones.length > 0
-                              ? (() => {
-                                  const zone = deliveryZones.find(
-                                    (z) =>
-                                      z.zoneName.toLowerCase() ===
-                                      direccionEnvio.distrito.toLowerCase(),
-                                  );
-                                  return zone
-                                    ? formatPrice(zone.price)
-                                    : carrier.shippingCost === 0
-                                      ? "Gratis"
-                                      : carrier.delay || "Disponible";
-                                })()
-                              : carrier.shippingCost === 0
-                                ? "Gratis"
-                                : carrier.delay || "Disponible"}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="col-span-2 py-4 text-center text-gray-500 bg-gray-50 rounded-sm">
-                    No hay métodos de envío disponibles.
-                  </div>
-                )}
-              </div>
+            <GuestDataSummary
+              isGuest={isGuest}
+              guestDataCompleted={guestDataCompleted}
+              guestData={guestData}
+              onEdit={() => {
+                setActiveTab("guest");
+                setShowGuestForm(true);
+                setShowLoginModal(true);
+              }}
+            />
 
-              {metodoEnvio === "delivery" && (
-                <div className="mt-4 space-y-4 animate-fade-in">
-                  <div className="p-4 bg-blue-50 rounded-sm">
-                    <p className="text-sm text-gray-700">
-                      📦{" "}
-                      {selectedCarrier?.delay ||
-                        "El envío se realizará en el transcurso de unos días hábiles."}
-                    </p>
-                    <p className="text-sm font-semibold text-primary mt-2">
-                      Costo:{" "}
-                      {envio === 0 ? "Gratis" : formatPrice(envio.toString())}
-                    </p>
-                  </div>
-
-                  {/* Dirección de envío */}
-                  <div className="border-2 border-gray-200 rounded-sm p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">
-                        Dirección de envío
-                      </h3>
-                      {!editandoDireccion &&
-                        !(isLoggedIn && userAddresses.length === 0) &&
-                        !(
-                          isLoggedIn &&
-                          !mainAddressId &&
-                          userAddresses.length > 0
-                        ) && (
-                          <button
-                            onClick={() =>
-                              setEditandoDireccion(!editandoDireccion)
-                            }
-                            className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
-                          >
-                            <FaPencil className="text-sm" /> Editar
-                          </button>
-                        )}
-                    </div>
-
-                    {editandoDireccion ||
-                    (isLoggedIn && userAddresses.length === 0) ? (
-                      <div className="space-y-3">
-                        <input
-                          type="text"
-                          value={direccionEnvio.calle}
-                          onChange={(e) =>
-                            setDireccionEnvio({
-                              ...direccionEnvio,
-                              calle: e.target.value,
-                            })
-                          }
-                          placeholder="Calle y número"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <select
-                            value={direccionEnvio.departamento}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setDireccionEnvio({
-                                ...direccionEnvio,
-                                departamento: val,
-                                ciudad: "",
-                                distrito: "",
-                              });
-                              userLocations.handleDeptChange(val);
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary bg-gray-50"
-                            disabled
-                          >
-                            <option value="">Departamento</option>
-                            {userLocations.departments.map((d) => (
-                              <option key={d} value={d}>
-                                {d}
-                              </option>
-                            ))}
-                          </select>
-
-                          <select
-                            value={direccionEnvio.ciudad}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setDireccionEnvio({
-                                ...direccionEnvio,
-                                ciudad: val,
-                                distrito: "",
-                              });
-                              userLocations.handleProvChange(val);
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary bg-gray-50"
-                            disabled
-                          >
-                            <option value="">Provincia</option>
-                            {userLocations.provinces.map((p) => (
-                              <option key={p} value={p}>
-                                {p}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <select
-                          value={direccionEnvio.distrito}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setDireccionEnvio({
-                              ...direccionEnvio,
-                              distrito: val,
-                            });
-                            userLocations.handleDistChange(val);
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                          disabled={!direccionEnvio.ciudad}
-                        >
-                          <option value="">Distrito</option>
-                          {userLocations.districts.map((d) => (
-                            <option key={d} value={d}>
-                              {d}
-                            </option>
-                          ))}
-                        </select>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            value={direccionEnvio.numeroDptoPiso}
-                            onChange={(e) =>
-                              setDireccionEnvio({
-                                ...direccionEnvio,
-                                numeroDptoPiso: e.target.value,
-                              })
-                            }
-                            placeholder="Dpto / Piso / Of."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                          />
-                          <input
-                            type="text"
-                            value={direccionEnvio.referencia}
-                            onChange={(e) =>
-                              setDireccionEnvio({
-                                ...direccionEnvio,
-                                referencia: e.target.value,
-                              })
-                            }
-                            placeholder="Referencia"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                          />
-                        </div>
-
-                        <button
-                          onClick={handleSaveAddress}
-                          className="w-full bg-primary text-white py-2 rounded-full text-sm font-semibold hover:bg-primary-dark transition"
-                        >
-                          Guardar dirección
-                        </button>
-                      </div>
-                    ) : isLoggedIn &&
-                      !mainAddressId &&
-                      userAddresses.length > 0 ? (
-                      <div className="space-y-3">
-                        <p className="text-sm text-gray-600 mb-2">
-                          Selecciona una de tus direcciones:
-                        </p>
-                        <select
-                          onChange={async (e) => {
-                            const addrId = e.target.value;
-                            const selected = userAddresses.find(
-                              (a) => a.id.toString() === addrId,
-                            );
-                            if (selected) {
-                              setMainAddressId(selected.id);
-                              setDireccionEnvio({
-                                calle: selected.address,
-                                distrito: selected.district,
-                                ciudad: selected.province,
-                                departamento: selected.department,
-                                numeroDptoPiso: selected.numeroDptoPiso || "",
-                                referencia: selected.referencia || "",
-                              });
-                              userLocations.setLocationValues(
-                                selected.department,
-                                selected.province,
-                                selected.district,
-                              );
-                            }
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                        >
-                          <option value="">Seleccionar dirección...</option>
-                          {userAddresses.map((addr) => (
-                            <option key={addr.id} value={addr.id}>
-                              {addr.address}, {addr.district}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => setEditandoDireccion(true)}
-                          className="text-primary text-xs font-medium hover:underline"
-                        >
-                          + Agregar nueva dirección
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="text-sm text-gray-700">
-                          <p className="font-medium">{direccionEnvio.calle}</p>
-                          <p>
-                            {direccionEnvio.distrito}, {direccionEnvio.ciudad},{" "}
-                            {direccionEnvio.departamento}
-                          </p>
-                        </div>
-                        {isLoggedIn && userAddresses.length > 1 && (
-                          <button
-                            onClick={() => setMainAddressId(null)}
-                            className="text-primary text-xs font-medium hover:underline"
-                          >
-                            Elegir otra dirección
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {metodoEnvio === "retiro" && !distritoSeleccionado && (
-                <div className="mt-4 animate-fade-in">
-                  <p className="text-sm text-gray-700 mb-3">
-                    Selecciona el distrito para consultar los puntos de retiro
-                    disponibles
-                  </p>
-                  <select
-                    value={distritoSeleccionado}
-                    onChange={(e) => handleSeleccionarDistrito(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-                  >
-                    <option value="">Seleccionar distrito</option>
-                    {warehouseDistricts.map((district) => (
-                      <option
-                        key={district.codUbigeoAlm}
-                        value={district.desDistrito}
-                      >
-                        {district.desDistrito}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-
-            {/* Resumen de datos para invitados */}
-            {isGuest && guestDataCompleted && (
-              <div className="bg-white rounded-sm shadow-md p-6 mt-6 animate-fade-in-up">
-                <div className="flex items-center justify-between mb-4 border-b pb-3">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Datos de contacto
-                  </h2>
-                  <button
-                    onClick={() => {
-                      setActiveTab("guest");
-                      setShowGuestForm(true);
-                      setShowLoginModal(true);
-                    }}
-                    className="text-primary text-sm hover:text-primary-dark flex items-center gap-1 font-medium bg-primary/5 px-3 py-1 rounded-full transition-colors"
-                  >
-                    <FaPencil className="text-sm" /> Editar datos
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Información Personal */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      Información Personal
-                    </p>
-                    <div className="text-sm text-gray-800 space-y-1">
-                      <p className="font-semibold text-base">
-                        {guestData.nombre} {guestData.apellido}
-                      </p>
-                      <p>
-                        <span className="text-gray-500">
-                          {guestData.tipoDocumento}:
-                        </span>{" "}
-                        {guestData.numeroDocumento}
-                      </p>
-                      <p>
-                        <span className="text-gray-500">Email:</span>{" "}
-                        {guestData.email}
-                      </p>
-                      <p>
-                        <span className="text-gray-500">Celular:</span>{" "}
-                        {guestData.celular}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Dirección de Entrega */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      Dirección
-                    </p>
-                    <div className="text-sm text-gray-800 space-y-1">
-                      <p className="font-semibold">
-                        {guestData.direccion} {guestData.numeroDpto}
-                      </p>
-                      <p>
-                        {guestData.distrito}, {guestData.provincia},{" "}
-                        {guestData.departamento}
-                      </p>
-                      {guestData.referencia && (
-                        <p className="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded-sm border-l-2 border-gray-200">
-                          <span className="font-medium not-italic">Ref:</span>{" "}
-                          {guestData.referencia}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Mapa y tiendas disponibles */}
-            {metodoEnvio === "retiro" && mostrarMapa && (
-              <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in-up">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold">
-                    Puntos de retiro más cercanos
-                  </h2>
-                  <button
-                    onClick={() => {
-                      setDistritoSeleccionado("");
-                      setMostrarMapa(false);
-                    }}
-                    className="text-sm text-primary hover:text-primary-dark flex items-center gap-1"
-                  >
-                    <FaPencil className="text-sm" /> Editar
-                  </button>
-                </div>
-
-                <div className="mb-4 p-3 bg-gray-100 rounded-sm">
-                  <p className="text-sm text-gray-700">
-                    <strong>Distrito:</strong> {distritoSeleccionado}
-                  </p>
-                </div>
-
-                {/* Mapa Interactivo */}
-                <div className="relative h-96 bg-gray-100 rounded-sm mb-6 overflow-hidden border">
-                  <WarehouseMap
-                    warehouses={mapWarehouses}
-                    center={
-                      mapWarehouses.find(
-                        (w) => w.idAlmacen.toString() === tiendaSeleccionada,
-                      )
-                        ? [
-                            mapWarehouses.find(
-                              (w) =>
-                                w.idAlmacen.toString() === tiendaSeleccionada,
-                            )!.latitud,
-                            mapWarehouses.find(
-                              (w) =>
-                                w.idAlmacen.toString() === tiendaSeleccionada,
-                            )!.longitud,
-                          ]
-                        : undefined
-                    }
-                  />
-                </div>
-
-                {/* Lista de tiendas */}
-                {loadingStores ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                    <p className="mt-4 text-gray-600">
-                      Cargando tiendas disponibles...
-                    </p>
-                  </div>
-                ) : mapWarehouses.length === 0 ? (
-                  <div className="text-center py-8 bg-amber-50 rounded-sm">
-                    <FaTimesCircle className="text-amber-500 text-4xl mx-auto mb-3" />
-                    <p className="text-amber-800 font-semibold">
-                      No hay tiendas disponibles en este distrito
-                    </p>
-                    <p className="text-sm text-amber-700 mt-2">
-                      Intenta con otro distrito cercano
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {mapWarehouses.map((tienda) => {
-                      const warehouseResult =
-                        stockValidationResult?.resultadosPorAlmacen.find(
-                          (w) => w.idAlmacen === tienda.idAlmacen,
-                        );
-                      const isAvailable = warehouseResult
-                        ? warehouseResult.todosDisponibles
-                        : true;
-                      const isSelected =
-                        tiendaSeleccionada === tienda.idAlmacen.toString();
-
-                      return (
-                        <div
-                          key={tienda.idAlmacen}
-                          className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${
-                            isSelected
-                              ? isAvailable
-                                ? "border-primary bg-primary/5"
-                                : "border-red-500 bg-red-50"
-                              : "border-gray-200 hover:border-primary/50"
-                          }`}
-                          onClick={() =>
-                            setTiendaSeleccionada(tienda.idAlmacen.toString())
-                          }
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-gray-900">
-                                {tienda.desAlmacen}
-                              </h3>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Ubigeo: {tienda.codUbigeoAlm}
-                              </p>
-                            </div>
-                            <div className="ml-4">
-                              {isSelected && (
-                                <div
-                                  className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                                    isAvailable ? "bg-primary" : "bg-red-500"
-                                  }`}
-                                >
-                                  <FaCheck className="text-white text-xs" />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Disponibilidad de productos */}
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            {isAvailable ? (
-                              <p className="text-xs font-semibold text-green-700">
-                                ✓ Disponible para recojo en tienda
-                              </p>
-                            ) : (
-                              <p className="text-xs font-semibold text-red-600">
-                                ✕ No hay stock suficiente en esta tienda
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+            <StorePickupContent
+              metodoEnvio={metodoEnvio as any}
+              distritoSeleccionado={distritoSeleccionado}
+              onSelectDistrito={handleSeleccionarDistrito}
+              mostrarMapa={mostrarMapa}
+              setMostrarMapa={setMostrarMapa}
+              warehouseDistricts={warehouseDistricts}
+              mapWarehouses={mapWarehouses}
+              tiendaSeleccionada={tiendaSeleccionada}
+              setTiendaSeleccionada={setTiendaSeleccionada}
+              loadingStores={loadingStores}
+              stockValidationResult={stockValidationResult}
+            />
 
             {/* Productos en el carrito */}
             <div className="space-y-4">
@@ -2761,8 +1998,7 @@ export default function Carrito() {
                           erróneos
                         </h3>
                         <p className="text-red-600 text-sm mb-3">
-                          Estos productos no se pueden mostrar correctamente. Te
-                          recomendamos vaciar el carrito para corregirlo.
+                          Te recomendamos vaciar el carrito para corregirlo.
                         </p>
                         <button
                           onClick={clearCart}
@@ -2773,333 +2009,20 @@ export default function Carrito() {
                       </div>
                     )}
 
-                    {validItems.map((item, index) => {
-                      // Prioritize the direct coverImage property if available (new logic)
-                      // Otherwise fall back to associations (legacy logic)
-                      let imageUrl = item.product.coverImage;
-
-                      if (!imageUrl) {
-                        const imageId =
-                          item.product.associations?.images?.[0]?.id;
-                        if (imageId) {
-                          imageUrl = getProductImageUrl(
-                            item.product.id.toString(),
-                            imageId,
-                          );
-                        } else {
-                          imageUrl = "/images/placeholder-product.jpg"; // Use consistent placeholder
-                        }
-                      }
-
-                      const precioUnitario =
-                        typeof item.product.price === "number"
-                          ? item.product.price
-                          : parseFloat(item.product.price || "0");
-                      const precioTotal = precioUnitario * item.quantity;
-
-                      // Determine the stock status for the item: available, outOfStock, or neutral
-                      const itemStockStatus = (() => {
-                        if (metodoEnvio === "delivery") {
-                          if (savarStockResults.length === 0) return "neutral";
-                          const savarResult = savarStockResults.find(
-                            (r) => r.reference === item.product.reference,
-                          );
-                          if (!savarResult) return "neutral";
-                          return savarResult.disponible
-                            ? "available"
-                            : "outOfStock";
-                        }
-
-                        if (metodoEnvio === "retiro") {
-                          if (!tiendaSeleccionada || !stockValidationResult)
-                            return "neutral";
-                          const selectedWh =
-                            stockValidationResult.resultadosPorAlmacen.find(
-                              (w) =>
-                                w.idAlmacen.toString() === tiendaSeleccionada,
-                            );
-                          if (!selectedWh) return "neutral";
-                          const productInWh = selectedWh.productos.find(
-                            (p) => p.reference === item.product.reference,
-                          );
-                          if (!productInWh) return "neutral";
-                          return productInWh.disponible
-                            ? "available"
-                            : "outOfStock";
-                        }
-
-                        return "neutral";
-                      })();
-
-                      return (
-                        <div
-                          key={item.product.id}
-                          className="bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up"
-                          style={{ animationDelay: `${index * 100}ms` }}
-                        >
-                          {itemStockStatus !== "neutral" && (
-                            <div className="w-[25px] flex justify-center shrink-0">
-                              {itemStockStatus === "outOfStock" && (
-                                <FaTimesCircle
-                                  size={25}
-                                  className="text-red-500 animate-pulse"
-                                />
-                              )}
-                              {itemStockStatus === "available" && (
-                                <FaCheckCircle
-                                  size={25}
-                                  className="text-primary"
-                                />
-                              )}
-                            </div>
-                          )}
-
-                          <div className="w-full">
-                            {metodoEnvio === "retiro" &&
-                              tiendaSeleccionada &&
-                              infoTiendaSeleccionada && (
-                                <div className="w-full mb-5">
-                                  <div className="flex items-center gap-4 mb-3">
-                                    <Image
-                                      src="/images/liwilu_logo_dark.png"
-                                      alt="Liwilu"
-                                      width={70}
-                                      height={22}
-                                      priority
-                                    />
-                                    <span className="font-semibold">
-                                      {infoTiendaSeleccionada.desAlmacen}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <div className="text-neutral-grayLighter text-sm">
-                                      <p className="pb-1 text-xs text-gray-500">
-                                        Ubigeo:{" "}
-                                        {infoTiendaSeleccionada.codUbigeoAlm}
-                                      </p>
-                                      <div className="flex items-center gap-4">
-                                        {(() => {
-                                          const isAvailable =
-                                            stockValidationResult?.resultadosPorAlmacen
-                                              .find(
-                                                (w) =>
-                                                  w.idAlmacen.toString() ===
-                                                  tiendaSeleccionada,
-                                              )
-                                              ?.productos.find(
-                                                (p) =>
-                                                  p.reference ===
-                                                  item.product.reference,
-                                              )?.disponible !== false;
-
-                                          return isAvailable ? (
-                                            <span className="text-primary inline-flex gap-1 items-center">
-                                              <FaRegClock size={15} />{" "}
-                                              Disponible para recojo
-                                            </span>
-                                          ) : (
-                                            <span className="text-red-500 inline-flex gap-1 items-center font-semibold">
-                                              <FaTimesCircle size={15} /> No hay
-                                              stock
-                                            </span>
-                                          );
-                                        })()}
-                                      </div>
-                                    </div>
-                                    <div className="font-semibold text-dark">
-                                      GRATIS
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                            <div className="flex flex-col-reverse md:flex-row gap-6">
-                              {/* Imagen */}
-                              <div className="relative w-32 h-32 shrink-0 bg-gray-50 rounded-sm overflow-hidden">
-                                <Image
-                                  src={imageUrl}
-                                  alt={getProductName(item.product)}
-                                  fill
-                                  className="object-contain"
-                                  unoptimized
-                                />
-                              </div>
-
-                              {/* Contenido */}
-                              <div className="flex flex-1 items-start gap-6">
-                                {/* Info producto */}
-                                <div className="flex flex-col flex-1 min-w-0">
-                                  <Link
-                                    href={`/tienda/${
-                                      item.product.id || item.product.productId
-                                    }`}
-                                  >
-                                    <h3 className="font-semibold text-lg mb-1 hover:text-primary transition">
-                                      {getProductName(item.product)}
-                                    </h3>
-                                  </Link>
-
-                                  {/* Error de Stock Inline */}
-                                  {(() => {
-                                    if (itemStockStatus === "neutral")
-                                      return null;
-
-                                    if (metodoEnvio === "delivery") {
-                                      const savarResult =
-                                        savarStockResults.find(
-                                          (r) =>
-                                            r.reference ===
-                                            item.product.reference,
-                                        );
-                                      if (
-                                        savarResult &&
-                                        !savarResult.disponible
-                                      ) {
-                                        return (
-                                          <div className="flex items-center gap-1.5 text-red-600 font-bold text-xs mb-2 animate-pulse">
-                                            <FaTimesCircle className="shrink-0" />
-                                            <span>No hay stock</span>
-                                          </div>
-                                        );
-                                      } else if (
-                                        savarResult &&
-                                        savarResult.disponible
-                                      ) {
-                                        return (
-                                          <div className="flex items-center gap-1.5 text-primary font-bold text-xs mb-2">
-                                            <FaCheckCircle className="shrink-0 font-bold" />
-                                            <span>Stock disponible</span>
-                                          </div>
-                                        );
-                                      }
-                                    }
-
-                                    if (
-                                      metodoEnvio === "retiro" &&
-                                      stockValidationResult
-                                    ) {
-                                      const selectedWh =
-                                        stockValidationResult.resultadosPorAlmacen.find(
-                                          (w) =>
-                                            w.idAlmacen.toString() ===
-                                            tiendaSeleccionada,
-                                        );
-                                      const productIssue =
-                                        selectedWh?.productos.find(
-                                          (p) =>
-                                            p.reference ===
-                                              item.product.reference &&
-                                            !p.disponible,
-                                        );
-                                      if (productIssue) {
-                                        return (
-                                          <div className="flex items-center gap-1.5 text-red-600 font-medium text-xs mb-2">
-                                            <FaTimesCircle className="shrink-0" />
-                                            <span>{productIssue.mensaje}</span>
-                                          </div>
-                                        );
-                                      }
-                                    }
-
-                                    return null;
-                                  })()}
-                                  <div className="space-y-1 mb-4">
-                                    <p className="text-gray-600 text-xs font-mono">
-                                      ID del artículo: {item.product.id}
-                                    </p>
-                                    <p className="text-gray-600 text-xs font-mono">
-                                      Prestashop ID:{" "}
-                                      {item.product.productId ||
-                                        item.product.id ||
-                                        "null"}
-                                    </p>
-                                    <p className="text-gray-600 text-xs font-mono">
-                                      Reference:{" "}
-                                      {item.product.reference || "null"}
-                                    </p>
-                                    <p className="text-gray-600 text-xs font-mono">
-                                      SKU: {item.product.sku || "null"}
-                                    </p>
-                                    <p className="text-gray-600 text-xs font-mono">
-                                      Combination ID:{" "}
-                                      {item.product.prestashopCombinationId ??
-                                        "null"}
-                                    </p>
-                                  </div>
-
-                                  <button
-                                    onClick={() =>
-                                      removeFromCart(item.product.id.toString())
-                                    }
-                                    className="text-red-500 hover:text-red-700 text-sm font-medium flex items-center gap-2 mt-auto"
-                                  >
-                                    <FaRegTrashAlt size={18} />
-                                    Eliminar
-                                  </button>
-                                </div>
-
-                                {/* Precio + cantidad */}
-                                <div className="flex flex-col items-end justify-between shrink-0 gap-4">
-                                  {/* Cantidad */}
-                                  <div className="flex items-center border border-gray-300 rounded-sm">
-                                    <button
-                                      onClick={() =>
-                                        handleUpdateQuantity(
-                                          item.product.id.toString(),
-                                          item.quantity - 1,
-                                        )
-                                      }
-                                      className="px-3 py-1 hover:bg-gray-100 transition"
-                                    >
-                                      -
-                                    </button>
-
-                                    <span className="px-4 py-1 border-x">
-                                      {item.quantity}
-                                    </span>
-
-                                    <button
-                                      onClick={() =>
-                                        handleUpdateQuantity(
-                                          item.product.id.toString(),
-                                          item.quantity + 1,
-                                        )
-                                      }
-                                      className="px-3 py-1 hover:bg-gray-100 transition"
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-
-                                  {/* Precio */}
-                                  <div className="text-right">
-                                    {item.product.originalPrice &&
-                                      parseFloat(
-                                        item.product.originalPrice.toString(),
-                                      ) > precioUnitario && (
-                                        <p className="text-sm text-gray-400 line-through">
-                                          {formatPrice(
-                                            item.product.originalPrice.toString(),
-                                          )}
-                                        </p>
-                                      )}
-
-                                    <p className="text-2xl font-semibold text-primary-dark">
-                                      {formatPrice(precioTotal.toString())}
-                                    </p>
-
-                                    <p className="text-xs text-gray-500">
-                                      {formatPrice(precioUnitario.toString())}{" "}
-                                      c/u
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {validItems.map((item, index) => (
+                      <CartItem
+                        key={item.product.id}
+                        item={item}
+                        index={index}
+                        metodoEnvio={metodoEnvio as any}
+                        savarStockResults={savarStockResults}
+                        tiendaSeleccionada={tiendaSeleccionada}
+                        stockValidationResult={stockValidationResult}
+                        infoTiendaSeleccionada={infoTiendaSeleccionada}
+                        onRemove={removeFromCart}
+                        onUpdateQuantity={handleUpdateQuantity}
+                      />
+                    ))}
                   </>
                 );
               })()}
@@ -3115,191 +2038,31 @@ export default function Carrito() {
                 <FaRegTrashAlt size={18} /> Vaciar carrito
               </button>
             </div>
-            {metodoEnvio === "retiro" && (
-              <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in">
-                <h2 className="text-lg font-semibold mb-2 text-primary-dark">
-                  Persona autorizada a retirar
-                </h2>
-                <div className="">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-dark text-sm space-y-1">
-                      {autorizacionData ? (
-                        <>
-                          <p>Nombre: {autorizacionData.fullName}</p>
-                          <p>
-                            {autorizacionData.documentType}:{" "}
-                            {autorizacionData.documentNumber}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-gray-500 italic">No asignado</p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => setShowAutorizacionModal(true)}
-                      className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
-                    >
-                      <FaPencil className="text-sm" />{" "}
-                      {autorizacionData ? "Editar" : "Asignar"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+
+            <AuthorizedPersonInfo
+              metodoEnvio={metodoEnvio as any}
+              autorizacionData={autorizacionData}
+              onEdit={() => setShowAutorizacionModal(true)}
+            />
           </div>
 
-          {/* Sidebar Checkout */}
-          <div className="lg:col-span-1 z-10 space-y-6">
-            {/* === SECCIÓN CUPÓN === */}
-            <div className="bg-white rounded-sm shadow-lg p-6 animate-fade-in">
-              <h3 className="text-lg font-semibold mb-4">Código de cupón</h3>
-
-              <div className="flex flex-col sm:flex-row md:gap-0 gap-2">
-                <input
-                  type="text"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  placeholder="Ingresa tu cupón"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-full md:rounded-r-none md:rounded-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                />
-
-                <button className="w-full sm:w-auto bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-2 md:rounded-l-none rounded-full md:rounded-sm border border-primary transition-colors">
-                  Aplicar
-                </button>
-              </div>
-            </div>
-
-            {/* === SECCIÓN RESUMEN === */}
-            <div className="bg-white rounded-sm shadow-lg p-6 lg:sticky lg:top-32 animate-fade-in">
-              <h2 className="text-xl font-semibold mb-6">Resumen del pedido</h2>
-
-              {/* Detalle */}
-              <div className="space-y-3 mb-6 pb-6 border-b">
-                <div className="flex justify-between text-gray-600">
-                  <span>Subtotal</span>
-                  <span className="font-semibold">
-                    {formatPrice(subtotal.toString())}
-                  </span>
-                </div>
-
-                {totalSavings > 0 && (
-                  <div className="flex justify-between text-primary animate-pulse">
-                    <span>Ahorro total</span>
-                    <span className="font-bold">
-                      -{formatPrice(totalSavings.toString())}
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex justify-between text-gray-600">
-                  <span>Envío ({selectedCarrier?.name || "Pendiente"})</span>
-                  <span className="font-semibold">
-                    {envio === 0 ? (
-                      <span className="text-primary">Gratis ✓</span>
-                    ) : (
-                      formatPrice(envio.toString())
-                    )}
-                  </span>
-                </div>
-
-                {metodoEnvio === "delivery" && selectedCarrier?.isFree && (
-                  <p className="text-xs text-primary font-medium">
-                    ¡Este método de envío es gratuito!
-                  </p>
-                )}
-              </div>
-
-              {/* Total */}
-              <div className="flex justify-between text-2xl font-semibold mb-6">
-                <span>Total</span>
-                <span className="text-primary">
-                  {formatPrice(total.toString())}
-                </span>
-              </div>
-
-              {/* Términos */}
-              <div className="space-y-3 mb-6 pb-6 border-b">
-                <div className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    id="acceptTerms"
-                    checked={acceptTerms}
-                    onChange={(e) => setAcceptTerms(e.target.checked)}
-                    className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
-                  />
-                  <label
-                    htmlFor="acceptTerms"
-                    className="text-sm text-gray-700 cursor-pointer"
-                  >
-                    Acepto los{" "}
-                    <Link
-                      href="/estaticas/terminos-y-condiciones"
-                      className="text-primary hover:underline"
-                      target="_blank"
-                    >
-                      Términos y Condiciones
-                    </Link>{" "}
-                    y la{" "}
-                    <Link
-                      href="/estaticas/politicas"
-                      className="text-primary hover:underline"
-                      target="_blank"
-                    >
-                      Política de Privacidad
-                    </Link>
-                  </label>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    id="acceptNewsletter"
-                    checked={acceptNewsletter}
-                    onChange={(e) => setAcceptNewsletter(e.target.checked)}
-                    className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
-                  />
-                  <label
-                    htmlFor="acceptNewsletter"
-                    className="text-sm text-gray-500 cursor-pointer"
-                  >
-                    Quiero recibir ofertas y beneficios exclusivos
-                  </label>
-                </div>
-              </div>
-
-              {/* CTA */}
-              <Button
-                variant="primary"
-                size="md"
-                className="w-full mb-3 flex justify-center items-center gap-2"
-                disabled={
-                  (metodoEnvio === "retiro" && !tiendaSeleccionada) ||
-                  isValidatingStock
-                }
-                onClick={handleCheckoutSubmit}
-              >
-                {isValidatingStock ? (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Validando stock...
-                    </div>
-                  </>
-                ) : (
-                  "Finalizar compra"
-                )}
-              </Button>
-
-              <Button
-                href="/productos"
-                variant="outline"
-                size="md"
-                className="w-full"
-              >
-                Seguir comprando
-              </Button>
-            </div>
-          </div>
+          <CartSummary
+            couponCode={couponCode}
+            onCouponCodeChange={setCouponCode}
+            subtotal={subtotal}
+            total={total}
+            envio={envio}
+            totalSavings={totalSavings}
+            selectedCarrier={selectedCarrier}
+            metodoEnvio={metodoEnvio as any}
+            acceptTerms={acceptTerms}
+            onAcceptTermsChange={setAcceptTerms}
+            acceptNewsletter={acceptNewsletter}
+            onAcceptNewsletterChange={setAcceptNewsletter}
+            isValidatingStock={isValidatingStock}
+            tiendaSeleccionada={tiendaSeleccionada}
+            onCheckout={handleCheckoutSubmit}
+          />
         </div>
       </div>
 
@@ -3352,58 +2115,12 @@ export default function Carrito() {
         initialData={autorizacionData}
       />
 
-      {/* Savar Stock Modal */}
-      {showSavarStockModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-sm shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-fade-in-up">
-            <div className="p-6 text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaTimesCircle className="text-red-600 text-3xl" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Productos sin stock para despacho
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Debes eliminar los productos que no tengan stock en el carrito
-                para poder continuar con el checkout.
-              </p>
-              <button
-                onClick={() => setShowSavarStockModal(false)}
-                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-full transition-all shadow-lg hover:shadow-xl active:scale-95"
-              >
-                Entendido, ir al carrito
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pickup Stock Modal */}
-      {showPickupStockModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-sm shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-fade-in-up">
-            <div className="p-6 text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaTimesCircle className="text-red-600 text-3xl" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Productos sin stock en tienda
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Algunos productos no están disponibles en la tienda
-                seleccionada. Debes eliminarlos o elegir otra tienda para
-                continuar.
-              </p>
-              <button
-                onClick={() => setShowPickupStockModal(false)}
-                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-full transition-all shadow-lg hover:shadow-xl active:scale-95"
-              >
-                Entendido, ir al carrito
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <StockModals
+        showSavarModal={showSavarStockModal}
+        onCloseSavar={() => setShowSavarStockModal(false)}
+        showPickupModal={showPickupStockModal}
+        onClosePickup={() => setShowPickupStockModal(false)}
+      />
     </Layout>
   );
 }
