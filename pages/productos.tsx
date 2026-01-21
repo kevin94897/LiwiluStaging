@@ -25,7 +25,7 @@ import {
   HierarchyResponse,
   CategoryLevelTwo,
 } from "@/lib/catalog";
-import { FaRegHeart, FaPlus, FaMinus, FaHeart } from "react-icons/fa";
+import { FaRegHeart, FaPlus, FaMinus, FaHeart, FaFilter } from "react-icons/fa";
 
 interface TiendaProps {
   products: Product[];
@@ -110,6 +110,7 @@ export default function Tienda({
 }: TiendaProps & { pagination: any }) {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false); // 🆕 Mobile drawer state
   const productsTopRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
 
@@ -398,8 +399,7 @@ export default function Tienda({
       {/* Menu Categorias */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex flex-col md:flex-row gap-20">
-          {/* Sidebar con animación */}
-          {/* Sidebar con animación */}
+          {/* Sidebar / Mobile Drawer */}
           <CategorySidebar
             hierarchy={hierarchy}
             currentFilters={{
@@ -408,6 +408,8 @@ export default function Tienda({
               attributeIds: router.query.attributeIds as string,
             }}
             onFilterChange={updateFilters}
+            isOpenMobile={isFilterDrawerOpen}
+            onCloseMobile={() => setIsFilterDrawerOpen(false)}
           />
 
           {/* Grid de productos con animaciones */}
@@ -428,15 +430,32 @@ export default function Tienda({
               </div>
             </div>
 
-            {/* Sort selector */}
-            <div className="flex justify-between items-center mb-6 animate-fade-in">
-              <p className="text-gray-600 text-sm md:block hidden">
-                {pagination?.total || 0} productos encontrados
-              </p>
-              <div className="flex md:items-center items-start md:flex-row flex-col gap-3">
+            {/* Sort selector and Mobile Filter Trigger */}
+            <div className="flex flex-col sm:flex-row justify-between items-start md:items-center mb-6 animate-fade-in gap-4 md:gap-0">
+              <div className="flex items-center justify-between w-full md:w-auto">
+                <p className="text-gray-600 text-sm md:block">
+                  {pagination?.total || 0} productos encontrados
+                </p>
+
+                {/* Mobile Filter Button */}
+                <button
+                  onClick={() => setIsFilterDrawerOpen(true)}
+                  className="md:hidden flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-sm font-semibold shadow-sm active:scale-95 transition-all text-sm"
+                >
+                  <FaFilter className="text-primary w-3 h-3" />
+                  Filtrar
+                  {(router.query.categoryIds ||
+                    router.query.brandIds ||
+                    router.query.attributeIds) && (
+                    <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                  )}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3 w-full md:w-auto justify-end sm:justify-start">
                 <label
                   htmlFor="sort"
-                  className="text-sm font-medium text-gray-700"
+                  className="text-sm font-medium text-gray-700 whitespace-nowrap"
                 >
                   Ordenar por:
                 </label>
@@ -444,7 +463,7 @@ export default function Tienda({
                   id="sort"
                   value={router.query.sortBy || "price"}
                   onChange={(e) => updateFilters({ sortBy: e.target.value })}
-                  className="pr-4 pl-2 py-2 border border-gray-300 rounded-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 cursor-pointer"
+                  className="pr-4 pl-2 py-2 border border-gray-300 rounded-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 cursor-pointer w-full md:w-auto"
                 >
                   <option value="price">Precio: Menor a Mayor</option>
                   <option value="name">Nombre: A-Z</option>

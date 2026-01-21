@@ -177,7 +177,7 @@ export default function CartItem({
               <Link
                 href={`/tienda/${item.product.id || item.product.productId}`}
               >
-                <h3 className="font-semibold text-lg mb-1 hover:text-primary transition">
+                <h3 className="font-semibold text-sm md:text-lg leading-tight mb-2 hover:text-primary transition">
                   {getProductName(item.product)}
                 </h3>
               </Link>

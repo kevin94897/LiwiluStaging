@@ -75,7 +75,7 @@ export default function AuthorizedPersonInfo({
               <FaUser className="text-xl" />
             </div>
             <div className="flex-1">
-              <p className="font-bold text-gray-900">Retiraré yo mismo</p>
+              <p className="font-semibold text-dark">Retiraré yo mismo</p>
               {hasUserInfo && (
                 <div className="text-sm text-gray-600 mt-1">
                   <span className="font-medium">
@@ -122,7 +122,7 @@ export default function AuthorizedPersonInfo({
                 <FaUserGroup className="text-xl" />
               </div>
               <div className="flex-1">
-                <p className="font-bold text-gray-900">
+                <p className="font-semibold text-dark">
                   Autorizar a otra persona
                 </p>
                 <p className="text-sm text-gray-500">
@@ -142,11 +142,11 @@ export default function AuthorizedPersonInfo({
           {/* Datos de la otra persona (solo si está seleccionado) */}
           {!isSelfPickup && (
             <div className="ml-4 pl-6 border-l-2 border-primary/20 animate-fade-in">
-              <div className="bg-gray-50 rounded-sm p-4 flex items-center justify-between group">
+              <div className="bg-gray-50 rounded-sm p-4 flex md:flex-row flex-col gap-2 items-start md:items-center justify-between group">
                 <div className="text-sm space-y-1">
                   {autorizacionData ? (
                     <>
-                      <p className="font-bold text-gray-900">
+                      <p className="font-semibold text-dark">
                         {autorizacionData.fullName}
                       </p>
                       <p className="text-gray-600">
