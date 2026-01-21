@@ -103,7 +103,7 @@ export default function CategorySidebar({
 
   const sidebarContent = (className?: string) => (
     <div
-      className={`bg-white rounded-2xl shadow-lg p-6 divide-y divide-gray-100 border border-gray-100 ${className || ""}`}
+      className={`bg-white rounded-br-lg rounded-tr-lg md:rounded-2xl shadow-lg p-6 divide-y divide-gray-100 border border-gray-100 ${className || ""}`}
     >
       {/* Header con Limpiar Filtros */}
       <div className="pb-4 space-y-3">
@@ -229,7 +229,7 @@ export default function CategorySidebar({
 
       {/* Seasonal Banner (Only in Desktop or Drawer bottom) */}
       <div className="pt-6">
-        <div className="relative h-64 md:h-72 group rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
+        <div className="relative h-64 md:h-72 group rounded-md overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
           <Image
             src="https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400&h=500&fit=crop"
             alt="Banner Promocional"
