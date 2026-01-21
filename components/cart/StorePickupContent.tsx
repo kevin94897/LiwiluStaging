@@ -11,6 +11,8 @@ const WarehouseMap = dynamic(() => import("@/components/WarehouseMap"), {
   ),
 });
 
+import { SavePickupStoreRequest } from "@/lib/cart";
+
 interface StorePickupContentProps {
   metodoEnvio: "delivery" | "retiro" | null;
   distritoSeleccionado: string;
@@ -19,8 +21,10 @@ interface StorePickupContentProps {
   setMostrarMapa: (mostrar: boolean) => void;
   warehouseDistricts: any[];
   mapWarehouses: any[];
+  warehouseDetails?: any[];
   tiendaSeleccionada: string | null;
   setTiendaSeleccionada: (id: string) => void;
+  onSelectStore?: (store: SavePickupStoreRequest) => void; // Added
   loadingStores: boolean;
   stockValidationResult: any;
 }
@@ -33,8 +37,10 @@ export default function StorePickupContent({
   setMostrarMapa,
   warehouseDistricts,
   mapWarehouses,
+  warehouseDetails = [],
   tiendaSeleccionada,
   setTiendaSeleccionada,
+  onSelectStore, // Added
   loadingStores,
   stockValidationResult,
 }: StorePickupContentProps) {
@@ -137,6 +143,11 @@ export default function StorePickupContent({
                 const isSelected =
                   tiendaSeleccionada === tienda.idAlmacen.toString();
 
+                // Find details for this store
+                const details = warehouseDetails?.find(
+                  (d: any) => d.idAlmacen === tienda.idAlmacen,
+                );
+
                 return (
                   <div
                     key={tienda.idAlmacen}
@@ -147,18 +158,44 @@ export default function StorePickupContent({
                           : "border-red-500 bg-red-50"
                         : "border-gray-200 hover:border-primary/50"
                     }`}
-                    onClick={() =>
-                      setTiendaSeleccionada(tienda.idAlmacen.toString())
-                    }
+                    onClick={() => {
+                      setTiendaSeleccionada(tienda.idAlmacen.toString());
+                      if (onSelectStore && details) {
+                        onSelectStore({
+                          idAlmacen: tienda.idAlmacen,
+                          desAlmacen: tienda.desAlmacen,
+                          direccion: details.direccion,
+                          atencion: details.atencion,
+                        });
+                      }
+                    }}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-900">
                           {tienda.desAlmacen}
                         </h3>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Ubigeo: {tienda.codUbigeoAlm}
-                        </p>
+                        {details && (
+                          <div className="mt-2 text-sm text-gray-600 space-y-1">
+                            <p className="flex items-start gap-2">
+                              <span className="font-medium text-gray-800 shrink-0">
+                                Dirección:
+                              </span>
+                              <span>{details.direccion}</span>
+                            </p>
+                            <p className="flex items-start gap-2">
+                              <span className="font-medium text-gray-800 shrink-0">
+                                Horario:
+                              </span>
+                              <span>{details.atencion}</span>
+                            </p>
+                          </div>
+                        )}
+                        {!details && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Ubigeo: {tienda.codUbigeoAlm}
+                          </p>
+                        )}
                       </div>
                       <div className="ml-4">
                         {isSelected && (

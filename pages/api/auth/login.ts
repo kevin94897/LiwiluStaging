@@ -1,5 +1,4 @@
 import { startTokenRefresh } from '@/lib/auth/tokenManager';
-import { mergeCart } from '@/lib/cart';
 import { User, saveSession, getCurrentUser, isAuthenticated, clearAuthSession } from '@/lib/auth/authUtils';
 
 export type { User };
@@ -45,12 +44,12 @@ export const loginUser = async (
       );
     }
 
-    // 🛒 Intentar fusionar el carrito (merge cart)
+    // 🛒 Intentar refrescar el carrito para el usuario autenticado
     try {
-      await mergeCart();
-      console.log("🛒 Carrito fusionado exitosamente");
+      // Al no existir mergeCart, simplemente pedimos el carrito o dejamos que el componente cargue los datos
+      console.log("🛒 Login exitoso, el carrito debería sincronizarse automáticamente");
     } catch (cartError) {
-      console.warn("⚠️ No se pudo fusionar el carrito:", cartError);
+      console.warn("⚠️ No se pudo sincronizar el carrito:", cartError);
     }
 
     // 🆕 Iniciar sistema de renovación automática de tokens

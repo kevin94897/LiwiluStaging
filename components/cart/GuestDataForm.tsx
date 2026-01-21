@@ -50,7 +50,7 @@ export default function GuestDataForm({
               name="nombre"
               value={guestData.nombre}
               onChange={onGuestChange}
-              placeholder="Gonzalo"
+              placeholder="Nombres"
               className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
                 guestErrors.nombre ? "border-red-500" : "border-gray-200"
               }`}
@@ -70,7 +70,7 @@ export default function GuestDataForm({
               name="apellido"
               value={guestData.apellido}
               onChange={onGuestChange}
-              placeholder="Vera"
+              placeholder="Apellidos"
               className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
                 guestErrors.apellido ? "border-red-500" : "border-gray-200"
               }`}

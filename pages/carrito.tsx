@@ -64,6 +64,10 @@ import {
   saveCartDeliveryPrice,
   SavarStockValidationResult,
   savePickupPerson,
+  getWarehouseDetails,
+  WarehouseDetail,
+  savePickupStore,
+  SavePickupStoreRequest,
 } from "@/lib/cart";
 
 // Distritos disponibles
@@ -91,6 +95,9 @@ export default function Carrito() {
     WarehouseDistrict[]
   >([]);
   const [mapWarehouses, setMapWarehouses] = useState<WarehouseMapItem[]>([]);
+  const [warehouseDetails, setWarehouseDetails] = useState<WarehouseDetail[]>(
+    [],
+  );
   const [loadingCarriers, setLoadingCarriers] = useState(false);
   const [selectedCarrier, setSelectedCarrier] = useState<CartCarrier | null>(
     null,
@@ -165,6 +172,7 @@ export default function Carrito() {
   const [showAutorizacionModal, setShowAutorizacionModal] = useState(false);
   const [autorizacionData, setAutorizacionData] =
     useState<AutorizacionSchemaType | null>(null);
+  const [isSelfPickup, setIsSelfPickup] = useState(true);
 
   // Hooks de ubicación
   const guestLocations = useLocations("Lima", "Lima", "");
@@ -335,6 +343,49 @@ export default function Carrito() {
       }
     }
   }, []);
+
+  // Cargar preferencia de retiro
+  useEffect(() => {
+    const saved = localStorage.getItem("liwilu_isSelfPickup");
+    if (saved !== null) {
+      setIsSelfPickup(saved === "true");
+    }
+  }, []);
+
+  // Sincronizar retiro si es "Yo mismo"
+  useEffect(() => {
+    if (items.length > 0 && metodoEnvio === "retiro" && isSelfPickup) {
+      const info =
+        isLoggedIn && user
+          ? {
+              tipoDocumento: user.documentType || "DNI",
+              numeroDocumento: user.documentNumber || "",
+              nombreCompleto:
+                `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+            }
+          : {
+              tipoDocumento: guestData.tipoDocumento,
+              numeroDocumento: guestData.numeroDocumento,
+              nombreCompleto:
+                `${guestData.nombre} ${guestData.apellido}`.trim(),
+            };
+
+      if (info.nombreCompleto && info.numeroDocumento) {
+        savePickupPerson(info).catch((err) =>
+          console.error("Error syncing self-pickup:", err),
+        );
+      }
+    }
+  }, [
+    items.length,
+    metodoEnvio,
+    isSelfPickup,
+    isLoggedIn,
+    user,
+    guestData.nombre,
+    guestData.apellido,
+    guestData.numeroDocumento,
+  ]);
 
   // Cargar datos del invitado
   useEffect(() => {
@@ -612,6 +663,14 @@ export default function Carrito() {
         const response = await getWarehouseMap(district.codUbigeoAlm);
         if (response.success) {
           setMapWarehouses(response.data);
+
+          // Also fetch details
+          getWarehouseDetails(district.codUbigeoAlm).then((detailsRes) => {
+            if (detailsRes.success) {
+              setWarehouseDetails(detailsRes.data);
+            }
+          });
+
           // The useEffect will handle the re-validation when 'mapWarehouses' state updates
         }
       }
@@ -619,6 +678,18 @@ export default function Carrito() {
       console.error("Error fetching map warehouses:", error);
     } finally {
       setLoadingStores(false);
+    }
+  };
+
+  const handleSelectStore = async (store: SavePickupStoreRequest) => {
+    try {
+      const response = await savePickupStore(store);
+      if (response.success) {
+        console.log("🏪 Pickup store saved:", response.message);
+      }
+    } catch (error) {
+      console.error("Error saving pickup store:", error);
+      showToast("Error al seleccionar la tienda", "error");
     }
   };
 
@@ -749,11 +820,14 @@ export default function Carrito() {
           firstName: registroData.nombre,
           lastName: registroData.apellido,
           email: registroData.email,
-          confirmEmail: registroData.email, // Asumimos mismo email pues el form no tiene confirm
+          confirmEmail: registroData.email,
           password: registroData.password,
           confirmPassword: registroData.confirmarPassword,
           acceptTerms: registroData.aceptoTerminos,
-          receiveOffers: false, // Default o agregar checkbox en UI
+          receiveOffers: false,
+          documentType: registroData.tipoDocumento,
+          documentNumber: registroData.numeroDocumento,
+          phone: registroData.celular,
         });
 
         // Autologin after register or show success message
@@ -962,6 +1036,45 @@ export default function Carrito() {
 
     // Savar Stock Check for Delivery
     if (metodoEnvio === "delivery") {
+      if (editandoDireccion) {
+        showToast("Debes guardar tu dirección para continuar.", "error");
+        return;
+      }
+
+      if (isLoggedIn && !direccionEnvio.calle) {
+        showToast(
+          "Debes elegir una dirección de envío o agregar una nueva.",
+          "error",
+        );
+        return;
+      }
+
+      // 🔹 Validar cobertura de delivery (Carrier 250)
+      if (deliveryZones.length > 0) {
+        const normalizeText = (text: string) =>
+          text
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+
+        const districtExists = deliveryZones.some(
+          (z) =>
+            normalizeText(z.zoneName) ===
+            normalizeText(direccionEnvio.distrito),
+        );
+
+        if (!districtExists) {
+          showToast(
+            "Tu dirección no tiene cobertura para delivery. Por favor cambia el distrito o método de envío.",
+            "error",
+          );
+          setAddressErrors({
+            distrito:
+              "El distrito seleccionado no tiene cobertura de delivery.",
+          });
+          return;
+        }
+      }
       const itemsNoDisponibles = savarStockResults.filter((r) => !r.disponible);
       if (itemsNoDisponibles.length > 0) {
         setShowSavarStockModal(true);
@@ -1022,6 +1135,8 @@ export default function Carrito() {
 
   // Override shipping cost for carrier 250 based on zone
   const getEnvioCost = () => {
+    if (metodoEnvio === "retiro") return 0;
+
     if (selectedCarrier?.id === 250 && deliveryZones.length > 0) {
       const zone = deliveryZones.find(
         (z) =>
@@ -1159,6 +1274,9 @@ export default function Carrito() {
     // Limpiar errores si pasa validación
     setAddressErrors({});
 
+    // 🔹 MOVED: La validación de cobertura se movió al checkout (handleCheckoutSubmit)
+    // Se permite guardar cualquier dirección, pero se valida antes de finalizar compra.
+
     // Save to cart session API only for non-authenticated users OR guests
     if (!isAuthenticated || isGuest) {
       try {
@@ -1204,9 +1322,11 @@ export default function Carrito() {
         province: direccionEnvio.ciudad,
         district: direccionEnvio.distrito,
         address: direccionEnvio.calle,
-        apartment: "Dirección Carrito", // Valor por defecto
-        reference: "",
-        isMain: isEditingMainAddress || false, // Preservar isMain si es la dirección principal
+        apartment:
+          direccionEnvio.numeroDptoPiso ||
+          (mainAddressId ? "Mi Dirección" : "Nueva Dirección"),
+        reference: direccionEnvio.referencia || "",
+        isMain: isEditingMainAddress || false,
       };
 
       let response;
@@ -1442,7 +1562,7 @@ export default function Carrito() {
                           name="nombre" // ✅ Agregar
                           value={registroData.nombre}
                           onChange={handleRegistroChange} // ✅ Cambiar
-                          placeholder="Gonzalo"
+                          placeholder="Nombres"
                           className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
                             registroErrors.nombre
                               ? "border-red-500"
@@ -1465,7 +1585,7 @@ export default function Carrito() {
                           name="apellido" // ✅ Agregar
                           value={registroData.apellido}
                           onChange={handleRegistroChange} // ✅ Cambiar
-                          placeholder="Vera"
+                          placeholder="Apellidos"
                           className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
                             registroErrors.apellido
                               ? "border-red-500"
@@ -1956,8 +2076,11 @@ export default function Carrito() {
 
             <GuestDataSummary
               isGuest={isGuest}
+              isLoggedIn={isLoggedIn}
               guestDataCompleted={guestDataCompleted}
               guestData={guestData}
+              userData={user}
+              userAddress={userAddresses.find((a) => a.isMain)}
               onEdit={() => {
                 setActiveTab("guest");
                 setShowGuestForm(true);
@@ -1973,8 +2096,10 @@ export default function Carrito() {
               setMostrarMapa={setMostrarMapa}
               warehouseDistricts={warehouseDistricts}
               mapWarehouses={mapWarehouses}
+              warehouseDetails={warehouseDetails}
               tiendaSeleccionada={tiendaSeleccionada}
               setTiendaSeleccionada={setTiendaSeleccionada}
+              onSelectStore={handleSelectStore}
               loadingStores={loadingStores}
               stockValidationResult={stockValidationResult}
             />
@@ -2043,6 +2168,14 @@ export default function Carrito() {
               metodoEnvio={metodoEnvio as any}
               autorizacionData={autorizacionData}
               onEdit={() => setShowAutorizacionModal(true)}
+              isLoggedIn={isLoggedIn}
+              userData={user}
+              guestData={guestData}
+              isSelfPickup={isSelfPickup}
+              onSetIsSelfPickup={(val) => {
+                setIsSelfPickup(val);
+                localStorage.setItem("liwilu_isSelfPickup", val.toString());
+              }}
             />
           </div>
 

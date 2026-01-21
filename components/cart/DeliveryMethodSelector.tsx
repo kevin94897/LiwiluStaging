@@ -27,12 +27,20 @@ export default function DeliveryMethodSelector({
   onSelectCarrier,
   children,
 }: DeliveryMethodSelectorProps) {
+  // Helper para normalizar texto
+  const normalizeText = (text: string) =>
+    text
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
   // Validar si el distrito seleccionado está en la zona de cobertura
   const isDistrictValid =
     !direccionEnvio.distrito ||
     deliveryZones.length === 0 ||
     deliveryZones.some(
-      (z) => z.zoneName.toLowerCase() === direccionEnvio.distrito.toLowerCase(),
+      (z) =>
+        normalizeText(z.zoneName) === normalizeText(direccionEnvio.distrito),
     );
 
   return (
@@ -83,8 +91,8 @@ export default function DeliveryMethodSelector({
                       ? (() => {
                           const zone = deliveryZones.find(
                             (z) =>
-                              z.zoneName.toLowerCase() ===
-                              direccionEnvio.distrito.toLowerCase(),
+                              normalizeText(z.zoneName) ===
+                              normalizeText(direccionEnvio.distrito),
                           );
                           return zone
                             ? formatPrice(zone.price)

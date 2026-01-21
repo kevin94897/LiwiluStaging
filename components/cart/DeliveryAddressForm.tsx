@@ -53,26 +53,49 @@ export default function DeliveryAddressForm({
     <div className="border-2 border-gray-200 rounded-sm p-4 mt-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-900">Dirección de envío</h3>
-        {!editandoDireccion &&
-          !(isLoggedIn && userAddresses.length === 0) &&
-          !(isLoggedIn && !mainAddressId && userAddresses.length > 0) && (
-            <button
-              onClick={() => {
-                if (!direccionEnvio.calle) {
+        {!editandoDireccion && (
+          <div className="flex gap-4">
+            {isLoggedIn && mainAddressId && (
+              <button
+                onClick={() => {
+                  setMainAddressId(null);
+                  setDireccionEnvio({
+                    calle: "",
+                    departamento: "Lima",
+                    ciudad: "Lima",
+                    distrito: "",
+                    numeroDptoPiso: "",
+                    referencia: "",
+                  });
                   userLocations.setLocationValues("Lima", "Lima", "");
-                }
-                setEditandoDireccion(!editandoDireccion);
-              }}
-              className="text-primary text-sm hover:text-primary-dark flex items-center gap-1"
-            >
-              {direccionEnvio.calle ? (
-                <FaPencil className="text-sm" />
-              ) : (
-                <FaPlus className="text-xs" />
+                  setEditandoDireccion(true);
+                }}
+                className="text-primary text-sm hover:text-primary-dark flex items-center gap-1 font-medium"
+              >
+                <FaPlus className="text-xs" /> Agregar nueva
+              </button>
+            )}
+            {!(isLoggedIn && userAddresses.length === 0) &&
+              !(isLoggedIn && !mainAddressId && userAddresses.length > 0) && (
+                <button
+                  onClick={() => {
+                    if (!direccionEnvio.calle) {
+                      userLocations.setLocationValues("Lima", "Lima", "");
+                    }
+                    setEditandoDireccion(!editandoDireccion);
+                  }}
+                  className="text-primary text-sm hover:text-primary-dark flex items-center gap-1 font-medium"
+                >
+                  {direccionEnvio.calle ? (
+                    <FaPencil className="text-sm" />
+                  ) : (
+                    <FaPlus className="text-xs" />
+                  )}
+                  {direccionEnvio.calle ? "Editar actual" : "Agregar"}
+                </button>
               )}
-              {direccionEnvio.calle ? "Editar" : "Agregar"}
-            </button>
-          )}
+          </div>
+        )}
       </div>
 
       {editandoDireccion || (isLoggedIn && userAddresses.length === 0) ? (
@@ -163,42 +186,34 @@ export default function DeliveryAddressForm({
               </option>
             ))}
           </select>
+          {addressErrors.distrito && (
+            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+              <PiWarningCircleFill size={16} /> {addressErrors.distrito}
+            </p>
+          )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="text"
-              value={direccionEnvio.numeroDptoPiso}
-              onChange={(e) =>
-                setDireccionEnvio({
-                  ...direccionEnvio,
-                  numeroDptoPiso: e.target.value,
-                })
-              }
-              placeholder="Dpto / Piso / Of."
-              className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-            />
-            <input
-              type="text"
-              value={direccionEnvio.referencia}
-              onChange={(e) =>
-                setDireccionEnvio({
-                  ...direccionEnvio,
-                  referencia: e.target.value,
-                })
-              }
-              placeholder="Referencia"
-              className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-            />
-          </div>
+          <input
+            type="text"
+            value={direccionEnvio.referencia}
+            onChange={(e) =>
+              setDireccionEnvio({
+                ...direccionEnvio,
+                referencia: e.target.value,
+              })
+            }
+            placeholder="Referencia (opcional)"
+            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+          />
 
-          <div className="flex gap-2 md:flex-row flex-col">
-            <Button onClick={onSaveAddress} variant="primary">
+          <div className="flex gap-2 md:flex-row flex-col justify-center">
+            <Button onClick={onSaveAddress} variant="primary" size="sm">
               Guardar dirección
             </Button>
             {!(isLoggedIn && userAddresses.length === 0) && (
               <Button
                 onClick={() => setEditandoDireccion(false)}
                 variant="outline"
+                size="sm"
               >
                 Cancelar
               </Button>
@@ -228,8 +243,8 @@ export default function DeliveryAddressForm({
                   distrito: selected.district,
                   ciudad: selected.province,
                   departamento: selected.department,
-                  numeroDptoPiso: selected.numeroDptoPiso || "",
-                  referencia: selected.referencia || "",
+                  numeroDptoPiso: selected.apartment || "", // En este proyecto apartment parece usarse para el piso/dpto en algunos contextos o título
+                  referencia: selected.reference || "",
                 });
                 userLocations.setLocationValues(
                   selected.department,
@@ -247,12 +262,6 @@ export default function DeliveryAddressForm({
               </option>
             ))}
           </select>
-          <button
-            onClick={() => setEditandoDireccion(true)}
-            className="text-primary text-xs font-medium hover:underline"
-          >
-            + Agregar nueva dirección
-          </button>
         </div>
       ) : (
         <>
@@ -265,12 +274,12 @@ export default function DeliveryAddressForm({
                   {direccionEnvio.departamento}
                 </p>
               </div>
-              {isLoggedIn && userAddresses.length > 1 && (
+              {isLoggedIn && userAddresses.length > 0 && (
                 <button
                   onClick={() => setMainAddressId(null)}
                   className="text-primary text-xs font-medium hover:underline"
                 >
-                  Elegir otra dirección
+                  Elegir otra dirección o agregar nueva
                 </button>
               )}
             </div>

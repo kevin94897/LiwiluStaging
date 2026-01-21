@@ -21,7 +21,7 @@ type MetodoPago = "tarjeta" | "yape" | "efectivo";
 
 export default function Checkout() {
   const router = useRouter();
-  const { items, getCartTotal, clearCart } = useCart();
+  const { items, getCartTotal, clearCart, totals, syncCart } = useCart();
   const [tipoComprobante, setTipoComprobante] =
     useState<TipoComprobante>("factura");
   const [metodoPago, setMetodoPago] = useState<MetodoPago | null>(null);
@@ -43,8 +43,13 @@ export default function Checkout() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const subtotal = getCartTotal();
-  const envio = 15;
+  const envio = totals.shipping;
   const total = subtotal + envio;
+
+  // Sync cart on mount to ensure shipping cost is current
+  useEffect(() => {
+    syncCart();
+  }, []);
 
   // Verificar si Culqi ya está cargado al montar el componente (para navegaciones SPA)
   useEffect(() => {

@@ -51,7 +51,10 @@ interface LogoProps {
 
 function Logo({ className = "", width = 120, height = 48 }: LogoProps) {
   return (
-    <Link href="/" className={`flex items-center ${className}`}>
+    <Link
+      href="/"
+      className={`flex items-center max-w-[90px] md:max-w-[120px] ${className}`}
+    >
       <Image
         src={logo}
         alt="Liwilu Logo"
@@ -59,13 +62,12 @@ function Logo({ className = "", width = 120, height = 48 }: LogoProps) {
         height={height}
         priority
         sizes="(max-width: 640px) 96px, 120px"
-        className="w-auto h-auto"
-        style={{ width: 'auto', height: 'auto', maxWidth: width }}
+        className="h-auto"
+        style={{ height: "auto", maxWidth: width }}
       />
     </Link>
   );
 }
-
 
 function SearchBar({ isMobile = false }) {
   const router = useRouter();
@@ -74,32 +76,37 @@ function SearchBar({ isMobile = false }) {
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/productos?search=${encodeURIComponent(searchQuery.trim())}`);
+      router.push(
+        `/productos?search=${encodeURIComponent(searchQuery.trim())}`,
+      );
     }
   };
 
   return (
     <form
       onSubmit={handleSearch}
-      className={`flex items-center bg-white rounded-full ${isMobile
-        ? "px-4 py-2"
-        : "px-3 py-1 w-full max-w-md xl:min-w-[300px] lg:max-w-[250px]"
-        }`}
+      className={`flex items-center bg-white rounded-full ${
+        isMobile
+          ? "px-4 py-2"
+          : "px-3 py-1 w-full max-w-md xl:min-w-[300px] lg:max-w-[250px]"
+      }`}
     >
       <input
         type="search"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="¿Qué estás buscando?"
-        className={`flex-grow px-2 outline-none bg-transparent ${isMobile
-          ? "text-[15px] placeholder-gray-400 text-gray-800"
-          : "py-1 text-sm text-gray-700"
-          }`}
+        className={`flex-grow px-2 outline-none bg-transparent ${
+          isMobile
+            ? "text-[15px] placeholder-gray-400 text-gray-800"
+            : "py-1 text-sm text-gray-700"
+        }`}
       />
       <button
         type="submit"
-        className={`${isMobile ? "ml-2 hover:text-primary-light" : ""
-          } text-gray-700 transition-colors`}
+        className={`${
+          isMobile ? "ml-2 hover:text-primary-light" : ""
+        } text-gray-700 transition-colors`}
       >
         <FaSearch size={18} />
       </button>
@@ -125,14 +132,13 @@ function QuickActions({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const loginRef = useRef<HTMLDivElement | null>(null);
 
-
   // 🔹 DEBUG: Log para verificar el estado
   useEffect(() => {
     console.log("QuickActions render:", {
       isLoading,
       isAuthenticated,
       user,
-      userName: user?.firstName
+      userName: user?.firstName,
     });
   }, [isLoading, isAuthenticated, user]);
 
@@ -267,7 +273,9 @@ function QuickActions({
       >
         <FaUser />
         <span>
-          {isAuthenticated ? (user?.firstName || user?.email?.split('@')[0] || "Mi cuenta") : "Mi cuenta"}
+          {isAuthenticated
+            ? user?.firstName || user?.email?.split("@")[0] || "Mi cuenta"
+            : "Mi cuenta"}
         </span>
       </button>
 
@@ -328,10 +336,13 @@ function QuickActions({
               {/* Header del menú */}
               <div className="px-4 py-4 bg-gray-50 border-b border-gray-200">
                 <p className="text-sm font-semibold text-gray-900 truncate">
-                  {user?.firstName || user?.email?.split('@')[0] || "Usuario"} {user?.lastName || ""}
+                  {user?.firstName || user?.email?.split("@")[0] || "Usuario"}{" "}
+                  {user?.lastName || ""}
                 </p>
                 {user?.email && (
-                  <p className="text-xs text-gray-500 truncate mt-0.5">{user.email}</p>
+                  <p className="text-xs text-gray-500 truncate mt-0.5">
+                    {user.email}
+                  </p>
                 )}
               </div>
 
@@ -419,14 +430,14 @@ export default function Header() {
   useEffect(() => {
     async function fetchCategories() {
       try {
-        const { getLevelTwoCategories } = await import('@/lib/catalog');
+        const { getLevelTwoCategories } = await import("@/lib/catalog");
         const cats = await getLevelTwoCategories();
 
-        const formattedCats: MenuCategory[] = cats.map(c => ({
+        const formattedCats: MenuCategory[] = cats.map((c) => ({
           href: `/productos?categoryIds=${c.id}`,
           label: c.name,
           isModal: false,
-          highlight: false
+          highlight: false,
         }));
 
         // Add static Trimegisto link
@@ -435,7 +446,7 @@ export default function Header() {
           label: "Trimegisto",
           highlightBottom: true,
           isModal: true,
-          highlight: false
+          highlight: false,
         });
 
         setMenuCategories(formattedCats);
@@ -461,10 +472,9 @@ export default function Header() {
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const mobileToggleRef = useRef<HTMLButtonElement | null>(null);
 
-
   // ✅ Efecto para abrir login desde URL
   useEffect(() => {
-    if (router.isReady && router.query.login === 'true') {
+    if (router.isReady && router.query.login === "true") {
       setLoginModalOpen(true);
     }
   }, [router.isReady, router.query]);
@@ -522,14 +532,16 @@ export default function Header() {
   return (
     <>
       <header
-        className={`w-full text-white fixed top-0 left-0 z-50 transition-all duration-300 ${isSticky
-          ? "backdrop-blur-md bg-[#0b2d2d]/90 shadow-lg"
-          : "bg-transparent"
-          }`}
+        className={`w-full text-white fixed top-0 left-0 z-50 transition-all duration-300 ${
+          isSticky
+            ? "backdrop-blur-md bg-[#0b2d2d]/90 shadow-lg"
+            : "bg-transparent"
+        }`}
       >
         <div
-          className={`bg-primary-light text-[12px] lg:text-xs py-1 px-4 transition-all duration-300 ${isSticky ? "hidden lg:block" : ""
-            }`}
+          className={`bg-primary-light text-[12px] lg:text-xs py-1 px-4 transition-all duration-300 ${
+            isSticky ? "hidden lg:block" : ""
+          }`}
         >
           <div className="max-w-3xl mx-auto flex justify-between items-center flex-wrap">
             <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-1">
@@ -551,8 +563,9 @@ export default function Header() {
         </div>
 
         <div
-          className={`py-3 transition-all duration-300 ${isSticky ? "bg-[#0b2d2d]/95 shadow-xl" : "bg-[#0b2d2d]"
-            }`}
+          className={`py-3 transition-all duration-300 ${
+            isSticky ? "bg-[#0b2d2d]/95 shadow-xl" : "bg-[#0b2d2d]"
+          }`}
         >
           <div className="max-w-7xl mx-auto px-4">
             {/* ===== MOBILE ===== */}
@@ -596,18 +609,19 @@ export default function Header() {
                             onClick={
                               c.isModal
                                 ? (e) => {
-                                  e.preventDefault();
-                                  setTrimegistoDNIModalOpen(true);
-                                  setMobileCatsOpen(false);
-                                }
+                                    e.preventDefault();
+                                    setTrimegistoDNIModalOpen(true);
+                                    setMobileCatsOpen(false);
+                                  }
                                 : () => setMobileCatsOpen(false)
                             }
-                            className={`block px-4 py-3 text-white transition-colors ${c.highlight
-                              ? "bg-primary hover:bg-primary-light rounded-xl font-medium text-[#0b2d2d]"
-                              : c.highlightBottom
-                                ? "text-white hover:bg-white/10 rounded-xl font-bold"
-                                : "text-white/90 hover:bg-white/10 rounded-lg"
-                              }`}
+                            className={`block px-4 py-3 text-white transition-colors ${
+                              c.highlight
+                                ? "bg-primary hover:bg-primary-light rounded-xl font-medium text-[#0b2d2d]"
+                                : c.highlightBottom
+                                  ? "text-white hover:bg-white/10 rounded-xl font-bold"
+                                  : "text-white/90 hover:bg-white/10 rounded-lg"
+                            }`}
                           >
                             {c.label}
                           </Link>
@@ -642,23 +656,22 @@ export default function Header() {
                               onClick={
                                 c.isModal
                                   ? (e) => {
-                                    e.preventDefault();
-                                    setTrimegistoDNIModalOpen(true);
-                                    setMobileCatsOpen(false);
-                                  }
+                                      e.preventDefault();
+                                      setTrimegistoDNIModalOpen(true);
+                                      setMobileCatsOpen(false);
+                                    }
                                   : () => setMobileCatsOpen(false)
                               }
-                              className={`group flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
-                                ? "bg-primary text-white hover:bg-primary-light"
-                                : c.highlightBottom
-                                  ? "bg-gray-100 font-semibold hover:bg-primary hover:text-white"
-                                  : "hover:bg-primary hover:text-white"
-                                }`}
+                              className={`group flex items-center justify-between px-4 py-3 text-sm transition ${
+                                c.highlight
+                                  ? "bg-primary text-white hover:bg-primary-light"
+                                  : c.highlightBottom
+                                    ? "bg-gray-100 font-semibold hover:bg-primary hover:text-white"
+                                    : "hover:bg-primary hover:text-white"
+                              }`}
                             >
                               <span className="truncate">{c.label}</span>
-                              <HiChevronRight
-                                className="text-gray-400 transition-colors group-hover:text-white"
-                              />
+                              <HiChevronRight className="text-gray-400 transition-colors group-hover:text-white" />
                             </Link>
                           </li>
                         ))}
@@ -694,7 +707,7 @@ export default function Header() {
         onClose={() => {
           setLoginModalOpen(false);
           setIsFromTrimegisto(false);
-          if (router.query.login === 'true') {
+          if (router.query.login === "true") {
             const { login, ...rest } = router.query;
             router.replace(
               {
@@ -702,7 +715,7 @@ export default function Header() {
                 query: rest,
               },
               undefined,
-              { shallow: true }
+              { shallow: true },
             );
           }
         }}

@@ -36,29 +36,15 @@ export const authenticatedFetch = async (
         sessionId = localStorage.getItem('liwilu_session_id');
     }
 
-    // Determinar qué header usar basado en el estado de autenticación
-    if (!skipAuth && accessToken) {
-        // Usuario autenticado - usar Authorization header
-        console.log('📡 Request with Authorization (authenticated user)');
+    // Determinar qué headers usar
+    if (accessToken) {
+        console.log('📡 Request with Authorization header');
         baseHeaders['Authorization'] = `Bearer ${accessToken}`;
-    } else if (sessionId) {
-        // Usuario invitado - usar X-Session-Id header
-        console.log('📡 Request with X-Session-Id (guest user):', sessionId);
-        baseHeaders['X-Session-Id'] = sessionId;
     }
-
-    // Si skipAuth es true pero no hay accessToken, solo usar sessionId si existe
-    if (skipAuth && !accessToken && sessionId) {
-        console.log('📡 Request with X-Session-Id (skipAuth, no accessToken):', sessionId);
+    
+    if (sessionId) {
+        console.log('📡 Request with X-Session-Id header:', sessionId);
         baseHeaders['X-Session-Id'] = sessionId;
-    }
-
-    // Si no se debe agregar autenticación Y no hay accessToken, hacer fetch normal
-    if (skipAuth && !accessToken) {
-        return fetch(url, {
-            ...fetchOptions,
-            headers: baseHeaders
-        });
     }
 
     // Si no hay accessToken y skipAuth es false, lanzar error
@@ -160,7 +146,7 @@ export const fetchUserProfile = async (): Promise<any | null> => {
         if (!accessToken) return null;
 
         console.log('🔄 Fetching user profile from API...');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/profile`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/profile`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,

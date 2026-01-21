@@ -368,38 +368,7 @@ export async function clearCart(): Promise<AddToCartResponse> {
     }
 }
 
-/**
- * Merge guest cart with user cart upon login
- * @returns Promise with the merged cart response
- */
-export async function mergeCart(): Promise<AddToCartResponse> {
-    try {
-        console.log('🔄 Merging cart...');
-        // The apiPost will automatically include Authorization header (if logged in) 
-        // and X-Session-Id (from localStorage)
-        const response = await apiPost('/cart/merge', {});
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `Error merging cart: ${response.statusText}`);
-        }
-
-        const data: AddToCartResponse = await response.json();
-
-        console.log('✅ Cart results merged successfully:', data);
-
-        // Update session ID if returned
-        if (data?.data?.sessionId && typeof window !== 'undefined') {
-            localStorage.setItem('liwilu_session_id', data.data.sessionId);
-        }
-
-        return data;
-    } catch (error) {
-        console.error('Error in mergeCart:', error);
-        // We throw so the caller knows it failed, but often login proceeds anyway
-        throw error;
-    }
-}
 
 /**
  * Get available shipping carriers
@@ -497,6 +466,41 @@ export async function getWarehouseMap(ubigeo: string): Promise<{ success: boolea
     } catch (error) {
         console.error('Error in getWarehouseMap:', error);
         throw error;
+    }
+}
+
+/**
+ * Warehouse Detail Interface
+ */
+export interface WarehouseDetail {
+    idAlmacen: number;
+    direccion: string;
+    atencion: string;
+    telefono?: string;
+    imagen?: string;
+}
+
+/**
+ * Get warehouse details (address, hours) for a specific district (ubigeo)
+ * @param ubigeo - The ubigeo code of the district
+ * @returns Promise with the list of warehouse details
+ */
+export async function getWarehouseDetails(ubigeo: string): Promise<{ success: boolean; data: WarehouseDetail[]; total: number }> {
+    try {
+        const response = await apiGet(`/orders/almacenes/detalles/${ubigeo}`, {
+            skipAuth: true
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error fetching warehouse details: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        // Fallback or empty array if endpoint fails or doesn't exist yet
+        console.warn('Error in getWarehouseDetails, returning empty list:', error);
+        return { success: false, data: [], total: 0 };
     }
 }
 /**
@@ -647,8 +651,9 @@ export async function saveCartDeliveryAddress(data: {
     referencia: string;
 }): Promise<{ success: boolean; message: string }> {
     try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
         const response = await apiPut('/cart/delivery-address', data, {
-            skipAuth: true // Handled by sessionId header in apiClient
+            skipAuth: !accessToken
         });
 
         if (!response.ok) {
@@ -739,8 +744,9 @@ export async function savePickupPerson(data: {
     nombreCompleto: string;
 }): Promise<{ success: boolean; message: string }> {
     try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
         const response = await apiPut('/cart/pickup-person', data, {
-            skipAuth: true // Handled by sessionId header in apiClient
+            skipAuth: !accessToken
         });
 
         if (!response.ok) {
@@ -751,6 +757,51 @@ export async function savePickupPerson(data: {
         return await response.json();
     } catch (error) {
         console.error('Error in savePickupPerson:', error);
+        throw error;
+    }
+}
+
+/**
+ * Save pickup store selection
+ */
+export interface SavePickupStoreRequest {
+    idAlmacen: number;
+    desAlmacen: string;
+    direccion: string;
+    atencion: string;
+}
+
+export interface SavePickupStoreResponse {
+    success: boolean;
+    message: string;
+    data: {
+        pickupStoreInfo: {
+            carrierId: number;
+            carrierName: string;
+            carrierPrestashopId: number;
+            idAlmacen: number;
+            desAlmacen: string;
+            direccionAlmacen: string;
+            atencion: string;
+        }
+    }
+}
+
+export async function savePickupStore(data: SavePickupStoreRequest): Promise<SavePickupStoreResponse> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiPut('/cart/pickup-store', data, {
+            skipAuth: !accessToken
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error saving pickup store: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in savePickupStore:', error);
         throw error;
     }
 }

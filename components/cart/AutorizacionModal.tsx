@@ -193,7 +193,7 @@ export default function AutorizacionModal({
                   name="documentNumber"
                   value={formData.documentNumber}
                   onChange={handleDocumentNumberChange}
-                  placeholder="74218601"
+                  // placeholder="74218601"
                   className={`w-full px-4 py-3 border-2 rounded-sm transition ${
                     errors.documentNumber
                       ? "border-red-500 focus:ring-red-500"
@@ -217,7 +217,7 @@ export default function AutorizacionModal({
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
-                  placeholder="Gonzalo Vera"
+                  // placeholder="Nombres Vera"
                   className={`w-full px-4 py-3 border-2 rounded-sm transition ${
                     errors.fullName
                       ? "border-red-500 focus:ring-red-500"

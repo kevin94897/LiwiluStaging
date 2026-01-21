@@ -12,6 +12,9 @@ export interface User {
     role?: string;
     electronicSignatureUrl?: string | null;
     emailVerified?: boolean;
+    documentType?: string;
+    documentNumber?: string;
+    phone?: string;
 }
 
 /**
@@ -37,7 +40,10 @@ export const mapApiUserToUser = (userData: any): User | null => {
         lastName: lastName,
         role: userData.role || '',
         electronicSignatureUrl: userData.electronicSignatureUrl || null,
-        emailVerified: !!userData.emailVerified
+        emailVerified: !!userData.emailVerified,
+        documentType: userData.documentType || userData.tipoDocumento || userData.typeDocument || '',
+        documentNumber: userData.documentNumber || userData.numeroDocumento || userData.dni || userData.ruc || userData.document || '',
+        phone: userData.phone || userData.celular || userData.mobile || userData.telefono || ''
     };
 };
 
@@ -64,10 +70,11 @@ export const clearAuthSession = () => {
     if (typeof window === 'undefined') return;
 
     stopTokenRefresh();
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    console.log('🧹 Auth session cleared');
+    
+    // Total wipe for maximum security and fresh state
+    localStorage.clear();
+    
+    console.log('🧹 Total session and storage cleared');
 };
 
 /**

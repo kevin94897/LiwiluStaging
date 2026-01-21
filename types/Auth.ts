@@ -6,11 +6,14 @@ export interface RegisterPayload {
     firstName: string;
     lastName: string;
     email: string;
-    confirmEmail: string;      // ⬅ ahora existe
+    confirmEmail: string;
     password: string;
-    confirmPassword: string;   // ⬅ ahora existe
+    confirmPassword: string;
     acceptTerms: boolean;
     receiveOffers: boolean;
+    documentType?: string;
+    documentNumber?: string;
+    phone?: string;
 }
 
 export interface RegisterResponse {

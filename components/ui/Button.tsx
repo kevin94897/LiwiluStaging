@@ -1,60 +1,67 @@
 // components/ui/Button.tsx
-import React from 'react';
+import React from "react";
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'outline_white';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "outline"
+  | "outline_white";
+export type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonBaseProps {
-    variant?: ButtonVariant;
-    size?: ButtonSize;
-    fullWidth?: boolean;
-    children: React.ReactNode;
-    leftIcon?: React.ReactNode;
-    rightIcon?: React.ReactNode;
-    href?: string;
-    disabled?: boolean;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  children: React.ReactNode;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  href?: string;
+  disabled?: boolean;
 }
 
 // ✅ Union type en lugar de extends para evitar conflictos
 export type ButtonProps = ButtonBaseProps &
-    (
-        | React.ButtonHTMLAttributes<HTMLButtonElement>
-        | React.AnchorHTMLAttributes<HTMLAnchorElement>
-    );
+  (
+    | React.ButtonHTMLAttributes<HTMLButtonElement>
+    | React.AnchorHTMLAttributes<HTMLAnchorElement>
+  );
 
 type CombinedRef = HTMLButtonElement | HTMLAnchorElement;
 
 const Button = React.forwardRef<CombinedRef, ButtonProps>(
-    (
-        {
-            variant = 'primary',
-            size = 'md',
-            fullWidth = false,
-            children,
-            leftIcon,
-            rightIcon,
-            className = '',
-            disabled = false,
-            href,
-            ...props
-        },
-        ref
-    ) => {
-        // Estilos base
-        const baseStyles = 'font-semibold transition-all duration-300 inline-flex items-center justify-center gap-2 text-center';
+  (
+    {
+      variant = "primary",
+      size = "md",
+      fullWidth = false,
+      children,
+      leftIcon,
+      rightIcon,
+      className = "",
+      disabled = false,
+      href,
+      ...props
+    },
+    ref,
+  ) => {
+    // Estilos base
+    const baseStyles =
+      "font-semibold transition-all duration-300 inline-flex items-center justify-center gap-2 text-center";
 
-        // Variantes de color
-        const variants = {
-            primary: `
+    // Variantes de color
+    const variants = {
+      primary: `
                 bg-primary
                 hover:bg-primary-dark
                 text-neutral-white
                 disabled:bg-neutral-grayLight
                 disabled:text-white
                 disabled:cursor-not-allowed
-            `.trim().replace(/\s+/g, ' '),
+            `
+        .trim()
+        .replace(/\s+/g, " "),
 
-            secondary: `
+      secondary: `
                 bg-neutral-white
                 hover:bg-primary-dark
                 text-primary
@@ -63,9 +70,11 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
                 disabled:bg-neutral-grayLight
                 disabled:text-white
                 disabled:cursor-not-allowed
-            `.trim().replace(/\s+/g, ' '),
+            `
+        .trim()
+        .replace(/\s+/g, " "),
 
-            outline: `
+      outline: `
                 bg-transparent
                 text-primary
                 border-2 border-primary
@@ -75,9 +84,11 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
                 disabled:text-white
                 disabled:border-neutral-grayLight
                 disabled:cursor-not-allowed
-            `.trim().replace(/\s+/g, ' '),
+            `
+        .trim()
+        .replace(/\s+/g, " "),
 
-            outline_white: `
+      outline_white: `
                 text-white
                 border-2 border-white
                 hover:border-transparent
@@ -87,67 +98,71 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
                 disabled:text-white
                 disabled:border-neutral-grayLight
                 disabled:cursor-not-allowed
-            `.trim().replace(/\s+/g, ' ')
-        };
+            `
+        .trim()
+        .replace(/\s+/g, " "),
+    };
 
-        // Tamaños
-        const sizes = {
-            sm: 'px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm rounded-full',
-            md: 'px-6 py-2.5 sm:px-8 sm:py-3 text-sm sm:text-base rounded-full',
-            lg: 'px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg rounded-full'
-        };
+    // Tamaños
+    const sizes = {
+      sm: "px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm rounded-full",
+      md: "px-6 py-2.5 sm:px-8 sm:py-3 text-sm sm:text-base rounded-full",
+      lg: "px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg rounded-full",
+    };
 
-        // Ancho completo
-        const widthClass = fullWidth ? 'w-full' : '';
+    // Ancho completo
+    const widthClass = fullWidth ? "w-full" : "";
 
-        // Deshabilitar eventos si es enlace deshabilitado
-        const pointerEventsClass = disabled && href ? 'pointer-events-none' : '';
+    // Deshabilitar eventos si es enlace deshabilitado
+    const pointerEventsClass = disabled && href ? "pointer-events-none" : "";
 
-        const buttonClasses = `
+    const buttonClasses = `
             ${baseStyles}
             ${variants[variant]}
             ${sizes[size]}
             ${widthClass}
             ${className}
             ${pointerEventsClass}
-        `.trim().replace(/\s+/g, ' ');
+        `
+      .trim()
+      .replace(/\s+/g, " ");
 
-        const content = (
-            <>
-                {leftIcon && <span className="flex-shrink-0">{leftIcon}</span>}
-                <span>{children}</span>
-                {rightIcon && <span className="flex-shrink-0">{rightIcon}</span>}
-            </>
-        );
+    const content = (
+      <>
+        {leftIcon && <span className="flex-shrink-0">{leftIcon}</span>}
+        {children}
+        {rightIcon && <span className="flex-shrink-0">{rightIcon}</span>}
+      </>
+    );
 
-        // Renderizado condicional
-        if (href) {
-            return (
-                <a
-                    ref={ref as React.ForwardedRef<HTMLAnchorElement>}
-                    href={href}
-                    className={buttonClasses}
-                    aria-disabled={disabled}
-                    {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
-                >
-                    {content}
-                </a>
-            );
-        }
-
-        return (
-            <button
-                ref={ref as React.ForwardedRef<HTMLButtonElement>}
-                className={buttonClasses}
-                disabled={disabled}
-                {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
-            >
-                {content}
-            </button>
-        );
+    // Renderizado condicional
+    if (href) {
+      return (
+        <a
+          ref={ref as React.ForwardedRef<HTMLAnchorElement>}
+          href={href}
+          className={buttonClasses}
+          aria-disabled={disabled}
+          {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+        >
+          {content}
+        </a>
+      );
     }
+
+    return (
+      <button
+        ref={ref as React.ForwardedRef<HTMLButtonElement>}
+        className={buttonClasses}
+        disabled={disabled}
+        {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
+      >
+        {content}
+      </button>
+    );
+  },
 );
 
-Button.displayName = 'Button';
+Button.displayName = "Button";
 
 export default Button;
