@@ -51,6 +51,7 @@ import {
   getCarriers,
   CartCarrier,
   getWarehouseDistricts,
+  getWarehouseProvinces,
   WarehouseDistrict,
   getWarehouseMap,
   WarehouseMapItem,
@@ -94,6 +95,10 @@ export default function Carrito() {
   const [warehouseDistricts, setWarehouseDistricts] = useState<
     WarehouseDistrict[]
   >([]);
+  const [warehouseProvinces, setWarehouseProvinces] = useState<
+    WarehouseDistrict[]
+  >([]);
+  const [pickupTab, setPickupTab] = useState<"lima" | "provincia">("lima");
   const [mapWarehouses, setMapWarehouses] = useState<WarehouseMapItem[]>([]);
   const [warehouseDetails, setWarehouseDetails] = useState<WarehouseDetail[]>(
     [],
@@ -477,20 +482,27 @@ export default function Carrito() {
     fetchCarriers();
   }, []);
 
-  // Fetch warehouse districts
+  // Fetch warehouse locations (districts and provinces)
   useEffect(() => {
-    const fetchDistricts = async () => {
+    const fetchLocations = async () => {
       try {
-        const response = await getWarehouseDistricts();
-        if (response.success) {
-          setWarehouseDistricts(response.data);
+        const [districtsRes, provincesRes] = await Promise.all([
+          getWarehouseDistricts(),
+          getWarehouseProvinces(),
+        ]);
+
+        if (districtsRes.success) {
+          setWarehouseDistricts(districtsRes.data);
+        }
+        if (provincesRes.success) {
+          setWarehouseProvinces(provincesRes.data);
         }
       } catch (error) {
-        console.error("Error fetching warehouse districts:", error);
+        console.error("Error fetching warehouse locations:", error);
       }
     };
 
-    fetchDistricts();
+    fetchLocations();
   }, []);
 
   // Sync local selectedCarrier with contextCarrier
@@ -665,20 +677,21 @@ export default function Carrito() {
     setLoadingStores(true);
 
     try {
-      // Find the codUbigeoAlm for the selected district
-      const district = warehouseDistricts.find(
-        (d) => d.desDistrito === distrito,
+      // Find the codUbigeoAlm for the selected district/province
+      const locationList = pickupTab === "lima" ? warehouseDistricts : warehouseProvinces;
+      const location = locationList.find(
+        (l) => l.desDistrito === distrito,
       );
-      if (district) {
+      if (location) {
         console.log(
-          `📍 Buscando almacenes para: ${distrito} (${district.codUbigeoAlm})`,
+          `📍 Buscando almacenes para: ${distrito} (${location.codUbigeoAlm})`,
         );
-        const response = await getWarehouseMap(district.codUbigeoAlm);
+        const response = await getWarehouseMap(location.codUbigeoAlm);
         if (response.success) {
           setMapWarehouses(response.data);
 
           // Also fetch details
-          getWarehouseDetails(district.codUbigeoAlm).then((detailsRes) => {
+          getWarehouseDetails(location.codUbigeoAlm).then((detailsRes) => {
             if (detailsRes.success) {
               setWarehouseDetails(detailsRes.data);
             }
@@ -2193,6 +2206,13 @@ export default function Carrito() {
               mostrarMapa={mostrarMapa}
               setMostrarMapa={setMostrarMapa}
               warehouseDistricts={warehouseDistricts}
+              warehouseProvinces={warehouseProvinces}
+              pickupTab={pickupTab}
+              onTabChange={(tab) => {
+                setPickupTab(tab);
+                setDistritoSeleccionado("");
+                setMostrarMapa(false);
+              }}
               mapWarehouses={mapWarehouses}
               warehouseDetails={warehouseDetails}
               tiendaSeleccionada={tiendaSeleccionada}

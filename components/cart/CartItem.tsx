@@ -249,7 +249,7 @@ export default function CartItem({
                   );
                   if (productIssue) {
                     return (
-                      <div className="flex items-center gap-1.5 text-red-600 font-medium text-xs mb-2">
+                      <div className="flex items-center gap-1.5 text-red-600 font-medium text-xs mb-2 hidden">
                         <FaTimesCircle className="shrink-0" />
                         <span>{productIssue.mensaje}</span>
                       </div>
@@ -323,7 +323,7 @@ export default function CartItem({
               <div className="text-right">
                 {item.product.originalPrice &&
                   parseFloat(item.product.originalPrice.toString()) >
-                    precioUnitario && (
+                  precioUnitario && (
                     <p className="text-sm text-gray-400 line-through">
                       {formatPrice(item.product.originalPrice.toString())}
                     </p>

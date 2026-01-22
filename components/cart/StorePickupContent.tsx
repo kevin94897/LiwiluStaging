@@ -20,6 +20,9 @@ interface StorePickupContentProps {
   mostrarMapa: boolean;
   setMostrarMapa: (mostrar: boolean) => void;
   warehouseDistricts: any[];
+  warehouseProvinces: any[];
+  pickupTab: "lima" | "provincia";
+  onTabChange: (tab: "lima" | "provincia") => void;
   mapWarehouses: any[];
   warehouseDetails?: any[];
   tiendaSeleccionada: string | null;
@@ -36,6 +39,9 @@ export default function StorePickupContent({
   mostrarMapa,
   setMostrarMapa,
   warehouseDistricts,
+  warehouseProvinces,
+  pickupTab,
+  onTabChange,
   mapWarehouses,
   warehouseDetails = [],
   tiendaSeleccionada,
@@ -48,47 +54,71 @@ export default function StorePickupContent({
 
   return (
     <>
-      {!distritoSeleccionado && (
-        <div className="mt-4 animate-fade-in bg-white rounded-sm shadow-md p-6">
+      <div className="mt-4 animate-fade-in bg-white rounded-sm shadow-md overflow-hidden transition-all">
+        {/* Tabs for Lima and Provincia */}
+        <div className="flex border-b">
+          <button
+            onClick={() => onTabChange("lima")}
+            className={`flex-1 py-4 text-center font-semibold transition ${pickupTab === "lima"
+              ? "text-primary border-b-2 border-primary bg-primary/5"
+              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+          >
+            Lima
+          </button>
+          <button
+            onClick={() => onTabChange("provincia")}
+            className={`flex-1 py-4 text-center font-semibold transition ${pickupTab === "provincia"
+              ? "text-primary border-b-2 border-primary bg-primary/5"
+              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+          >
+            Provincia
+          </button>
+        </div>
+
+        <div className="p-6">
           <h2 className="text-lg font-semibold mb-4">Retiro en Tienda</h2>
           <p className="text-sm text-gray-700 mb-3">
-            Selecciona el distrito para consultar los puntos de retiro
-            disponibles
+            Selecciona el {pickupTab === "lima" ? "distrito" : "la provincia"}{" "}
+            para consultar los puntos de retiro disponibles
           </p>
           <select
             value={distritoSeleccionado}
-            onChange={(e) => onSelectDistrito(e.target.value)}
+            onChange={(e) => {
+              onSelectDistrito(e.target.value);
+              if (e.target.value) setMostrarMapa(true);
+            }}
             className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
           >
-            <option value="">Seleccionar distrito</option>
-            {warehouseDistricts.map((district) => (
-              <option key={district.codUbigeoAlm} value={district.desDistrito}>
-                {district.desDistrito}
-              </option>
-            ))}
+            <option value="">
+              Seleccionar {pickupTab === "lima" ? "distrito" : "provincia"}
+            </option>
+            {pickupTab === "lima"
+              ? warehouseDistricts.map((district) => (
+                <option
+                  key={district.codUbigeoAlm}
+                  value={district.desDistrito}
+                >
+                  {district.desDistrito}
+                </option>
+              ))
+              : warehouseProvinces.map((province) => (
+                <option
+                  key={province.codUbigeoAlm}
+                  value={province.desDistrito}
+                >
+                  {province.desDistrito}
+                </option>
+              ))}
           </select>
         </div>
-      )}
+      </div>
 
-      {mostrarMapa && (
+      {mostrarMapa && distritoSeleccionado && (
         <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in-up mt-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold">Puntos de retiro más cercanos</h2>
-            <button
-              onClick={() => {
-                onSelectDistrito("");
-                setMostrarMapa(false);
-              }}
-              className="text-sm text-primary hover:text-primary-dark flex items-center gap-1"
-            >
-              <FaPencil className="text-sm" /> Editar
-            </button>
-          </div>
-
-          <div className="mb-4 p-3 bg-gray-100 rounded-sm">
-            <p className="text-sm text-gray-700">
-              <strong>Distrito:</strong> {distritoSeleccionado}
-            </p>
           </div>
 
           {/* Mapa Interactivo */}
@@ -100,13 +130,13 @@ export default function StorePickupContent({
                   (w) => w.idAlmacen.toString() === tiendaSeleccionada,
                 )
                   ? [
-                      mapWarehouses.find(
-                        (w) => w.idAlmacen.toString() === tiendaSeleccionada,
-                      )!.latitud,
-                      mapWarehouses.find(
-                        (w) => w.idAlmacen.toString() === tiendaSeleccionada,
-                      )!.longitud,
-                    ]
+                    mapWarehouses.find(
+                      (w) => w.idAlmacen.toString() === tiendaSeleccionada,
+                    )!.latitud,
+                    mapWarehouses.find(
+                      (w) => w.idAlmacen.toString() === tiendaSeleccionada,
+                    )!.longitud,
+                  ]
                   : undefined
               }
             />
@@ -151,13 +181,12 @@ export default function StorePickupContent({
                 return (
                   <div
                     key={tienda.idAlmacen}
-                    className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${
-                      isSelected
-                        ? isAvailable
-                          ? "border-primary bg-primary/5"
-                          : "border-red-500 bg-red-50"
-                        : "border-gray-200 hover:border-primary/50"
-                    }`}
+                    className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${isSelected
+                      ? isAvailable
+                        ? "border-primary bg-primary/5"
+                        : "border-red-500 bg-red-50"
+                      : "border-gray-200 hover:border-primary/50"
+                      }`}
                     onClick={() => {
                       setTiendaSeleccionada(tienda.idAlmacen.toString());
                       if (onSelectStore && details) {
@@ -200,11 +229,10 @@ export default function StorePickupContent({
                       <div className="ml-4">
                         {isSelected && (
                           <div
-                            className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                              isAvailable ? "bg-primary" : "bg-red-500"
-                            }`}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center ${isAvailable ? "bg-primary" : "bg-red-500"
+                              }`}
                           >
-                            <FaCheck className="text-white text-xs" />
+                            <FaCheck className="text-white text-xs translate-x-[0.5px] translate-y-[0.5px]" />
                           </div>
                         )}
                       </div>

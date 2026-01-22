@@ -447,6 +447,28 @@ export async function getWarehouseDistricts(): Promise<{ success: boolean; data:
 }
 
 /**
+ * Get available warehouse provinces for pickup
+ * @returns Promise with the list of provinces
+ */
+export async function getWarehouseProvinces(): Promise<{ success: boolean; data: WarehouseDistrict[]; total: number }> {
+    try {
+        const response = await apiGet('/orders/almacenes/provincias', {
+            skipAuth: true
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error fetching provinces: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in getWarehouseProvinces:', error);
+        throw error;
+    }
+}
+
+/**
  * Get warehouse map data for a specific district (ubigeo)
  * @param ubigeo - The ubigeo code of the district
  * @returns Promise with the list of warehouses and their coordinates
