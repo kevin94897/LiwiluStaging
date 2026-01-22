@@ -185,20 +185,34 @@ export default function Carrito() {
     }
   }, [isAuthenticated, authLoading]);
 
-  // Fetch delivery zones for carrier 250
+  // Fetch delivery zones for the selected carrier
   useEffect(() => {
     const fetchZones = async () => {
+      if (!selectedCarrier?.id) {
+        setDeliveryZones([]);
+        return;
+      }
+
+      // Skip for pickup methods (usually those with 0 shipping cost or "retiro" in name)
+      if (metodoEnvio === "retiro") {
+        setDeliveryZones([]);
+        return;
+      }
+
       try {
-        const response = await getDeliveryZones(250);
+        const response = await getDeliveryZones(selectedCarrier.id);
         if (response.success) {
           setDeliveryZones(response.zones);
+        } else {
+          setDeliveryZones([]);
         }
       } catch (error) {
         console.error("Error fetching delivery zones:", error);
+        setDeliveryZones([]);
       }
     };
     fetchZones();
-  }, []);
+  }, [selectedCarrier?.id, metodoEnvio]);
 
   // Trigger Savar stock validation when delivery is selected or district changes
   useEffect(() => {
@@ -211,7 +225,7 @@ export default function Carrito() {
     const syncDeliveryPrice = async () => {
       if (
         metodoEnvio === "delivery" &&
-        selectedCarrier?.id === 250 &&
+        selectedCarrier?.id &&
         direccionEnvio.distrito &&
         deliveryZones.length > 0 &&
         items.length > 0
@@ -224,7 +238,7 @@ export default function Carrito() {
         if (matchingZone) {
           try {
             await saveCartDeliveryPrice({
-              carrierId: 250,
+              carrierId: selectedCarrier.id,
               shippingCost: matchingZone.price,
               zoneId: matchingZone.zoneId,
               zoneName: matchingZone.zoneName,
@@ -358,17 +372,17 @@ export default function Carrito() {
       const info =
         isLoggedIn && user
           ? {
-              tipoDocumento: user.documentType || "DNI",
-              numeroDocumento: user.documentNumber || "",
-              nombreCompleto:
-                `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-            }
+            tipoDocumento: user.documentType || "DNI",
+            numeroDocumento: user.documentNumber || "",
+            nombreCompleto:
+              `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+          }
           : {
-              tipoDocumento: guestData.tipoDocumento,
-              numeroDocumento: guestData.numeroDocumento,
-              nombreCompleto:
-                `${guestData.nombre} ${guestData.apellido}`.trim(),
-            };
+            tipoDocumento: guestData.tipoDocumento,
+            numeroDocumento: guestData.numeroDocumento,
+            nombreCompleto:
+              `${guestData.nombre} ${guestData.apellido}`.trim(),
+          };
 
       if (info.nombreCompleto && info.numeroDocumento) {
         savePickupPerson(info).catch((err) =>
@@ -1448,11 +1462,10 @@ export default function Carrito() {
                         value={loginData.email}
                         onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
                         placeholder="ejemplo@correo.com"
-                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                          loginErrors.email
+                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.email
                             ? "border-red-500"
                             : "border-gray-200"
-                        }`}
+                          }`}
                       />
                       {loginErrors.email && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1471,11 +1484,10 @@ export default function Carrito() {
                         value={loginData.password}
                         onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
                         placeholder="••••••••"
-                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                          loginErrors.password
+                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.password
                             ? "border-red-500"
                             : "border-gray-200"
-                        }`}
+                          }`}
                       />
                       {loginErrors.password && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1563,11 +1575,10 @@ export default function Carrito() {
                           value={registroData.nombre}
                           onChange={handleRegistroChange} // ✅ Cambiar
                           placeholder="Nombres"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.nombre
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.nombre
                               ? "border-red-500"
                               : "border-gray-200"
-                          }`}
+                            }`}
                         />
                         {registroErrors.nombre && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1586,11 +1597,10 @@ export default function Carrito() {
                           value={registroData.apellido}
                           onChange={handleRegistroChange} // ✅ Cambiar
                           placeholder="Apellidos"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.apellido
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.apellido
                               ? "border-red-500"
                               : "border-gray-200"
-                          }`}
+                            }`}
                         />
                         {registroErrors.apellido && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1619,11 +1629,10 @@ export default function Carrito() {
                               | "Pasaporte", // ✅ Type assertion
                           })
                         }
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.tipoDocumento
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.tipoDocumento
                             ? "border-red-500"
                             : "border-gray-200"
-                        }`}
+                          }`}
                       >
                         <option value="DNI">DNI</option>
                         <option value="RUC">RUC</option>
@@ -1640,11 +1649,10 @@ export default function Carrito() {
                           value={registroData.numeroDocumento}
                           onChange={handleRegistroChange}
                           placeholder="12345678"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.numeroDocumento
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.numeroDocumento
                               ? "border-red-500"
                               : "border-gray-200"
-                          }`}
+                            }`}
                         />
                         {registroErrors.numeroDocumento && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1673,11 +1681,10 @@ export default function Carrito() {
                           value={registroData.celular}
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.celular
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.celular
                               ? "border-red-500"
                               : "border-gray-200"
-                          }`}
+                            }`}
                         />
                         {registroErrors.celular && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1696,11 +1703,10 @@ export default function Carrito() {
                           value={registroData.telefonoOpcional}
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.telefonoOpcional
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.telefonoOpcional
                               ? "border-red-500"
                               : "border-gray-200"
-                          }`}
+                            }`}
                         />
                         {registroErrors.telefonoOpcional && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1734,11 +1740,10 @@ export default function Carrito() {
                           value={registroData.provincia}
                           onChange={handleRegistroChange}
                           placeholder="Lima"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.provincia
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.provincia
                               ? "border-red-500"
                               : "border-gray-200"
-                          }`}
+                            }`}
                         />
                         {registroErrors.provincia && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1757,11 +1762,10 @@ export default function Carrito() {
                         name="distrito"
                         value={registroData.distrito}
                         onChange={handleRegistroChange}
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.distrito
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.distrito
                             ? "border-red-500"
                             : "border-gray-200"
-                        }`}
+                          }`}
                       >
                         <option value="">Seleccionar distrito</option>
                         {warehouseDistricts.map((d) => (
@@ -1788,11 +1792,10 @@ export default function Carrito() {
                         value={registroData.direccion}
                         onChange={handleRegistroChange}
                         placeholder="Calle rosales 432"
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.direccion
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.direccion
                             ? "border-red-500"
                             : "border-gray-200"
-                        }`}
+                          }`}
                       />
                       {registroErrors.direccion && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1813,11 +1816,10 @@ export default function Carrito() {
                           value={registroData.numeroDpto}
                           onChange={handleRegistroChange}
                           placeholder="201"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.numeroDpto
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.numeroDpto
                               ? "border-red-500"
                               : "border-gray-200"
-                          }`}
+                            }`}
                         />
                         {registroErrors.numeroDpto && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1836,11 +1838,10 @@ export default function Carrito() {
                           value={registroData.referencia}
                           onChange={handleRegistroChange}
                           placeholder="Frente al parque"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.referencia
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.referencia
                               ? "border-red-500"
                               : "border-gray-200"
-                          }`}
+                            }`}
                         />
                         {registroErrors.referencia && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1863,11 +1864,10 @@ export default function Carrito() {
                           value={registroData.email}
                           onChange={handleRegistroChange}
                           placeholder="ejemplo@correo.com"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.email
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.email
                               ? "border-red-500"
                               : "border-gray-200"
-                          }`}
+                            }`}
                         />
                         {registroErrors.email && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1888,11 +1888,10 @@ export default function Carrito() {
                             value={registroData.password}
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
-                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                              registroErrors.password
+                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.password
                                 ? "border-red-500"
                                 : "border-gray-200"
-                            }`}
+                              }`}
                           />
                           {registroErrors.password && (
                             <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1911,11 +1910,10 @@ export default function Carrito() {
                             value={registroData.confirmarPassword}
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
-                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                              registroErrors.confirmarPassword
+                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.confirmarPassword
                                 ? "border-red-500"
                                 : "border-gray-200"
-                            }`}
+                              }`}
                           />
                           {registroErrors.confirmarPassword && (
                             <p className="text-red-500 text-xs mt-1 flex items-center gap-1">

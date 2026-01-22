@@ -65,41 +65,38 @@ export default function DeliveryMethodSelector({
               <button
                 key={carrier.id}
                 onClick={() => onSelectCarrier(carrier)}
-                className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${
-                  isSelected
+                className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${isSelected
                     ? "border-primary bg-primary/5"
                     : "border-gray-200 hover:border-primary/50"
-                }`}
+                  }`}
               >
                 {isRetiro ? (
                   <FaStore
-                    className={`text-2xl ${
-                      isSelected ? "text-primary" : "text-gray-400"
-                    }`}
+                    className={`text-2xl ${isSelected ? "text-primary" : "text-gray-400"
+                      }`}
                   />
                 ) : (
                   <FaTruck
-                    className={`text-2xl ${
-                      isSelected ? "text-primary" : "text-gray-400"
-                    }`}
+                    className={`text-2xl ${isSelected ? "text-primary" : "text-gray-400"
+                      }`}
                   />
                 )}
                 <div className="text-left">
                   <p className="font-semibold">{carrier.name}</p>
                   <p className="text-xs text-gray-500">
-                    {carrier.id === 250 && deliveryZones.length > 0
+                    {selectedCarrier?.id === carrier.id && deliveryZones.length > 0
                       ? (() => {
-                          const zone = deliveryZones.find(
-                            (z) =>
-                              normalizeText(z.zoneName) ===
-                              normalizeText(direccionEnvio.distrito),
-                          );
-                          return zone
-                            ? formatPrice(zone.price)
-                            : carrier.shippingCost === 0
-                              ? "Gratis"
-                              : carrier.delay || "Disponible";
-                        })()
+                        const zone = deliveryZones.find(
+                          (z) =>
+                            normalizeText(z.zoneName) ===
+                            normalizeText(direccionEnvio.distrito),
+                        );
+                        return zone
+                          ? formatPrice(zone.price)
+                          : carrier.shippingCost === 0
+                            ? "Gratis"
+                            : carrier.delay || "Disponible";
+                      })()
                       : carrier.shippingCost === 0
                         ? "Gratis"
                         : carrier.delay || "Disponible"}

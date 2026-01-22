@@ -624,7 +624,7 @@ export interface DeliveryZonesResponse {
 export async function getDeliveryZones(carrierId: number): Promise<DeliveryZonesResponse> {
     try {
         const response = await apiGet(`/cart/delivery-zones/${carrierId}`, {
-            skipAuth: true 
+            skipAuth: true
         });
 
         if (!response.ok) {
@@ -691,7 +691,7 @@ export interface SavarStockValidationResult {
 export async function validateSavarStock(reference: string, quantity: number): Promise<SavarStockValidationResult> {
     try {
         const response = await apiGet(`/cart/validate-stock-savar?reference=${reference}&stockSeleccionado=${quantity}`, {
-            skipAuth: true 
+            skipAuth: true
         });
 
         if (!response.ok) {
@@ -813,7 +813,7 @@ export async function createOrder(data: {
     token: string;
     invoiceType: string;
     invoiceData?: any;
-}): Promise<{ success: boolean; orderId?: number; message?: string; [key: string]: any }> {
+}): Promise<{ success: boolean; orderId?: number; message?: string;[key: string]: any }> {
     try {
         // El token NO debe ir en el body ni en el header según requerimiento para evitar errores de CORS
         const { token, ...bodyData } = data;

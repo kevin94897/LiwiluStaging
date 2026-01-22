@@ -186,11 +186,10 @@ export default function CategorySidebar({
                           className="w-full text-left group flex items-start gap-3"
                         >
                           <div
-                            className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
-                              isSelected
-                                ? "bg-primary border-primary"
-                                : "border-gray-300 bg-white group-hover:border-primary"
-                            }`}
+                            className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all duration-200 ${isSelected
+                              ? "bg-primary border-primary"
+                              : "border-gray-300 bg-white group-hover:border-primary"
+                              }`}
                           >
                             {isSelected && (
                               <svg
@@ -209,11 +208,10 @@ export default function CategorySidebar({
                             )}
                           </div>
                           <span
-                            className={`text-sm transition-colors ${
-                              isSelected
-                                ? "text-primary font-medium"
-                                : "text-gray-600 group-hover:text-gray-900"
-                            }`}
+                            className={`text-sm transition-colors ${isSelected
+                              ? "text-primary font-medium"
+                              : "text-gray-600 group-hover:text-gray-900"
+                              }`}
                           >
                             {item.name}
                           </span>
@@ -231,7 +229,7 @@ export default function CategorySidebar({
       <div className="pt-6">
         <div className="relative h-64 md:h-72 group rounded-md overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
           <Image
-            src="https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400&h=500&fit=crop"
+            src="/images/productos/liwilu_tienda_filtros.png"
             alt="Banner Promocional"
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-105"
@@ -258,11 +256,10 @@ export default function CategorySidebar({
 
       {/* Mobile Drawer */}
       <div
-        className={`fixed inset-0 z-[100] transition-all duration-300 md:hidden ${
-          isOpenMobile
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 z-[100] transition-all duration-300 md:hidden ${isOpenMobile
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
+          }`}
       >
         {/* Overlay */}
         <div
@@ -272,9 +269,8 @@ export default function CategorySidebar({
 
         {/* Sidebar Container */}
         <div
-          className={`absolute inset-y-0 left-0 w-[85%] max-w-[320px] transform transition-transform duration-300 ease-out ${
-            isOpenMobile ? "translate-x-0" : "-translate-x-full"
-          }`}
+          className={`absolute inset-y-0 left-0 w-[85%] max-w-[320px] transform transition-transform duration-300 ease-out ${isOpenMobile ? "translate-x-0" : "-translate-x-full"
+            }`}
         >
           {sidebarContent("h-full overflow-y-auto custom-scrollbar")}
         </div>

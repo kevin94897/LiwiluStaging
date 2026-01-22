@@ -61,9 +61,9 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
               <Image
                 src={imageUrl}
                 alt={getProductName(product)}
-                fill
-                sizes="(max-width: 768px) 100vw, 220px"
-                unoptimized
+                width={300}
+                height={300}
+                sizes="300px"
                 className="object-contain"
               />
             </div>
@@ -135,7 +135,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
               />
             </motion.div>
 
-            <div className="relative max-w-7xl mx-auto px-4 md:px-6 w-full flex items-center justify-between md:flex-row flex-col z-20">
+            <div className="relative max-w-7xl mx-auto md:px-6 w-full flex items-center justify-between md:flex-row flex-col z-20">
               {/* Contenido izquierdo */}
               <motion.div
                 className="w-full md:w-1/2"
@@ -147,7 +147,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
               >
-                <div className="py-10 md:py-12 mx-auto max-w-md md:max-w-full">
+                <div className="py-10 md:py-12 mx-auto max-w-md md:max-w-full px-4 md:px-0">
                   {/* Título */}
                   <motion.h2
                     className="text-3xl md:text-4xl lg:text-5xl font-semibold mb-4 text-primary-light uppercase"
@@ -230,7 +230,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                     alt="Niños"
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-contain object-bottom"
+                    className="object-contain absolute bottom-0 left-0"
                   />
                 </div>
 
@@ -286,7 +286,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                   <Image
                     src="/images/liwilu_logo-xl.png"
                     alt="Liwilu Logo"
-                    width={180}
+                    width={120}
                     height={60}
                     className="h-auto"
                   />
@@ -382,7 +382,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
               </motion.div>
             </div>
             {/* Bottom Percentage Strip */}
-            <div className="absolute bottom-12 w-full bg-white h-20 md:h-24 flex items-center overflow-hidden z-10">
+            <div className="absolute bottom-8 w-full bg-white h-20 md:h-24 flex items-center overflow-hidden z-10">
               <div className="flex whitespace-nowrap animate-marquee">
                 {[...Array(30)].map((_, i) => (
                   <span
@@ -447,7 +447,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
               />
             </motion.div>
 
-            <div className="relative max-w-7xl mx-auto px-4 md:px-6 w-full h-full flex items-center justify-between md:flex-row flex-col-reverse md:gap-12">
+            <div className="relative max-w-7xl mx-auto md:px-6 w-full h-full flex items-center justify-between md:flex-row flex-col-reverse md:gap-12">
               <motion.div
                 className="relative w-full md:w-1/2 flex justify-end items-end md:min-h-[520px] overflow-visible"
                 initial="hidden"
@@ -460,7 +460,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                     alt="Niños"
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-contain object-bottom"
+                    className="object-contain object-left"
                   />
                 </div>
                 <div className="relative w-full h-full hidden md:absolute md:inset-y-0 md:right-0 md:block md:w-[110%]">
@@ -480,7 +480,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                 animate={selectedIndex === 2 ? "visible" : "hidden"}
                 variants={slideInRight}
               >
-                <div className="py-10 md:py-12 mx-auto max-w-md md:max-w-full">
+                <div className="py-10 md:py-12 mx-auto max-w-md md:max-w-full px-4 md:px-0">
                   <motion.div
                     className="md:hidden block mb-4"
                     variants={fadeInUp}
@@ -489,7 +489,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                     <Image
                       src="/images/liwilu_logo-xl.png"
                       alt="Liwilu Logo"
-                      width={180}
+                      width={120}
                       height={60}
                       className="h-auto"
                     />
