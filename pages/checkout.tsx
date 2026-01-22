@@ -14,20 +14,23 @@ import Script from "next/script";
 import { openCulqi, configureCulqi, closeCulqi } from "@/lib/culqi";
 import { showToast } from "@/lib/notifications";
 import { validateDNI, validateRUC } from "@/lib/validations";
-import { createOrder } from "@/lib/cart";
+import { createOrder, payOrder } from "@/lib/cart";
+import { useAuth } from "@/hooks/useAuth";
 
 type TipoComprobante = "boleta" | "factura";
 type MetodoPago = "tarjeta" | "yape" | "efectivo";
 
 export default function Checkout() {
   const router = useRouter();
-  const { items, getCartTotal, clearCart, totals, syncCart } = useCart();
+  const { user, isAuthenticated } = useAuth();
+  const { items, getCartTotal, clearCart, totals, syncCart, cartId } = useCart();
   const [tipoComprobante, setTipoComprobante] =
     useState<TipoComprobante>("factura");
   const [metodoPago, setMetodoPago] = useState<MetodoPago | null>(null);
   const [processing, setProcessing] = useState(false);
   const [culqiReady, setCulqiReady] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
 
   // Datos para Boleta
   const [tipoDocumentoBoleta, setTipoDocumentoBoleta] = useState("DNI");
@@ -75,58 +78,53 @@ export default function Checkout() {
         console.log("✅ Token de Culqi recibido:", token.id);
 
         try {
+          if (!currentOrderId) {
+            throw new Error("No se ha generado un ID de orden para el pago");
+          }
+
           setProcessing(true);
 
-          // Construir payload para la orden
-          const invoicePayload: any = {
-            token: token.id,
-            invoiceType: tipoComprobante.toUpperCase(), // "FACTURA" o "BOLETA"
-          };
-
-          if (tipoComprobante === "factura") {
-            invoicePayload.invoiceData = {
-              ruc: datosFactura.ruc,
-              razonSocial: datosFactura.razonSocial,
-              direccionFiscal: datosFactura.direccionFiscal,
-            };
-          }
-
-          // Simulación de creación de orden (Endpoint /orders en pausa)
-          console.log(
-            "💰 Simulando procesamiento de orden para token:",
-            token.id,
-          );
-
-          await new Promise((resolve) => setTimeout(resolve, 1500)); // Simular latencia
-
-          closeCulqi();
-          showToast("💳 Pago procesado exitosamente (Simulado)", "success");
-          setIsSuccess(true);
-          clearCart();
-
-          const fakeOrderId = Math.floor(Math.random() * 90000) + 10000;
-          router.push(`/pedido-exitoso?order=${fakeOrderId}`);
-
-          /* 
-          // Llamar al endpoint /orders (Desactivado temporalmente)
-          const response = await createOrder(invoicePayload);
-
-          if (response.success) {
-            closeCulqi();
-            showToast("💳 Pago procesado exitosamente", "success");
-            clearCart();
-            // Usar ID real o fallback
-            const orderId =
-              response.orderId || Math.floor(Math.random() * 9000) + 1000;
-            router.push(`/pedido-exitoso?order=${orderId}`);
+          // 1. Obtener email (Usuario o Invitado)
+          let email = "";
+          if (isAuthenticated && user?.email) {
+            email = user.email;
           } else {
-            throw new Error(response.message || "Error al crear la orden");
+            const guestDataRaw = localStorage.getItem("liwilu_guestData");
+            if (guestDataRaw) {
+              const guestData = JSON.parse(guestDataRaw);
+              email = guestData.email;
+            }
           }
-          */
+
+          if (!email) {
+            throw new Error(
+              "No se encontró el correo electrónico para procesar el pago",
+            );
+          }
+
+          // 2. Procesar Pago
+          console.log(`💳 Procesando pago para la orden ${currentOrderId}...`);
+          const payResponse = await payOrder(currentOrderId.toString(), {
+            token: token.id,
+            email: email,
+          });
+
+          if (payResponse.success) {
+            closeCulqi();
+            showToast("💳 ¡Compra realizada con éxito!", "success");
+            setIsSuccess(true);
+            clearCart();
+            router.push(`/pedido-exitoso?order=${currentOrderId}`);
+          } else {
+            throw new Error(payResponse.message || "Error al procesar el pago");
+          }
         } catch (error: any) {
-          console.error("❌ Error al procesar cargo/orden:", error);
-          showToast(error.message || "Error al procesar el pago", "error");
+          console.error("❌ Error en el proceso de pago/orden:", error);
+          // Si el mensaje tiene formato de stock, mostrarlo claramente
+          const errorMessage = error.message || "Error al completar la compra";
+          showToast(errorMessage, "error");
           setProcessing(false);
+          closeCulqi();
         }
       } else if (window.Culqi.order) {
         // Manejo de pedidos (Yape/PagoEfectivo)
@@ -154,6 +152,10 @@ export default function Checkout() {
     datosFactura,
     tipoDocumentoBoleta,
     datosBoletaRUC,
+    cartId,
+    isAuthenticated,
+    user,
+    currentOrderId,
   ]);
 
   // Validar campos según tipo de comprobante
@@ -221,20 +223,53 @@ export default function Checkout() {
 
       try {
         setProcessing(true);
-        const numeroPedido = Math.floor(Math.random() * 90000) + 10000;
 
-        console.log("🚀 [Checkout] Iniciando flujo Culqi [CULQI-V6]");
+        // 1. Crear la orden primero
+        console.log("📝 Generando orden...");
+        const invoicePayload: any = {
+          invoiceType: tipoComprobante.toUpperCase(), // "FACTURA" o "BOLETA"
+        };
+
+        if (tipoComprobante === "factura") {
+          invoicePayload.invoiceData = {
+            ruc: datosFactura.ruc,
+            razonSocial: datosFactura.razonSocial,
+            direccionFiscal: datosFactura.direccionFiscal,
+          };
+        } else {
+          invoicePayload.invoiceData = {
+            tipoDocumento: tipoDocumentoBoleta,
+            numeroDocumento: datosBoletaRUC,
+          };
+        }
+
+        const orderResponse = await createOrder(invoicePayload);
+
+        if (!orderResponse.success) {
+          throw new Error(orderResponse.message || "Error al crear la orden");
+        }
+
+        const orderId =
+          orderResponse.data?.orderId || orderResponse.orderId || orderResponse.id;
+
+        if (!orderId) {
+          throw new Error("No se recibió un ID de orden del servidor");
+        }
+
+        console.log("✅ Orden creada:", orderId);
+        setCurrentOrderId(orderId);
+
+        // 2. Abrir pasarela Culqi
+        console.log("🚀 [Checkout] Iniciando flujo Culqi");
         openCulqi({
           title: "Liwilu",
           currency: "PEN",
-          description: `Pedido ${numeroPedido} - Liwilu Shop`,
+          description: `Pedido ${orderId} - Liwilu Shop`,
           amount: total,
         });
-
-        // El estado 'processing' se manejará en el callback 'window.culqi'
-      } catch (error) {
-        console.error("❌ [Checkout] Error al abrir pasarela:", error);
-        showToast("No se pudo conectar con la pasarela de pagos", "error");
+      } catch (error: any) {
+        console.error("❌ Error en handleProcesarPago:", error);
+        showToast(error.message || "Ocurrió un error al procesar tu solicitud", "error");
         setProcessing(false);
       }
       return;
@@ -324,21 +359,19 @@ export default function Checkout() {
               <div className="flex gap-4 mb-6">
                 <button
                   onClick={() => setTipoComprobante("boleta")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                    tipoComprobante === "boleta"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "boleta"
+                    ? "border-primary bg-primary text-white"
+                    : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                 >
                   Boleta
                 </button>
                 <button
                   onClick={() => setTipoComprobante("factura")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                    tipoComprobante === "factura"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "factura"
+                    ? "border-primary bg-primary text-white"
+                    : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                 >
                   <span className="flex items-center justify-center gap-2">
                     <svg
@@ -506,11 +539,10 @@ export default function Checkout() {
                 {/* Tarjeta de crédito/débito */}
                 <button
                   onClick={() => setMetodoPago("tarjeta")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                    metodoPago === "tarjeta"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "tarjeta"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <FaCreditCard className="text-2xl text-gray-600" />
@@ -541,11 +573,10 @@ export default function Checkout() {
                 {/* Yape */}
                 <button
                   onClick={() => setMetodoPago("yape")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                    metodoPago === "yape"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "yape"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-purple-600 rounded-sm flex items-center justify-center text-white font-bold">
@@ -578,11 +609,10 @@ export default function Checkout() {
                 {/* Pago Efectivo */}
                 <button
                   onClick={() => setMetodoPago("efectivo")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                    metodoPago === "efectivo"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "efectivo"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <FaMoneyBillWave className="text-2xl text-green-600" />
@@ -754,9 +784,9 @@ export default function Checkout() {
                         </p>
                         {item.product.originalPrice &&
                           parseFloat(item.product.originalPrice.toString()) >
-                            parseFloat(
-                              (item.product.price || "0").toString(),
-                            ) && (
+                          parseFloat(
+                            (item.product.price || "0").toString(),
+                          ) && (
                             <p className="text-xs text-gray-400 line-through">
                               {formatPrice(
                                 (

@@ -58,15 +58,9 @@ export default function MiCuenta() {
 						emailVerified: result.data.emailVerified || false,
 					});
 
-					// Actualizar localStorage con datos frescos
-					const userStr = localStorage.getItem('user');
-					if (userStr) {
-						const user = JSON.parse(userStr);
-						user.firstName = result.data.firstName;
-						user.lastName = result.data.lastName;
-						user.emailVerified = result.data.emailVerified;
-						localStorage.setItem('user', JSON.stringify(user));
-					}
+					// Actualizar localStorage con datos frescos usando la utilidad centralizada
+					const { updateUserSession } = await import('@/lib/auth/authUtils');
+					updateUserSession(result.data);
 				}
 
 				// Cargar direcciones del usuario

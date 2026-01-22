@@ -7,43 +7,79 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatPrice } from "@/lib/utils";
-import { FaCheckCircle } from "react-icons/fa";
+import { FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import Button from "@/components/ui/Button";
+import { getOrderDetail } from "@/lib/cart";
 
 export default function PedidoExitoso() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [numeroPedido, setNumeroPedido] = useState("");
-  const [nombreCliente] = useState("RENZO R.");
-
-  // Datos de ejemplo del pedido (en producción vendrían del backend)
-  const pedidoData = {
-    productos: [
-      {
-        id: "1",
-        nombre: "Polo Sport Saco Oliveros",
-        cantidad: 2,
-        precio: 82.0,
-        imagen: "/images/productos/liwilu_producto_example.png",
-      },
-    ],
-    subtotal: 328.0,
-    envio: 7.0,
-    total: 407.0,
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [order, setOrder] = useState<any>(null);
 
   useEffect(() => {
-    const order = searchParams?.get("order");
-    if (order) {
-      setNumeroPedido(order);
-    } else {
-      // Si no hay número de orden, generar uno
-      setNumeroPedido(String(Math.floor(Math.random() * 9000) + 1000));
+    const orderId = searchParams?.get("order");
+    if (!orderId) {
+      setLoading(false);
+      setError("No se encontró el ID de la orden");
+      return;
     }
 
-    // Limpiar el carrito después de una compra exitosa
-    // clearCart(); // Descomentar en producción
+    const fetchOrderDetails = async () => {
+      try {
+        setLoading(true);
+        const response = await getOrderDetail(orderId);
+        if (response.success) {
+          setOrder(response.data);
+        } else {
+          setError(response.message || "No se pudieron obtener los detalles del pedido");
+        }
+      } catch (err: any) {
+        console.error("Error fetching order details:", err);
+        setError(err.message || "Error al conectar con el servidor");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrderDetails();
   }, [searchParams]);
+
+  if (loading) {
+    return (
+      <Layout title="Cargando Pedido - Liwilu" description="Estamos obteniendo los detalles de tu pedido">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600 font-medium">Cargando detalles de tu compra...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <Layout title="Error - Liwilu" description="No se pudo encontrar el pedido">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+          <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+            <FaExclamationTriangle className="text-yellow-500 text-6xl mx-auto mb-6" />
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">¡Ups! Algo salió mal</h1>
+            <p className="text-gray-600 mb-8">{error || "No pudimos encontrar la información de tu pedido."}</p>
+            <Button className="w-full" onClick={() => router.push("/productos")}>
+              Volver a la tienda
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  const nombreCliente = order.personalData?.nombre || "Cliente";
+  const numeroPedido = order.orderNumber || order.id;
+  const deliveryType = order.deliveryType === "PICKUP" ? "RECOJO EN TIENDA" : "DELIVERY";
+  const metodoPago = order.invoiceType || "TARJETA";
 
   return (
     <Layout
@@ -76,9 +112,12 @@ export default function PedidoExitoso() {
 
               {/* Mensaje de éxito */}
               <div className="space-y-4">
-                <h1 className="text-4xl font-semibold text-gray-900">
-                  GRACIAS {nombreCliente}
+                <h1 className="text-4xl font-normal text-gray-900 leading-tight">
+                  Gracias por tu compra,<br />
+                  <span className="font-bold">{nombreCliente}</span>
                 </h1>
+
+
 
                 <div className="bg-white rounded-2xl shadow-lg p-6 max-w-md mx-auto">
                   <p className="text-gray-700 text-lg mb-2">
@@ -135,12 +174,12 @@ export default function PedidoExitoso() {
 
                 {/* Lista de productos */}
                 <div className="space-y-6 mb-6">
-                  {pedidoData.productos.map((producto) => (
-                    <div key={producto.id} className="flex gap-4">
-                      <div className="relative w-20 h-20 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0">
+                  {order.items.map((item: any) => (
+                    <div key={item.id} className="flex gap-4">
+                      <div className="relative w-20 h-20 bg-gray-50 rounded-md overflow-hidden flex-shrink-0">
                         <Image
-                          src={producto.imagen}
-                          alt={producto.nombre}
+                          src={item.variationImage || item.coverImage || "/images/placeholder-product.jpg"}
+                          alt={item.variationName || item.name}
                           fill
                           className="object-contain"
                           unoptimized
@@ -148,16 +187,16 @@ export default function PedidoExitoso() {
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-900 mb-1">
-                          {producto.nombre}
+                          {item.variationName || item.name}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          X{producto.cantidad}
+                          X{item.quantity}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">
                           {formatPrice(
-                            (producto.precio * producto.cantidad).toString(),
+                            (parseFloat(item.priceWithTax || item.variationPriceWithTax || "0") * item.quantity).toString(),
                           )}
                         </p>
                       </div>
@@ -170,31 +209,40 @@ export default function PedidoExitoso() {
                   <div className="flex justify-between text-gray-700">
                     <span className="font-medium">Subtotal</span>
                     <span className="font-semibold">
-                      S/ {pedidoData.subtotal.toFixed(2)}
+                      {formatPrice(order.subtotal || "0")}
                     </span>
                   </div>
 
                   <div className="flex justify-between text-gray-700">
                     <span className="font-medium">Envío</span>
                     <span className="font-semibold">
-                      S/ {pedidoData.envio.toFixed(2)}
+                      {formatPrice(order.shippingCost || "0")}
                     </span>
                   </div>
+
+                  {order.discount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span className="font-medium">Descuento</span>
+                      <span className="font-semibold">
+                        -{formatPrice(order.discount || "0")}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between text-2xl font-semibold text-gray-900 pt-4 border-t-2 border-gray-100">
                     <span>Total</span>
                     <span className="text-primary">
-                      S/ {pedidoData.total.toFixed(2)}
+                      {formatPrice(order.total || "0")}
                     </span>
                   </div>
 
                   <div className="bg-green-50 rounded-sm p-4 border-2 border-green-200">
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-semibold text-green-800">
-                        Pagado
+                        {order.status === "PAID" || order.paymentStatus === "COMPLETED" ? "Pagado" : "Pendiente"}
                       </span>
                       <span className="text-xl font-semibold text-green-600">
-                        S/ {pedidoData.total.toFixed(2)}
+                        {formatPrice(order.total || "0")}
                       </span>
                     </div>
                   </div>
@@ -211,7 +259,7 @@ export default function PedidoExitoso() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Fecha:</span>
                     <span className="font-semibold text-gray-900">
-                      {new Date().toLocaleDateString("es-PE", {
+                      {new Date(order.createdAt).toLocaleDateString("es-PE", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
@@ -221,14 +269,20 @@ export default function PedidoExitoso() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Método de pago:</span>
                     <span className="font-semibold text-gray-900">
-                      Tarjeta VISA
+                      {order.paymentData?.brand ? `${order.paymentData.brand} ${order.paymentData.last4 || ""}` : (order.invoiceType || "Por definir")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Tipo de entrega:</span>
+                    <span className="font-semibold text-gray-900 uppercase">
+                      {deliveryType}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Estado:</span>
                     <span className="font-semibold text-green-600 flex items-center gap-1">
                       <FaCheckCircle className="text-sm" />
-                      Confirmado
+                      {order.status === "PAID" ? "Confirmado" : order.status}
                     </span>
                   </div>
                 </div>

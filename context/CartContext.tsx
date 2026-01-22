@@ -36,6 +36,7 @@ interface CartContextType {
   totals: { subtotal: number; shipping: number; total: number };
   isLoading: boolean;
   cartExpired: boolean;
+  cartId: string | null;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -48,6 +49,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [cartExpired, setCartExpired] = useState(false);
+  const [cartId, setCartId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Cargar carrito y sesión desde localStorage al iniciar
@@ -149,6 +151,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         setTotals(response.data.totals);
         setSelectedCarrier(response.data.carrier);
+        setCartId(response.data.cartId);
       } else if (response.isExpired) {
         console.warn("⚠️ Local cart expired, clearing...");
         import("@/lib/notifications").then(({ showToast }) => {
@@ -466,6 +469,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         totals,
         isLoading,
         cartExpired,
+        cartId,
       }}
     >
       {children}

@@ -60,23 +60,9 @@ export default function MisDatos() {
             celular: userData.phone || "",
           });
 
-          // Actualizar localStorage con datos frescos
-          if (userData.emailVerified) {
-            const userStr = localStorage.getItem("user");
-            if (userStr) {
-              const user = JSON.parse(userStr);
-              user.emailVerified = true;
-              user.firstName = userData.firstName;
-              user.lastName = userData.lastName;
-              user.phone = userData.phone;
-              user.celular = userData.phone;
-              user.documentType = userData.documentType;
-              user.tipoDocumento = userData.documentType;
-              user.documentNumber = userData.documentNumber;
-              user.numeroDocumento = userData.documentNumber;
-              localStorage.setItem("user", JSON.stringify(user));
-            }
-          }
+          // Actualizar localStorage con datos frescos usando la utilidad centralizada
+          const { updateUserSession } = await import("@/lib/auth/authUtils");
+          updateUserSession(userData);
         }
       } catch (error) {
         console.error("❌ Error al cargar datos del usuario:", error);
@@ -172,10 +158,10 @@ export default function MisDatos() {
         updateData,
         accessToken
           ? {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
           : {},
       );
 
@@ -187,20 +173,9 @@ export default function MisDatos() {
       const updateResult = await response.json();
 
       if (updateResult.success) {
-        // Actualizar el usuario en localStorage
-        const userStr = localStorage.getItem("user");
-        if (userStr) {
-          const user = JSON.parse(userStr);
-          user.firstName = formData.nombre;
-          user.lastName = formData.apellido;
-          user.phone = formData.celular;
-          user.celular = formData.celular;
-          user.documentType = formData.tipoDocumento;
-          user.tipoDocumento = formData.tipoDocumento;
-          user.documentNumber = formData.numeroDocumento;
-          user.numeroDocumento = formData.numeroDocumento;
-          localStorage.setItem("user", JSON.stringify(user));
-        }
+        // Actualizar el usuario en localStorage usando la utilidad centralizada
+        const { updateUserSession } = await import("@/lib/auth/authUtils");
+        updateUserSession(updateResult.data || updateData);
 
         // Actualizar el estado local con los datos frescos del servidor
         if (updateResult.data) {

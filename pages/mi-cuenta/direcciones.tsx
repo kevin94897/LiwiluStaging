@@ -35,14 +35,13 @@ export default function Direcciones() {
 	const [direccionEditando, setDireccionEditando] = useState<string | null>(null);
 
 	const [formData, setFormData] = useState<DireccionSchemaType>({
-		titulo: '',
+		numeroDptoPiso: '',
 		direccion: '',
 		referencia: '',
 		ciudad: '',
 		provincia: '',
 		distrito: '',
 		codigoPostal: '',
-		telefono: '',
 		esPrincipal: false,
 	});
 
@@ -103,13 +102,6 @@ export default function Direcciones() {
 		}
 	};
 
-	const handleTelefonoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const value = e.target.value.replace(/\D/g, ''); // Solo números
-		if (value.length <= 9) {
-			setFormData(prev => ({ ...prev, telefono: value }));
-			setErrors(prev => ({ ...prev, telefono: undefined }));
-		}
-	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -157,7 +149,7 @@ export default function Direcciones() {
 				province: formData.provincia,
 				district: formData.distrito,
 				address: formData.direccion,
-				apartment: formData.titulo,
+				apartment: formData.numeroDptoPiso,
 				reference: formData.referencia || '',
 				isMain: formData.esPrincipal,
 			};
@@ -239,14 +231,13 @@ export default function Direcciones() {
 
 	const resetFormulario = () => {
 		setFormData({
-			titulo: '',
+			numeroDptoPiso: '',
 			direccion: '',
 			referencia: '',
 			ciudad: '',
 			provincia: '',
 			distrito: '',
 			codigoPostal: '',
-			telefono: '',
 			esPrincipal: false,
 		});
 		locations.setLocationValues("", "", "");
@@ -261,14 +252,13 @@ export default function Direcciones() {
 
 	const editarDireccion = (address: Address) => {
 		setFormData({
-			titulo: address.apartment,
+			numeroDptoPiso: address.apartment,
 			direccion: address.address,
 			referencia: address.reference || '',
 			ciudad: address.department,
 			provincia: address.province,
 			distrito: address.district,
 			codigoPostal: '',
-			telefono: '',
 			esPrincipal: address.isMain,
 		});
 		locations.setLocationValues(address.department, address.province, address.district);
@@ -354,7 +344,7 @@ export default function Direcciones() {
 													<div className="bg-white rounded-sm shadow-sm p-6 border-2 border-primary/20">
 														<div className="flex justify-between items-start mb-3">
 															<h3 className="font-semibold text-primary-dark text-lg">
-																{direccionPrincipal.apartment}
+																{direccionPrincipal.apartment ? `Dirección principal: ${direccionPrincipal.address}` : 'Dirección principal'}
 															</h3>
 															<div className="flex gap-2">
 																<button
@@ -373,7 +363,7 @@ export default function Direcciones() {
 																</button>
 															</div>
 														</div>
-														<p className="text-gray-700 mb-2">{direccionPrincipal.address}</p>
+														{/* <p className="text-gray-700 mb-2">{direccionPrincipal.address}</p> */}
 														<p className="text-gray-600 text-sm mb-1">
 															{direccionPrincipal.district}, {direccionPrincipal.province}, {direccionPrincipal.department}
 														</p>
@@ -382,6 +372,9 @@ export default function Direcciones() {
 																<span className="font-semibold">Referencia:</span> {direccionPrincipal.reference}
 															</p>
 														)}
+														<p className="text-gray-600 text-sm">
+															<span className="font-semibold">Dpto/Piso:</span> {direccionPrincipal.apartment}
+														</p>
 													</div>
 												</div>
 											)}
@@ -397,7 +390,7 @@ export default function Direcciones() {
 															<div key={address.id} className="bg-white rounded-sm shadow-sm p-6">
 																<div className="flex justify-between items-start mb-3">
 																	<h3 className="font-semibold text-primary-dark">
-																		{address.apartment}
+																		{address.apartment ? `Dirección: ${address.address}` : 'Dirección'}
 																	</h3>
 																	<div className="flex gap-2">
 																		<button
@@ -425,6 +418,9 @@ export default function Direcciones() {
 																		<span className="font-semibold">Ref:</span> {address.reference}
 																	</p>
 																)}
+																<p className="text-gray-600 text-xs">
+																	<span className="font-semibold">Dpto/Piso:</span> {address.apartment}
+																</p>
 															</div>
 														))}
 													</div>
@@ -465,21 +461,6 @@ export default function Direcciones() {
 													<h3 className="font-semibold text-primary">
 														{direccionEditando ? 'Editar dirección' : 'Nueva dirección'}
 													</h3>
-												</div>
-
-												{/* Título de la dirección */}
-												<div>
-													<Input
-														label="Título de la dirección *"
-														type="text"
-														id="titulo"
-														name="titulo"
-														value={formData.titulo}
-														onChange={handleChange}
-														placeholder="Casa, Oficina, etc."
-														maxLength={50}
-														error={errors.titulo}
-													/>
 												</div>
 
 												{/* Dirección completa */}
@@ -586,8 +567,10 @@ export default function Direcciones() {
 													</div>
 												</div>
 
-												{/* Código postal y teléfono */}
+												{/* Código postal y Dpto/Piso */}
+
 												<div className="grid md:grid-cols-2 gap-6">
+													{/* Código postal */}
 													<div>
 														<Input
 															label="Código postal"
@@ -601,18 +584,18 @@ export default function Direcciones() {
 															error={errors.codigoPostal}
 														/>
 													</div>
-
+													{/* Nro de Dpto/Piso */}
 													<div>
 														<Input
-															label="Teléfono de contacto *"
-															type="tel"
-															id="telefono"
-															name="telefono"
-															value={formData.telefono}
-															onChange={handleTelefonoChange}
-															placeholder="987654321"
-															maxLength={9}
-															error={errors.telefono}
+															label="Nro. de Dpto/Piso"
+															type="text"
+															id="numeroDptoPiso"
+															name="numeroDptoPiso"
+															value={formData.numeroDptoPiso}
+															onChange={handleChange}
+															placeholder="Ej: Dpto 302, Piso 4, etc."
+															maxLength={50}
+															error={errors.numeroDptoPiso}
 														/>
 													</div>
 												</div>

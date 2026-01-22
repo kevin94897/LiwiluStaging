@@ -142,6 +142,8 @@ export default function Carrito() {
   >([]);
   const [showSavarStockModal, setShowSavarStockModal] = useState(false);
   const [showPickupStockModal, setShowPickupStockModal] = useState(false);
+  const [selectedStoreData, setSelectedStoreData] =
+    useState<SavePickupStoreRequest | null>(null);
 
   // Estados para formulario de invitado
   const [guestData, setGuestData] = useState<GuestDataSchemaType>({
@@ -271,6 +273,49 @@ export default function Carrito() {
     items.length,
   ]);
 
+  // Real-time delivery coverage validation
+  useEffect(() => {
+    if (
+      metodoEnvio === "delivery" &&
+      selectedCarrier?.id &&
+      deliveryZones.length > 0 &&
+      direccionEnvio.distrito
+    ) {
+      const normalizeText = (text: string) =>
+        text
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase();
+
+      const districtExists = deliveryZones.some(
+        (z) =>
+          normalizeText(z.zoneName) === normalizeText(direccionEnvio.distrito),
+      );
+
+      if (!districtExists) {
+        setAddressErrors((prev) => ({
+          ...prev,
+          distrito: "El distrito seleccionado no tiene cobertura de delivery.",
+        }));
+      } else {
+        setAddressErrors((prev) => {
+          const { distrito, ...rest } = prev;
+          return rest;
+        });
+      }
+    } else {
+      setAddressErrors((prev) => {
+        const { distrito, ...rest } = prev;
+        return rest;
+      });
+    }
+  }, [
+    metodoEnvio,
+    selectedCarrier?.id,
+    deliveryZones,
+    direccionEnvio.distrito,
+  ]);
+
   // Cargar direcciones si el usuario está logueado
   useEffect(() => {
     const fetchAddresses = async () => {
@@ -305,8 +350,8 @@ export default function Carrito() {
                   distrito: mainAddress.district,
                   ciudad: mainAddress.province,
                   departamento: mainAddress.department,
-                  numeroDptoPiso: mainAddress.numeroDptoPiso || "",
-                  referencia: mainAddress.referencia || "",
+                  numeroDptoPiso: mainAddress.apartment || "",
+                  referencia: mainAddress.reference || "",
                 });
                 userLocations.setLocationValues(
                   mainAddress.department,
@@ -366,40 +411,6 @@ export default function Carrito() {
     }
   }, []);
 
-  // Sincronizar retiro si es "Yo mismo"
-  useEffect(() => {
-    if (items.length > 0 && metodoEnvio === "retiro" && isSelfPickup) {
-      const info =
-        isLoggedIn && user
-          ? {
-            tipoDocumento: user.documentType || "DNI",
-            numeroDocumento: user.documentNumber || "",
-            nombreCompleto:
-              `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-          }
-          : {
-            tipoDocumento: guestData.tipoDocumento,
-            numeroDocumento: guestData.numeroDocumento,
-            nombreCompleto:
-              `${guestData.nombre} ${guestData.apellido}`.trim(),
-          };
-
-      if (info.nombreCompleto && info.numeroDocumento) {
-        savePickupPerson(info).catch((err) =>
-          console.error("Error syncing self-pickup:", err),
-        );
-      }
-    }
-  }, [
-    items.length,
-    metodoEnvio,
-    isSelfPickup,
-    isLoggedIn,
-    user,
-    guestData.nombre,
-    guestData.apellido,
-    guestData.numeroDocumento,
-  ]);
 
   // Cargar datos del invitado
   useEffect(() => {
@@ -429,22 +440,10 @@ export default function Carrito() {
   }, []);
 
   const handleSaveAutorizacion = async (data: AutorizacionSchemaType) => {
-    try {
-      // API expects Spanish keys: tipoDocumento, numeroDocumento, nombreCompleto
-      await savePickupPerson({
-        tipoDocumento: data.documentType,
-        numeroDocumento: data.documentNumber,
-        nombreCompleto: data.fullName,
-      });
-
-      setAutorizacionData(data);
-      // Keep localStorage as backup/cache
-      localStorage.setItem("liwilu_autorizacion", JSON.stringify(data));
-      showToast("Autorización guardada correctamente");
-    } catch (error) {
-      console.error("Error saving pickup person:", error);
-      showToast("Error al guardar la autorización", "error");
-    }
+    setAutorizacionData(data);
+    // Keep localStorage as backup/cache
+    localStorage.setItem("liwilu_autorizacion", JSON.stringify(data));
+    showToast("Autorización guardada correctamente");
   };
 
   // Fetch carriers
@@ -696,15 +695,8 @@ export default function Carrito() {
   };
 
   const handleSelectStore = async (store: SavePickupStoreRequest) => {
-    try {
-      const response = await savePickupStore(store);
-      if (response.success) {
-        console.log("🏪 Pickup store saved:", response.message);
-      }
-    } catch (error) {
-      console.error("Error saving pickup store:", error);
-      showToast("Error al seleccionar la tienda", "error");
-    }
+    setSelectedStoreData(store);
+    console.log("🏪 Pickup store selected (local):", store.desAlmacen);
   };
 
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1034,6 +1026,99 @@ export default function Carrito() {
     }
   };
 
+  const syncCheckoutData = async () => {
+    try {
+      // 1. Guardar Datos Personales
+      let personalData = null;
+      if (isLoggedIn && user) {
+        personalData = {
+          nombre: user.firstName,
+          apellido: user.lastName,
+          tipoDocumento: user.documentType || "DNI",
+          numeroDocumento: user.documentNumber || "",
+          celular: user.phone || "",
+          telefono: "",
+          email: user.email,
+          departamento: direccionEnvio.departamento,
+          provincia: direccionEnvio.ciudad,
+          distrito: direccionEnvio.distrito,
+          direccion: direccionEnvio.calle,
+          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
+          referencia: direccionEnvio.referencia,
+        };
+      } else if (isGuest) {
+        personalData = {
+          nombre: guestData.nombre,
+          apellido: guestData.apellido,
+          tipoDocumento: guestData.tipoDocumento,
+          numeroDocumento: guestData.numeroDocumento,
+          celular: guestData.celular,
+          telefono: guestData.telefonoOpcional,
+          email: guestData.email,
+          departamento: guestData.departamento,
+          provincia: guestData.provincia,
+          distrito: guestData.distrito,
+          direccion: guestData.direccion,
+          numeroDptoPiso: guestData.numeroDpto,
+          referencia: guestData.referencia,
+        };
+      }
+
+      if (personalData) {
+        await saveGuestPersonalData(personalData);
+      }
+
+      // 2. Guardar Dirección de Envío o Datos de Retiro
+      if (metodoEnvio === "delivery") {
+        console.log("🚚 Sincronizando dirección de envío al finalizar:", {
+          distritoSeleccionado: direccionEnvio.distrito,
+          direccion: direccionEnvio.calle,
+          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
+          referencia: direccionEnvio.referencia,
+        });
+        await saveCartDeliveryAddress({
+          distritoSeleccionado: direccionEnvio.distrito,
+          direccion: direccionEnvio.calle,
+          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
+          referencia: direccionEnvio.referencia,
+        });
+      } else if (metodoEnvio === "retiro") {
+        // Guardar Tienda de Retiro
+        if (selectedStoreData) {
+          console.log("🏪 Sincronizando tienda de retiro...");
+          await savePickupStore(selectedStoreData);
+        }
+
+        // Guardar Persona Autorizada
+        if (!isSelfPickup && autorizacionData) {
+          console.log("👤 Sincronizando persona autorizada...");
+          await savePickupPerson({
+            tipoDocumento: autorizacionData.documentType,
+            numeroDocumento: autorizacionData.documentNumber,
+            nombreCompleto: autorizacionData.fullName,
+          });
+        } else {
+          // Si es retiro propio, enviamos los datos del titular
+          console.log("👤 Sincronizando retiro propio...");
+          const titular = personalData;
+          if (titular) {
+            await savePickupPerson({
+              tipoDocumento: titular.tipoDocumento,
+              numeroDocumento: titular.numeroDocumento,
+              nombreCompleto: `${titular.nombre} ${titular.apellido}`,
+            });
+          }
+        }
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Error syncing checkout data:", error);
+      showToast("Error al procesar la información del carrito", "error");
+      return false;
+    }
+  };
+
   const handleCheckoutSubmit = async () => {
     if (!acceptTerms) {
       showToast(
@@ -1063,8 +1148,8 @@ export default function Carrito() {
         return;
       }
 
-      // 🔹 Validar cobertura de delivery (Carrier 250)
-      if (deliveryZones.length > 0) {
+      // 🔹 Validar cobertura de delivery
+      if (selectedCarrier?.id && deliveryZones.length > 0) {
         const normalizeText = (text: string) =>
           text
             .normalize("NFD")
@@ -1096,7 +1181,10 @@ export default function Carrito() {
       }
       // If Savar check passes and is guest, proceed directly
       if (isGuest) {
-        router.push("/checkout");
+        const synced = await syncCheckoutData();
+        if (synced) {
+          router.push("/checkout");
+        }
         return;
       }
     }
@@ -1123,14 +1211,20 @@ export default function Carrito() {
     // However, we MUST ensure validation has passed.
 
     if (stockValidationResult?.success) {
-      router.push("/checkout");
+      const synced = await syncCheckoutData();
+      if (synced) {
+        router.push("/checkout");
+      }
       return;
     }
 
     // If no result or failed result, try validating one last time
     const result = await performStockValidation();
     if (result?.success) {
-      router.push("/checkout");
+      const synced = await syncCheckoutData();
+      if (synced) {
+        router.push("/checkout");
+      }
     } else if (result) {
       if (metodoEnvio === "retiro") {
         setShowPickupStockModal(true);
@@ -1147,11 +1241,11 @@ export default function Carrito() {
 
   const subtotal = totals.subtotal;
 
-  // Override shipping cost for carrier 250 based on zone
+  // Override shipping cost based on zone
   const getEnvioCost = () => {
     if (metodoEnvio === "retiro") return 0;
 
-    if (selectedCarrier?.id === 250 && deliveryZones.length > 0) {
+    if (selectedCarrier?.id && deliveryZones.length > 0) {
       const zone = deliveryZones.find(
         (z) =>
           z.zoneName.toLowerCase() === direccionEnvio.distrito.toLowerCase(),
@@ -1294,6 +1388,12 @@ export default function Carrito() {
     // Save to cart session API only for non-authenticated users OR guests
     if (!isAuthenticated || isGuest) {
       try {
+        console.log("🚚 Guardando dirección de envío (Invitado/Anónimo):", {
+          distritoSeleccionado: direccionEnvio.distrito,
+          direccion: direccionEnvio.calle,
+          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
+          referencia: direccionEnvio.referencia,
+        });
         await saveCartDeliveryAddress({
           distritoSeleccionado: direccionEnvio.distrito,
           direccion: direccionEnvio.calle,
@@ -1463,8 +1563,8 @@ export default function Carrito() {
                         onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
                         placeholder="ejemplo@correo.com"
                         className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.email
-                            ? "border-red-500"
-                            : "border-gray-200"
+                          ? "border-red-500"
+                          : "border-gray-200"
                           }`}
                       />
                       {loginErrors.email && (
@@ -1485,8 +1585,8 @@ export default function Carrito() {
                         onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
                         placeholder="••••••••"
                         className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.password
-                            ? "border-red-500"
-                            : "border-gray-200"
+                          ? "border-red-500"
+                          : "border-gray-200"
                           }`}
                       />
                       {loginErrors.password && (
@@ -1576,8 +1676,8 @@ export default function Carrito() {
                           onChange={handleRegistroChange} // ✅ Cambiar
                           placeholder="Nombres"
                           className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.nombre
-                              ? "border-red-500"
-                              : "border-gray-200"
+                            ? "border-red-500"
+                            : "border-gray-200"
                             }`}
                         />
                         {registroErrors.nombre && (
@@ -1598,8 +1698,8 @@ export default function Carrito() {
                           onChange={handleRegistroChange} // ✅ Cambiar
                           placeholder="Apellidos"
                           className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.apellido
-                              ? "border-red-500"
-                              : "border-gray-200"
+                            ? "border-red-500"
+                            : "border-gray-200"
                             }`}
                         />
                         {registroErrors.apellido && (
@@ -1630,8 +1730,8 @@ export default function Carrito() {
                           })
                         }
                         className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.tipoDocumento
-                            ? "border-red-500"
-                            : "border-gray-200"
+                          ? "border-red-500"
+                          : "border-gray-200"
                           }`}
                       >
                         <option value="DNI">DNI</option>
@@ -1650,8 +1750,8 @@ export default function Carrito() {
                           onChange={handleRegistroChange}
                           placeholder="12345678"
                           className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.numeroDocumento
-                              ? "border-red-500"
-                              : "border-gray-200"
+                            ? "border-red-500"
+                            : "border-gray-200"
                             }`}
                         />
                         {registroErrors.numeroDocumento && (
@@ -1682,8 +1782,8 @@ export default function Carrito() {
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
                           className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.celular
-                              ? "border-red-500"
-                              : "border-gray-200"
+                            ? "border-red-500"
+                            : "border-gray-200"
                             }`}
                         />
                         {registroErrors.celular && (
@@ -1704,8 +1804,8 @@ export default function Carrito() {
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
                           className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.telefonoOpcional
-                              ? "border-red-500"
-                              : "border-gray-200"
+                            ? "border-red-500"
+                            : "border-gray-200"
                             }`}
                         />
                         {registroErrors.telefonoOpcional && (
@@ -1741,8 +1841,8 @@ export default function Carrito() {
                           onChange={handleRegistroChange}
                           placeholder="Lima"
                           className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.provincia
-                              ? "border-red-500"
-                              : "border-gray-200"
+                            ? "border-red-500"
+                            : "border-gray-200"
                             }`}
                         />
                         {registroErrors.provincia && (
@@ -1763,8 +1863,8 @@ export default function Carrito() {
                         value={registroData.distrito}
                         onChange={handleRegistroChange}
                         className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.distrito
-                            ? "border-red-500"
-                            : "border-gray-200"
+                          ? "border-red-500"
+                          : "border-gray-200"
                           }`}
                       >
                         <option value="">Seleccionar distrito</option>
@@ -1793,8 +1893,8 @@ export default function Carrito() {
                         onChange={handleRegistroChange}
                         placeholder="Calle rosales 432"
                         className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.direccion
-                            ? "border-red-500"
-                            : "border-gray-200"
+                          ? "border-red-500"
+                          : "border-gray-200"
                           }`}
                       />
                       {registroErrors.direccion && (
@@ -1817,8 +1917,8 @@ export default function Carrito() {
                           onChange={handleRegistroChange}
                           placeholder="201"
                           className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.numeroDpto
-                              ? "border-red-500"
-                              : "border-gray-200"
+                            ? "border-red-500"
+                            : "border-gray-200"
                             }`}
                         />
                         {registroErrors.numeroDpto && (
@@ -1839,8 +1939,8 @@ export default function Carrito() {
                           onChange={handleRegistroChange}
                           placeholder="Frente al parque"
                           className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.referencia
-                              ? "border-red-500"
-                              : "border-gray-200"
+                            ? "border-red-500"
+                            : "border-gray-200"
                             }`}
                         />
                         {registroErrors.referencia && (
@@ -1865,8 +1965,8 @@ export default function Carrito() {
                           onChange={handleRegistroChange}
                           placeholder="ejemplo@correo.com"
                           className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.email
-                              ? "border-red-500"
-                              : "border-gray-200"
+                            ? "border-red-500"
+                            : "border-gray-200"
                             }`}
                         />
                         {registroErrors.email && (
@@ -1889,8 +1989,8 @@ export default function Carrito() {
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
                             className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.password
-                                ? "border-red-500"
-                                : "border-gray-200"
+                              ? "border-red-500"
+                              : "border-gray-200"
                               }`}
                           />
                           {registroErrors.password && (
@@ -1911,8 +2011,8 @@ export default function Carrito() {
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
                             className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.confirmarPassword
-                                ? "border-red-500"
-                                : "border-gray-200"
+                              ? "border-red-500"
+                              : "border-gray-200"
                               }`}
                           />
                           {registroErrors.confirmarPassword && (

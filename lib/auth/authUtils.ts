@@ -64,16 +64,40 @@ export const saveSession = (user: any, accessToken: string, refreshToken: string
 };
 
 /**
+ * Partially updates user data in the existing session
+ */
+export const updateUserSession = (userData: Partial<User>) => {
+    if (typeof window === 'undefined') return;
+
+    const currentStr = localStorage.getItem('user');
+    let currentUser = currentStr ? JSON.parse(currentStr) : {};
+
+    // Merge logic: ensure we use the normalization of mapApiUserToUser
+    const updatedUser = mapApiUserToUser({ ...currentUser, ...userData });
+
+    if (updatedUser) {
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        console.log('🔄 User session updated:', updatedUser);
+
+        // Dispatch event to notify other components/tabs
+        window.dispatchEvent(new StorageEvent('storage', {
+            key: 'user',
+            newValue: JSON.stringify(updatedUser)
+        }));
+    }
+};
+
+/**
  * Clears all authentication data from localStorage and stops background processes
  */
 export const clearAuthSession = () => {
     if (typeof window === 'undefined') return;
 
     stopTokenRefresh();
-    
+
     // Total wipe for maximum security and fresh state
     localStorage.clear();
-    
+
     console.log('🧹 Total session and storage cleared');
 };
 

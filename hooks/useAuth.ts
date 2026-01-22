@@ -25,20 +25,30 @@ export function useAuth() {
         setIsLoading(false);
       }
 
-      // Si tenemos token pero no usuario (o usuario incompleto), intentamos rehidratar desde API
+      // Rehidratar desde API si:
+      // 1. Tenemos token pero no hay usuario en localStorage
+      // 2. El usuario existe pero faltan campos críticos (documentNumber, phone)
       const token = localStorage.getItem('accessToken');
       const localUser = localStorage.getItem('user');
+      const currentUser = getCurrentUser();
 
-      if (token && (!localUser || localUser === 'undefined')) {
-        import('@/lib/auth/apiClient').then(({ fetchUserProfile }) => {
-          fetchUserProfile().then((apiUser) => {
-            if (apiUser) {
-              // saveSession ya normaliza el usuario, así que lo leemos de nuevo
-              const { getCurrentUser } = require('@/lib/auth/authUtils');
-              setUser(getCurrentUser());
-            }
+      if (token) {
+        const isIncomplete = !localUser || localUser === 'undefined' || (
+          currentUser && (!currentUser.documentNumber || !currentUser.phone)
+        );
+
+        if (isIncomplete) {
+          console.log('🔄 Rehidratando perfil por datos incompletos o faltantes...');
+          import('@/lib/auth/apiClient').then(({ fetchUserProfile }) => {
+            fetchUserProfile().then((apiUser) => {
+              if (apiUser) {
+                // saveSession ya normaliza el usuario, así que lo leemos de nuevo
+                const { getCurrentUser } = require('@/lib/auth/authUtils');
+                setUser(getCurrentUser());
+              }
+            });
           });
-        });
+        }
       }
     };
 

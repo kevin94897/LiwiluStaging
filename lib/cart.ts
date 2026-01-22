@@ -581,6 +581,8 @@ export async function saveGuestPersonalData(data: any): Promise<{ success: boole
             skipAuth: true
         });
 
+        console.log("Datos personales guardados:", data);
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || `Error saving guest data: ${response.statusText}`);
@@ -652,6 +654,9 @@ export async function saveCartDeliveryAddress(data: {
 }): Promise<{ success: boolean; message: string }> {
     try {
         const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        console.log('📡 Syncing delivery address to API:', data);
+        console.log('🔑 Access Token present:', !!accessToken);
+
         const response = await apiPut('/cart/delivery-address', data, {
             skipAuth: !accessToken
         });
@@ -807,27 +812,75 @@ export async function savePickupStore(data: SavePickupStoreRequest): Promise<Sav
 }
 
 /**
- * Create order with payment token and invoice data
+ * Process payment with Culqi token
+ * @param orderId - The ID of the order or cart to pay
+ * @param data - token and user email
  */
-export async function createOrder(data: {
+export async function payOrder(orderId: string | number, data: {
     token: string;
-    invoiceType: string;
-    invoiceData?: any;
-}): Promise<{ success: boolean; orderId?: number; message?: string;[key: string]: any }> {
+    email: string;
+}): Promise<{ success: boolean; message?: string;[key: string]: any }> {
     try {
-        // El token NO debe ir en el body ni en el header según requerimiento para evitar errores de CORS
-        const { token, ...bodyData } = data;
-
-        const response = await apiPost('/orders', bodyData);
+        const response = await apiPost(`/payments/orders/${orderId}/pay`, data, {
+            skipAuth: true // Payment might be for guest or handled by session headers
+        });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `Error creating order: ${response.statusText}`);
+            throw new Error(errorData.message || `Error processing payment: ${response.statusText}`);
         }
 
         return await response.json();
     } catch (error) {
+        console.error('Error in payOrder:', error);
+        throw error;
+    }
+}
+
+/**
+ * Create order with invoice data
+ */
+export async function createOrder(data: {
+    invoiceType: string;
+    invoiceData?: any;
+}): Promise<{ success: boolean; data?: { orderId: number;[key: string]: any }; orderId?: number; message?: string;[key: string]: any }> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiPost('/orders', data, {
+            skipAuth: !accessToken
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(result.message || `Error creating order: ${response.statusText}`);
+        }
+
+        return result;
+    } catch (error) {
         console.error('Error in createOrder:', error);
+        throw error;
+    }
+}
+/**
+ * Get full order details by ID
+ */
+export async function getOrderDetail(orderId: string): Promise<{ success: boolean; data: any; message?: string }> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiGet(`/orders/detail/${orderId}`, {
+            skipAuth: !accessToken
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(result.message || `Error fetching order details: ${response.statusText}`);
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error in getOrderDetail:', error);
         throw error;
     }
 }

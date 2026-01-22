@@ -4,7 +4,7 @@ export const PERU_LOCATIONS: Record<string, Record<string, string[]>> = {
             "Ate", "Barranco", "Breña", "Carabayllo", "Cercado de Lima", "Chorrillos",
             "Comas", "El Agustino", "Independencia", "Jesús María", "La Molina",
             "La Victoria", "Lince", "Los Olivos", "Lurigancho", "Lurín",
-            "Magdalena del Mar", "Miraflores", "Pachacámac", "Pucusana",
+            "Magdalena del Mar", "Miraflores", "Pachacamac", "Pucusana",
             "Pueblo Libre", "Puente Piedra", "Punta Hermosa", "Punta Negra",
             "Rímac", "San Bartolo", "San Borja", "San Isidro", "San Juan de Lurigancho",
             "San Juan de Miraflores", "San Luis", "San Martín de Porres", "San Miguel",

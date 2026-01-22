@@ -2,11 +2,11 @@
 import { z } from "zod";
 
 export const direccionSchema = z.object({
-    titulo: z
+    numeroDptoPiso: z
         .string()
-        .min(1, "El título es obligatorio")
-        .min(3, "El título debe tener al menos 3 caracteres")
-        .max(50, "El título no puede exceder 50 caracteres"),
+        .max(50, "El número de dpto/piso no puede exceder 50 caracteres")
+        .optional()
+        .or(z.literal("")),
 
     direccion: z
         .string()
@@ -37,11 +37,6 @@ export const direccionSchema = z.object({
         .optional()
         .or(z.literal("")),
 
-    telefono: z
-        .string()
-        .regex(/^[0-9]{9}$/, "El teléfono debe tener 9 dígitos")
-        .optional()
-        .or(z.literal("")),
 
     esPrincipal: z
         .boolean()

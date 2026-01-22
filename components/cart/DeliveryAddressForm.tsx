@@ -111,9 +111,8 @@ export default function DeliveryAddressForm({
                 })
               }
               placeholder="Calle y número"
-              className={`w-full px-3 py-2 border rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary ${
-                addressErrors.calle ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full px-3 py-2 border rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary ${addressErrors.calle ? "border-red-500" : "border-gray-300"
+                }`}
             />
             {addressErrors.calle && (
               <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -191,6 +190,19 @@ export default function DeliveryAddressForm({
               <PiWarningCircleFill size={16} /> {addressErrors.distrito}
             </p>
           )}
+
+          <input
+            type="text"
+            value={direccionEnvio.numeroDptoPiso}
+            onChange={(e) =>
+              setDireccionEnvio({
+                ...direccionEnvio,
+                numeroDptoPiso: e.target.value,
+              })
+            }
+            placeholder="Nro. de dpto. / Piso (opcional)"
+            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+          />
 
           <input
             type="text"
