@@ -1,5 +1,6 @@
 // components/ui/Button.tsx
 import React from "react";
+import { Slot } from "@radix-ui/react-slot";
 
 export type ButtonVariant =
   | "primary"
@@ -17,6 +18,7 @@ interface ButtonBaseProps {
   rightIcon?: React.ReactNode;
   href?: string;
   disabled?: boolean;
+  asChild?: boolean;
 }
 
 // ✅ Union type en lugar de extends para evitar conflictos
@@ -40,6 +42,7 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
       className = "",
       disabled = false,
       href,
+      asChild = false,
       ...props
     },
     ref,
@@ -105,9 +108,9 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
 
     // Tamaños
     const sizes = {
-      sm: "px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm rounded-full",
-      md: "px-6 py-2.5 sm:px-8 sm:py-3 text-sm sm:text-base rounded-full",
-      lg: "px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg rounded-full",
+      sm: "px-3 py-2 md:px-4 md:py-3 text-xs md:text-sm rounded-full",
+      md: "px-6 py-2.5 md:px-8 md:py-3 text-sm md:text-base rounded-full",
+      lg: "px-6 py-3 md:px-8 md:py-4 text-base md:text-lg rounded-full",
     };
 
     // Ancho completo
@@ -136,29 +139,17 @@ const Button = React.forwardRef<CombinedRef, ButtonProps>(
     );
 
     // Renderizado condicional
-    if (href) {
-      return (
-        <a
-          ref={ref as React.ForwardedRef<HTMLAnchorElement>}
-          href={href}
-          className={buttonClasses}
-          aria-disabled={disabled}
-          {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
-        >
-          {content}
-        </a>
-      );
-    }
+    const Comp = asChild ? Slot : href ? "a" : "button";
 
     return (
-      <button
-        ref={ref as React.ForwardedRef<HTMLButtonElement>}
+      <Comp
+        ref={ref as any}
         className={buttonClasses}
-        disabled={disabled}
-        {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
+        {...(href ? { href, "aria-disabled": disabled } : { disabled })}
+        {...(props as any)}
       >
-        {content}
-      </button>
+        {asChild ? children : content}
+      </Comp>
     );
   },
 );
