@@ -108,7 +108,7 @@ export default function CategorySidebar({
       {/* Header con Limpiar Filtros */}
       <div className="pb-4 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-gray-900 text-lg">Filtros</h3>
+          <h3 className="font-semibold text-gray-900 text-lg">Filtros</h3>
           <div className="flex items-center gap-3">
             {hasActiveFilters && (
               <button
@@ -236,10 +236,10 @@ export default function CategorySidebar({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
           <div className="absolute bottom-6 left-6 text-white">
-            <div className="bg-primary px-3 py-1 rounded-full text-xs font-bold inline-block mb-2">
+            <div className="bg-primary px-3 py-1 rounded-full text-xs font-semibold inline-block mb-2">
               Colección 2024
             </div>
-            <h4 className="text-xl font-bold mb-1">Nuevas Llegadas</h4>
+            <h4 className="text-xl font-semibold mb-1">Nuevas Llegadas</h4>
             <p className="text-sm text-gray-200">Última tecnología</p>
           </div>
         </div>

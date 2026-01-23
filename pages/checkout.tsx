@@ -579,7 +579,7 @@ export default function Checkout() {
                     }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-purple-600 rounded-sm flex items-center justify-center text-white font-bold">
+                    <div className="w-8 h-8 bg-purple-600 rounded-sm flex items-center justify-center text-white font-semibold">
                       Y
                     </div>
                     <div className="text-left">
@@ -659,19 +659,19 @@ export default function Checkout() {
                     <div className="space-y-2 text-xs text-blue-800">
                       <p className="flex justify-between">
                         <span>Número:</span>{" "}
-                        <code className="bg-white px-1.5 py-0.5 rounded border font-bold">
+                        <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
                           4111 1111 1111 1111
                         </code>
                       </p>
                       <p className="flex justify-between">
                         <span>CVV:</span>{" "}
-                        <code className="bg-white px-1.5 py-0.5 rounded border font-bold">
+                        <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
                           123
                         </code>
                       </p>
                       <p className="flex justify-between">
                         <span>Expiración:</span>{" "}
-                        <code className="bg-white px-1.5 py-0.5 rounded border font-bold">
+                        <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
                           12 / 2026
                         </code>
                       </p>
@@ -682,7 +682,7 @@ export default function Checkout() {
                   ) : (
                     <div className="space-y-3">
                       <p className="text-xs text-amber-700 font-medium leading-relaxed">
-                        ⚠️ <strong className="font-bold">Nota técnica:</strong>{" "}
+                        ⚠️ <strong className="font-semibold">Nota técnica:</strong>{" "}
                         El botón de Yape dentro del modal de Culqi requiere un
                         backend real para funcionar.
                       </p>

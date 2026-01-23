@@ -223,15 +223,15 @@ export default function CartItem({
                   );
                   if (savarResult && !savarResult.disponible) {
                     return (
-                      <div className="flex items-center gap-1.5 text-red-600 font-bold text-xs mb-2 animate-pulse">
+                      <div className="flex items-center gap-1.5 text-red-600 font-semibold text-xs mb-2 animate-pulse">
                         <FaTimesCircle className="shrink-0" />
                         <span>No hay stock</span>
                       </div>
                     );
                   } else if (savarResult && savarResult.disponible) {
                     return (
-                      <div className="flex items-center gap-1.5 text-primary font-bold text-xs mb-2">
-                        <FaCheckCircle className="shrink-0 font-bold" />
+                      <div className="flex items-center gap-1.5 text-primary font-semibold text-xs mb-2">
+                        <FaCheckCircle className="shrink-0 font-semibold" />
                         <span>Stock disponible</span>
                       </div>
                     );

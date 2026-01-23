@@ -379,8 +379,18 @@ export default function ProductDetail({
     };
 
     // Add to cart (works for both authenticated and guest users)
-    await addToCart(finalProduct, quantity);
-    setModalProduct(finalProduct);
+    if (!finalProduct.prestashopCombinationId && variationsData.variations?.length > 0) {
+      showToast("Por favor, selecciona todas las opciones del producto", "error");
+      return;
+    }
+
+    try {
+      await addToCart(finalProduct, quantity);
+      setModalProduct(finalProduct);
+    } catch (error: any) {
+      console.error("Error adding to cart:", error);
+      showToast(error.message || "Error al agregar al carrito", "error");
+    }
   };
 
   const openLoginModal = () => {
@@ -428,47 +438,70 @@ export default function ProductDetail({
     const newAttrs = { ...selectedAttributes, [type]: valueId };
     setSelectedAttributes(newAttrs);
 
-    // Buscar variación que coincida EXACTAMENTE
+    // 1. Intentar encontrar coincidencia EXACTA
     const foundVariation = variationsData.variations.find((v) => {
-      // Debe tener exactamente los mismos atributos
-      if (
-        !v.attributes ||
-        v.attributes.length !== Object.keys(newAttrs).length
-      ) {
+      if (!v.attributes || v.attributes.length !== Object.keys(newAttrs).length)
         return false;
-      }
-
       return v.attributes.every((attr) => newAttrs[attr.type] === attr.id);
     });
 
     if (foundVariation) {
       setCurrentVariation(foundVariation);
     } else {
-      // Opción B: Buscar variación PARCIAL (más flexible)
-      const partialVariation = variationsData.variations.find(
-        (v) =>
-          v.attributes &&
-          v.attributes.length > 0 &&
-          v.attributes.every((attr) => {
-            // Si el atributo está en newAttrs, debe coincidir
-            if (newAttrs[attr.type] !== undefined) {
-              return newAttrs[attr.type] === attr.id;
-            }
-            return true; // Si no está, lo ignoramos
-          }),
+      // 2. Si no hay exacta, buscar la mejor coincidencia posible
+      // Priorizamos variaciones que tengan el atributo que acabamos de cambiar
+      const variationsWithClickedAttr = variationsData.variations.filter((v) =>
+        v.attributes?.some((a) => a.type === type && a.id === valueId),
       );
 
-      if (partialVariation) {
-        setCurrentVariation(partialVariation);
+      const candidates =
+        variationsWithClickedAttr.length > 0
+          ? variationsWithClickedAttr
+          : variationsData.variations;
+
+      const bestMatch = candidates
+        .map((v) => {
+          let score = 0;
+          if (!v.attributes) return { variation: v, score: -1 };
+
+          // Puntos por coincidencias y penalización por diferencias
+          v.attributes.forEach((attr) => {
+            if (newAttrs[attr.type] === attr.id) {
+              // El atributo que acabamos de cambiar tiene mucho más peso
+              score += attr.type === type ? 100 : 10;
+            } else if (newAttrs[attr.type] !== undefined) {
+              score -= 20; // Penalización por valor distinto
+            }
+          });
+
+          // Penalización suave por atributos faltantes en la variación
+          Object.keys(newAttrs).forEach((key) => {
+            if (!v.attributes.find((a) => a.type === key)) {
+              score -= 5;
+            }
+          });
+
+          return { variation: v, score };
+        })
+        .sort((a, b) => b.score - a.score)[0];
+
+      if (bestMatch && bestMatch.score > -50) {
+        // Umbral mínimo de confianza
+        setCurrentVariation(bestMatch.variation);
+
+        // Actualizar la selección para que coincida con la nueva variación encontrada
+        const updatedAttrs: Record<string, number> = {};
+        bestMatch.variation.attributes.forEach((a) => {
+          updatedAttrs[a.type] = a.id;
+        });
+        setSelectedAttributes(updatedAttrs);
       } else {
-        // Opción C: Limpiar variación si no hay match
         setCurrentVariation(null);
       }
     }
 
     console.log("🔄 Attribute Changed:", type, valueId);
-    console.log("📝 New Selection:", newAttrs);
-    console.log("🎯 Found Variation:", foundVariation);
+    console.log("🎯 Current Selection:", newAttrs);
   };
 
   // ✅ Validar disponibilidad de atributos (si tiene precio > 0)
@@ -479,32 +512,13 @@ export default function ProductDetail({
     if (!variationsData?.variations || variationsData.variations.length === 0)
       return true;
 
-    const proposedSelection = {
-      ...selectedAttributes,
-      [attributeType]: attributeValueId,
-    };
+    // We check if there is ANY variation that contains this attribute value
+    // and matches the "important" parts of our current selection (like the attribute type we just changed or others)
+    // For a stricter check, you could try to match all other selected attributes.
 
+    // Simplest reliable check: Is this value part of ANY active variation?
     return variationsData.variations.some((v) => {
-      // Ignorar variaciones sin atributos para esta validación, ya que estamos
-      // validando la disponibilidad de un atributo específico (talla, color, etc.)
-      if (!v.attributes || v.attributes.length === 0) {
-        return false;
-      }
-
-      // La variación debe tener TODOS los atributos de la selección propuesta
-      const matchesProposed = Object.entries(proposedSelection).every(
-        ([type, valId]) => {
-          return v.attributes.some((a) => a.type === type && a.id === valId);
-        },
-      );
-
-      if (!matchesProposed) return false;
-
-      // Validar Stock y Precio
-      const hasStock = v.stock?.inStock && v.stock?.quantity > 0;
-      const hasValidPrice = (v.price?.amount ?? 0) > 0;
-
-      return hasStock && hasValidPrice;
+      return v.attributes && v.attributes.some(a => a.type === attributeType && a.id === attributeValueId) && v.stock?.inStock;
     });
   };
 
@@ -756,18 +770,16 @@ export default function ProductDetail({
                               key={actualIndex}
                               onClick={() => setSelectedImageIndex(actualIndex)}
                               className={`relative aspect-square bg-white rounded-md shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
-																${
-                                  isSelected
-                                    ? "ring-2 ring-primary scale-105"
-                                    : "hover:shadow-lg hover:scale-105"
+																${isSelected
+                                  ? "ring-2 ring-primary scale-105"
+                                  : "hover:shadow-lg hover:scale-105"
                                 }
 															`}
                             >
                               <Image
                                 src={img}
-                                alt={`${basicData.name} - miniatura ${
-                                  actualIndex + 1
-                                }`}
+                                alt={`${basicData.name} - miniatura ${actualIndex + 1
+                                  }`}
                                 fill
                                 className="object-contain p-2"
                                 unoptimized
@@ -931,7 +943,7 @@ export default function ProductDetail({
                   <span className="text-4xl font-semibold text-primary-dark">
                     {formatPrice(getCurrentPrice.priceWithTax)}
                   </span>
-                  <span className="text-lg text-[#D3D3D3] line-through font-bold">
+                  <span className="text-lg text-[#D3D3D3] line-through font-semibold">
                     {formatPrice(getCurrentPrice.priceWithTax * 1.5)}
                   </span>
                 </div>
@@ -958,9 +970,7 @@ export default function ProductDetail({
                           </label>
                           <div className="flex flex-wrap items-center gap-1 md:gap-3">
                             {attr.values?.map((val) => {
-                              const isActuallyAvailable =
-                                val.available ??
-                                checkAttributeAvailability(attr.type, val.id);
+                              const isActuallyAvailable = checkAttributeAvailability(attr.type, val.id);
 
                               if (!isActuallyAvailable) return null;
 
@@ -984,16 +994,14 @@ export default function ProductDetail({
                                     }
                                     className={
                                       attr.type === "color"
-                                        ? `w-10 h-10 rounded-full border-2 transition relative ${
-                                            isSelected
-                                              ? "border-primary border-4 scale-110"
-                                              : "border-gray-300 hover:scale-105"
-                                          }`
-                                        : `px-5 py-2 border rounded-md font-medium transition ${
-                                            isSelected
-                                              ? "bg-primary-dark text-white border-gray-900"
-                                              : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                          }`
+                                        ? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
+                                          ? "border-primary border-4 scale-110"
+                                          : "border-gray-300 hover:scale-105"
+                                        }`
+                                        : `px-5 py-2 border rounded-md font-medium transition ${isSelected
+                                          ? "bg-primary-dark text-white border-gray-900"
+                                          : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                        }`
                                     }
                                     style={
                                       attr.type === "color" && val.colorHex
@@ -1012,8 +1020,8 @@ export default function ProductDetail({
                                             <Image
                                               src={getImageUrl(
                                                 previewVariation.images?.[0] ||
-                                                  variationsData.media
-                                                    ?.coverImage,
+                                                variationsData.media
+                                                  ?.coverImage,
                                               )}
                                               alt={val.value}
                                               fill
@@ -1021,7 +1029,7 @@ export default function ProductDetail({
                                               unoptimized
                                             />
                                           </div>
-                                          <p className="text-[10px] text-center mt-1 text-gray-600 font-bold uppercase truncate max-w-[90px]">
+                                          <p className="text-[10px] text-center mt-1 text-gray-600 font-semibold uppercase truncate max-w-[90px]">
                                             {val.value}
                                           </p>
                                         </div>
@@ -1061,14 +1069,13 @@ export default function ProductDetail({
                                 setCurrentVariation(v);
                                 setSelectedAttributes({});
                               }}
-                              className={`px-4 py-2 border rounded-md font-medium transition ${
-                                isSelected
-                                  ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
-                                  : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                              }`}
+                              className={`px-4 py-2 border rounded-md font-medium transition ${isSelected
+                                ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
+                                : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                }`}
                             >
                               <div className="flex flex-col items-center">
-                                <span className="text-sm font-bold">
+                                <span className="text-sm font-semibold">
                                   {v.name && v.name !== basicData.name
                                     ? v.name
                                     : v.sku || v.reference || `Opción ${v.id}`}
@@ -1104,7 +1111,7 @@ export default function ProductDetail({
                     >
                       <FaMinus className="w-3 h-3 text-primary transition" />
                     </button>
-                    <span className="px-4 py-2 font-bold">{quantity}</span>
+                    <span className="px-4 py-2 font-semibold">{quantity}</span>
                     <button
                       className="px-2 py-2 hover:bg-gray-100 transition disabled:opacity-50"
                       onClick={handleIncrease}
@@ -1123,20 +1130,24 @@ export default function ProductDetail({
                 {/* Botones de acción */}
                 <div className="flex gap-2 md:gap-4">
                   <Button
-                    className="disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={getAvailableQuantity === 0}
+                    className="disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                    disabled={
+                      getAvailableQuantity === 0 ||
+                      (!currentVariation && variationsData.variations?.length > 0)
+                    }
                     onClick={handleAddToCart}
                   >
-                    {getAvailableQuantity > 0
-                      ? "Agregar al carrito"
-                      : "Sin stock"}
+                    {!currentVariation && variationsData.variations?.length > 0
+                      ? "Selecciona opciones"
+                      : getAvailableQuantity > 0
+                        ? "Agregar al carrito"
+                        : "Sin stock"}
                   </Button>
                   <button
                     onClick={handleToggleFavorite}
                     disabled={loadingFavorite}
-                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] rounded-full transition flex items-center justify-center ${
-                      isFavorite ? "text-primary" : "text-primary"
-                    }`}
+                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
+                      }`}
                   >
                     {loadingFavorite ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
@@ -1170,11 +1181,10 @@ export default function ProductDetail({
             <button
               key={tab}
               onClick={() => setActiveTab(tab as TabKey)}
-              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${
-                activeTab === tab
-                  ? "border-gray-900 text-primary-dark"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${activeTab === tab
+                ? "border-gray-900 text-primary-dark"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
             >
               {tab}
             </button>

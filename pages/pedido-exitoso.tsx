@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { formatPrice } from "@/lib/utils";
 import { FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import Button from "@/components/ui/Button";
-import { getOrderDetail } from "@/lib/cart";
+import { getOrderDetail, getOrderPaymentStatus, sendOrderPaidEmail } from "@/lib/cart";
 
 export default function PedidoExitoso() {
   const router = useRouter();
@@ -32,6 +32,29 @@ export default function PedidoExitoso() {
         const response = await getOrderDetail(orderId);
         if (response.success) {
           setOrder(response.data);
+
+          // 🛒 VERIFICACIÓN DE PAGO Y ENVÍO DE CORREO
+          try {
+            const statusResponse = await getOrderPaymentStatus(orderId);
+            if (statusResponse.success && statusResponse.data) {
+              const { status, paymentStatus } = statusResponse.data;
+
+              // Si el estado es PAID o COMPLETED, enviamos el correo de confirmación
+              if (status === "PAID" || paymentStatus === "COMPLETED") {
+                // Evitar duplicados usando localStorage
+                const mailSentKey = `liwilu_mail_sent_${orderId}`;
+                const alreadySent = localStorage.getItem(mailSentKey);
+
+                if (!alreadySent) {
+                  console.log("📧 Disparando correo de confirmación de pago para orden:", orderId);
+                  await sendOrderPaidEmail(orderId);
+                  localStorage.setItem(mailSentKey, "true");
+                }
+              }
+            }
+          } catch (statusErr) {
+            console.warn("⚠️ No se pudo verificar el estado de pago para el envío de correo:", statusErr);
+          }
         } else {
           setError(response.message || "No se pudieron obtener los detalles del pedido");
         }
@@ -65,7 +88,7 @@ export default function PedidoExitoso() {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
           <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
             <FaExclamationTriangle className="text-yellow-500 text-6xl mx-auto mb-6" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">¡Ups! Algo salió mal</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">¡Ups! Algo salió mal</h1>
             <p className="text-gray-600 mb-8">{error || "No pudimos encontrar la información de tu pedido."}</p>
             <Button className="w-full" onClick={() => router.push("/productos")}>
               Volver a la tienda
@@ -114,7 +137,7 @@ export default function PedidoExitoso() {
               <div className="space-y-4">
                 <h1 className="text-4xl font-normal text-gray-900 leading-tight">
                   Gracias por tu compra,<br />
-                  <span className="font-bold">{nombreCliente}</span>
+                  <span className="font-semibold">{nombreCliente}</span>
                 </h1>
 
 

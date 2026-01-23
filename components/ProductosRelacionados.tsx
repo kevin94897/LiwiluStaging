@@ -65,8 +65,9 @@ export default function ProductosRelacionados({
       skipSnaps: false,
       dragFree: false,
       containScroll: "trimSnaps",
+      slidesToScroll: 1,
     },
-    [Autoplay({ delay: 3000, stopOnInteraction: false })],
+    [Autoplay({ delay: 3000, stopOnInteraction: true })],
   );
 
   useEffect(() => {
@@ -247,9 +248,9 @@ export default function ProductosRelacionados({
       product.coverImage ||
       (product.associations?.images?.[0]?.id
         ? getProductImageUrl(
-            product.id.toString(),
-            product.associations.images[0].id,
-          )
+          product.id.toString(),
+          product.associations.images[0].id,
+        )
         : "/no-image.png");
 
     return (
@@ -277,11 +278,10 @@ export default function ProductosRelacionados({
                 <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
               ) : (
                 <FaHeart
-                  className={`w-5 h-5 transition ${
-                    favoritos.includes(product.id.toString())
-                      ? "text-red-500 fill-current"
-                      : "text-gray-400 hover:text-red-500"
-                  }`}
+                  className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
+                    ? "text-red-500 fill-current"
+                    : "text-gray-400 hover:text-red-500"
+                    }`}
                 />
               )}
             </button>
@@ -356,30 +356,21 @@ export default function ProductosRelacionados({
         </div>
       )}
 
-      {isMobile ? (
-        <div className="overflow-hidden" ref={emblaRef}>
-          <div className="flex touch-pan-y touch-pinch-zoom -ml-3 sm:-ml-4">
-            {relatedProducts.map((product) => (
-              <div
-                key={product.id}
-                className="flex-[0_0_85%] min-w-0 pl-3 sm:flex-[0_0_50%] sm:pl-4"
-              >
-                <div className="py-4 h-full">
-                  <ProductCard product={product} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+      <div className="overflow-hidden" ref={emblaRef}>
+        <div className="flex touch-pan-y touch-pinch-zoom -ml-3 sm:-ml-4">
           {relatedProducts.map((product) => (
-            <div key={product.id} className="py-2">
+            <div
+              key={product.id}
+              className={`min-w-0 ${isMobile
+                  ? "flex-[0_0_85%] pl-3 sm:flex-[0_0_50%] sm:pl-4"
+                  : "flex-[0_0_25%] pl-4"
+                }`}
+            >
               <ProductCard product={product} />
             </div>
           ))}
         </div>
-      )}
+      </div>
 
       {modalProduct && (
         <AddToCartModal

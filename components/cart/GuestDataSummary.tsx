@@ -55,7 +55,7 @@ export default function GuestDataSummary({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Información Personal */}
         <div className="space-y-2">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Información Personal
           </p>
           <div className="text-sm text-gray-800 space-y-1">
@@ -107,7 +107,7 @@ export default function GuestDataSummary({
 
         {/* Dirección de Entrega */}
         <div className="space-y-2">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Dirección principal
           </p>
           <div className="text-sm text-gray-800 space-y-1">

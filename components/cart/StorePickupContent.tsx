@@ -118,7 +118,7 @@ export default function StorePickupContent({
       {mostrarMapa && distritoSeleccionado && (
         <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in-up mt-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold">Puntos de retiro más cercanos</h2>
+            <h2 className="text-lg font-semibold">Puntos de retiro más cercanos</h2>
           </div>
 
           {/* Mapa Interactivo */}

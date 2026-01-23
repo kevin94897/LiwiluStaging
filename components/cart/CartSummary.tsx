@@ -75,7 +75,7 @@ export default function CartSummary({
           {totalSavings > 0 && (
             <div className="flex justify-between text-primary animate-pulse">
               <span>Ahorro total</span>
-              <span className="font-bold">
+              <span className="font-semibold">
                 -{formatPrice(totalSavings.toString())}
               </span>
             </div>

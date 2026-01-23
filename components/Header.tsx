@@ -85,28 +85,25 @@ function SearchBar({ isMobile = false }) {
   return (
     <form
       onSubmit={handleSearch}
-      className={`flex items-center bg-white rounded-full ${
-        isMobile
+      className={`flex items-center bg-white rounded-full ${isMobile
           ? "px-4 py-2"
           : "px-3 py-1 w-full max-w-md xl:min-w-[300px] lg:max-w-[250px]"
-      }`}
+        }`}
     >
       <input
         type="search"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="¿Qué estás buscando?"
-        className={`flex-grow px-2 outline-none bg-transparent ${
-          isMobile
+        className={`flex-grow px-2 outline-none bg-transparent ${isMobile
             ? "text-[15px] placeholder-gray-400 text-gray-800"
             : "py-1 text-sm text-gray-700"
-        }`}
+          }`}
       />
       <button
         type="submit"
-        className={`${
-          isMobile ? "ml-2 hover:text-primary-light" : ""
-        } text-gray-700 transition-colors`}
+        className={`${isMobile ? "ml-2 hover:text-primary-light" : ""
+          } text-gray-700 transition-colors`}
       >
         <FaSearch size={18} />
       </button>
@@ -532,16 +529,14 @@ export default function Header() {
   return (
     <>
       <header
-        className={`w-full text-white fixed top-0 left-0 z-50 transition-all duration-300 ${
-          isSticky
+        className={`w-full text-white fixed top-0 left-0 z-50 transition-all duration-300 ${isSticky
             ? "backdrop-blur-md bg-[#0b2d2d]/90 shadow-lg"
             : "bg-transparent"
-        }`}
+          }`}
       >
         <div
-          className={`bg-primary-light text-[12px] lg:text-xs py-1 px-4 transition-all duration-300 ${
-            isSticky ? "hidden lg:block" : ""
-          }`}
+          className={`bg-primary-light text-[12px] lg:text-xs py-1 px-4 transition-all duration-300 ${isSticky ? "hidden lg:block" : ""
+            }`}
         >
           <div className="max-w-3xl mx-auto flex justify-between items-center flex-wrap">
             <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-1">
@@ -563,9 +558,8 @@ export default function Header() {
         </div>
 
         <div
-          className={`py-3 transition-all duration-300 ${
-            isSticky ? "bg-[#0b2d2d]/95 shadow-xl" : "bg-[#0b2d2d]"
-          }`}
+          className={`py-3 transition-all duration-300 ${isSticky ? "bg-[#0b2d2d]/95 shadow-xl" : "bg-[#0b2d2d]"
+            }`}
         >
           <div className="max-w-7xl mx-auto px-4">
             {/* ===== MOBILE ===== */}
@@ -609,19 +603,18 @@ export default function Header() {
                             onClick={
                               c.isModal
                                 ? (e) => {
-                                    e.preventDefault();
-                                    setTrimegistoDNIModalOpen(true);
-                                    setMobileCatsOpen(false);
-                                  }
+                                  e.preventDefault();
+                                  setTrimegistoDNIModalOpen(true);
+                                  setMobileCatsOpen(false);
+                                }
                                 : () => setMobileCatsOpen(false)
                             }
-                            className={`block px-4 py-3 text-white transition-colors ${
-                              c.highlight
+                            className={`block px-4 py-3 text-white transition-colors ${c.highlight
                                 ? "bg-primary hover:bg-primary-light rounded-xl font-medium text-[#0b2d2d]"
                                 : c.highlightBottom
-                                  ? "text-white hover:bg-white/10 rounded-xl font-bold"
+                                  ? "text-white hover:bg-white/10 rounded-xl font-semibold"
                                   : "text-white/90 hover:bg-white/10 rounded-lg"
-                            }`}
+                              }`}
                           >
                             {c.label}
                           </Link>
@@ -656,19 +649,18 @@ export default function Header() {
                               onClick={
                                 c.isModal
                                   ? (e) => {
-                                      e.preventDefault();
-                                      setTrimegistoDNIModalOpen(true);
-                                      setMobileCatsOpen(false);
-                                    }
+                                    e.preventDefault();
+                                    setTrimegistoDNIModalOpen(true);
+                                    setMobileCatsOpen(false);
+                                  }
                                   : () => setMobileCatsOpen(false)
                               }
-                              className={`group flex items-center justify-between px-4 py-3 text-sm transition ${
-                                c.highlight
+                              className={`group flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
                                   ? "bg-primary text-white hover:bg-primary-light"
                                   : c.highlightBottom
                                     ? "bg-gray-100 font-semibold hover:bg-primary hover:text-white"
                                     : "hover:bg-primary hover:text-white"
-                              }`}
+                                }`}
                             >
                               <span className="truncate">{c.label}</span>
                               <HiChevronRight className="text-gray-400 transition-colors group-hover:text-white" />

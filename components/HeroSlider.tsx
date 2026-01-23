@@ -73,7 +73,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
               {getProductName(product)}
             </h3>
             <div className="flex items-center justify-between">
-              <span className="text-xs md:text-lg font-bold">
+              <span className="text-xs md:text-lg font-semibold">
                 {formatPrice(product.price || 0)}
               </span>
               <div className="bg-white/20 p-1.5 rounded-full">

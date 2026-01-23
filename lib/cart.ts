@@ -906,3 +906,49 @@ export async function getOrderDetail(orderId: string): Promise<{ success: boolea
         throw error;
     }
 }
+
+/**
+ * Get order payment status
+ * @param orderId - The ID of the order to check
+ */
+export async function getOrderPaymentStatus(orderId: string | number): Promise<{ success: boolean; data: any; message?: string }> {
+    try {
+        const response = await apiGet(`/payments/orders/${orderId}/status`, {
+            skipAuth: true // Usually checkable by guest with session or ID
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(result.message || `Error fetching order status: ${response.statusText}`);
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error in getOrderPaymentStatus:', error);
+        throw error;
+    }
+}
+
+/**
+ * Send paid confirmation email
+ * @param orderId - The ID of the order
+ */
+export async function sendOrderPaidEmail(orderId: string | number): Promise<{ success: boolean; message: string }> {
+    try {
+        const response = await apiPost(`/orders/${orderId}/send-paid-email`, {}, {
+            skipAuth: true
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(result.message || `Error sending paid email: ${response.statusText}`);
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error in sendOrderPaidEmail:', error);
+        throw error;
+    }
+}
