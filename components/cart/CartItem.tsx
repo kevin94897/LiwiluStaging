@@ -22,6 +22,8 @@ interface CartItemProps {
   tiendaSeleccionada: string | null;
   stockValidationResult: StockValidationResponse | null;
   infoTiendaSeleccionada: WarehouseMapItem | undefined;
+  isValidatingStock: boolean;
+  isValidatingSavar: boolean;
   onRemove: (productId: string) => void;
   onUpdateQuantity: (productId: string, quantity: number) => void;
 }
@@ -34,6 +36,8 @@ export default function CartItem({
   tiendaSeleccionada,
   stockValidationResult,
   infoTiendaSeleccionada,
+  isValidatingStock,
+  isValidatingSavar,
   onRemove,
   onUpdateQuantity,
 }: CartItemProps) {
@@ -58,6 +62,10 @@ export default function CartItem({
 
   // Determine the stock status for the item: available, outOfStock, or neutral
   const itemStockStatus = (() => {
+    // Show neutral while validating to avoid flickering (handled by loader UI)
+    if (metodoEnvio === "delivery" && isValidatingSavar) return "loading";
+    if (metodoEnvio === "retiro" && isValidatingStock) return "loading";
+
     if (metodoEnvio === "delivery") {
       if (savarStockResults.length === 0) return "neutral";
       const savarResult = savarStockResults.find(
@@ -85,11 +93,21 @@ export default function CartItem({
 
   return (
     <div
-      className="bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up"
+      className="bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden"
       style={{ animationDelay: `${index * 100}ms` }}
     >
-      {itemStockStatus !== "neutral" && (
-        <div className="w-[25px] flex justify-center shrink-0">
+      {/* Overlay Loader */}
+      {itemStockStatus === "loading" && (
+        <div className="absolute inset-0 bg-white/80 z-20 flex flex-col items-center justify-center rounded-sm backdrop-blur-[1px] transition-all duration-300">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+          <p className="text-secondary text-sm font-medium animate-pulse">
+            Verificando stock...
+          </p>
+        </div>
+      )}
+
+      {itemStockStatus !== "neutral" && itemStockStatus !== "loading" && (
+        <div className="w-[25px] flex justify-center shrink-0 pt-1">
           {itemStockStatus === "outOfStock" && (
             <FaTimesCircle size={25} className="text-red-500 animate-pulse" />
           )}
@@ -123,6 +141,9 @@ export default function CartItem({
                   </p>
                   <div className="flex items-center gap-4">
                     {(() => {
+                      // Check loading state first
+                      if (isValidatingStock) return null; // Handled by overlay
+
                       // Verificar primero si tenemos resultados de validación
                       if (!stockValidationResult) return null;
 
@@ -215,7 +236,10 @@ export default function CartItem({
 
               {/* Error de Stock Inline */}
               {(() => {
-                if (itemStockStatus === "neutral") return null;
+                // Check if loading FIRST
+                if (metodoEnvio === "delivery" && isValidatingSavar) return null; // Handled by overlay
+
+                if (itemStockStatus === "neutral" || itemStockStatus === "loading") return null;
 
                 if (metodoEnvio === "delivery") {
                   const savarResult = savarStockResults.find(

@@ -2262,6 +2262,8 @@ export default function Carrito() {
                         tiendaSeleccionada={tiendaSeleccionada}
                         stockValidationResult={stockValidationResult}
                         infoTiendaSeleccionada={infoTiendaSeleccionada}
+                        isValidatingStock={isValidatingStock}
+                        isValidatingSavar={isValidatingSavar}
                         onRemove={removeFromCart}
                         onUpdateQuantity={handleUpdateQuantity}
                       />
