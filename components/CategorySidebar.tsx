@@ -235,13 +235,13 @@ export default function CategorySidebar({
             className="object-cover transition-transform duration-700 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
-          <div className="absolute bottom-6 left-6 text-white">
+          {/* <div className="absolute bottom-6 left-6 text-white">
             <div className="bg-primary px-3 py-1 rounded-full text-xs font-semibold inline-block mb-2">
               Colección 2024
             </div>
             <h4 className="text-xl font-semibold mb-1">Nuevas Llegadas</h4>
             <p className="text-sm text-gray-200">Última tecnología</p>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
