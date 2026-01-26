@@ -13,7 +13,16 @@ import CategorySidebar from "@/components/CategorySidebar";
 import CategorySlider from "@/components/CategorySlider";
 
 import { useCart } from "@/context/CartContext";
-import { formatPrice, getProductName, getProductImageUrl } from "@/lib/utils";
+import {
+  formatPrice,
+  getProductName,
+  getProductImageUrl,
+  getRegularPrice,
+  getSalePrice,
+  hasDiscount,
+  getEffectivePrice,
+  getProductLink,
+} from "@/lib/utils";
 import { Product, Category } from "@/lib/catalog";
 import {
   searchProducts,
@@ -341,10 +350,11 @@ export default function Tienda({
             />
           </div>
           <div
-            className={`w-1/2 transition-all duration-1000 transform ${isVisible
-              ? "opacity-100 translate-x-0"
-              : "opacity-0 -translate-x-10"
-              }`}
+            className={`w-1/2 transition-all duration-1000 transform ${
+              isVisible
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 -translate-x-10"
+            }`}
           >
             <span className="text-[12px] md:text-sm font-light mb-2 block animate-fade-in">
               NUEVO
@@ -359,8 +369,9 @@ export default function Tienda({
           </div>
           <div className="w-1/2 flex items-center justify-center">
             <div
-              className={`absolute md:-bottom-10 floating-slow transition-all duration-1000 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
-                }`}
+              className={`absolute md:-bottom-10 floating-slow transition-all duration-1000 ${
+                isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+              }`}
             >
               <Image
                 src="/images/productos/liwilu_productos_laptop_img.png"
@@ -413,8 +424,9 @@ export default function Tienda({
           {/* Grid de productos con animaciones */}
           <main className="flex-1" ref={productsTopRef}>
             <div
-              className={`bg-white rounded-sm shadow-md mb-14 overflow-hidden transition-all duration-700 transform hover:shadow-xl ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
-                }`}
+              className={`bg-white rounded-sm shadow-md mb-14 overflow-hidden transition-all duration-700 transform hover:shadow-xl ${
+                isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+              }`}
             >
               <div className="relative h-32 md:h-40">
                 <Image
@@ -444,8 +456,8 @@ export default function Tienda({
                   {(router.query.categoryIds ||
                     router.query.brandIds ||
                     router.query.attributeIds) && (
-                      <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                    )}
+                    <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                  )}
                 </button>
               </div>
 
@@ -514,15 +526,14 @@ export default function Tienda({
                     product.coverImage ||
                     (product.associations?.images?.[0]?.id
                       ? getProductImageUrl(
-                        product.id.toString(),
-                        product.associations.images[0].id,
-                      )
-                      : "/no-image.png");
+                          product.id.toString(),
+                          product.associations.images[0].id,
+                        )
+                      : "/images/productos/placeholder_liwilu.png");
 
                   return (
                     <Link
-                      key={product.id}
-                      href={`/tienda/${product.id}`}
+                      href={getProductLink(product)}
                       className="block animate-fade-in-up"
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
@@ -541,10 +552,11 @@ export default function Tienda({
                               <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
                             ) : (
                               <FaHeart
-                                className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
-                                  ? "text-red-500 fill-current"
-                                  : "text-gray-400 hover:text-red-500"
-                                  }`}
+                                className={`w-5 h-5 transition ${
+                                  favoritos.includes(product.id.toString())
+                                    ? "text-red-500 fill-current"
+                                    : "text-gray-400 hover:text-red-500"
+                                }`}
                               />
                             )}
                           </button>
@@ -562,10 +574,12 @@ export default function Tienda({
                               width={400}
                               height={400}
                               sizes="400px"
-                              className={`object-cover transition-transform duration-500 group-hover:scale-105 ${(product.quantity ?? 0) <= 0 ? "grayscale opacity-70" : ""
-                                }`}
+                              className={`object-cover transition-transform duration-500 group-hover:scale-105 ${
+                                (product.quantity ?? 0) <= 0
+                                  ? "grayscale opacity-70"
+                                  : ""
+                              }`}
                             />
-                            <div>asd</div>
                           </div>
                         </div>
 
@@ -587,22 +601,22 @@ export default function Tienda({
                           </div>
 
                           <div className="flex items-center gap-2 mb-6">
+                            {hasDiscount(product) && (
+                              <span className="text-white text-sm line-through opacity-70">
+                                {formatPrice(getRegularPrice(product))}
+                              </span>
+                            )}
                             <span className="text-white font-semibold text-xl">
-                              {formatPrice(product.price || 0)}
-                            </span>
-                            <span className="text-white text-sm line-Categorías">
-                              {formatPrice(
-                                parseFloat((product.price || 0).toString()) *
-                                1.5,
-                              )}
+                              {formatPrice(getEffectivePrice(product))}
                             </span>
                           </div>
 
                           <button
-                            className={`w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 transform ${(product.quantity ?? 0) <= 0
-                              ? "opacity-50 cursor-not-allowed"
-                              : "hover:bg-gray-100 hover:shadow-lg"
-                              }`}
+                            className={`w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 transform ${
+                              (product.quantity ?? 0) <= 0
+                                ? "opacity-50 cursor-not-allowed"
+                                : "hover:bg-gray-100 hover:shadow-lg"
+                            }`}
                             onClick={(e) => {
                               if ((product.quantity ?? 0) > 0) {
                                 handleAddToCart(e, product);
@@ -681,10 +695,11 @@ export default function Tienda({
                       <button
                         key={page}
                         onClick={() => updateFilters({ page: page.toString() })}
-                        className={`px-4 py-2 rounded-sm transition-all duration-300 transform hover:scale-110 ${currentPage === page
-                          ? "bg-primary text-white font-semibold shadow-lg"
-                          : "border hover:bg-gray-100"
-                          }`}
+                        className={`px-4 py-2 rounded-sm transition-all duration-300 transform hover:scale-110 ${
+                          currentPage === page
+                            ? "bg-primary text-white font-semibold shadow-lg"
+                            : "border hover:bg-gray-100"
+                        }`}
                       >
                         {page}
                       </button>

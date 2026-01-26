@@ -230,22 +230,44 @@ export default function ProductDetail({
     return Array.from(new Set(images));
   }, [currentVariation, variationsData]);
 
-  // ✅ Obtener precio actual
-  const getCurrentPrice = useMemo(() => {
-    if (!variationsData) return { price: 0, priceWithTax: 0 };
+  // ✅ Obtener precios (regular y oferta)
+  const priceInfo = useMemo(() => {
+    if (!variationsData) return { regularPrice: 0, salePrice: 0 };
 
-    if (currentVariation) {
-      // New structure: currentVariation.price is an object { amount, amountWithTax... }
+    // Get the price object from current variation or base product
+    const priceObj = currentVariation
+      ? currentVariation.price
+      : variationsData.base?.price;
+
+    // Default fallback
+    if (!priceObj) return { regularPrice: 0, salePrice: 0 };
+
+    const currentPrice = priceObj.amountWithTax || 0;
+
+    // Case 1: Variable Product (Active Variation)
+    // Logic: priceImpact is Regular Price, price.amount is Sale Price
+    if (currentVariation && priceObj.priceImpact && priceObj.priceImpact > 0) {
       return {
-        price: currentVariation.price.amount,
-        priceWithTax: currentVariation.price.amountWithTax,
+        regularPrice: priceObj.priceImpact,
+        salePrice: currentPrice,
       };
     }
 
-    // New structure: variationsData.base.price
+    // Case 2: Simple Product
+    // Logic: discountPrice is the DISCOUNT AMOUNT (not final price)
+    // Regular Price = currentPrice + discountPrice
+    // Sale Price = currentPrice (price after discount)
+    if (priceObj.discountPrice && priceObj.discountPrice > 0) {
+      return {
+        regularPrice: currentPrice + priceObj.discountPrice,
+        salePrice: currentPrice,
+      };
+    }
+
+    // No discount case
     return {
-      price: variationsData.base?.price?.amount || 0,
-      priceWithTax: variationsData.base?.price?.amountWithTax || 0,
+      regularPrice: currentPrice,
+      salePrice: currentPrice,
     };
   }, [currentVariation, variationsData]);
 
@@ -318,7 +340,7 @@ export default function ProductDetail({
   const handleDecrease = () => setQuantity((q) => Math.max(1, q - 1));
 
   const handleAddToCart = async () => {
-    const priceInfo = getCurrentPrice;
+    // priceInfo is already calculated by the hook
 
     // Construct the product name with attributes if a variation is selected
     let productName = basicData.name;
@@ -363,8 +385,11 @@ export default function ProductDetail({
         ? currentVariation.prestashopCombinationId
         : null,
       name: productName,
-      price: priceInfo.priceWithTax, // Use price with tax as the selling price
-      originalPrice: priceInfo.priceWithTax * 1.5, // Emulate the mockup logic from the UI
+      price: priceInfo.salePrice, // Use sale price as the actual selling price
+      originalPrice:
+        priceInfo.regularPrice !== priceInfo.salePrice
+          ? priceInfo.regularPrice
+          : 0, // Set original price only if discounted
       quantity: getAvailableQuantity,
       reference: currentVariation ? currentVariation.reference : basicData.sku,
       coverImage:
@@ -379,8 +404,14 @@ export default function ProductDetail({
     };
 
     // Add to cart (works for both authenticated and guest users)
-    if (!finalProduct.prestashopCombinationId && variationsData.variations?.length > 0) {
-      showToast("Por favor, selecciona todas las opciones del producto", "error");
+    if (
+      !finalProduct.prestashopCombinationId &&
+      variationsData.variations?.length > 0
+    ) {
+      showToast(
+        "Por favor, selecciona todas las opciones del producto",
+        "error",
+      );
       return;
     }
 
@@ -518,7 +549,13 @@ export default function ProductDetail({
 
     // Simplest reliable check: Is this value part of ANY active variation?
     return variationsData.variations.some((v) => {
-      return v.attributes && v.attributes.some(a => a.type === attributeType && a.id === attributeValueId) && v.stock?.inStock;
+      return (
+        v.attributes &&
+        v.attributes.some(
+          (a) => a.type === attributeType && a.id === attributeValueId,
+        ) &&
+        v.stock?.inStock
+      );
     });
   };
 
@@ -770,16 +807,18 @@ export default function ProductDetail({
                               key={actualIndex}
                               onClick={() => setSelectedImageIndex(actualIndex)}
                               className={`relative aspect-square bg-white rounded-md shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
-																${isSelected
-                                  ? "ring-2 ring-primary scale-105"
-                                  : "hover:shadow-lg hover:scale-105"
+																${
+                                  isSelected
+                                    ? "ring-2 ring-primary scale-105"
+                                    : "hover:shadow-lg hover:scale-105"
                                 }
 															`}
                             >
                               <Image
                                 src={img}
-                                alt={`${basicData.name} - miniatura ${actualIndex + 1
-                                  }`}
+                                alt={`${basicData.name} - miniatura ${
+                                  actualIndex + 1
+                                }`}
                                 fill
                                 className="object-contain p-2"
                                 unoptimized
@@ -940,11 +979,13 @@ export default function ProductDetail({
 
                 {/* Precio */}
                 <div className="flex items-center gap-4 mb-6">
+                  {priceInfo.salePrice < priceInfo.regularPrice && (
+                    <span className="text-lg text-[#D3D3D3] line-through font-semibold">
+                      {formatPrice(priceInfo.regularPrice)}
+                    </span>
+                  )}
                   <span className="text-4xl font-semibold text-primary-dark">
-                    {formatPrice(getCurrentPrice.priceWithTax)}
-                  </span>
-                  <span className="text-lg text-[#D3D3D3] line-through font-semibold">
-                    {formatPrice(getCurrentPrice.priceWithTax * 1.5)}
+                    {formatPrice(priceInfo.salePrice)}
                   </span>
                 </div>
 
@@ -970,7 +1011,8 @@ export default function ProductDetail({
                           </label>
                           <div className="flex flex-wrap items-center gap-1 md:gap-3">
                             {attr.values?.map((val) => {
-                              const isActuallyAvailable = checkAttributeAvailability(attr.type, val.id);
+                              const isActuallyAvailable =
+                                checkAttributeAvailability(attr.type, val.id);
 
                               if (!isActuallyAvailable) return null;
 
@@ -994,14 +1036,16 @@ export default function ProductDetail({
                                     }
                                     className={
                                       attr.type === "color"
-                                        ? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
-                                          ? "border-primary border-4 scale-110"
-                                          : "border-gray-300 hover:scale-105"
-                                        }`
-                                        : `px-5 py-2 border rounded-md font-medium transition ${isSelected
-                                          ? "bg-primary-dark text-white border-gray-900"
-                                          : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                        }`
+                                        ? `w-10 h-10 rounded-full border-2 transition relative ${
+                                            isSelected
+                                              ? "border-primary border-4 scale-110"
+                                              : "border-gray-300 hover:scale-105"
+                                          }`
+                                        : `px-5 py-2 border rounded-sm font-medium transition ${
+                                            isSelected
+                                              ? "bg-primary-dark text-white border-gray-900"
+                                              : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                          }`
                                     }
                                     style={
                                       attr.type === "color" && val.colorHex
@@ -1020,8 +1064,8 @@ export default function ProductDetail({
                                             <Image
                                               src={getImageUrl(
                                                 previewVariation.images?.[0] ||
-                                                variationsData.media
-                                                  ?.coverImage,
+                                                  variationsData.media
+                                                    ?.coverImage,
                                               )}
                                               alt={val.value}
                                               fill
@@ -1069,10 +1113,11 @@ export default function ProductDetail({
                                 setCurrentVariation(v);
                                 setSelectedAttributes({});
                               }}
-                              className={`px-4 py-2 border rounded-md font-medium transition ${isSelected
-                                ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
-                                : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                }`}
+                              className={`px-4 py-2 border rounded-md font-medium transition ${
+                                isSelected
+                                  ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
+                                  : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                              }`}
                             >
                               <div className="flex flex-col items-center">
                                 <span className="text-sm font-semibold">
@@ -1133,7 +1178,8 @@ export default function ProductDetail({
                     className="disabled:opacity-50 disabled:cursor-not-allowed w-full"
                     disabled={
                       getAvailableQuantity === 0 ||
-                      (!currentVariation && variationsData.variations?.length > 0)
+                      (!currentVariation &&
+                        variationsData.variations?.length > 0)
                     }
                     onClick={handleAddToCart}
                   >
@@ -1146,8 +1192,9 @@ export default function ProductDetail({
                   <button
                     onClick={handleToggleFavorite}
                     disabled={loadingFavorite}
-                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
-                      }`}
+                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] rounded-full transition flex items-center justify-center ${
+                      isFavorite ? "text-primary" : "text-primary"
+                    }`}
                   >
                     {loadingFavorite ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
@@ -1181,10 +1228,11 @@ export default function ProductDetail({
             <button
               key={tab}
               onClick={() => setActiveTab(tab as TabKey)}
-              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${activeTab === tab
-                ? "border-gray-900 text-primary-dark"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
+              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${
+                activeTab === tab
+                  ? "border-gray-900 text-primary-dark"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
             >
               {tab}
             </button>

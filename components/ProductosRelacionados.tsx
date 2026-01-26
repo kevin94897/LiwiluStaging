@@ -13,7 +13,16 @@ import { useRouter } from "next/router";
 import toast from "react-hot-toast";
 
 import { Product, CatalogProduct } from "@/lib/catalog";
-import { getProductImageUrl, formatPrice, getProductName } from "@/lib/utils";
+import {
+  getProductImageUrl,
+  formatPrice,
+  getProductName,
+  getRegularPrice,
+  getSalePrice,
+  hasDiscount,
+  getEffectivePrice,
+  getProductLink,
+} from "@/lib/utils";
 import {
   fadeInUp,
   cardHover,
@@ -248,13 +257,13 @@ export default function ProductosRelacionados({
       product.coverImage ||
       (product.associations?.images?.[0]?.id
         ? getProductImageUrl(
-          product.id.toString(),
-          product.associations.images[0].id,
-        )
-        : "/no-image.png");
+            product.id.toString(),
+            product.associations.images[0].id,
+          )
+        : "/images/productos/placeholder_liwilu.png");
 
     return (
-      <Link href={`/tienda/${product.id}`}>
+      <Link href={getProductLink(product)}>
         <div className="bg-white rounded-md shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 h-full">
           <div className="relative">
             <span className="absolute top-2 left-2 bg-primary text-white px-3 py-1 rounded-full text-xs font-semibold z-10">
@@ -265,7 +274,8 @@ export default function ProductosRelacionados({
                 src={imageUrl}
                 alt={getProductName(product)}
                 fill
-                unoptimized
+                sizes="(max-width: 640px) 200px, (max-width: 1024px) 300px, 400px"
+                quality={75}
                 className="object-cover"
               />
             </div>
@@ -278,10 +288,11 @@ export default function ProductosRelacionados({
                 <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
               ) : (
                 <FaHeart
-                  className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
-                    ? "text-red-500 fill-current"
-                    : "text-gray-400 hover:text-red-500"
-                    }`}
+                  className={`w-5 h-5 transition ${
+                    favoritos.includes(product.id.toString())
+                      ? "text-red-500 fill-current"
+                      : "text-gray-400 hover:text-red-500"
+                  }`}
                 />
               )}
             </button>
@@ -292,11 +303,13 @@ export default function ProductosRelacionados({
               {getProductName(product)}
             </h2>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-white text-sm line-through">
-                {formatPrice(parseFloat((product.price || 0).toString()) * 1.5)}
-              </span>
+              {hasDiscount(product) && (
+                <span className="text-white text-sm line-through">
+                  {formatPrice(getRegularPrice(product))}
+                </span>
+              )}
               <span className="text-white font-semibold text-lg">
-                {formatPrice(product.price || 0)}
+                {formatPrice(getEffectivePrice(product))}
               </span>
             </div>
             <Button
@@ -361,10 +374,11 @@ export default function ProductosRelacionados({
           {relatedProducts.map((product) => (
             <div
               key={product.id}
-              className={`min-w-0 ${isMobile
+              className={`min-w-0 ${
+                isMobile
                   ? "flex-[0_0_85%] pl-3 sm:flex-[0_0_50%] sm:pl-4"
                   : "flex-[0_0_25%] pl-4"
-                }`}
+              }`}
             >
               <ProductCard product={product} />
             </div>

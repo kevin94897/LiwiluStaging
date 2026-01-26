@@ -7,7 +7,15 @@ import Link from "next/link";
 import { FaShoppingCart } from "react-icons/fa";
 import Button from "./ui/Button";
 import { Product } from "@/lib/catalog";
-import { formatPrice, getProductName } from "@/lib/utils";
+import {
+  formatPrice,
+  getProductName,
+  getRegularPrice,
+  getSalePrice,
+  hasDiscount,
+  getEffectivePrice,
+  getProductLink,
+} from "@/lib/utils";
 
 interface HeroSliderProps {
   latestProducts: Product[];
@@ -51,10 +59,10 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
       product.coverImage ||
       (product.associations?.images?.[0]?.id
         ? `/api/images/products/${product.id}/${product.associations.images[0].id}`
-        : "/no-image.png");
+        : "/images/productos/placeholder_liwilu.png");
 
     return (
-      <Link href={`/tienda/${product.id}`}>
+      <Link href={getProductLink(product)}>
         <div className="bg-white rounded-[15px] shadow-[0_4px_20px_rgba(0,0,0,0.1)] overflow-hidden transition-all duration-300 hover:scale-[1.02] w-[140px] md:w-[220px]">
           <div className="relative aspect-square">
             <div className="relative w-full h-full bg-white overflow-hidden">
@@ -73,9 +81,16 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
               {getProductName(product)}
             </h3>
             <div className="flex items-center justify-between">
-              <span className="text-xs md:text-lg font-semibold">
-                {formatPrice(product.price || 0)}
-              </span>
+              <div className="flex flex-col">
+                {hasDiscount(product) && (
+                  <span className="text-[8px] md:text-xs line-through opacity-70">
+                    {formatPrice(getRegularPrice(product))}
+                  </span>
+                )}
+                <span className="text-xs md:text-lg font-semibold">
+                  {formatPrice(getEffectivePrice(product))}
+                </span>
+              </div>
               <div className="bg-white/20 p-1.5 rounded-full">
                 <FaShoppingCart className="w-2.5 h-2.5 md:w-3.5 md:h-3.5" />
               </div>

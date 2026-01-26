@@ -30,6 +30,7 @@ export interface Product {
         reference: string;
         price: number;
         priceWithTax: number;
+        priceImpact?: number;
         queryString: string;
     } | null;
 }
@@ -70,6 +71,7 @@ export interface CatalogProduct {
         reference: string;
         price: number;
         priceWithTax: number;
+        priceImpact?: number;
         queryString: string;
     } | null;
 }
@@ -408,6 +410,7 @@ export interface ProductPrice {
     formattedPriceWithTax: string;
     priceImpact?: number;
     priceImpactType?: string;
+    discountPrice?: number;
     discount?: any;
 }
 
