@@ -21,7 +21,6 @@ import {
   getSalePrice,
   hasDiscount,
   getEffectivePrice,
-  getProductLink,
 } from "@/lib/utils";
 import {
   fadeInUp,
@@ -263,7 +262,7 @@ export default function ProductosRelacionados({
         : "/images/productos/placeholder_liwilu.png");
 
     return (
-      <Link href={getProductLink(product)}>
+      <Link href={`/tienda/${product.id}`}>
         <div className="bg-white rounded-md shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 h-full">
           <div className="relative">
             <span className="absolute top-2 left-2 bg-primary text-white px-3 py-1 rounded-full text-xs font-semibold z-10">

@@ -16,7 +16,6 @@ import {
   getSalePrice,
   hasDiscount,
   getEffectivePrice,
-  getProductLink,
 } from "@/lib/utils";
 import { toggleFavorite, getFavorites } from "@/lib/catalog";
 import { useCart } from "@/context/CartContext";
@@ -177,7 +176,7 @@ export default function NuestrosProductos({
         : "/images/productos/placeholder_liwilu.png");
 
     return (
-      <Link href={getProductLink(producto)}>
+      <Link href={`/tienda/${producto.id}`}>
         <div className="bg-white rounded-md shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 h-full">
           <div className="relative">
             <span className="absolute top-2 left-2 bg-primary text-white px-3 py-1 rounded-full text-xs font-semibold z-10">

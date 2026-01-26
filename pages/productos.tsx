@@ -21,7 +21,6 @@ import {
   getSalePrice,
   hasDiscount,
   getEffectivePrice,
-  getProductLink,
 } from "@/lib/utils";
 import { Product, Category } from "@/lib/catalog";
 import {
@@ -533,7 +532,8 @@ export default function Tienda({
 
                   return (
                     <Link
-                      href={getProductLink(product)}
+                      key={product.id}
+                      href={`/tienda/${product.id}`}
                       className="block animate-fade-in-up"
                       style={{ animationDelay: `${index * 100}ms` }}
                     >

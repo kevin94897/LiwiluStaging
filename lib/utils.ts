@@ -73,25 +73,6 @@ export function getProductImageUrl(productId: string, imageId: string): string {
 }
 
 /**
- * Generate SEO-friendly product link using slug (linkRewrite) and query string for variations
- * 
- * @param product - Product object from catalog
- * @returns Product URL path (e.g., "/tienda/polo-helico?talla=6")
- */
-export function getProductLink(product: any): string {
-    // Use linkRewrite (slug) if available, otherwise fall back to id
-    const slug = product.linkRewrite || product.id;
-    const baseUrl = `/tienda/${slug}`;
-    
-    // Add query string for variations
-    if (product.defaultVariation?.queryString) {
-        return `${baseUrl}?${product.defaultVariation.queryString}`;
-    }
-    
-    return baseUrl;
-}
-
-/**
  * Get the sale/discount price for a product (precio en oferta)
  * 
  * PRICING LOGIC:

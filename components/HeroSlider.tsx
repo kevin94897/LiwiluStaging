@@ -14,7 +14,6 @@ import {
   getSalePrice,
   hasDiscount,
   getEffectivePrice,
-  getProductLink,
 } from "@/lib/utils";
 
 interface HeroSliderProps {
@@ -62,7 +61,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
         : "/images/productos/placeholder_liwilu.png");
 
     return (
-      <Link href={getProductLink(product)}>
+      <Link href={`/tienda/${product.id}`}>
         <div className="bg-white rounded-[15px] shadow-[0_4px_20px_rgba(0,0,0,0.1)] overflow-hidden transition-all duration-300 hover:scale-[1.02] w-[140px] md:w-[220px]">
           <div className="relative aspect-square">
             <div className="relative w-full h-full bg-white overflow-hidden">
