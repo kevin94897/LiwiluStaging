@@ -1,26 +1,79 @@
-import { RegisterPayload } from "@/types/Auth";
-import { RegisterResponse } from "@/types/Auth";
+// pages/api/auth/register.ts
+import { NextApiRequest, NextApiResponse } from 'next';
+import { serialize } from 'cookie';
 
-export const registerUser = async (data: RegisterPayload): Promise<RegisterResponse> => {
-	try {
-		const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(data),
-		});
+/**
+ * Next.js API handler for user registration
+ * Proxies to external API and sets secure httpOnly cookies
+ */
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
+  }
 
-		const json = await res.json().catch(() => null);
+  try {
+    const apiResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
 
-		if (!res.ok) {
-			throw new Error(json?.message ?? "Error al registrarse");
-		}
+    if (!apiResponse.ok) {
+      const errorData = await apiResponse.json().catch(() => ({}));
+      return res.status(apiResponse.status).json({ 
+        success: false, 
+        message: errorData.message || 'Error al registrarse' 
+      });
+    }
 
-		return json as RegisterResponse;
+    const result = await apiResponse.json();
 
-	} catch (err: unknown) {
-		if (err instanceof Error) {
-			throw new Error(err.message);
-		}
-		throw new Error("Error desconocido al registrar");
-	}
-};
+    if (result.success && result.data) {
+      const { accessToken, refreshToken, sessionId } = result;
+      const user = result.data.user;
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      // Set httpOnly cookies
+      const cookies = [
+        serialize('accessToken', accessToken, {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 15 * 60,
+          path: '/',
+        }),
+        serialize('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60,
+          path: '/',
+        }),
+        serialize('liwilu_session_id', sessionId || '', {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60,
+          path: '/',
+        }),
+        serialize('user', JSON.stringify(user), {
+          httpOnly: false,
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60,
+          path: '/',
+        }),
+      ];
+
+      res.setHeader('Set-Cookie', cookies);
+
+      return res.status(200).json(result);
+    }
+
+    return res.status(200).json(result); // Support cases where registration doesn't return tokens immediately
+
+  } catch (error) {
+    console.error('❌ Register proxy error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error during registration' });
+  }
+}

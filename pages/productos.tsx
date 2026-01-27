@@ -192,6 +192,10 @@ export default function Tienda({
   // Fetch user favorites on mount
   useEffect(() => {
     async function loadFavorites() {
+      // Solo cargar si el usuario está autenticado
+      const { isAuthenticated } = await import("@/lib/auth/authUtils");
+      if (!isAuthenticated()) return;
+
       try {
         const response = await getFavorites();
         if (response.success) {

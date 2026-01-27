@@ -48,83 +48,111 @@ export const mapApiUserToUser = (userData: any): User | null => {
 };
 
 /**
- * Saves user data and tokens to localStorage
+ * Saves user data and tokens via API route (sets httpOnly cookies)
+ * Note: This is now handled by AuthContext and API routes
  */
-export const saveSession = (user: any, accessToken: string, refreshToken: string) => {
+export const saveSession = async (user: any, accessToken: string, refreshToken: string) => {
     if (typeof window === 'undefined') return;
 
-    const mappedUser = mapApiUserToUser(user);
-    if (mappedUser) {
-        localStorage.setItem('user', JSON.stringify(mappedUser));
-        console.log('✅ Standardized user saved:', mappedUser);
-    }
+    try {
+        // Call API route to set httpOnly cookies
+        await fetch('/api/auth/set-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user, accessToken, refreshToken }),
+        });
 
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
+        console.log('✅ Session saved via cookies');
+    } catch (error) {
+        console.error('❌ Error saving session:', error);
+    }
 };
 
 /**
  * Partially updates user data in the existing session
+ * Note: User data is stored in a non-httpOnly cookie for client access
  */
 export const updateUserSession = (userData: Partial<User>) => {
     if (typeof window === 'undefined') return;
 
-    const currentStr = localStorage.getItem('user');
-    let currentUser = currentStr ? JSON.parse(currentStr) : {};
+    try {
+        // Get current user from cookie
+        const userCookie = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('user='));
+        
+        if (!userCookie) return;
 
-    // Merge logic: ensure we use the normalization of mapApiUserToUser
-    const updatedUser = mapApiUserToUser({ ...currentUser, ...userData });
+        const currentUser = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
+        const updatedUser = mapApiUserToUser({ ...currentUser, ...userData });
 
-    if (updatedUser) {
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        console.log('🔄 User session updated:', updatedUser);
+        if (updatedUser) {
+            // Update user cookie
+            document.cookie = `user=${JSON.stringify(updatedUser)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+            console.log('🔄 User session updated:', updatedUser);
 
-        // Dispatch event to notify other components/tabs
-        window.dispatchEvent(new StorageEvent('storage', {
-            key: 'user',
-            newValue: JSON.stringify(updatedUser)
-        }));
+            // Dispatch event to notify other components/tabs
+            window.dispatchEvent(new StorageEvent('storage', {
+                key: 'user',
+                newValue: JSON.stringify(updatedUser)
+            }));
+        }
+    } catch (error) {
+        console.error('❌ Error updating user session:', error);
     }
 };
 
 /**
- * Clears all authentication data from localStorage and stops background processes
+ * Clears all authentication data and stops background processes
+ * Note: Uses API route to clear httpOnly cookies
  */
-export const clearAuthSession = () => {
+export const clearAuthSession = async () => {
     if (typeof window === 'undefined') return;
 
     stopTokenRefresh();
 
-    // Total wipe for maximum security and fresh state
+    try {
+        // Clear cookies via API route
+        await fetch('/api/auth/clear-session', { 
+            method: 'POST',
+            credentials: 'include',
+        });
+    } catch (error) {
+        console.error('❌ Error clearing session:', error);
+    }
+
+    // Clear any localStorage remnants (for migration period)
     localStorage.clear();
 
     console.log('🧹 Total session and storage cleared');
 };
 
 /**
- * Robustly retrieves the current user from localStorage
+ * Robustly retrieves the current user from cookies
  */
 export const getCurrentUser = (): User | null => {
     if (typeof window === 'undefined') return null;
 
-    const userStr = localStorage.getItem('user');
-    if (!userStr) return null;
-
     try {
-        const rawUser = JSON.parse(userStr);
-        // Even if it's already in localStorage, we run it through the mapper 
-        // to ensure it's always in the correct format.
+        const userCookie = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('user='));
+        
+        if (!userCookie) return null;
+
+        const rawUser = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
         return mapApiUserToUser(rawUser);
     } catch (error) {
-        console.error('❌ Error parsing user from localStorage:', error);
+        console.error('❌ Error parsing user from cookie:', error);
         return null;
     }
 };
 
 /**
  * Simple check for active session
+ * Note: Checks for user cookie (tokens are in httpOnly cookies)
  */
 export const isAuthenticated = (): boolean => {
     if (typeof window === 'undefined') return false;
-    return !!localStorage.getItem('accessToken');
+    return !!getCurrentUser();
 };

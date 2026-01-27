@@ -1,6 +1,19 @@
-// lib/auth/apiClient.ts
-
 import { refreshAccessToken, clearSession } from './tokenManager';
+import { isAuthenticated } from './authUtils';
+
+/**
+ * Centra la URL base de la API.
+ * En el cliente usamos el PROXY de Next.js para manejar cookies httpOnly de forma segura.
+ * En el servidor usamos la URL real.
+ */
+const getApiBaseUrl = () => {
+    if (typeof window !== 'undefined') {
+        return '/api/proxy';
+    }
+    return process.env.NEXT_PUBLIC_API_URL;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Cliente HTTP con manejo automático de tokens
@@ -27,39 +40,21 @@ export const authenticatedFetch = async (
         ...(fetchOptions.headers as Record<string, string>),
     };
 
-    // Obtener tokens/session
-    let accessToken: string | null = null;
-    let sessionId: string | null = null;
-    
-    if (typeof window !== 'undefined') {
-        accessToken = localStorage.getItem('accessToken');
-        sessionId = localStorage.getItem('liwilu_session_id');
-    }
-
-    // Determinar qué headers usar
-    if (accessToken) {
-        console.log('📡 Request with Authorization header');
-        baseHeaders['Authorization'] = `Bearer ${accessToken}`;
-    }
-    
-    if (sessionId) {
-        console.log('📡 Request with X-Session-Id header:', sessionId);
-        baseHeaders['X-Session-Id'] = sessionId;
-    }
-
-    // Si no hay accessToken y skipAuth es false, lanzar error
-    if (!skipAuth && !accessToken) {
-        throw new Error('No hay sesión activa');
-    }
-
-    // Hacer la petición
+    // Hacer la petición con credentials: 'include' para enviar cookies automáticamente
     const response = await fetch(url, {
         ...fetchOptions,
         headers: baseHeaders,
+        credentials: 'include', // ⭐ Importante: envía cookies httpOnly automáticamente
     });
 
     // Si es 401 (Unauthorized), el token expiró
-    if (response.status === 401 && !skipRetry && accessToken) {
+    if (response.status === 401 && !skipRetry && !skipAuth) {
+        // Solo intentar renovar si creemos que hay una sesión (basado en la cookie 'user')
+        if (!isAuthenticated()) {
+            console.log('🛑 401 recibido pero no hay sesión activa, ignorando renovación.');
+            return response;
+        }
+
         console.log('⚠️ Token expirado (401), intentando renovar...');
 
         // Intentar renovar el token
@@ -75,8 +70,19 @@ export const authenticatedFetch = async (
             });
         } else {
             console.error('❌ No se pudo renovar el token, cerrando sesión...');
-            clearSession();
-            window.location.href = '/';
+            await clearSession();
+            
+            // Solo redirigir si NO estamos en una página pública
+            if (typeof window !== 'undefined') {
+                const currentPath = window.location.pathname;
+                const publicPaths = ['/', '/productos', '/tienda'];
+                const isPublicPage = publicPaths.some(path => currentPath.startsWith(path));
+                
+                // Solo redirigir si estamos en una página protegida
+                if (!isPublicPage && currentPath !== '/') {
+                    window.location.href = '/';
+                }
+            }
             throw new Error('Sesión expirada');
         }
     }
@@ -87,24 +93,18 @@ export const authenticatedFetch = async (
 /**
  * Valida el token actual usando el endpoint /auth/profile
  * Retorna true si el token es válido, false si no
+ * Note: Tokens are now in httpOnly cookies, sent automatically with credentials: 'include'
  */
 export const validateToken = async (): Promise<boolean> => {
     try {
-        const accessToken = localStorage.getItem('accessToken');
-
-        if (!accessToken) {
-            console.log('⚠️ No hay accessToken para validar');
-            return false;
-        }
-
         console.log('🔍 Validando token con /auth/profile...');
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/profile`, {
+        const response = await fetch(`${API_BASE_URL}/auth/profile`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
             },
+            credentials: 'include', // Send httpOnly cookies
         });
 
         if (response.ok) {
@@ -137,39 +137,26 @@ export const validateToken = async (): Promise<boolean> => {
 };
 
 /**
- * Obtiene el perfil del usuario desde la API y actualiza localStorage
+ * Obtiene el perfil del usuario desde la API
  * Útil para rehidratar la sesión si faltan datos locales
+ * Note: Tokens are now in httpOnly cookies, sent automatically
  */
 export const fetchUserProfile = async (): Promise<any | null> => {
     try {
-        const accessToken = localStorage.getItem('accessToken');
-        if (!accessToken) return null;
-
         console.log('🔄 Fetching user profile from API...');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/profile`, {
+        const response = await fetch(`${API_BASE_URL}/users/profile`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
             },
+            credentials: 'include', // Send httpOnly cookies
         });
 
         if (response.ok) {
             const data = await response.json();
-            // Asegurarnos de tener la estructura de usuario correcta
             // La API puede devolver { success: true, data: user } o directamente user
             const userData = data.data || data;
-
-            if (userData) {
-                // Importar dinámicamente para evitar dependencias circulares si es necesario, 
-                // o usar la lógica de guardado localmente aquí
-                const { saveSession } = await import('./authUtils');
-                const refreshToken = localStorage.getItem('refreshToken') || '';
-
-                // Guardar sesión actualizada
-                saveSession(userData, accessToken, refreshToken);
-                return userData;
-            }
+            return userData || null;
         }
         return null;
     } catch (error) {
@@ -200,7 +187,7 @@ export const useAuthGuard = async (): Promise<boolean> => {
  * Wrapper para GET requests
  */
 export const apiGet = async (endpoint: string, options: FetchOptions = {}) => {
-    const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
+    const url = `${API_BASE_URL}${endpoint}`;
     return authenticatedFetch(url, {
         ...options,
         method: 'GET',
@@ -215,7 +202,7 @@ export const apiPost = async (
     data?: unknown,
     options: FetchOptions = {}
 ) => {
-    const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
+    const url = `${API_BASE_URL}${endpoint}`;
     return authenticatedFetch(url, {
         ...options,
         method: 'POST',
@@ -231,7 +218,7 @@ export const apiPut = async (
     data?: unknown,
     options: FetchOptions = {}
 ) => {
-    const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
+    const url = `${API_BASE_URL}${endpoint}`;
     return authenticatedFetch(url, {
         ...options,
         method: 'PUT',
@@ -243,7 +230,7 @@ export const apiPut = async (
  * Wrapper para DELETE requests
  */
 export const apiDelete = async (endpoint: string, options: FetchOptions = {}) => {
-    const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
+    const url = `${API_BASE_URL}${endpoint}`;
     return authenticatedFetch(url, {
         ...options,
         method: 'DELETE',

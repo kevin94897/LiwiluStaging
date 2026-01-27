@@ -1,4 +1,4 @@
-import { authenticatedFetch } from './auth/apiClient';
+import { authenticatedFetch, apiGet, apiPost } from './auth/apiClient';
 
 /**
  * Legacy Product interface for compatibility
@@ -128,21 +128,13 @@ export async function searchProducts(params: FilterParams = {}): Promise<Catalog
     if (params.sortOrder) queryParts.push(`sortOrder=${params.sortOrder}`);
     if (params.search) queryParts.push(`search=${encodeURIComponent(params.search)}`);
 
-    // Ensure we have a base URL
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
-    const url = `${baseUrl}/catalog/products/search${queryString}`;
+    const endpoint = `/catalog/products/search${queryString}`;
 
-    console.log('Fetching products from:', url);
+    console.log('Fetching products from endpoint:', endpoint);
 
     try {
-        // Try to fetch without auth first (public catalog)
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
+        const response = await apiGet(endpoint);
 
         if (!response.ok) {
             throw new Error(`Error fetching products: ${response.statusText}`);
@@ -173,18 +165,12 @@ export interface FeaturedProductsResponse {
  */
 export async function getFeaturedProducts(): Promise<CatalogProduct[]> {
 
-    // Ensure we have a base URL
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const url = `${baseUrl}/catalog/products/featured`;
+    const endpoint = '/catalog/products/featured';
 
-    console.log('Fetching featured products from:', url);
+    console.log('Fetching featured products from endpoint:', endpoint);
 
     try {
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
+        const response = await apiGet(endpoint);
 
         if (!response.ok) {
             throw new Error(`Error fetching featured products: ${response.statusText}`);
@@ -250,13 +236,12 @@ export interface LevelTwoCategoriesResponse {
  * Fetch catalog hierarchy (filters structure).
  */
 export async function getCatalogHierarchy(): Promise<HierarchyResponse | null> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const url = `${baseUrl}/catalog/hierarchy`;
+    const endpoint = '/catalog/hierarchy';
 
-    console.log('Fetching hierarchy from:', url);
+    console.log('Fetching hierarchy from endpoint:', endpoint);
 
     try {
-        const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+        const response = await apiGet(endpoint);
         if (!response.ok) throw new Error(`Error fetching hierarchy: ${response.statusText}`);
         return await response.json();
     } catch (error) {
@@ -304,10 +289,7 @@ export interface FavoritesResponse {
  * Fetch user favorites
  */
 export async function getFavorites(): Promise<FavoritesResponse> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const response = await authenticatedFetch(`${baseUrl}/catalog/products/favorites`, {
-        method: 'GET',
-    });
+    const response = await apiGet('/catalog/products/favorites');
 
     if (!response.ok) {
         throw new Error('Error fetching favorites');
@@ -325,10 +307,7 @@ export async function toggleFavorite(productId: number): Promise<{
     isFavorite: boolean;
     favoriteId?: string;
 }> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const response = await authenticatedFetch(`${baseUrl}/favorites/toggle/${productId}`, {
-        method: 'POST',
-    });
+    const response = await apiPost(`/favorites/toggle/${productId}`);
 
     if (!response.ok) {
         const errorText = await response.text();
@@ -343,11 +322,7 @@ export async function toggleFavorite(productId: number): Promise<{
  * Check favorite status for multiple products
  */
 export async function checkMultipleFavorites(productIds: number[]): Promise<Record<string, boolean>> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const response = await authenticatedFetch(`${baseUrl}/favorites/check-multiple`, {
-        method: 'POST',
-        body: JSON.stringify({ productIds }),
-    });
+    const response = await apiPost('/favorites/check-multiple', { productIds });
 
     if (!response.ok) {
         return {};
@@ -360,10 +335,7 @@ export async function checkMultipleFavorites(productIds: number[]): Promise<Reco
  * Get count of favorite products
  */
 export async function getFavoritesCount(): Promise<{ count: number }> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const response = await authenticatedFetch(`${baseUrl}/favorites/count`, {
-        method: 'GET',
-    });
+    const response = await apiGet('/favorites/count');
 
     if (!response.ok) {
         return { count: 0 };
@@ -516,11 +488,10 @@ export interface ProductVariationsResponse {
  * Fetch basic product information.
  */
 export async function getProductBasic(productId: string | number): Promise<ProductBasicData | null> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const url = `${baseUrl}/catalog/products/${productId}/basic`;
-    console.log('Fetching product basic from:', url);
+    const endpoint = `/catalog/products/${productId}/basic`;
+    console.log('Fetching product basic from endpoint:', endpoint);
     try {
-        const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+        const response = await apiGet(endpoint);
         if (!response.ok) {
             console.error(`Error fetching product basic: ${response.status} ${response.statusText} URL: ${url}`);
             throw new Error(`Error fetching product basic: ${response.statusText}`);
@@ -538,16 +509,12 @@ export async function getProductBasic(productId: string | number): Promise<Produ
  * TODO: Remove mock when backend is ready.
  */
 export async function getProductVariations(productId: string | number): Promise<ProductVariationsData | null> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const url = `${baseUrl}/catalog/products/${productId}/variations`;
-    console.log('Fetching product variations from:', url);
+    const endpoint = `/catalog/products/${productId}/variations`;
+    console.log('Fetching product variations from endpoint:', endpoint);
     try {
-        // MOCK RESPONSE FOR DEVELOPMENT
-        // TODO: Uncomment the actual fetch when backend is ready
-        // /*
-        const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+        const response = await apiGet(endpoint);
         if (!response.ok) {
-            console.error(`Error fetching product variations: ${response.status} ${response.statusText} URL: ${url}`);
+            console.error(`Error fetching product variations: ${response.status} ${response.statusText} Endpoint: ${endpoint}`);
             throw new Error(`Error fetching product variations: ${response.statusText}`);
         }
         const data: ProductVariationsResponse = await response.json();

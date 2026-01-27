@@ -1,106 +1,78 @@
-import { startTokenRefresh } from '@/lib/auth/tokenManager';
-import { User, saveSession, getCurrentUser, isAuthenticated, clearAuthSession } from '@/lib/auth/authUtils';
-
-export type { User };
-
-// ============================================
-// Login con recarga de página
-// ============================================
-
-export interface LoginResponse {
-  success: boolean;
-  message: string;
-  data: {
-    user: User;
-    accessToken: string;
-    refreshToken: string;
-  };
-}
-
-export const loginUser = async (
-  data: { email: string; password: string },
-  options: { skipRedirect?: boolean; redirectTo?: string } = {}
-): Promise<LoginResponse> => {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || "Error al iniciar sesión");
-    }
-
-    const response = await res.json() as LoginResponse;
-
-    // 🔹 Guardar tokens y datos del usuario usando la utilidad centralizada
-    if (response.data) {
-      saveSession(
-        response.data.user,
-        response.data.accessToken,
-        response.data.refreshToken
-      );
-    }
-
-    // 🛒 Intentar refrescar el carrito para el usuario autenticado
-    try {
-      // Al no existir mergeCart, simplemente pedimos el carrito o dejamos que el componente cargue los datos
-      console.log("🛒 Login exitoso, el carrito debería sincronizarse automáticamente");
-    } catch (cartError) {
-      console.warn("⚠️ No se pudo sincronizar el carrito:", cartError);
-    }
-
-    // 🆕 Iniciar sistema de renovación automática de tokens
-    startTokenRefresh();
-
-    // 🔹 Recargar la página después del login exitoso (si no se indica lo contrario)
-    if (typeof window !== "undefined" && !options.skipRedirect) {
-      window.location.href = options.redirectTo || "/";
-    }
-
-    return response;
-  } catch (error) {
-    if (error instanceof Error) throw new Error(error.message);
-    throw new Error("Error desconocido en login");
-  }
-};
+// pages/api/auth/login.ts
+import { NextApiRequest, NextApiResponse } from 'next';
+import { serialize } from 'cookie';
 
 /**
- * @deprecated Use clearAuthSession from authUtils instead
- * Keeping for backward compatibility if needed by other components temporarily
+ * Next.js API handler for user login
+ * Proxies to external API and sets secure httpOnly cookies
  */
-export const logoutUser = async (): Promise<any> => {
-  try {
-    const accessToken = localStorage.getItem("accessToken");
-    const refreshToken = localStorage.getItem("refreshToken");
-
-    if (accessToken) {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ refreshToken }),
-      }).catch(err => console.warn("Silent logout failure:", err));
-    }
-
-    clearAuthSession();
-
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
-    }
-
-    return { success: true };
-  } catch (err) {
-    clearAuthSession();
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
-    }
-    return { success: false };
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
-};
 
-export { getCurrentUser, isAuthenticated };
+  try {
+    const apiResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
+
+    if (!apiResponse.ok) {
+      const errorData = await apiResponse.json().catch(() => ({}));
+      return res.status(apiResponse.status).json({ 
+        success: false, 
+        message: errorData.message || 'Error al iniciar sesión' 
+      });
+    }
+
+    const result = await apiResponse.json();
+
+    if (result.success && result.data) {
+      const { accessToken, refreshToken, user, sessionId } = result.data;
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      // Set httpOnly cookies
+      const cookies = [
+        serialize('accessToken', accessToken, {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 15 * 60, // 15 min
+          path: '/',
+        }),
+        serialize('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60, // 7 days
+          path: '/',
+        }),
+        serialize('liwilu_session_id', sessionId || '', {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60,
+          path: '/',
+        }),
+        serialize('user', JSON.stringify(user), {
+          httpOnly: false, // Client-accessible
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60,
+          path: '/',
+        }),
+      ];
+
+      res.setHeader('Set-Cookie', cookies);
+
+      return res.status(200).json(result);
+    }
+
+    return res.status(500).json({ success: false, message: 'Invalid response from backend' });
+
+  } catch (error) {
+    console.error('❌ Login proxy error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error during login' });
+  }
+}

@@ -14,6 +14,7 @@ import {
 } from "@/lib/mi-cuenta/misDatosSchema";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { apiGet, apiPut } from "@/lib/auth/apiClient";
+import { sanitizeObject } from "@/lib/sanitize";
 import toast from "react-hot-toast";
 import { showToast } from "@/lib/notifications";
 
@@ -141,29 +142,20 @@ export default function MisDatos() {
       // Si es válido, limpiar errores
       setErrors({});
 
+      // Sanitizar datos del formulario
+      const sanitizedFormData = sanitizeObject(formData);
+
       // Mapear los campos del formulario a los campos de la API
       const updateData = {
-        firstName: formData.nombre,
-        lastName: formData.apellido,
-        documentType: formData.tipoDocumento,
-        documentNumber: formData.numeroDocumento,
-        phone: formData.celular,
+        firstName: sanitizedFormData.nombre,
+        lastName: sanitizedFormData.apellido,
+        documentType: sanitizedFormData.tipoDocumento,
+        documentNumber: sanitizedFormData.numeroDocumento,
+        phone: sanitizedFormData.celular,
         receiveOffers: originalUser?.receiveOffers || false, // ✅ Mantener preferencia actual
       };
 
-      const accessToken = localStorage.getItem("accessToken");
-
-      const response = await apiPut(
-        "/users/profile",
-        updateData,
-        accessToken
-          ? {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-          : {},
-      );
+      const response = await apiPut("/users/profile", updateData);
 
       if (!response.ok) {
         const errorData = await response.json();

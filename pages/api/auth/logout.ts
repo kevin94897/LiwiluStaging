@@ -1,50 +1,43 @@
-import { User, clearAuthSession, getCurrentUser, isAuthenticated } from '@/lib/auth/authUtils';
+// pages/api/auth/logout.ts
+import { NextApiRequest, NextApiResponse } from 'next';
+import { serialize } from 'cookie';
 
-export type { User };
+/**
+ * Next.js API handler for user logout
+ * Clears secure cookies and notifies the external API
+ */
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
+  }
 
-// ============================================
-// Logout con redirección a home
-// ============================================
-
-interface LogoutResponse {
-  success: boolean;
-  message: string;
-}
-
-export const logoutUser = async (): Promise<LogoutResponse> => {
   try {
-    const accessToken = localStorage.getItem("accessToken");
-    const refreshToken = localStorage.getItem("refreshToken");
+    const accessToken = req.cookies.accessToken;
+    const refreshToken = req.cookies.refreshToken;
 
+    // Notify backend if possible (fire and forget)
     if (accessToken) {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
         method: "POST",
-        headers: {
+        headers: { 
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          "Authorization": `Bearer ${accessToken}`
         },
         body: JSON.stringify({ refreshToken }),
-      }).catch(err => console.warn("Logout warning:", err));
+      }).catch(err => console.warn("Logout backend notify failed:", err));
     }
 
-    // 🔹 Siempre limpiar la sesión localmente
-    clearAuthSession();
+    // Clear cookies
+    res.setHeader('Set-Cookie', [
+      serialize('accessToken', '', { maxAge: -1, path: '/' }),
+      serialize('refreshToken', '', { maxAge: -1, path: '/' }),
+      serialize('user', '', { maxAge: -1, path: '/' }),
+    ]);
 
-    // 🔹 Redirigir al home después de cerrar sesión
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
-    }
+    return res.status(200).json({ success: true, message: 'Sesión cerrada' });
 
-    return { success: true, message: "Sesión cerrada correctamente" };
-  } catch (err: unknown) {
-    clearAuthSession();
-
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
-    }
-
-    return { success: false, message: "Error al cerrar sesión" };
+  } catch (error) {
+    console.error('❌ Logout proxy error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error during logout' });
   }
-};
-
-export { getCurrentUser, isAuthenticated };
+}

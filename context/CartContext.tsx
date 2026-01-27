@@ -8,6 +8,8 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { removeCookie } from "@/lib/cookies";
+import { isAuthenticated as checkAuth } from "@/lib/auth/authUtils";
 import { Product } from "@/lib/catalog";
 import {
   addToCart as apiAddToCart,
@@ -52,48 +54,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [cartId, setCartId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Cargar carrito y sesión desde localStorage al iniciar
+  // Cargar sesión y sincronizar al iniciar
   useEffect(() => {
-    // 1. Cargar items locales
-    const savedCart = localStorage.getItem("liwilu_cart");
-    if (savedCart) {
-      try {
-        setItems(JSON.parse(savedCart));
-      } catch (error) {
-        console.error("Error al cargar el carrito local:", error);
-      }
-    }
-
-    // 2. Cargar sessionId existente
-    const currentSessionId = localStorage.getItem("liwilu_session_id");
-    if (currentSessionId) {
-      console.log("📄 Loaded Existing Session ID:", currentSessionId);
-      setSessionId(currentSessionId);
-    }
-
-    // 3. Sincronizar con el backend
-    const accessToken = localStorage.getItem("accessToken");
-    if (accessToken || currentSessionId) {
-      syncCart();
-    }
+    // Sincronizar con el backend
+    // No necesitamos cargar sessionId manualmente, el proxy usará la cookie httpOnly
+    syncCart();
   }, []);
 
-  // Guardar carrito en localStorage cada vez que cambie
-  useEffect(() => {
-    if (items.length > 0) {
-      localStorage.setItem("liwilu_cart", JSON.stringify(items));
-    } else {
-      localStorage.removeItem("liwilu_cart");
-    }
-  }, [items]);
-
-  /**
-   * Actualiza el Session ID si el backend retorna uno nuevo
-   */
   const updateSessionId = (newSessionId?: string) => {
     if (newSessionId && newSessionId !== sessionId) {
-      console.log("♻️ Backend returned new Session ID:", newSessionId);
-      localStorage.setItem("liwilu_session_id", newSessionId);
+      console.log("♻️ Backend returned new Session ID (handled via cookies)");
       setSessionId(newSessionId);
     }
   };
@@ -164,8 +134,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems([]);
         setTotals({ subtotal: 0, shipping: 0, total: 0 });
         setSelectedCarrier(null);
-        localStorage.removeItem("liwilu_cart");
-        localStorage.removeItem("liwilu_session_id");
         setSessionId(null);
       }
     } catch (error: any) {
@@ -399,14 +367,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         // Clear local state
         setItems([]);
-        localStorage.removeItem("liwilu_cart");
       }
     } catch (error: any) {
       console.error("Error clearing cart via API:", error);
 
       // Fallback to local clear
       setItems([]);
-      localStorage.removeItem("liwilu_cart");
     } finally {
       setIsLoading(false);
     }

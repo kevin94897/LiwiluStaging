@@ -8,7 +8,7 @@ import Input from "./ui/Input";
 import { PiWarningCircleFill } from "react-icons/pi";
 import { registerSchema } from "../lib/registerSchema";
 import { z } from "zod";
-import { registerUser } from "../pages/api/auth/register";
+import { registerUser } from "@/lib/auth/services/authService";
 import { showToast } from "@/lib/notifications";
 
 interface RegisterModalProps {

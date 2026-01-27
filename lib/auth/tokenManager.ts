@@ -54,6 +54,7 @@ let isRefreshing = false; // 🆕 Prevenir múltiples renovaciones simultáneas
 
 /**
  * Renueva el accessToken usando el refreshToken
+ * Note: Tokens are now in httpOnly cookies, managed via API routes
  */
 export const refreshAccessToken = async (): Promise<boolean> => {
     // 🆕 Prevenir múltiples renovaciones simultáneas
@@ -64,21 +65,12 @@ export const refreshAccessToken = async (): Promise<boolean> => {
 
     try {
         isRefreshing = true;
-        const refreshToken = localStorage.getItem('refreshToken');
-
-        if (!refreshToken) {
-            console.warn('⚠️ No hay refreshToken disponible');
-            return false;
-        }
-
         console.log('🔄 Renovando accessToken...');
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
+        // Call local API route which handles httpOnly cookies securely
+        const response = await fetch('/api/auth/refresh', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ refreshToken }),
+            credentials: 'include', // Send httpOnly cookies
         });
 
         if (!response.ok) {
@@ -87,20 +79,20 @@ export const refreshAccessToken = async (): Promise<boolean> => {
             // Si el refresh token expiró, cerrar sesión
             if (response.status === 401 || response.status === 403) {
                 console.log('🔒 RefreshToken expirado, cerrando sesión...');
-                clearSession();
-                window.location.href = '/';
+                await clearSession();
+                if (typeof window !== 'undefined') {
+                    window.location.href = '/';
+                }
             }
             return false;
         }
 
-        const result: RefreshResponse = await response.json();
+        const result = await response.json();
 
-        if (result.success && result.data) {
-            // Actualizar tokens en localStorage
-            localStorage.setItem('accessToken', result.data.accessToken);
-            localStorage.setItem('refreshToken', result.data.refreshToken);
-
-            console.log('✅ AccessToken renovado exitosamente');
+        if (result.success) {
+            // New accessToken is already set in cookies by the API route
+            console.log('✅ Token renovado exitosamente (via cookies)');
+            // Notify other tabs if necessary (though the user cookie didn't change)
             return true;
         }
 
@@ -116,59 +108,73 @@ export const refreshAccessToken = async (): Promise<boolean> => {
 /**
  * 🆕 Programa la renovación automática basada en el tiempo de expiración del token
  * Renueva 2 minutos ANTES de que expire
+ * Note: Gets token from API route since it's in httpOnly cookie
  */
-export const scheduleTokenRefresh = () => {
+export const scheduleTokenRefresh = async () => {
     // Limpiar timeout anterior si existe
     if (refreshTokenTimeout) {
         clearTimeout(refreshTokenTimeout);
     }
 
-    const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken) {
-        console.warn('⚠️ No hay accessToken para programar renovación');
-        return;
-    }
-
-    // 🆕 Calcular tiempo hasta expiración
-    const timeUntilExpiration = getTokenExpirationTime(accessToken);
-
-    if (!timeUntilExpiration || timeUntilExpiration <= 0) {
-        console.warn('⚠️ Token ya expirado o inválido');
-        refreshAccessToken().then(success => {
-            if (success) scheduleTokenRefresh();
+    try {
+        // Get tokens from API route (they're in httpOnly cookies)
+        const response = await fetch('/api/auth/get-tokens', {
+            credentials: 'include',
         });
-        return;
-    }
 
-    // 🆕 Renovar 2 minutos ANTES de que expire (120 segundos = 120000 ms)
-    const BUFFER_TIME = 120000; // 2 minutos
-    const refreshTime = Math.max(timeUntilExpiration - BUFFER_TIME, 5000); // Mínimo 5 segundos
-
-    refreshTokenTimeout = setTimeout(async () => {
-        console.log('⏰ Ejecutando renovación programada...');
-        const success = await refreshAccessToken();
-
-        if (success) {
-            // Si la renovación fue exitosa, programar la próxima
-            scheduleTokenRefresh();
-        } else {
-            console.error('❌ Fallo la renovación programada');
-            // 🆕 Intentar una vez más después de 5 segundos
-            setTimeout(async () => {
-                const retrySuccess = await refreshAccessToken();
-                if (retrySuccess) {
-                    scheduleTokenRefresh();
-                } else {
-                    console.error('❌ Fallo el reintento, cerrando sesión');
-                    clearSession();
-                    window.location.href = '/';
-                }
-            }, 5000);
+        if (!response.ok) {
+            console.warn('⚠️ No hay accessToken para programar renovación');
+            return;
         }
-    }, refreshTime);
 
-    const minutesUntilRefresh = Math.floor(refreshTime / 60000);
-    console.log(`⏰ Próxima renovación en ${minutesUntilRefresh} minutos (${refreshTime / 1000}s)`);
+        const { data } = await response.json();
+        const accessToken = data.accessToken;
+
+        // 🆕 Calcular tiempo hasta expiración
+        const timeUntilExpiration = getTokenExpirationTime(accessToken);
+
+        if (!timeUntilExpiration || timeUntilExpiration <= 0) {
+            console.warn('⚠️ Token ya expirado o inválido');
+            refreshAccessToken().then(success => {
+                if (success) scheduleTokenRefresh();
+            });
+            return;
+        }
+
+        // 🆕 Renovar 2 minutos ANTES de que expire (120 segundos = 120000 ms)
+        const BUFFER_TIME = 120000; // 2 minutos
+        const refreshTime = Math.max(timeUntilExpiration - BUFFER_TIME, 5000); // Mínimo 5 segundos
+
+        refreshTokenTimeout = setTimeout(async () => {
+            console.log('⏰ Ejecutando renovación programada...');
+            const success = await refreshAccessToken();
+
+            if (success) {
+                // Si la renovación fue exitosa, programar la próxima
+                scheduleTokenRefresh();
+            } else {
+                console.error('❌ Fallo la renovación programada');
+                // 🆕 Intentar una vez más después de 5 segundos
+                setTimeout(async () => {
+                    const retrySuccess = await refreshAccessToken();
+                    if (retrySuccess) {
+                        scheduleTokenRefresh();
+                    } else {
+                        console.error('❌ Fallo el reintento, cerrando sesión');
+                        clearSession();
+                        if (typeof window !== 'undefined') {
+                            window.location.href = '/';
+                        }
+                    }
+                }, 5000);
+            }
+        }, refreshTime);
+
+        const minutesUntilRefresh = Math.floor(refreshTime / 60000);
+        console.log(`⏰ Próxima renovación en ${minutesUntilRefresh} minutos (${refreshTime / 1000}s)`);
+    } catch (error) {
+        console.error('❌ Error al programar renovación:', error);
+    }
 };
 
 /**
@@ -185,46 +191,86 @@ export const stopTokenRefresh = () => {
 /**
  * Inicia el sistema de renovación automática de tokens
  */
-export const startTokenRefresh = () => {
+export const startTokenRefresh = async () => {
     console.log('🚀 Iniciando sistema de renovación automática de tokens');
-    scheduleTokenRefresh();
+    await scheduleTokenRefresh();
 };
 
 /**
  * Limpia la sesión del usuario
+ * Note: Cookies are cleared via API route
  */
-export const clearSession = () => {
+export const clearSession = async () => {
     stopTokenRefresh();
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    
+    // Clear cookies via API route
+    try {
+        await fetch('/api/auth/clear-session', { 
+            method: 'POST',
+            credentials: 'include',
+        });
+    } catch (error) {
+        console.error('❌ Error clearing session cookies:', error);
+    }
+    
+    // Clear any localStorage remnants (for migration period)
+    if (typeof window !== 'undefined') {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+    }
+    
     console.log('🧹 Sesión limpiada completamente');
 };
 
 /**
  * 🆕 Verifica si el token está próximo a expirar (menos de 3 minutos)
+ * Note: Gets token from API route since it's in httpOnly cookie
  */
-export const isTokenExpiringSoon = (): boolean => {
-    const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken) return true;
+export const isTokenExpiringSoon = async (): Promise<boolean> => {
+    try {
+        const response = await fetch('/api/auth/get-tokens', {
+            credentials: 'include',
+        });
 
-    const timeUntilExpiration = getTokenExpirationTime(accessToken);
-    if (!timeUntilExpiration) return true;
+        if (!response.ok) return true;
 
-    // Considerar "expirando pronto" si quedan menos de 3 minutos
-    return timeUntilExpiration < 180000; // 3 minutos
+        const { data } = await response.json();
+        const accessToken = data.accessToken;
+
+        if (!accessToken) return true;
+
+        const timeUntilExpiration = getTokenExpirationTime(accessToken);
+        if (!timeUntilExpiration) return true;
+
+        // Considerar "expirando pronto" si quedan menos de 3 minutos
+        return timeUntilExpiration < 180000; // 3 minutos
+    } catch (error) {
+        console.error('❌ Error checking token expiration:', error);
+        return true;
+    }
 };
 
 /**
  * Verifica si hay una sesión activa e inicia la renovación automática
+ * Note: Checks for cookies via API route
  */
-export const initializeAuth = () => {
+export const initializeAuth = async () => {
     if (typeof window === 'undefined') return;
 
-    const accessToken = localStorage.getItem('accessToken');
-    const refreshToken = localStorage.getItem('refreshToken');
+    try {
+        const response = await fetch('/api/auth/get-tokens', {
+            credentials: 'include',
+        });
 
-    if (accessToken && refreshToken) {
+        if (!response.ok) {
+            console.log('🔓 No hay sesión activa');
+            return;
+        }
+
+        const { data } = await response.json();
+        const accessToken = data.accessToken;
+
         console.log('🔐 Sesión activa detectada');
 
         // 🆕 Verificar si el token ya expiró
@@ -249,34 +295,26 @@ export const initializeAuth = () => {
             }
         } else {
             console.log('⚠️ Token expirado o inválido');
-            // 🆕 NO limpiar sesión aquí, dejar que ProtectedRoute lo maneje
         }
-    } else {
-        console.log('🔓 No hay sesión activa');
+    } catch (error) {
+        console.error('❌ Error initializing auth:', error);
     }
 };
 
 /**
  * Deshabilita el refreshToken en el servidor (logout)
+ * Note: Tokens are in httpOnly cookies, sent automatically
  */
 export const revokeRefreshToken = async (): Promise<boolean> => {
     try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        const accessToken = localStorage.getItem('accessToken');
-
-        if (!refreshToken || !accessToken) {
-            return false;
-        }
-
         console.log('🔒 Deshabilitando refreshToken en el servidor...');
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
             },
-            body: JSON.stringify({ refreshToken }),
+            credentials: 'include', // Send httpOnly cookies
         });
 
         if (response.ok) {

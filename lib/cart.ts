@@ -1,4 +1,3 @@
-// lib/cart.ts
 import { apiPost, apiGet, apiDelete, apiPut } from './auth/apiClient';
 
 /**
@@ -119,15 +118,10 @@ export interface AddToCartRequest {
  */
 export async function addToCart(productId: number, quantity: number, prestashopCombinationId: number | null = null): Promise<AddToCartResponse> {
     try {
-        // Check if user is authenticated
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-
         const response = await apiPost('/cart/add', {
             productId,
             quantity,
             prestashopCombinationId
-        }, {
-            skipAuth: !accessToken // Skip auth if no token (guest mode)
         });
 
         if (!response.ok) {
@@ -137,12 +131,7 @@ export async function addToCart(productId: number, quantity: number, prestashopC
 
         const data: AddToCartResponse = await response.json();
 
-        // Save session ID if returned (for anonymous carts)
-        if (data?.data?.sessionId && typeof window !== 'undefined') {
-            localStorage.setItem('liwilu_session_id', data.data.sessionId);
-            console.log('💾 Saved new session ID to localStorage:', data.data.sessionId);
-        }
-
+        // session ID is now automatically saved via httpOnly cookie by the proxy
         return data;
     } catch (error) {
         console.error('Error in addToCart:', error);
@@ -156,12 +145,7 @@ export async function addToCart(productId: number, quantity: number, prestashopC
  */
 export async function getCart(): Promise<GetCartResponse & { isExpired?: boolean }> {
     try {
-        // Check if user is authenticated
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-
-        const response = await apiGet('/cart', {
-            skipAuth: !accessToken // Skip auth if no token (guest mode)
-        });
+        const response = await apiGet('/cart');
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -181,12 +165,7 @@ export async function getCart(): Promise<GetCartResponse & { isExpired?: boolean
 
         const data: GetCartResponse = await response.json();
 
-        // Save/Update session ID if returned
-        if (data?.data?.sessionId && typeof window !== 'undefined') {
-            localStorage.setItem('liwilu_session_id', data.data.sessionId);
-            console.log('💾 Updated session ID from getCart:', data.data.sessionId);
-        }
-
+        // session ID is now automatically updated via httpOnly cookie by the proxy
         return data;
     } catch (error) {
         console.error('Error in getCart:', error);
@@ -220,10 +199,7 @@ export function getCartTotal(cartData: CartData): number {
  */
 export async function updateCartQuantity(productId: number, quantity: number): Promise<AddToCartResponse> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiPut(`/cart/product/${productId}`, { quantity }, {
-            skipAuth: !accessToken
-        });
+        const response = await apiPut(`/cart/product/${productId}`, { quantity });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -232,11 +208,7 @@ export async function updateCartQuantity(productId: number, quantity: number): P
 
         const data: AddToCartResponse = await response.json();
 
-        // Update session ID if returned (though apiPut handles header sending, we might want to update local if it changed)
-        if (data?.data?.sessionId && typeof window !== 'undefined') {
-            localStorage.setItem('liwilu_session_id', data.data.sessionId);
-        }
-
+        // session ID is now automatically updated via httpOnly cookie by the proxy
         return data;
     } catch (error) {
         console.error('Error in updateCartQuantity:', error);
@@ -251,10 +223,7 @@ export async function updateCartQuantity(productId: number, quantity: number): P
  */
 export async function removeFromCart(productId: number): Promise<AddToCartResponse> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiDelete(`/cart/product/${productId}`, {
-            skipAuth: !accessToken
-        });
+        const response = await apiDelete(`/cart/product/${productId}`);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -263,11 +232,7 @@ export async function removeFromCart(productId: number): Promise<AddToCartRespon
 
         const data: AddToCartResponse = await response.json();
 
-        // Update session ID if returned
-        if (data?.data?.sessionId && typeof window !== 'undefined') {
-            localStorage.setItem('liwilu_session_id', data.data.sessionId);
-        }
-
+        // session ID is now automatically updated via httpOnly cookie by the proxy
         return data;
     } catch (error) {
         console.error('Error in removeFromCart:', error);
@@ -283,10 +248,7 @@ export async function removeFromCart(productId: number): Promise<AddToCartRespon
  */
 export async function updateCartVariationQuantity(idVariation: number, quantity: number): Promise<AddToCartResponse> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiPut(`/cart/variation/${idVariation}`, { quantity }, {
-            skipAuth: !accessToken
-        });
+        const response = await apiPut(`/cart/variation/${idVariation}`, { quantity });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -295,11 +257,7 @@ export async function updateCartVariationQuantity(idVariation: number, quantity:
 
         const data: AddToCartResponse = await response.json();
 
-        // Update session ID if returned
-        if (data?.data?.sessionId && typeof window !== 'undefined') {
-            localStorage.setItem('liwilu_session_id', data.data.sessionId);
-        }
-
+        // session ID is now automatically updated via httpOnly cookie by the proxy
         return data;
     } catch (error) {
         console.error('Error in updateCartVariationQuantity:', error);
@@ -314,10 +272,7 @@ export async function updateCartVariationQuantity(idVariation: number, quantity:
  */
 export async function removeCartVariation(idVariation: number): Promise<AddToCartResponse> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiDelete(`/cart/variation/${idVariation}`, {
-            skipAuth: !accessToken
-        });
+        const response = await apiDelete(`/cart/variation/${idVariation}`);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -326,11 +281,7 @@ export async function removeCartVariation(idVariation: number): Promise<AddToCar
 
         const data: AddToCartResponse = await response.json();
 
-        // Update session ID if returned
-        if (data?.data?.sessionId && typeof window !== 'undefined') {
-            localStorage.setItem('liwilu_session_id', data.data.sessionId);
-        }
-
+        // session ID is now automatically updated via httpOnly cookie by the proxy
         return data;
     } catch (error) {
         console.error('Error in removeCartVariation:', error);
@@ -344,10 +295,7 @@ export async function removeCartVariation(idVariation: number): Promise<AddToCar
  */
 export async function clearCart(): Promise<AddToCartResponse> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiDelete('/cart', {
-            skipAuth: !accessToken
-        });
+        const response = await apiDelete('/cart');
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -356,11 +304,7 @@ export async function clearCart(): Promise<AddToCartResponse> {
 
         const data: AddToCartResponse = await response.json();
 
-        // Update session ID if returned
-        if (data?.data?.sessionId && typeof window !== 'undefined') {
-            localStorage.setItem('liwilu_session_id', data.data.sessionId);
-        }
-
+        // session ID is now automatically updated via httpOnly cookie by the proxy
         return data;
     } catch (error) {
         console.error('Error in clearCart:', error);
@@ -376,10 +320,7 @@ export async function clearCart(): Promise<AddToCartResponse> {
  */
 export async function getCarriers(): Promise<{ success: boolean; data: CartCarrier[]; total: number }> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiGet('/cart/carriers', {
-            skipAuth: !accessToken
-        });
+        const response = await apiGet('/cart/carriers');
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -400,10 +341,7 @@ export async function getCarriers(): Promise<{ success: boolean; data: CartCarri
  */
 export async function updateCartCarrier(carrierId: number): Promise<AddToCartResponse> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiPut('/cart/carrier', { carrierId }, {
-            skipAuth: !accessToken
-        });
+        const response = await apiPut('/cart/carrier', { carrierId });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -412,11 +350,7 @@ export async function updateCartCarrier(carrierId: number): Promise<AddToCartRes
 
         const data: AddToCartResponse = await response.json();
 
-        // Update session ID if returned
-        if (data?.data?.sessionId && typeof window !== 'undefined') {
-            localStorage.setItem('liwilu_session_id', data.data.sessionId);
-        }
-
+        // session ID is now automatically updated via httpOnly cookie by the proxy
         return data;
     } catch (error) {
         console.error('Error in updateCartCarrier:', error);
@@ -675,13 +609,9 @@ export async function saveCartDeliveryAddress(data: {
     referencia: string;
 }): Promise<{ success: boolean; message: string }> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
         console.log('📡 Syncing delivery address to API:', data);
-        console.log('🔑 Access Token present:', !!accessToken);
 
-        const response = await apiPut('/cart/delivery-address', data, {
-            skipAuth: !accessToken
-        });
+        const response = await apiPut('/cart/delivery-address', data);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -743,10 +673,7 @@ export async function saveCartDeliveryPrice(data: {
     zoneName: string;
 }): Promise<{ success: boolean; message: string }> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiPut('/cart/delivery-price', data, {
-            skipAuth: !accessToken // Skip auth if no token (guest mode)
-        });
+        const response = await apiPut('/cart/delivery-price', data);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -771,10 +698,7 @@ export async function savePickupPerson(data: {
     nombreCompleto: string;
 }): Promise<{ success: boolean; message: string }> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiPut('/cart/pickup-person', data, {
-            skipAuth: !accessToken
-        });
+        const response = await apiPut('/cart/pickup-person', data);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -816,10 +740,7 @@ export interface SavePickupStoreResponse {
 
 export async function savePickupStore(data: SavePickupStoreRequest): Promise<SavePickupStoreResponse> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiPut('/cart/pickup-store', data, {
-            skipAuth: !accessToken
-        });
+        const response = await apiPut('/cart/pickup-store', data);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -867,10 +788,7 @@ export async function createOrder(data: {
     invoiceData?: any;
 }): Promise<{ success: boolean; data?: { orderId: number;[key: string]: any }; orderId?: number; message?: string;[key: string]: any }> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiPost('/orders', data, {
-            skipAuth: !accessToken
-        });
+        const response = await apiPost('/orders', data);
 
         const result = await response.json().catch(() => ({}));
 
@@ -889,10 +807,7 @@ export async function createOrder(data: {
  */
 export async function getOrderDetail(orderId: string): Promise<{ success: boolean; data: any; message?: string }> {
     try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiGet(`/orders/detail/${orderId}`, {
-            skipAuth: !accessToken
-        });
+        const response = await apiGet(`/orders/detail/${orderId}`);
 
         const result = await response.json().catch(() => ({}));
 
