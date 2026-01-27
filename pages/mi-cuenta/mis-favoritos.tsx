@@ -12,7 +12,7 @@ import {
   getFavoritesCount,
 } from "@/lib/catalog";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, getRegularPrice, getEffectivePrice, hasDiscount } from "@/lib/utils";
 
 export default function MisFavoritos() {
   const [favoritos, setFavoritos] = useState<FavoriteProduct[]>([]);
@@ -101,7 +101,7 @@ export default function MisFavoritos() {
                           >
                             {/* Imagen del producto */}
                             <div className="relative">
-                              <div className="relative w-full h-64">
+                              <div className="relative w-full h-48">
                                 <Image
                                   src={
                                     producto.coverImage ||
@@ -161,27 +161,15 @@ export default function MisFavoritos() {
                               </div>
 
                               {/* Precio */}
-                              <div className="flex items-baseline gap-2 mb-4">
-                                <span className="text-xl md:text-2xl font-semibold">
-                                  {producto.discountPrice &&
-                                  producto.discountPrice > 0
-                                    ? formatPrice(producto.discountPrice)
-                                    : formatPrice(
-                                        producto.priceWithTax ||
-                                          producto.price ||
-                                          0,
-                                      )}
+                              <div className="flex items-baseline gap-2 mb-0">
+                                {hasDiscount(producto) && (
+                                  <span className="line-through text-xs md:text-sm text-white">
+                                    {formatPrice(getRegularPrice(producto))}
+                                  </span>
+                                )}
+                                <span className="text-sm md:text-lg font-semibold">
+                                  {formatPrice(getEffectivePrice(producto))}
                                 </span>
-                                {producto.discountPrice &&
-                                  producto.discountPrice > 0 && (
-                                    <span className="line-through text-sm opacity-75">
-                                      {formatPrice(
-                                        producto.priceWithTax ||
-                                          producto.price ||
-                                          0,
-                                      )}
-                                    </span>
-                                  )}
                               </div>
                             </div>
                           </div>

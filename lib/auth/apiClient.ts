@@ -40,6 +40,7 @@ export const authenticatedFetch = async (
         ...(fetchOptions.headers as Record<string, string>),
     };
 
+
     // Hacer la petición con credentials: 'include' para enviar cookies automáticamente
     const response = await fetch(url, {
         ...fetchOptions,
@@ -71,13 +72,13 @@ export const authenticatedFetch = async (
         } else {
             console.error('❌ No se pudo renovar el token, cerrando sesión...');
             await clearSession();
-            
+
             // Solo redirigir si NO estamos en una página pública
             if (typeof window !== 'undefined') {
                 const currentPath = window.location.pathname;
                 const publicPaths = ['/', '/productos', '/tienda'];
                 const isPublicPage = publicPaths.some(path => currentPath.startsWith(path));
-                
+
                 // Solo redirigir si estamos en una página protegida
                 if (!isPublicPage && currentPath !== '/') {
                     window.location.href = '/';
@@ -96,6 +97,10 @@ export const authenticatedFetch = async (
  * Note: Tokens are now in httpOnly cookies, sent automatically with credentials: 'include'
  */
 export const validateToken = async (): Promise<boolean> => {
+    if (!isAuthenticated()) {
+        return false;
+    }
+
     try {
         console.log('🔍 Validando token con /auth/profile...');
 
@@ -142,6 +147,10 @@ export const validateToken = async (): Promise<boolean> => {
  * Note: Tokens are now in httpOnly cookies, sent automatically
  */
 export const fetchUserProfile = async (): Promise<any | null> => {
+    if (!isAuthenticated()) {
+        return null;
+    }
+
     try {
         console.log('🔄 Fetching user profile from API...');
         const response = await fetch(`${API_BASE_URL}/users/profile`, {

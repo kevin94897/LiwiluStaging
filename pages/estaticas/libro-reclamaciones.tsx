@@ -59,6 +59,8 @@ const reclamacionesSchema = z.object({
 
 type ReclamacionesFormValues = z.infer<typeof reclamacionesSchema>;
 
+import { apiPost } from '@/lib/auth/apiClient';
+
 export default function LibroReclamaciones() {
     const [enviado, setEnviado] = useState(false);
     const [enviando, setEnviando] = useState(false);
@@ -126,13 +128,17 @@ export default function LibroReclamaciones() {
         }
 
         try {
+            const formattedPhone = formData.telefono.startsWith('+51')
+                ? formData.telefono
+                : `+51${formData.telefono.replace(/\D/g, '')}`;
+
             const payload = {
                 fecha: new Date().toISOString().split('T')[0], // "YYYY-MM-DD"
                 nombres: formData.nombres,
                 apellidos: formData.apellidos,
                 domicilio: `${formData.direccion}, ${formData.distrito}, ${formData.provincia}, ${formData.departamento}`,
                 documentoIdentidad: formData.numeroDocumento,
-                telefono: formData.telefono,
+                telefono: formattedPhone,
                 correoElectronico: formData.email,
                 esProducto: formData.tipoProducto === 'producto',
                 esServicio: formData.tipoProducto === 'servicio',
@@ -146,47 +152,38 @@ export default function LibroReclamaciones() {
                 prefiereRespuestaCorreo: true
             };
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/general/libro-reclamaciones`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            });
+            const response = await apiPost('/general/libro-reclamaciones', payload, { skipAuth: true });
+            const resultData = await response.json();
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'Error al enviar el reclamo');
+            if (!response.ok || !resultData.success) {
+                throw new Error(resultData.message || 'Error al enviar el reclamo');
             }
 
             setEnviado(true);
 
-            // Resetear después de mostrar el mensaje de éxito
-            setTimeout(() => {
-                setEnviado(false);
-                setFormData({
-                    tipoDocumento: 'DNI',
-                    numeroDocumento: '',
-                    nombres: '',
-                    apellidos: '',
-                    telefono: '',
-                    email: '',
-                    direccion: '',
-                    departamento: '',
-                    provincia: '',
-                    distrito: '',
-                    tipoReclamo: 'reclamo',
-                    tipoProducto: 'producto',
-                    descripcionProducto: '',
-                    montoReclamado: '',
-                    detalleReclamo: '',
-                    pedidoDetalle: ''
-                });
-            }, 5000);
+            // Resetear formulario
+            setFormData({
+                tipoDocumento: 'DNI',
+                numeroDocumento: '',
+                nombres: '',
+                apellidos: '',
+                telefono: '',
+                email: '',
+                direccion: '',
+                departamento: '',
+                provincia: '',
+                distrito: '',
+                tipoReclamo: 'reclamo',
+                tipoProducto: 'producto',
+                descripcionProducto: '',
+                montoReclamado: '',
+                detalleReclamo: '',
+                pedidoDetalle: ''
+            });
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error enviando reclamo:', error);
-            showToast('Hubo un error al enviar tu reclamo. Por favor intenta nuevamente.', 'error');
+            showToast(error.message || 'Hubo un error al enviar tu reclamo. Por favor intenta nuevamente.', 'error');
         } finally {
             setEnviando(false);
         }

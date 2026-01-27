@@ -32,6 +32,7 @@ import {
   CarritoRegisterSchemaType,
 } from "@/lib/carritoRegisterSchema";
 import { loginUser, registerUser } from "@/lib/auth/services/authService";
+import { apiGet, apiPut, apiPost } from "@/lib/auth/apiClient";
 import { guestDataSchema, GuestDataSchemaType } from "@/lib/guestDataSchema";
 import { useLocations } from "@/hooks/useLocations";
 import { z } from "zod";
@@ -136,6 +137,7 @@ export default function Carrito() {
 
   const [isGuest, setIsGuest] = useState(false);
   const [showGuestForm, setShowGuestForm] = useState(false);
+  const [hasAttemptedProfileSync, setHasAttemptedProfileSync] = useState(false);
 
   // States for stock validation
   const [isValidatingStock, setIsValidatingStock] = useState(false);
@@ -149,6 +151,8 @@ export default function Carrito() {
   const [showPickupStockModal, setShowPickupStockModal] = useState(false);
   const [selectedStoreData, setSelectedStoreData] =
     useState<SavePickupStoreRequest | null>(null);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationErrorMessage, setValidationErrorMessage] = useState("");
 
   // Estados para formulario de invitado
   const [guestData, setGuestData] = useState<GuestDataSchemaType>({
@@ -185,10 +189,16 @@ export default function Carrito() {
   const guestLocations = useLocations("Lima", "Lima", "");
   const userLocations = useLocations("Lima", "Lima", direccionEnvio.distrito);
 
-  // Sincronizar estado local con hook de auth
   useEffect(() => {
     if (!authLoading) {
       setIsLoggedIn(isAuthenticated);
+      if (isAuthenticated) {
+        setIsGuest(false);
+        // If we just logged in, we shouldn't be a guest anymore
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("liwilu_guestData");
+        }
+      }
     }
   }, [isAuthenticated, authLoading]);
 
@@ -419,6 +429,70 @@ export default function Carrito() {
       }
     }
   }, []);
+
+  // Auto-fill guestData with authenticated user's information
+  useEffect(() => {
+    const fetchAndFillUserData = async () => {
+      if (isLoggedIn && user && !isGuest && !hasAttemptedProfileSync) {
+        // Check if we need to fetch full profile (if documentNumber or phone is missing)
+        if (!user.documentNumber || !user.phone) {
+          try {
+            setHasAttemptedProfileSync(true);
+            console.log('🔄 Fetching complete user profile...');
+            const response = await apiGet('/users/profile');
+
+            if (response.ok) {
+              const result = await response.json();
+              if (result.success && result.data) {
+                console.log('✅ Profile loaded:', result.data);
+
+                // Update user session with complete data
+                const { updateUserSession } = await import('@/lib/auth/authUtils');
+                updateUserSession(result.data);
+
+                // Fill guestData with complete profile
+                setGuestData((prev) => ({
+                  ...prev,
+                  nombre: result.data.firstName || prev.nombre,
+                  apellido: result.data.lastName || prev.apellido,
+                  tipoDocumento: (result.data.documentType as any) || prev.tipoDocumento || 'DNI',
+                  numeroDocumento: result.data.documentNumber || prev.numeroDocumento,
+                  email: result.data.email || prev.email,
+                  celular: result.data.phone || prev.celular,
+                }));
+
+                // Mark as completed if we have essential data
+                if (result.data.documentNumber && result.data.phone) {
+                  setGuestDataCompleted(true);
+                }
+              }
+            }
+          } catch (error) {
+            console.error('❌ Error fetching user profile:', error);
+          }
+        } else {
+          // User already has complete data, just fill guestData
+          setGuestData((prev) => ({
+            ...prev,
+            nombre: user.firstName || prev.nombre,
+            apellido: user.lastName || prev.apellido,
+            tipoDocumento: (user.documentType as any) || prev.tipoDocumento || 'DNI',
+            numeroDocumento: user.documentNumber || prev.numeroDocumento,
+            email: user.email || prev.email,
+            celular: user.phone || prev.celular,
+          }));
+
+          // Mark as completed if we have essential data
+          if (user.documentNumber && user.phone) {
+            setGuestDataCompleted(true);
+          }
+        }
+      }
+    };
+
+    fetchAndFillUserData();
+  }, [isLoggedIn, user, isGuest]);
+
 
   // Cargar dirección de envío
   useEffect(() => {
@@ -774,6 +848,8 @@ export default function Carrito() {
 
         // Login exitoso
         setIsLoggedIn(true);
+        setIsGuest(false);
+        localStorage.removeItem("liwilu_guestData");
         setShowLoginModal(false);
         // showToast("¡Bienvenido de vuelta!", "success"); // Toast eliminado por solicitud
       } catch (error: any) {
@@ -860,6 +936,8 @@ export default function Carrito() {
 
         // Autologin after register or show success message
         setIsLoggedIn(true);
+        setIsGuest(false);
+        localStorage.removeItem("liwilu_guestData");
         setShowLoginModal(false);
         showToast("¡Cuenta creada exitosamente! Bienvenido.", "success");
 
@@ -1145,7 +1223,18 @@ export default function Carrito() {
       return true;
     } catch (error: any) {
       console.error("Error syncing checkout data:", error);
-      showToast("Error al procesar la información del carrito", "error");
+
+      // Capturar errores de validación de datos personales (DNI, Celular, etc)
+      if (
+        error.message &&
+        (error.message.includes("documento") || error.message.includes("celular"))
+      ) {
+        setValidationErrorMessage(error.message);
+        setShowValidationModal(true);
+      } else {
+        showToast("Error al procesar la información del carrito", "error");
+      }
+
       return false;
     }
   };
@@ -1416,25 +1505,17 @@ export default function Carrito() {
     // 🔹 MOVED: La validación de cobertura se movió al checkout (handleCheckoutSubmit)
     // Se permite guardar cualquier dirección, pero se valida antes de finalizar compra.
 
-    // Save to cart session API only for non-authenticated users OR guests
-    if (!isAuthenticated || isGuest) {
-      try {
-        console.log("🚚 Guardando dirección de envío (Invitado/Anónimo):", {
-          distritoSeleccionado: direccionEnvio.distrito,
-          direccion: direccionEnvio.calle,
-          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
-          referencia: direccionEnvio.referencia,
-        });
-        await saveCartDeliveryAddress({
-          distritoSeleccionado: direccionEnvio.distrito,
-          direccion: direccionEnvio.calle,
-          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
-          referencia: direccionEnvio.referencia,
-        });
-        console.log("Cart delivery address saved to API (Guest/Anonymous)");
-      } catch (apiError) {
-        console.error("Error saving address to cart API:", apiError);
-      }
+    // 🔹 IMPORTANTE: Sincronizar siempre con la sesión del carrito para actualizar costos de envío
+    try {
+      console.log("🚚 Sincronizando dirección con la sesión del carrito...");
+      await saveCartDeliveryAddress({
+        distritoSeleccionado: direccionEnvio.distrito,
+        direccion: direccionEnvio.calle,
+        numeroDptoPiso: direccionEnvio.numeroDptoPiso,
+        referencia: direccionEnvio.referencia,
+      });
+    } catch (apiError) {
+      console.error("Error saving address to cart API:", apiError);
     }
 
     // Guardar en localStorage siempre
@@ -1447,15 +1528,18 @@ export default function Carrito() {
       console.error("Error saving address to localStorage:", e);
     }
 
-    // Si no está autenticado o es invitado, solo actualiza el estado local para la UI
-    if (!isAuthenticated || isGuest) {
+    // Si es invitado o no está autenticado, terminamos aquí para la UI
+    // Nota: Priorizamos el guardado en la cuenta si está autenticado (!isAuthenticated)
+    if (!isAuthenticated) {
       setEditandoDireccion(false);
+      showToast("Dirección guardada correctamente");
       return;
     }
 
     // Si está autenticado, intentar actualizar/crear en el backend
     try {
-      // Cookies are sent automatically with credentials: 'include'
+      // Si no tiene direcciones previas, esta será la principal automáticamente
+      const hasNoAddresses = userAddresses.length === 0;
 
       // Check if we're editing the main address
       const isEditingMainAddress =
@@ -1471,7 +1555,7 @@ export default function Carrito() {
           direccionEnvio.numeroDptoPiso ||
           (mainAddressId ? "Mi Dirección" : "Nueva Dirección"),
         reference: direccionEnvio.referencia || "",
-        isMain: isEditingMainAddress || false,
+        isMain: isEditingMainAddress || hasNoAddresses || false,
       };
 
       let response;
@@ -1489,28 +1573,33 @@ export default function Carrito() {
 
       if (response && response.ok) {
         const result = await response.json();
-        console.log("Dirección guardada correctamente");
+        console.log("✅ Dirección persistida en el perfil del usuario");
 
-        // Refresh addresses
+        // Refresh addresses to update dropdown and main selection
         const refreshedResponse = await apiGet("/users/addresses");
         if (refreshedResponse.ok) {
           const refreshedResult = await refreshedResponse.json();
           if (refreshedResult.success) {
-            setUserAddresses(refreshedResult.data);
-            // Update mainAddressId to the saved/created address
-            if (result.data?.id) {
-              setMainAddressId(result.data.id);
+            const addresses = refreshedResult.data;
+            setUserAddresses(addresses);
+
+            // Si es la primera o se marcó como principal, actualizar mainAddressId
+            const savedAddressId = result.data?.id || (hasNoAddresses ? addresses[0]?.id : null);
+            if (savedAddressId) {
+              setMainAddressId(savedAddressId);
             }
           }
         }
 
         setEditandoDireccion(false);
+        showToast("Dirección vinculada a tu cuenta correctamente");
       } else {
         console.error("Error al guardar dirección en backend");
-        showToast("Error al guardar la dirección", "error");
+        showToast("Error al vincular la dirección a tu cuenta", "error");
       }
     } catch (error) {
       console.error("Error al guardar dirección:", error);
+      showToast("Ocurrió un error al procesar tu dirección", "error");
     }
   };
 
@@ -1571,11 +1660,10 @@ export default function Carrito() {
                         value={loginData.email}
                         onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
                         placeholder="ejemplo@correo.com"
-                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                          loginErrors.email
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.email
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
                       />
                       {loginErrors.email && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1594,11 +1682,10 @@ export default function Carrito() {
                         value={loginData.password}
                         onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
                         placeholder="••••••••"
-                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                          loginErrors.password
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${loginErrors.password
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
                       />
                       {loginErrors.password && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1686,11 +1773,10 @@ export default function Carrito() {
                           value={registroData.nombre}
                           onChange={handleRegistroChange} // ✅ Cambiar
                           placeholder="Nombres"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.nombre
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.nombre
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.nombre && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1709,11 +1795,10 @@ export default function Carrito() {
                           value={registroData.apellido}
                           onChange={handleRegistroChange} // ✅ Cambiar
                           placeholder="Apellidos"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.apellido
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.apellido
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.apellido && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1742,11 +1827,10 @@ export default function Carrito() {
                               | "Pasaporte", // ✅ Type assertion
                           })
                         }
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.tipoDocumento
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.tipoDocumento
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
                       >
                         <option value="DNI">DNI</option>
                         <option value="RUC">RUC</option>
@@ -1763,11 +1847,10 @@ export default function Carrito() {
                           value={registroData.numeroDocumento}
                           onChange={handleRegistroChange}
                           placeholder="12345678"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.numeroDocumento
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.numeroDocumento
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.numeroDocumento && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1796,11 +1879,10 @@ export default function Carrito() {
                           value={registroData.celular}
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.celular
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.celular
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.celular && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1819,11 +1901,10 @@ export default function Carrito() {
                           value={registroData.telefonoOpcional}
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.telefonoOpcional
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.telefonoOpcional
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.telefonoOpcional && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1857,11 +1938,10 @@ export default function Carrito() {
                           value={registroData.provincia}
                           onChange={handleRegistroChange}
                           placeholder="Lima"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.provincia
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.provincia
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.provincia && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1880,11 +1960,10 @@ export default function Carrito() {
                         name="distrito"
                         value={registroData.distrito}
                         onChange={handleRegistroChange}
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.distrito
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.distrito
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
                       >
                         <option value="">Seleccionar distrito</option>
                         {warehouseDistricts.map((d) => (
@@ -1911,11 +1990,10 @@ export default function Carrito() {
                         value={registroData.direccion}
                         onChange={handleRegistroChange}
                         placeholder="Calle rosales 432"
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.direccion
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.direccion
+                          ? "border-red-500"
+                          : "border-gray-200"
+                          }`}
                       />
                       {registroErrors.direccion && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1936,11 +2014,10 @@ export default function Carrito() {
                           value={registroData.numeroDpto}
                           onChange={handleRegistroChange}
                           placeholder="201"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.numeroDpto
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.numeroDpto
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.numeroDpto && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1959,11 +2036,10 @@ export default function Carrito() {
                           value={registroData.referencia}
                           onChange={handleRegistroChange}
                           placeholder="Frente al parque"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.referencia
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.referencia
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.referencia && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -1986,11 +2062,10 @@ export default function Carrito() {
                           value={registroData.email}
                           onChange={handleRegistroChange}
                           placeholder="ejemplo@correo.com"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.email
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.email
+                            ? "border-red-500"
+                            : "border-gray-200"
+                            }`}
                         />
                         {registroErrors.email && (
                           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -2011,11 +2086,10 @@ export default function Carrito() {
                             value={registroData.password}
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
-                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                              registroErrors.password
-                                ? "border-red-500"
-                                : "border-gray-200"
-                            }`}
+                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.password
+                              ? "border-red-500"
+                              : "border-gray-200"
+                              }`}
                           />
                           {registroErrors.password && (
                             <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -2034,11 +2108,10 @@ export default function Carrito() {
                             value={registroData.confirmarPassword}
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
-                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                              registroErrors.confirmarPassword
-                                ? "border-red-500"
-                                : "border-gray-200"
-                            }`}
+                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${registroErrors.confirmarPassword
+                              ? "border-red-500"
+                              : "border-gray-200"
+                              }`}
                           />
                           {registroErrors.confirmarPassword && (
                             <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -2385,6 +2458,9 @@ export default function Carrito() {
         onCloseSavar={() => setShowSavarStockModal(false)}
         showPickupModal={showPickupStockModal}
         onClosePickup={() => setShowPickupStockModal(false)}
+        showValidationModal={showValidationModal}
+        onCloseValidation={() => setShowValidationModal(false)}
+        validationMessage={validationErrorMessage}
       />
     </Layout>
   );

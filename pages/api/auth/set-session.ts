@@ -15,9 +15,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { accessToken, refreshToken, user, sessionId } = req.body;
 
     if (!accessToken || !refreshToken || !user) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Missing required fields: accessToken, refreshToken, or user' 
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: accessToken, refreshToken, or user'
       });
     }
 
@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         httpOnly: true,
         secure: isProduction,
         sameSite: 'lax',
-        maxAge: 15 * 60, // 15 minutes
+        maxAge: 24 * 60 * 60, // 24 hours (86400 seconds)
         path: '/',
       }),
       serialize('refreshToken', refreshToken, {
@@ -58,15 +58,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.setHeader('Set-Cookie', cookies);
 
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Session established successfully' 
+    return res.status(200).json({
+      success: true,
+      message: 'Session established successfully'
     });
   } catch (error) {
     console.error('Error setting session:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Internal server error' 
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
     });
   }
 }

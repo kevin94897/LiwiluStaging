@@ -144,9 +144,10 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                 width={295}
                 height={218}
                 quality={100}
-                className="h-auto"
+                className="w-full h-auto"
                 priority
               />
+
             </motion.div>
 
             <div className="relative max-w-7xl mx-auto md:px-6 w-full flex items-center justify-between md:flex-row flex-col z-20">
@@ -254,9 +255,11 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                     src="/images/liwilu_banner_regreso_clases_img.png"
                     alt="Niños"
                     fill
+                    priority
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover object-left"
                   />
+
                 </div>
               </motion.div>
             </div>
@@ -282,8 +285,10 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                 width={295}
                 height={218}
                 quality={100}
-                className="h-auto"
+                className="w-full h-auto"
+                priority
               />
+
             </motion.div>
 
             <div className="relative z-20 max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between w-full">
@@ -302,8 +307,9 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                     alt="Liwilu Logo"
                     width={120}
                     height={60}
-                    className="h-auto"
+                    className="w-[120px] h-auto"
                   />
+
                 </motion.div>
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold mb-4 text-primary-light uppercase">
                   NUEVOS MODELOS
@@ -391,8 +397,9 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                   alt="Liwilu Logo"
                   width={180}
                   height={60}
-                  className="w-24 md:w-48 h-auto"
+                  className="w-[180px] h-auto"
                 />
+
               </motion.div>
             </div>
             {/* Bottom Percentage Strip */}
@@ -457,8 +464,11 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                 alt="Vector decoration"
                 width={295}
                 height={218}
-                className="h-auto"
+                quality={100}
+                className="w-full h-auto"
+                priority
               />
+
             </motion.div>
 
             <div className="relative max-w-7xl mx-auto md:px-6 w-full h-full flex items-center justify-between md:flex-row flex-col-reverse md:gap-12">
@@ -505,8 +515,9 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                       alt="Liwilu Logo"
                       width={120}
                       height={60}
-                      className="h-auto"
+                      className="w-[120px] h-auto"
                     />
+
                   </motion.div>
                   <motion.h2
                     className="text-3xl md:text-4xl lg:text-5xl font-semibold mb-4 text-primary-light uppercase"
@@ -552,8 +563,9 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                       alt="Liwilu Logo"
                       width={180}
                       height={60}
-                      className="h-auto"
+                      className="w-[180px] h-auto"
                     />
+
                   </motion.div>
                 </div>
               </motion.div>

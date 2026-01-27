@@ -11,7 +11,12 @@ interface RefreshResponse {
 // 🆕 Decodificar JWT para obtener tiempo de expiración
 const decodeJWT = (token: string): { exp: number } | null => {
     try {
+        if (!token || typeof token !== 'string' || !token.includes('.')) {
+            return null;
+        }
         const base64Url = token.split('.')[1];
+        if (!base64Url) return null;
+
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const jsonPayload = decodeURIComponent(
             atob(base64)
@@ -202,24 +207,24 @@ export const startTokenRefresh = async () => {
  */
 export const clearSession = async () => {
     stopTokenRefresh();
-    
+
     // Clear cookies via API route
     try {
-        await fetch('/api/auth/clear-session', { 
+        await fetch('/api/auth/clear-session', {
             method: 'POST',
             credentials: 'include',
         });
     } catch (error) {
         console.error('❌ Error clearing session cookies:', error);
     }
-    
+
     // Clear any localStorage remnants (for migration period)
     if (typeof window !== 'undefined') {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
     }
-    
+
     console.log('🧹 Sesión limpiada completamente');
 };
 

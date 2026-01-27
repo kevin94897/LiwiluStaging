@@ -20,16 +20,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!apiResponse.ok) {
       const errorData = await apiResponse.json().catch(() => ({}));
-      return res.status(apiResponse.status).json({ 
-        success: false, 
-        message: errorData.message || 'Error al registrarse' 
+      return res.status(apiResponse.status).json({
+        success: false,
+        message: errorData.message || 'Error al registrarse'
       });
     }
 
     const result = await apiResponse.json();
 
     if (result.success && result.data) {
-      const { accessToken, refreshToken, sessionId } = result;
+      const { accessToken, refreshToken, sessionId } = result.data;
       const user = result.data.user;
       const isProduction = process.env.NODE_ENV === 'production';
 

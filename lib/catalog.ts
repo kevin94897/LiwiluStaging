@@ -1,4 +1,5 @@
 import { authenticatedFetch, apiGet, apiPost } from './auth/apiClient';
+import { isAuthenticated } from './auth/authUtils';
 
 /**
  * Legacy Product interface for compatibility
@@ -289,6 +290,10 @@ export interface FavoritesResponse {
  * Fetch user favorites
  */
 export async function getFavorites(): Promise<FavoritesResponse> {
+    if (!isAuthenticated()) {
+        return { success: true, total: 0, data: [] };
+    }
+
     const response = await apiGet('/catalog/products/favorites');
 
     if (!response.ok) {
@@ -307,6 +312,10 @@ export async function toggleFavorite(productId: number): Promise<{
     isFavorite: boolean;
     favoriteId?: string;
 }> {
+    if (!isAuthenticated()) {
+        throw new Error('No hay sesión activa');
+    }
+
     const response = await apiPost(`/favorites/toggle/${productId}`);
 
     if (!response.ok) {
@@ -322,6 +331,10 @@ export async function toggleFavorite(productId: number): Promise<{
  * Check favorite status for multiple products
  */
 export async function checkMultipleFavorites(productIds: number[]): Promise<Record<string, boolean>> {
+    if (!isAuthenticated()) {
+        return {};
+    }
+
     const response = await apiPost('/favorites/check-multiple', { productIds });
 
     if (!response.ok) {
@@ -335,6 +348,10 @@ export async function checkMultipleFavorites(productIds: number[]): Promise<Reco
  * Get count of favorite products
  */
 export async function getFavoritesCount(): Promise<{ count: number }> {
+    if (!isAuthenticated()) {
+        return { count: 0 };
+    }
+
     const response = await apiGet('/favorites/count');
 
     if (!response.ok) {
@@ -493,7 +510,7 @@ export async function getProductBasic(productId: string | number): Promise<Produ
     try {
         const response = await apiGet(endpoint);
         if (!response.ok) {
-            console.error(`Error fetching product basic: ${response.status} ${response.statusText} URL: ${url}`);
+            console.error(`Error fetching product basic: ${response.status} ${response.statusText} Endpoint: ${endpoint}`);
             throw new Error(`Error fetching product basic: ${response.statusText}`);
         }
         const data: ProductBasicResponse = await response.json();

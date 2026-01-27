@@ -92,8 +92,10 @@ export default function Footer() {
 							alt="Liwilu"
 							width={140}
 							height={40}
-							className="object-contain"
+							className="w-[140px] h-[40px] object-contain"
 						/>
+
+
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
 							<div className="space-y-2">
@@ -172,7 +174,10 @@ export default function Footer() {
 								alt="Libro de reclamaciones"
 								width={90}
 								height={90}
+								className="w-[90px] h-[90px]"
 							/>
+
+
 						</Link>
 						<div>
 							<h4 className="text-white font-semibold text-sm mb-2">

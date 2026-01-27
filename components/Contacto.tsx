@@ -11,6 +11,7 @@ import {
 import { PiWarningCircleFill } from "react-icons/pi";
 import { showToast } from "@/lib/notifications";
 import { sanitizeObject } from "@/lib/sanitize";
+import { apiPost } from "@/lib/auth/apiClient";
 
 export default function Contacto() {
   const [formData, setFormData] = useState<ContactoSchemaType>({
@@ -79,26 +80,51 @@ export default function Contacto() {
     // Si es válido
     setErrors({});
     const sanitizedFormData = sanitizeObject(formData);
-    console.log(
-      "Solicitud de contacto exitosa (sanitizada):",
-      sanitizedFormData,
-    );
 
     try {
-      // Aquí iría la llamada a tu API
-      // await fetch('/api/contacto', { method: 'POST', body: JSON.stringify(formData) });
+      const response = await apiPost(
+        "/general/solicitud-mayorista",
+        {
+          celular: `+51${sanitizedFormData.celular}`,
+          numeroDocumento: sanitizedFormData.documento,
+          aceptaPoliticasPrivacidad: sanitizedFormData.aceptaPrivacidad,
+        },
+        { skipAuth: true },
+      );
 
-      showToast("Solicitud enviada. Un asesor se contactará pronto.");
+      const apiResult = await response.json();
 
-      // Resetear formulario
-      setFormData({
-        celular: "",
-        documento: "",
-        aceptaPrivacidad: false,
-      });
+      if (response.ok && apiResult.success) {
+        showToast("Solicitud enviada. Un asesor se contactará pronto.");
+        // Resetear formulario
+        setFormData({
+          celular: "",
+          documento: "",
+          aceptaPrivacidad: false,
+        });
+      } else {
+        const errorMsg =
+          apiResult.message || "Hubo un error. Intenta nuevamente.";
+        showToast(errorMsg, "error");
+
+        // Si hay errores de validación específicos del backend, mostrarlos en el formulario
+        if (apiResult.errors) {
+          const backendErrors: Partial<Record<keyof ContactoSchemaType, string>> =
+            {};
+          if (apiResult.errors.celular)
+            backendErrors.celular = apiResult.errors.celular;
+          if (apiResult.errors.numeroDocumento)
+            backendErrors.documento = apiResult.errors.numeroDocumento;
+          if (apiResult.errors.aceptaPoliticasPrivacidad)
+            backendErrors.aceptaPrivacidad =
+              apiResult.errors.aceptaPoliticasPrivacidad;
+
+          setErrors((prev) => ({ ...prev, ...backendErrors }));
+        }
+      }
     } catch (error) {
       console.error("Error al enviar:", error);
-      showToast("Hubo un error. Intenta nuevamente.", "error");
+      showToast("Hubo un error de conexión. Intenta nuevamente.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -113,20 +139,22 @@ export default function Contacto() {
           src="/images/liwilu_contacto_banner.png"
           alt="Productos de limpieza"
           fill
-          className="object-cover"
           priority
+          sizes="(max-width: 768px) 100vw, 1200px"
+          className="object-cover"
         />
+
 
         {/* Contenido */}
         <div className="relative z-10 text-white text-center flex flex-col items-center">
           <Image
             src="/images/liwilu_logo-xl.png"
-            alt="Liwilu"
-            width={195}
+            alt="Liwilu Logo"
+            width={180}
             height={60}
-            className="mb-6 mx-auto md:mx-0"
-            priority
+            style={{ width: "180px", height: "auto" }}
           />
+
           <h2 className="text-3xl md:text-4xl font-semibold leading-tight">
             Compra al por
           </h2>
@@ -153,19 +181,18 @@ export default function Contacto() {
               name="celular"
               value={formData.celular}
               onChange={handleCelularChange}
-              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${
-                errors.celular
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-white/70 focus:border-white"
-              }`}
+              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${errors.celular
+                ? "border-red-500 focus:border-red-500"
+                : "border-white/70 focus:border-white"
+                }`}
               placeholder="Numero de celular (9 dígitos)"
               maxLength={9}
             />
-            {/* {errors.celular && (
-							<p className="text-red-200 text-xs mt-1 flex items-center gap-1">
-								<PiWarningCircleFill size={14} /> {errors.celular}
-							</p>
-						)} */}
+            {errors.celular && (
+              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                <PiWarningCircleFill size={14} /> {errors.celular}
+              </p>
+            )}
           </div>
 
           {/* Campo: DNI / CE / RUC */}
@@ -175,19 +202,18 @@ export default function Contacto() {
               name="documento"
               value={formData.documento}
               onChange={handleDocumentoChange}
-              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${
-                errors.documento
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-white/70 focus:border-white"
-              }`}
+              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${errors.documento
+                ? "border-red-500 focus:border-red-500"
+                : "border-white/70 focus:border-white"
+                }`}
               placeholder="DNI / CE / RUC"
               maxLength={11}
             />
-            {/* {errors.documento && (
-							<p className="text-red-200 text-xs mt-1 flex items-center gap-1">
-								<PiWarningCircleFill size={14} /> {errors.documento}
-							</p>
-						)} */}
+            {errors.documento && (
+              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                <PiWarningCircleFill size={14} /> {errors.documento}
+              </p>
+            )}
           </div>
 
           {/* Checkbox */}
@@ -199,11 +225,10 @@ export default function Contacto() {
                 name="aceptaPrivacidad"
                 checked={formData.aceptaPrivacidad}
                 onChange={handleChange}
-                className={`mt-1 accent-white ${
-                  errors.aceptaPrivacidad
-                    ? "outline outline-2 outline-red-300"
-                    : ""
-                }`}
+                className={`mt-1 accent-white ${errors.aceptaPrivacidad
+                  ? "outline outline-2 outline-red-300"
+                  : ""
+                  }`}
               />
               <label
                 htmlFor="privacidad"

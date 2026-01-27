@@ -17,9 +17,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!refreshToken) {
       console.warn('❌ Refresh attempt failed: No refreshToken cookie found');
-      return res.status(401).json({ 
-        success: false, 
-        message: 'No refresh token available' 
+      return res.status(401).json({
+        success: false,
+        message: 'No refresh token available'
       });
     }
 
@@ -35,28 +35,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!apiResponse.ok) {
       const errorData = await apiResponse.json().catch(() => ({}));
       console.error('❌ External API refresh failed:', apiResponse.status, errorData);
-      
+
       // If unauthorized, clear local cookies to signal logout
       if (apiResponse.status === 401 || apiResponse.status === 403) {
-         res.setHeader('Set-Cookie', [
-            serialize('accessToken', '', { maxAge: -1, path: '/' }),
-            serialize('refreshToken', '', { maxAge: -1, path: '/' }),
-            serialize('user', '', { maxAge: -1, path: '/' }),
-         ]);
+        res.setHeader('Set-Cookie', [
+          serialize('accessToken', '', { maxAge: -1, path: '/' }),
+          serialize('refreshToken', '', { maxAge: -1, path: '/' }),
+          serialize('user', '', { maxAge: -1, path: '/' }),
+        ]);
       }
 
-      return res.status(apiResponse.status).json({ 
-        success: false, 
-        message: errorData.message || 'Failed to refresh tokens' 
+      return res.status(apiResponse.status).json({
+        success: false,
+        message: errorData.message || 'Failed to refresh tokens'
       });
     }
 
     const result = await apiResponse.json();
 
     if (!result.success || !result.data) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Invalid response from refresh API' 
+      return res.status(500).json({
+        success: false,
+        message: 'Invalid response from refresh API'
       });
     }
 
@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         httpOnly: true,
         secure: isProduction,
         sameSite: 'lax',
-        maxAge: 15 * 60, // 15 minutes
+        maxAge: 24 * 60 * 60, // 24 hours (86400 seconds)
         path: '/',
       }),
       serialize('refreshToken', newRefreshToken, {
@@ -83,16 +83,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.setHeader('Set-Cookie', cookies);
 
-    return res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({
+      success: true,
       data: { accessToken } // Return accessToken if needed by client (though mostly used via cookies)
     });
 
   } catch (error) {
     console.error('❌ Error during token refresh proxy:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Internal server error during refresh' 
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error during refresh'
     });
   }
 }

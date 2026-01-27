@@ -68,7 +68,11 @@ export default function GuestDataSummary({
                   <span className="text-gray-500">
                     {userData.documentType || userData.tipoDocumento || "DNI"}:
                   </span>{" "}
-                  {userData.documentNumber || userData.numeroDocumento || "-"}
+                  {userData.documentNumber ||
+                    userData.numeroDocumento ||
+                    userData.dni ||
+                    userData.ruc ||
+                    "-"}
                 </p>
                 <p>
                   <span className="text-gray-500">Email:</span> {userData.email}
@@ -77,6 +81,8 @@ export default function GuestDataSummary({
                   <span className="text-gray-500">Celular:</span>{" "}
                   {userData.phone ||
                     userData.celular ||
+                    userData.mobile ||
+                    userData.telefono ||
                     userAddress?.phone ||
                     "-"}
                 </p>

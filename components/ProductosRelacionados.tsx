@@ -30,6 +30,7 @@ import {
 } from "@/lib/motionVariants";
 import { FaHeart, FaShoppingCart } from "react-icons/fa";
 import { toggleFavorite, getFavorites } from "@/lib/catalog";
+import { isAuthenticated } from "@/lib/auth/authUtils";
 import Button from "./ui/Button";
 
 interface ProductProps {
@@ -128,6 +129,8 @@ export default function ProductosRelacionados({
   // Cargar favoritos al montar
   useEffect(() => {
     async function loadFavorites() {
+      if (!isAuthenticated()) return;
+
       try {
         const response = await getFavorites();
         if (response.success) {
@@ -256,9 +259,9 @@ export default function ProductosRelacionados({
       product.coverImage ||
       (product.associations?.images?.[0]?.id
         ? getProductImageUrl(
-            product.id.toString(),
-            product.associations.images[0].id,
-          )
+          product.id.toString(),
+          product.associations.images[0].id,
+        )
         : "/images/productos/placeholder_liwilu.png");
 
     return (
@@ -287,11 +290,10 @@ export default function ProductosRelacionados({
                 <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
               ) : (
                 <FaHeart
-                  className={`w-5 h-5 transition ${
-                    favoritos.includes(product.id.toString())
+                  className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
                       ? "text-red-500 fill-current"
                       : "text-gray-400 hover:text-red-500"
-                  }`}
+                    }`}
                 />
               )}
             </button>
@@ -373,11 +375,10 @@ export default function ProductosRelacionados({
           {relatedProducts.map((product) => (
             <div
               key={product.id}
-              className={`min-w-0 ${
-                isMobile
+              className={`min-w-0 ${isMobile
                   ? "flex-[0_0_85%] pl-3 sm:flex-[0_0_50%] sm:pl-4"
                   : "flex-[0_0_25%] pl-4"
-              }`}
+                }`}
             >
               <ProductCard product={product} />
             </div>
