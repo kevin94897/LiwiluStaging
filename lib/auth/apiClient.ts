@@ -40,10 +40,10 @@ export const authenticatedFetch = async (
     if (accessToken) {
         console.log('📡 Request with Authorization header');
         baseHeaders['Authorization'] = `Bearer ${accessToken}`;
-    }
-    
-    if (sessionId) {
-        console.log('📡 Request with X-Session-Id header:', sessionId);
+    } else if (sessionId) {
+        // Solo enviamos X-Session-Id si NO hay un accessToken, 
+        // para evitar conflictos en el backend entre sesión de usuario e invitado.
+        console.log('📡 Request with X-Session-Id header (Guest Mode):', sessionId);
         baseHeaders['X-Session-Id'] = sessionId;
     }
 

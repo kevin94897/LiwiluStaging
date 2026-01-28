@@ -16,6 +16,7 @@ import { showToast } from "@/lib/notifications";
 import { validateDNI, validateRUC } from "@/lib/validations";
 import { createOrder, payOrder } from "@/lib/cart";
 import { useAuth } from "@/hooks/useAuth";
+import { consultaRUC } from "@/lib/general";
 
 type TipoComprobante = "boleta" | "factura";
 type MetodoPago = "tarjeta" | "yape" | "efectivo";
@@ -23,7 +24,8 @@ type MetodoPago = "tarjeta" | "yape" | "efectivo";
 export default function Checkout() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
-  const { items, getCartTotal, clearCart, totals, syncCart, cartId } = useCart();
+  const { items, getCartTotal, clearCart, totals, syncCart, cartId } =
+    useCart();
   const [tipoComprobante, setTipoComprobante] =
     useState<TipoComprobante>("factura");
   const [metodoPago, setMetodoPago] = useState<MetodoPago | null>(null);
@@ -43,6 +45,8 @@ export default function Checkout() {
     direccionFiscal: "",
   });
 
+  const [isConsultingRuc, setIsConsultingRuc] = useState(false);
+  const [rucConsulted, setRucConsulted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const subtotal = getCartTotal();
@@ -158,6 +162,43 @@ export default function Checkout() {
     currentOrderId,
   ]);
 
+  const handleConsultaRUC = async () => {
+    const ruc = datosFactura.ruc;
+    if (!validateRUC(ruc)) {
+      setErrors({
+        ...errors,
+        rucFactura: "Ingresa un RUC válido de 11 dígitos que empiece con 20",
+      });
+      return;
+    }
+
+    setIsConsultingRuc(true);
+    setErrors({ ...errors, rucFactura: "" });
+
+    try {
+      const response = await consultaRUC(ruc);
+      if (response.success && response.data) {
+        setDatosFactura({
+          ...datosFactura,
+          razonSocial: response.data.nombre_o_razon_social,
+          direccionFiscal: response.data.direccion_completa,
+        });
+        setRucConsulted(true);
+        showToast("RUC consultado con éxito", "success");
+      } else {
+        showToast(
+          response.message ||
+            "No se encontró información para el RUC ingresado",
+          "error",
+        );
+      }
+    } catch (error: any) {
+      showToast(error.message || "Error al consultar el RUC", "error");
+    } finally {
+      setIsConsultingRuc(false);
+    }
+  };
+
   // Validar campos según tipo de comprobante
   const validarDatos = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -250,7 +291,9 @@ export default function Checkout() {
         }
 
         const orderId =
-          orderResponse.data?.orderId || orderResponse.orderId || orderResponse.id;
+          orderResponse.data?.orderId ||
+          orderResponse.orderId ||
+          orderResponse.id;
 
         if (!orderId) {
           throw new Error("No se recibió un ID de orden del servidor");
@@ -269,7 +312,10 @@ export default function Checkout() {
         });
       } catch (error: any) {
         console.error("❌ Error en handleProcesarPago:", error);
-        showToast(error.message || "Ocurrió un error al procesar tu solicitud", "error");
+        showToast(
+          error.message || "Ocurrió un error al procesar tu solicitud",
+          "error",
+        );
         setProcessing(false);
       }
       return;
@@ -359,19 +405,21 @@ export default function Checkout() {
               <div className="flex gap-4 mb-6">
                 <button
                   onClick={() => setTipoComprobante("boleta")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "boleta"
-                    ? "border-primary bg-primary text-white"
-                    : "border-gray-200 text-gray-700 hover:border-primary"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
+                    tipoComprobante === "boleta"
+                      ? "border-primary bg-primary text-white"
+                      : "border-gray-200 text-gray-700 hover:border-primary"
+                  }`}
                 >
                   Boleta
                 </button>
                 <button
                   onClick={() => setTipoComprobante("factura")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "factura"
-                    ? "border-primary bg-primary text-white"
-                    : "border-gray-200 text-gray-700 hover:border-primary"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
+                    tipoComprobante === "factura"
+                      ? "border-primary bg-primary text-white"
+                      : "border-gray-200 text-gray-700 hover:border-primary"
+                  }`}
                 >
                   <span className="flex items-center justify-center gap-2">
                     <svg
@@ -458,19 +506,51 @@ export default function Checkout() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         RUC
                       </label>
-                      <input
-                        type="text"
-                        value={datosFactura.ruc}
-                        onChange={(e) =>
-                          setDatosFactura({
-                            ...datosFactura,
-                            ruc: e.target.value.replace(/\D/g, ""),
-                          })
-                        }
-                        placeholder="20123456789"
-                        maxLength={11}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={datosFactura.ruc}
+                          onChange={(e) => {
+                            setDatosFactura({
+                              ...datosFactura,
+                              ruc: e.target.value.replace(/\D/g, ""),
+                              razonSocial: "",
+                              direccionFiscal: "",
+                            });
+                            setRucConsulted(false);
+                          }}
+                          placeholder="20123456789"
+                          maxLength={11}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition pr-12"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleConsultaRUC}
+                          disabled={
+                            isConsultingRuc || datosFactura.ruc.length !== 11
+                          }
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary-dark disabled:text-gray-300 p-2 transition-colors"
+                          title="Consultar RUC"
+                        >
+                          {isConsultingRuc ? (
+                            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                       {errors.rucFactura && (
                         <p className="text-red-500 text-xs mt-1">
                           {errors.rucFactura}
@@ -484,6 +564,7 @@ export default function Checkout() {
                       <input
                         type="text"
                         value={datosFactura.razonSocial}
+                        disabled={rucConsulted}
                         onChange={(e) =>
                           setDatosFactura({
                             ...datosFactura,
@@ -491,7 +572,7 @@ export default function Checkout() {
                           })
                         }
                         placeholder="Nombre de la empresa"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition disabled:bg-gray-50 disabled:text-gray-500"
                       />
                       {errors.razonSocial && (
                         <p className="text-red-500 text-xs mt-1">
@@ -506,6 +587,7 @@ export default function Checkout() {
                       <input
                         type="text"
                         value={datosFactura.direccionFiscal}
+                        disabled={rucConsulted}
                         onChange={(e) =>
                           setDatosFactura({
                             ...datosFactura,
@@ -513,7 +595,7 @@ export default function Checkout() {
                           })
                         }
                         placeholder="Av. Principal 123"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition disabled:bg-gray-50 disabled:text-gray-500"
                       />
                       {errors.direccionFiscal && (
                         <p className="text-red-500 text-xs mt-1">
@@ -539,10 +621,11 @@ export default function Checkout() {
                 {/* Tarjeta de crédito/débito */}
                 <button
                   onClick={() => setMetodoPago("tarjeta")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "tarjeta"
-                    ? "border-primary bg-primary/5"
-                    : "border-gray-200 hover:border-primary/50"
-                    }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
+                    metodoPago === "tarjeta"
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 hover:border-primary/50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <FaCreditCard className="text-2xl text-gray-600" />
@@ -573,10 +656,11 @@ export default function Checkout() {
                 {/* Yape */}
                 <button
                   onClick={() => setMetodoPago("yape")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "yape"
-                    ? "border-primary bg-primary/5"
-                    : "border-gray-200 hover:border-primary/50"
-                    }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
+                    metodoPago === "yape"
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 hover:border-primary/50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-purple-600 rounded-sm flex items-center justify-center text-white font-semibold">
@@ -609,10 +693,11 @@ export default function Checkout() {
                 {/* Pago Efectivo */}
                 <button
                   onClick={() => setMetodoPago("efectivo")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "efectivo"
-                    ? "border-primary bg-primary/5"
-                    : "border-gray-200 hover:border-primary/50"
-                    }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
+                    metodoPago === "efectivo"
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 hover:border-primary/50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <FaMoneyBillWave className="text-2xl text-green-600" />
@@ -682,7 +767,8 @@ export default function Checkout() {
                   ) : (
                     <div className="space-y-3">
                       <p className="text-xs text-amber-700 font-medium leading-relaxed">
-                        ⚠️ <strong className="font-semibold">Nota técnica:</strong>{" "}
+                        ⚠️{" "}
+                        <strong className="font-semibold">Nota técnica:</strong>{" "}
                         El botón de Yape dentro del modal de Culqi requiere un
                         backend real para funcionar.
                       </p>
@@ -784,9 +870,9 @@ export default function Checkout() {
                         </p>
                         {item.product.originalPrice &&
                           parseFloat(item.product.originalPrice.toString()) >
-                          parseFloat(
-                            (item.product.price || "0").toString(),
-                          ) && (
+                            parseFloat(
+                              (item.product.price || "0").toString(),
+                            ) && (
                             <p className="text-xs text-gray-400 line-through">
                               {formatPrice(
                                 (

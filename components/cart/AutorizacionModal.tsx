@@ -217,7 +217,7 @@ export default function AutorizacionModal({
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
-                  // placeholder="Nombres Vera"
+                  // placeholder="Nombres Apellidos"
                   className={`w-full px-4 py-3 border-2 rounded-sm transition ${
                     errors.fullName
                       ? "border-red-500 focus:ring-red-500"

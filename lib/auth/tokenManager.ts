@@ -198,6 +198,7 @@ export const clearSession = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('liwilu_session_id'); // 🆕 Asegurar que se elimine el session_id de invitado
     console.log('🧹 Sesión limpiada completamente');
 };
 
