@@ -147,6 +147,8 @@ export default function Carrito() {
   >([]);
   const [showSavarStockModal, setShowSavarStockModal] = useState(false);
   const [showPickupStockModal, setShowPickupStockModal] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationErrorMessage, setValidationErrorMessage] = useState("");
   const [selectedStoreData, setSelectedStoreData] =
     useState<SavePickupStoreRequest | null>(null);
 
@@ -1127,7 +1129,19 @@ export default function Carrito() {
       return true;
     } catch (error: any) {
       console.error("Error syncing checkout data:", error);
-      showToast("Error al procesar la información del carrito", "error");
+
+      // Capturar errores de validación de datos personales (DNI, Celular, etc)
+      if (
+        error.message &&
+        (error.message.toLowerCase().includes("documento") ||
+          error.message.toLowerCase().includes("celular"))
+      ) {
+        setValidationErrorMessage(error.message);
+        setShowValidationModal(true);
+      } else {
+        showToast("Error al procesar la información del carrito", "error");
+      }
+
       return false;
     }
   };
@@ -1398,25 +1412,17 @@ export default function Carrito() {
     // 🔹 MOVED: La validación de cobertura se movió al checkout (handleCheckoutSubmit)
     // Se permite guardar cualquier dirección, pero se valida antes de finalizar compra.
 
-    // Save to cart session API only for non-authenticated users OR guests
-    if (!isAuthenticated || isGuest) {
-      try {
-        console.log("🚚 Guardando dirección de envío (Invitado/Anónimo):", {
-          distritoSeleccionado: direccionEnvio.distrito,
-          direccion: direccionEnvio.calle,
-          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
-          referencia: direccionEnvio.referencia,
-        });
-        await saveCartDeliveryAddress({
-          distritoSeleccionado: direccionEnvio.distrito,
-          direccion: direccionEnvio.calle,
-          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
-          referencia: direccionEnvio.referencia,
-        });
-        console.log("Cart delivery address saved to API (Guest/Anonymous)");
-      } catch (apiError) {
-        console.error("Error saving address to cart API:", apiError);
-      }
+    // 🔹 IMPORTANTE: Sincronizar siempre con la sesión del carrito para actualizar costos de envío
+    try {
+      console.log("🚚 Sincronizando dirección con la sesión del carrito...");
+      await saveCartDeliveryAddress({
+        distritoSeleccionado: direccionEnvio.distrito,
+        direccion: direccionEnvio.calle,
+        numeroDptoPiso: direccionEnvio.numeroDptoPiso,
+        referencia: direccionEnvio.referencia,
+      });
+    } catch (apiError) {
+      console.error("Error saving address to cart API:", apiError);
     }
 
     // Guardar en localStorage siempre
@@ -1432,12 +1438,15 @@ export default function Carrito() {
     // Si no está autenticado o es invitado, solo actualiza el estado local para la UI
     if (!isAuthenticated || isGuest) {
       setEditandoDireccion(false);
+      showToast("Dirección guardada correctamente");
       return;
     }
 
     // Si está autenticado, intentar actualizar/crear en el backend
     try {
       const token = localStorage.getItem("accessToken");
+      // Si no tiene direcciones previas, esta será la principal automáticamente
+      const hasNoAddresses = userAddresses.length === 0;
 
       // Check if we're editing the main address
       const isEditingMainAddress =
@@ -1453,7 +1462,7 @@ export default function Carrito() {
           direccionEnvio.numeroDptoPiso ||
           (mainAddressId ? "Mi Dirección" : "Nueva Dirección"),
         reference: direccionEnvio.referencia || "",
-        isMain: isEditingMainAddress || false,
+        isMain: isEditingMainAddress || hasNoAddresses || false,
       };
 
       let response;
@@ -1488,9 +1497,9 @@ export default function Carrito() {
 
       if (response && response.ok) {
         const result = await response.json();
-        console.log("Dirección guardada correctamente");
+        console.log("✅ Dirección persistida en el perfil del usuario");
 
-        // Refresh addresses
+        // Refresh addresses to update dropdown and main selection
         const refreshedResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/users/addresses`,
           {
@@ -1500,21 +1509,27 @@ export default function Carrito() {
         if (refreshedResponse.ok) {
           const refreshedResult = await refreshedResponse.json();
           if (refreshedResult.success) {
-            setUserAddresses(refreshedResult.data);
-            // Update mainAddressId to the saved/created address
-            if (result.data?.id) {
-              setMainAddressId(result.data.id);
+            const addresses = refreshedResult.data;
+            setUserAddresses(addresses);
+
+            // Si es la primera o se marcó como principal, actualizar mainAddressId
+            const savedAddressId =
+              result.data?.id || (hasNoAddresses ? addresses[0]?.id : null);
+            if (savedAddressId) {
+              setMainAddressId(savedAddressId);
             }
           }
         }
 
         setEditandoDireccion(false);
+        showToast("Dirección vinculada a tu cuenta correctamente");
       } else {
         console.error("Error al guardar dirección en backend");
-        showToast("Error al guardar la dirección", "error");
+        showToast("Error al vincular la dirección a tu cuenta", "error");
       }
     } catch (error) {
       console.error("Error al guardar dirección:", error);
+      showToast("Ocurrió un error al procesar tu dirección", "error");
     }
   };
 
@@ -2373,6 +2388,9 @@ export default function Carrito() {
         onCloseSavar={() => setShowSavarStockModal(false)}
         showPickupModal={showPickupStockModal}
         onClosePickup={() => setShowPickupStockModal(false)}
+        showValidationModal={showValidationModal}
+        onCloseValidation={() => setShowValidationModal(false)}
+        validationMessage={validationErrorMessage}
       />
     </Layout>
   );

@@ -66,11 +66,9 @@ export default function MisDatos() {
         }
       } catch (error) {
         console.error("❌ Error al cargar datos del usuario:", error);
-        toast.error(
+        showToast(
           "Error al cargar tus datos. Por favor, recarga la página.",
-          {
-            duration: 4000,
-          },
+          "error",
         );
       } finally {
         setIsLoading(false);
@@ -131,9 +129,7 @@ export default function MisDatos() {
         const firstError = document.querySelector(".border-red-500");
         firstError?.scrollIntoView({ behavior: "smooth", block: "center" });
 
-        toast.error("Por favor, corrige los errores en el formulario", {
-          duration: 3000,
-        });
+        showToast("Por favor, corrige los errores en el formulario", "error");
 
         return;
       }
@@ -192,11 +188,11 @@ export default function MisDatos() {
       }
     } catch (error) {
       console.error("❌ Error al guardar:", error);
-      toast.error(
+      showToast(
         error instanceof Error
           ? error.message
           : "❌ Hubo un error al guardar. Intenta nuevamente.",
-        { duration: 4000 },
+        "error",
       );
     } finally {
       setIsSubmitting(false);

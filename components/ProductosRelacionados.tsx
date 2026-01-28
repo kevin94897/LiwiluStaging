@@ -31,6 +31,7 @@ import {
 import { FaHeart, FaShoppingCart } from "react-icons/fa";
 import { toggleFavorite, getFavorites } from "@/lib/catalog";
 import Button from "./ui/Button";
+import { showToast } from "@/lib/notifications";
 
 interface ProductProps {
   productId: string | number;
@@ -156,24 +157,10 @@ export default function ProductosRelacionados({
 
       if (result.isFavorite) {
         setFavoritos((prev) => [...prev, productId]);
-        toast.success("Producto agregado a favoritos", {
-          duration: 2000,
-          position: "bottom-right",
-          style: {
-            fontSize: "14px",
-            fontFamily: "Outfit",
-          },
-        });
+        showToast("Producto agregado a favoritos", "success");
       } else {
         setFavoritos((prev) => prev.filter((id) => id !== productId));
-        toast.success("Producto eliminado de favoritos", {
-          duration: 2000,
-          position: "bottom-right",
-          style: {
-            fontSize: "14px",
-            fontFamily: "Outfit",
-          },
-        });
+        showToast("Producto eliminado de favoritos", "success");
       }
     } catch (error) {
       console.error("Error toggling favorite:", error);
@@ -182,13 +169,7 @@ export default function ProductosRelacionados({
         error instanceof Error &&
         error.message.includes("No hay sesión activa")
       ) {
-        toast.error("Debes iniciar sesión para agregar favoritos", {
-          duration: 3000,
-          style: {
-            fontSize: "14px",
-            fontFamily: "Outfit",
-          },
-        });
+        showToast("Debes iniciar sesión para agregar favoritos", "error");
         router.push(
           {
             pathname: router.pathname,
@@ -198,9 +179,7 @@ export default function ProductosRelacionados({
           { shallow: true },
         );
       } else {
-        toast.error(
-          "Error al actualizar favoritos. Por favor, intenta de nuevo.",
-        );
+        showToast("Error al actualizar favoritos. Por favor, intenta de nuevo.", "error");
       }
     } finally {
       setTogglingFavorite(null);
@@ -245,7 +224,7 @@ export default function ProductosRelacionados({
       setModalProduct(producto);
     } catch (error) {
       console.error("Error al agregar al carrito:", error);
-      toast.error("Error al agregar el producto al carrito");
+      showToast("Error al agregar el producto al carrito", "error");
     } finally {
       setLoadingCart(null);
     }
@@ -256,9 +235,9 @@ export default function ProductosRelacionados({
       product.coverImage ||
       (product.associations?.images?.[0]?.id
         ? getProductImageUrl(
-            product.id.toString(),
-            product.associations.images[0].id,
-          )
+          product.id.toString(),
+          product.associations.images[0].id,
+        )
         : "/images/productos/placeholder_liwilu.png");
 
     return (
@@ -287,11 +266,10 @@ export default function ProductosRelacionados({
                 <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
               ) : (
                 <FaHeart
-                  className={`w-5 h-5 transition ${
-                    favoritos.includes(product.id.toString())
-                      ? "text-red-500 fill-current"
-                      : "text-gray-400 hover:text-red-500"
-                  }`}
+                  className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
+                    ? "text-red-500 fill-current"
+                    : "text-gray-400 hover:text-red-500"
+                    }`}
                 />
               )}
             </button>
@@ -373,11 +351,10 @@ export default function ProductosRelacionados({
           {relatedProducts.map((product) => (
             <div
               key={product.id}
-              className={`min-w-0 ${
-                isMobile
-                  ? "flex-[0_0_85%] pl-3 sm:flex-[0_0_50%] sm:pl-4"
-                  : "flex-[0_0_25%] pl-4"
-              }`}
+              className={`min-w-0 ${isMobile
+                ? "flex-[0_0_85%] pl-3 sm:flex-[0_0_50%] sm:pl-4"
+                : "flex-[0_0_25%] pl-4"
+                }`}
             >
               <ProductCard product={product} />
             </div>

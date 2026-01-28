@@ -24,6 +24,7 @@ import { fadeInUp, transitions, viewportConfig } from "@/lib/motionVariants";
 import Button from "./ui/Button";
 import AddToCartModal from "@/components/AddToCartModal";
 import { FaHeart, FaShoppingCart } from "react-icons/fa";
+import { showToast } from "@/lib/notifications";
 
 interface NuestrosProductosProps {
   productos?: Product[];
@@ -89,24 +90,10 @@ export default function NuestrosProductos({
 
       if (result.isFavorite) {
         setFavoritos((prev) => [...prev, id]);
-        toast.success("Producto agregado a favoritos", {
-          duration: 2000,
-          position: "bottom-right",
-          style: {
-            fontSize: "14px",
-            fontFamily: "Outfit",
-          },
-        });
+        showToast("Producto agregado a favoritos", "success");
       } else {
         setFavoritos((prev) => prev.filter((fav) => fav !== id));
-        toast.success("Producto eliminado de favoritos", {
-          duration: 2000,
-          position: "bottom-right",
-          style: {
-            fontSize: "14px",
-            fontFamily: "Outfit",
-          },
-        });
+        showToast("Producto eliminado de favoritos", "success");
       }
     } catch (error) {
       console.error("Error toggling favorite:", error);
@@ -115,13 +102,7 @@ export default function NuestrosProductos({
         error instanceof Error &&
         error.message.includes("No hay sesión activa")
       ) {
-        toast.error("Debes iniciar sesión para agregar favoritos", {
-          duration: 3000,
-          style: {
-            fontSize: "14px",
-            fontFamily: "Outfit",
-          },
-        });
+        showToast("Debes iniciar sesión para agregar favoritos", "error");
         router.push(
           {
             pathname: router.pathname,
@@ -131,7 +112,7 @@ export default function NuestrosProductos({
           { shallow: true },
         );
       } else {
-        toast.error("Error al actualizar favoritos");
+        showToast("Error al actualizar favoritos", "error");
       }
     } finally {
       setTogglingFavorite(null);
@@ -159,7 +140,7 @@ export default function NuestrosProductos({
       setModalProduct(producto);
     } catch (error) {
       console.error("Error al agregar al carrito:", error);
-      toast.error("Error al agregar el producto al carrito");
+      showToast("Error al agregar el producto al carrito", "error");
     } finally {
       setLoadingCart(null);
     }
@@ -170,9 +151,9 @@ export default function NuestrosProductos({
       producto.coverImage ||
       (producto.associations?.images?.[0]?.id
         ? getProductImageUrl(
-            producto.id.toString(),
-            producto.associations.images[0].id,
-          )
+          producto.id.toString(),
+          producto.associations.images[0].id,
+        )
         : "/images/productos/placeholder_liwilu.png");
 
     return (
@@ -194,9 +175,8 @@ export default function NuestrosProductos({
                 fill
                 sizes="(max-width: 640px) 200px, (max-width: 1024px) 300px, 400px"
                 quality={75}
-                className={`object-cover ${
-                  (producto.quantity ?? 0) <= 0 ? "grayscale opacity-60" : ""
-                }`}
+                className={`object-cover ${(producto.quantity ?? 0) <= 0 ? "grayscale opacity-60" : ""
+                  }`}
               />
             </div>
             <button
@@ -212,11 +192,10 @@ export default function NuestrosProductos({
                 <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
               ) : (
                 <FaHeart
-                  className={`w-5 h-5 transition ${
-                    favoritos.includes(producto.id.toString())
+                  className={`w-5 h-5 transition ${favoritos.includes(producto.id.toString())
                       ? "text-red-500 fill-current"
                       : "text-gray-400 hover:text-red-500"
-                  }`}
+                    }`}
                 />
               )}
             </button>
