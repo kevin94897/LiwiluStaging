@@ -4,6 +4,7 @@ import { PiWarningCircleFill } from "react-icons/pi";
 import { DeliveryZone } from "@/lib/cart";
 import { showToast } from "@/lib/notifications";
 import Button from "../ui/Button";
+import Input from "../ui/Input";
 
 interface DeliveryAddressFormProps {
   isLoggedIn: boolean;
@@ -101,8 +102,7 @@ export default function DeliveryAddressForm({
       {editandoDireccion || (isLoggedIn && userAddresses.length === 0) ? (
         <div className="space-y-3 mt-3">
           <div>
-            <input
-              type="text"
+            <Input
               value={direccionEnvio.calle}
               onChange={(e) =>
                 setDireccionEnvio({
@@ -191,8 +191,7 @@ export default function DeliveryAddressForm({
             </p>
           )}
 
-          <input
-            type="text"
+          <Input
             value={direccionEnvio.numeroDptoPiso}
             onChange={(e) =>
               setDireccionEnvio({
@@ -200,12 +199,16 @@ export default function DeliveryAddressForm({
                 numeroDptoPiso: e.target.value,
               })
             }
-            placeholder="Nro. de dpto. / Piso (opcional)"
-            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+            placeholder="Nro. de dpto. / Piso"
+            className={`w-full px-3 py-2 border rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary ${addressErrors.numeroDptoPiso ? "border-red-500" : "border-gray-300"}`}
           />
+          {addressErrors.numeroDptoPiso && (
+            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+              <PiWarningCircleFill size={16} /> {addressErrors.numeroDptoPiso}
+            </p>
+          )}
 
-          <input
-            type="text"
+          <Input
             value={direccionEnvio.referencia}
             onChange={(e) =>
               setDireccionEnvio({
@@ -213,9 +216,14 @@ export default function DeliveryAddressForm({
                 referencia: e.target.value,
               })
             }
-            placeholder="Referencia (opcional)"
-            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+            placeholder="Referencia"
+            className={`w-full px-3 py-2 border rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary ${addressErrors.referencia ? "border-red-500" : "border-gray-300"}`}
           />
+          {addressErrors.referencia && (
+            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+              <PiWarningCircleFill size={16} /> {addressErrors.referencia}
+            </p>
+          )}
 
           <div className="flex gap-2 md:flex-row flex-col justify-center">
             <Button onClick={onSaveAddress} variant="primary" size="sm">

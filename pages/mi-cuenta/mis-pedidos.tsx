@@ -140,15 +140,15 @@ export default function MisPedidos() {
                         const firstItem = order.items[0];
                         const formattedDate = order.paidAt
                           ? new Intl.DateTimeFormat("es-PE", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            })
-                              .format(new Date(order.paidAt))
-                              .replace(",", "") + " pm"
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          })
+                            .format(new Date(order.paidAt))
+                            .replace(",", "") + " pm"
                           : "-";
 
                         const isExpanded = expandedOrderId === order.id;
@@ -195,7 +195,10 @@ export default function MisPedidos() {
                                 >
                                   <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-sm overflow-hidden flex-shrink-0 bg-gray-50 border">
                                     <Image
-                                      src={`/images/productos/placeholder.png`}
+                                      src={
+                                        item.image ||
+                                        "/images/productos/placeholder.png"
+                                      }
                                       alt={item.name}
                                       fill
                                       className="object-contain"
@@ -239,9 +242,8 @@ export default function MisPedidos() {
                                     ? "Ocultar detalles"
                                     : "Ver detalles"}{" "}
                                   <svg
-                                    className={`w-4 h-4 transition-transform ${
-                                      isExpanded ? "rotate-180" : ""
-                                    }`}
+                                    className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""
+                                      }`}
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"

@@ -205,14 +205,14 @@ export default function StorePickupContent({
                           {tienda.desAlmacen}
                         </h3>
                         {details && (
-                          <div className="mt-2 text-sm text-gray-600 space-y-1">
-                            <p className="flex items-start gap-2">
+                          <div className="mt-2 text-sm text-gray-600 space-y-3">
+                            <p className="flex flex-col md:flex-row items-start gap-2">
                               <span className="font-medium text-gray-800 shrink-0">
                                 Dirección:
                               </span>
                               <span>{details.direccion}</span>
                             </p>
-                            <p className="flex items-start gap-2">
+                            <p className="flex flex-col md:flex-row items-start gap-2">
                               <span className="font-medium text-gray-800 shrink-0">
                                 Horario:
                               </span>

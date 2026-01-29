@@ -6,7 +6,14 @@ import {
   FaRegClock,
   FaRegTrashAlt,
 } from "react-icons/fa";
-import { formatPrice, getProductName, getProductImageUrl } from "@/lib/utils";
+import {
+  formatPrice,
+  getProductName,
+  getProductImageUrl,
+  getEffectivePrice,
+  getRegularPrice,
+  hasDiscount,
+} from "@/lib/utils";
 import { CartItem as CartItemType } from "@/context/CartContext";
 import {
   SavarStockValidationResult,
@@ -54,10 +61,12 @@ export default function CartItem({
     }
   }
 
-  const precioUnitario =
-    typeof item.product.price === "number"
-      ? item.product.price
-      : parseFloat(item.product.price || "0");
+  // Use centralized price logic from utils
+  const effectivePrice = getEffectivePrice(item.product);
+  const regularPrice = getRegularPrice(item.product);
+  const hasDiscountPrice = hasDiscount(item.product);
+
+  const precioUnitario = effectivePrice;
   const precioTotal = precioUnitario * item.quantity;
 
   // Determine the stock status for the item: available, outOfStock, or neutral
@@ -93,7 +102,10 @@ export default function CartItem({
 
   return (
     <div
-      className="bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden"
+      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${itemStockStatus === "available"
+          ? "border-2 border-primary"
+          : "border-2 border-transparent"
+        }`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
       {/* Overlay Loader */}
@@ -122,7 +134,7 @@ export default function CartItem({
           tiendaSeleccionada &&
           infoTiendaSeleccionada && (
             <div className="w-full mb-5">
-              <div className="flex items-center gap-4 mb-3">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-3">
                 <Image
                   src="/images/liwilu_logo_dark.png"
                   alt="Liwilu"
@@ -198,7 +210,7 @@ export default function CartItem({
               <Link
                 href={`/tienda/${item.product.id || item.product.productId}`}
               >
-                <h3 className="font-semibold text-sm md:text-lg leading-tight mb-2 hover:text-primary transition">
+                <h3 className="font-semibold text-md md:text-lg leading-tight mb-2 hover:text-primary transition">
                   {getProductName(item.product)}
                 </h3>
               </Link>
@@ -283,25 +295,6 @@ export default function CartItem({
 
                 return null;
               })()}
-              {/* <div className="space-y-1 mb-4">
-                <p className="text-gray-600 text-xs font-mono">
-                  ID del artículo: {item.product.id}
-                </p>
-                <p className="text-gray-600 text-xs font-mono">
-                  Prestashop ID:{" "}
-                  {item.product.productId || item.product.id || "null"}
-                </p>
-                <p className="text-gray-600 text-xs font-mono">
-                  Reference: {item.product.reference || "null"}
-                </p>
-                <p className="text-gray-600 text-xs font-mono">
-                  SKU: {item.product.sku || "null"}
-                </p>
-                <p className="text-gray-600 text-xs font-mono">
-                  Combination ID:{" "}
-                  {item.product.prestashopCombinationId ?? "null"}
-                </p>
-              </div> */}
 
               <button
                 onClick={() => onRemove(item.product.id.toString())}
@@ -345,13 +338,11 @@ export default function CartItem({
 
               {/* Precio */}
               <div className="text-right">
-                {item.product.originalPrice &&
-                  parseFloat(item.product.originalPrice.toString()) >
-                  precioUnitario && (
-                    <p className="text-sm text-gray-400 line-through">
-                      {formatPrice(item.product.originalPrice.toString())}
-                    </p>
-                  )}
+                {hasDiscountPrice && regularPrice > effectivePrice && (
+                  <p className="text-sm text-gray-400 line-through">
+                    {formatPrice(regularPrice.toString())}
+                  </p>
+                )}
 
                 <p className="text-2xl font-semibold text-primary-dark">
                   {formatPrice(precioTotal.toString())}

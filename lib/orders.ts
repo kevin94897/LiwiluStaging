@@ -10,6 +10,7 @@ export interface OrderItem {
     quantity: number;
     quantityExistenteERP: number | null;
     quantityExistenteSavar: number;
+    image?: string;
 }
 
 export interface PersonalData {
@@ -92,7 +93,7 @@ export interface MyOrdersResponse {
 export async function getMyOrders(): Promise<MyOrdersResponse> {
     try {
         const response = await apiGet('/orders/my-orders');
-        
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || `Error fetching orders: ${response.statusText}`);

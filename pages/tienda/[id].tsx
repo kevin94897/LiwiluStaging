@@ -562,15 +562,9 @@ export default function ProductDetail({
   const tabs = {
     "Descripción del producto": (
       <div className="space-y-6">
-        {basicData.resume && (
-          <div
-            className="prose prose-sm max-w-none text-gray-600"
-            dangerouslySetInnerHTML={{ __html: basicData.resume }}
-          />
-        )}
         {basicData.description && (
           <div
-            className="prose prose-sm max-w-none text-gray-600"
+            className="prose prose-sm max-w-none text-gray-600 space-y-4"
             dangerouslySetInnerHTML={{ __html: basicData.description }}
           />
         )}
@@ -597,57 +591,13 @@ export default function ProductDetail({
       </div>
     ),
     "Guía de tallas": (
-      <div className="overflow-x-auto">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          Guía de Tallas (cm)
-        </h3>
-        <table className="min-w-full border border-gray-200 rounded-md text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left font-semibold text-gray-700">
-                Talla
-              </th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-700">
-                Pecho
-              </th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-700">
-                Cintura
-              </th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-700">
-                Largo
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 text-gray-700">
-            <tr>
-              <td className="px-4 py-2 font-medium">S</td>
-              <td className="px-4 py-2">90 - 94</td>
-              <td className="px-4 py-2">74 - 78</td>
-              <td className="px-4 py-2">64</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-medium">M</td>
-              <td className="px-4 py-2">95 - 99</td>
-              <td className="px-4 py-2">79 - 83</td>
-              <td className="px-4 py-2">66</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-medium">L</td>
-              <td className="px-4 py-2">100 - 106</td>
-              <td className="px-4 py-2">84 - 90</td>
-              <td className="px-4 py-2">68</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-2 font-medium">XL</td>
-              <td className="px-4 py-2">107 - 113</td>
-              <td className="px-4 py-2">91 - 97</td>
-              <td className="px-4 py-2">70</td>
-            </tr>
-          </tbody>
-        </table>
-        <p className="text-gray-500 text-xs mt-3">
-          📏 Las medidas pueden variar ±2 cm según el modelo y el tejido.
-        </p>
+      <div className="space-y-6">
+        {basicData.resume && (
+          <div
+            className="prose prose-sm max-w-none text-gray-600"
+            dangerouslySetInnerHTML={{ __html: basicData.resume }}
+          />
+        )}
       </div>
     ),
   };
@@ -792,7 +742,7 @@ export default function ProductDetail({
                       )}
 
                     {/* Grid de miniaturas */}
-                    <div className="flex lg:flex-col gap-4 overflow-x-auto lg:overflow-visible scrollbar-hide w-full">
+                    <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible scrollbar-hide w-full">
                       {currentGallery
                         .slice(
                           thumbnailScrollPosition,
@@ -806,7 +756,7 @@ export default function ProductDetail({
                             <div
                               key={actualIndex}
                               onClick={() => setSelectedImageIndex(actualIndex)}
-                              className={`relative aspect-square bg-white rounded-md shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
+                              className={`relative my-2 aspect-square bg-white rounded-sm shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
 																${isSelected
                                   ? "ring-2 ring-primary scale-105"
                                   : "hover:shadow-lg hover:scale-105"
@@ -818,7 +768,7 @@ export default function ProductDetail({
                                 alt={`${basicData.name} - miniatura ${actualIndex + 1
                                   }`}
                                 fill
-                                className="object-contain p-2"
+                                className="object-contain"
                                 unoptimized
                               />
                             </div>
@@ -874,7 +824,7 @@ export default function ProductDetail({
                     }
                     alt={basicData.name}
                     fill
-                    className="object-contain p-4"
+                    className="object-contain"
                     priority
                     unoptimized
                   />
@@ -1196,7 +1146,7 @@ export default function ProductDetail({
                   <button
                     onClick={handleToggleFavorite}
                     disabled={loadingFavorite}
-                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
+                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] min-w-[56px] min-h-[56px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
                       }`}
                   >
                     {loadingFavorite ? (
@@ -1240,7 +1190,7 @@ export default function ProductDetail({
             </button>
           ))}
         </div>
-        <div className="mt-4">{tabs[activeTab]}</div>
+        <div className="mt-8">{tabs[activeTab]}</div>
       </div>
       {/* Productos relacionados */}
       <ProductosRelacionados productId={productId} />

@@ -478,21 +478,6 @@ export default function Direcciones() {
 													/>
 												</div>
 
-												{/* Referencia */}
-												<div>
-													<Input
-														label="Referencia"
-														type="text"
-														id="referencia"
-														name="referencia"
-														value={formData.referencia}
-														onChange={handleChange}
-														placeholder="Frente al parque, al costado de..."
-														maxLength={100}
-														error={errors.referencia}
-													/>
-												</div>
-
 												{/* Ciudad, Provincia, Distrito */}
 												<div className="grid md:grid-cols-3 gap-6">
 													<div className="flex flex-col gap-1">
@@ -569,7 +554,7 @@ export default function Direcciones() {
 
 												{/* Código postal y Dpto/Piso */}
 
-												<div className="grid md:grid-cols-2 gap-6">
+												<div className="grid md:grid-cols-3 gap-6">
 													{/* Código postal */}
 													<div>
 														<Input
@@ -596,6 +581,20 @@ export default function Direcciones() {
 															placeholder="Ej: Dpto 302, Piso 4, etc."
 															maxLength={50}
 															error={errors.numeroDptoPiso}
+														/>
+													</div>
+													{/* Referencia */}
+													<div>
+														<Input
+															label="Referencia"
+															type="text"
+															id="referencia"
+															name="referencia"
+															value={formData.referencia}
+															onChange={handleChange}
+															placeholder="Frente al parque, al costado de..."
+															maxLength={100}
+															error={errors.referencia}
 														/>
 													</div>
 												</div>

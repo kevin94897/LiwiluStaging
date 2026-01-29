@@ -101,7 +101,7 @@ export default function PedidoExitoso() {
 
   const nombreCliente = order.personalData?.nombre || "Cliente";
   const numeroPedido = order.orderNumber || order.id;
-  const deliveryType = order.deliveryType === "PICKUP" ? "RECOJO EN TIENDA" : "DELIVERY";
+  const deliveryType = order.deliveryType;
   const metodoPago = order.invoiceType || "TARJETA";
 
   return (

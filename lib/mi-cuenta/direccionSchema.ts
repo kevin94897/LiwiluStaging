@@ -4,9 +4,8 @@ import { z } from "zod";
 export const direccionSchema = z.object({
     numeroDptoPiso: z
         .string()
-        .max(50, "El número de dpto/piso no puede exceder 50 caracteres")
-        .optional()
-        .or(z.literal("")),
+        .min(1, "El número de dpto/piso es obligatorio")
+        .max(50, "El número de dpto/piso no puede exceder 50 caracteres"),
 
     direccion: z
         .string()
@@ -16,8 +15,8 @@ export const direccionSchema = z.object({
 
     referencia: z
         .string()
-        .max(100, "La referencia no puede exceder 100 caracteres")
-        .optional(),
+        .min(1, "La referencia es obligatoria")
+        .max(100, "La referencia no puede exceder 100 caracteres"),
 
     ciudad: z
         .string()

@@ -18,19 +18,19 @@ export default function ComoComprar() {
 
 	const options = [
 		{
-			image: "/images/liwilu_home_elige_01.png",
+			image: "/videos/liwilu_delivery.webm",
 			alt: "Delivery - Compra online con entrega a domicilio",
 			title: "DELIVERY",
 			description: "Compra online con entrega a domicilio",
 		},
 		{
-			image: "/images/liwilu_home_elige_02.png",
+			image: "/videos/liwilu_recojo_tienda.webm",
 			alt: "Entrega en tienda - compra online y recoge en tienda",
 			title: "ENTREGA EN TIENDA",
 			description: "compra online y recoge en tienda",
 		},
 		{
-			image: "/images/liwilu_home_elige_03.png",
+			image: "/videos/liwilu_call_center.webm",
 			alt: "Call Center - Llámanos al (01) 7028086",
 			title: "CALL CENTER",
 			description: "Llámanos al (01) 7028086 / Opción 2",
@@ -53,15 +53,26 @@ export default function ComoComprar() {
 							<div className="flex flex-col items-center h-full">
 								{/* Imagen */}
 								<div className="relative w-full aspect-[5/6] mb-4 sm:mb-5 md:mb-6 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
-									<Image
-										src={option.image}
-										alt={option.alt}
-										fill
-										className="object-cover"
-										sizes="(max-width: 640px) 85vw, (max-width: 768px) 50vw, 33vw"
-										priority={index === 0}
-										loading={index === 0 ? "eager" : "lazy"}
-									/>
+									{option.image?.endsWith(".webm") ? (
+										<video
+											src={option.image}
+											autoPlay
+											muted
+											loop
+											playsInline
+											className="absolute inset-0 w-full h-full object-cover"
+										/>
+									) : (
+										<Image
+											src={option.image}
+											alt={option.alt}
+											fill
+											className="object-cover"
+											sizes="(max-width: 640px) 85vw, (max-width: 768px) 50vw, 33vw"
+											priority={index === 0}
+											loading={index === 0 ? "eager" : "lazy"}
+										/>
+									)}
 								</div>
 
 								{/* Contenido */}

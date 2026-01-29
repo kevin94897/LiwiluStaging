@@ -31,8 +31,10 @@ export interface RucConsultationResponse {
  */
 export async function consultaRUC(ruc: string): Promise<RucConsultationResponse> {
     try {
-        const response = await apiGet(`/general/consulta-ruc/${ruc}`);
-        
+        const response = await apiGet(`/general/consulta-ruc/${ruc}`, {
+            skipAuth: true
+        });
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || `Error consultando RUC: ${response.statusText}`);
@@ -41,6 +43,43 @@ export async function consultaRUC(ruc: string): Promise<RucConsultationResponse>
         return await response.json();
     } catch (error) {
         console.error('Error in consultaRUC:', error);
+        throw error;
+    }
+}
+
+export interface DniConsultationData {
+    numero: string;
+    nombres: string;
+    apellido_paterno: string;
+    apellido_materno: string;
+    nombre_completo: string;
+    codigo_verificacion: number;
+}
+
+export interface DniConsultationResponse {
+    success: boolean;
+    data: DniConsultationData;
+    message?: string;
+}
+
+/**
+ * Consults information for a given DNI.
+ * @param dni 8-digit DNI number
+ */
+export async function consultaDNI(dni: string): Promise<DniConsultationResponse> {
+    try {
+        const response = await apiGet(`/general/consulta-dni/${dni}`, {
+            skipAuth: true
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error consultando DNI: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in consultaDNI:', error);
         throw error;
     }
 }

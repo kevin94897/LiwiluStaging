@@ -35,9 +35,9 @@ export const guestDataSchema = z.object({
 
     direccion: z.string().min(5, "La dirección es muy corta"),
 
-    numeroDpto: z.string().optional(),
+    numeroDpto: z.string().min(1, "El Nro. de dpto. / Piso es obligatorio"),
 
-    referencia: z.string().optional(),
+    referencia: z.string().min(1, "La referencia es obligatoria"),
 }).superRefine((data, ctx) => {
     if (data.tipoDocumento === 'DNI') {
         if (!DNI_REGEX.test(data.numeroDocumento)) {

@@ -7,7 +7,13 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-import { getProductImageUrl, formatPrice, getProductName } from "@/lib/utils";
+import {
+  getProductImageUrl,
+  formatPrice,
+  getProductName,
+  getEffectivePrice,
+  getRegularPrice,
+} from "@/lib/utils";
 import { Product } from "@/lib/catalog";
 import {
   FaRegTrashAlt,
@@ -1266,7 +1272,22 @@ export default function Carrito() {
     }
   };
 
-  const subtotal = totals.subtotal;
+
+
+  // CALCULACIÓN DE TOTALES CON LÓGICA CENTRALIZADA (utils.ts)
+
+  // 1. Subtotal Regular: Suma de precios regulares (sin descuento)
+  const regularSubtotal = items.reduce((acc, item) => {
+    return acc + getRegularPrice(item.product) * item.quantity;
+  }, 0);
+
+  // 2. Subtotal Efectivo (Neto): Suma de lo que realmente paga el cliente por los productos
+  const effectiveSubtotal = items.reduce((acc, item) => {
+    return acc + getEffectivePrice(item.product) * item.quantity;
+  }, 0);
+
+  // 3. Ahorro Total: Diferencia entre regular y efectivo
+  const totalSavings = regularSubtotal - effectiveSubtotal;
 
   // Override shipping cost based on zone
   const getEnvioCost = () => {
@@ -1283,25 +1304,12 @@ export default function Carrito() {
   };
 
   const envio = getEnvioCost();
-  const total = subtotal + envio;
 
-  // Calculate savings
-  const totalSavings = items.reduce((acc, item) => {
-    const price =
-      typeof item.product.price === "number"
-        ? item.product.price
-        : parseFloat(item.product.price || "0");
-    const originalPrice = item.product.originalPrice
-      ? typeof item.product.originalPrice === "number"
-        ? item.product.originalPrice
-        : parseFloat(item.product.originalPrice)
-      : price;
-
-    if (originalPrice > price) {
-      return acc + (originalPrice - price) * item.quantity;
-    }
-    return acc;
-  }, 0);
+  // 4. Total Final: Subtotal Efectivo + Envío
+  // NOTA: Usamos effectiveSubtotal para el total a pagar, pero enviamos regularSubtotal
+  // al componente CartSummary como "subtotal" para que la operación visual sea:
+  // Subtotal (Regular) - Descuentos + Envío = Total
+  const total = effectiveSubtotal + envio;
 
   const infoTiendaSeleccionada = mapWarehouses.find(
     (w) => w.idAlmacen.toString() === tiendaSeleccionada,
@@ -1389,6 +1397,8 @@ export default function Carrito() {
       departamento: z.string().min(1, "Selecciona un departamento"),
       ciudad: z.string().min(1, "Selecciona una provincia"),
       distrito: z.string().min(1, "Selecciona un distrito"),
+      numeroDptoPiso: z.string().min(1, "El Nro. de dpto. / Piso es obligatorio"),
+      referencia: z.string().min(1, "La referencia es obligatoria"),
     });
 
     const validationResult = addressSchema.safeParse(direccionEnvio);
@@ -2317,7 +2327,7 @@ export default function Carrito() {
           <CartSummary
             couponCode={couponCode}
             onCouponCodeChange={setCouponCode}
-            subtotal={subtotal}
+            subtotal={regularSubtotal}
             total={total}
             envio={envio}
             totalSavings={totalSavings}

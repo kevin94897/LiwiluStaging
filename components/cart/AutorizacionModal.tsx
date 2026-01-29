@@ -7,6 +7,9 @@ import {
   autorizacionSchema,
   AutorizacionSchemaType,
 } from "@/lib/autorizacionSchema";
+import { consultaDNI, consultaRUC } from "@/lib/general";
+import { showToast } from "@/lib/notifications";
+import { FaSearch, FaSpinner } from "react-icons/fa";
 
 interface AutorizacionModalProps {
   isOpen: boolean;
@@ -27,6 +30,9 @@ export default function AutorizacionModal({
     fullName: "",
   });
 
+  const [isConsulted, setIsConsulted] = useState(false);
+  const [consulting, setConsulting] = useState(false);
+
   const [errors, setErrors] = useState<
     Partial<Record<keyof AutorizacionSchemaType, string>>
   >({});
@@ -41,6 +47,7 @@ export default function AutorizacionModal({
           documentNumber: "",
           fullName: "",
         });
+        setIsConsulted(false);
       }
       setErrors({});
       document.body.style.overflow = "hidden";
@@ -68,6 +75,9 @@ export default function AutorizacionModal({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
+    if (name === "documentType") {
+      setIsConsulted(false);
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
@@ -80,6 +90,7 @@ export default function AutorizacionModal({
     if (value.length <= maxLength) {
       setFormData((prev) => ({ ...prev, documentNumber: value }));
       setErrors((prev) => ({ ...prev, documentNumber: undefined }));
+      setIsConsulted(false);
     }
   };
 
@@ -106,6 +117,63 @@ export default function AutorizacionModal({
 
     onSave(formData);
     onClose();
+  };
+
+  const handleConsultation = async () => {
+    if (!formData.documentType || !formData.documentNumber) {
+      showToast("Selecciona un tipo y número de documento", "error");
+      return;
+    }
+
+    setConsulting(true);
+    setErrors({});
+
+    try {
+      if (formData.documentType === "DNI") {
+        if (formData.documentNumber.length !== 8) {
+          showToast("El DNI debe tener 8 dígitos", "error");
+          setConsulting(false);
+          return;
+        }
+
+        const res = await consultaDNI(formData.documentNumber);
+        if (res.success) {
+          setFormData((prev) => ({
+            ...prev,
+            fullName: res.data.nombre_completo,
+          }));
+          setIsConsulted(true);
+          showToast("Datos encontrados", "success");
+        } else {
+          showToast("No se encontraron datos para este DNI", "error");
+        }
+      } else if (formData.documentType === "RUC") {
+        if (formData.documentNumber.length !== 11) {
+          showToast("El RUC debe tener 11 dígitos", "error");
+          setConsulting(false);
+          return;
+        }
+
+        const res = await consultaRUC(formData.documentNumber);
+        if (res.success) {
+          setFormData((prev) => ({
+            ...prev,
+            fullName: res.data.nombre_o_razon_social,
+          }));
+          setIsConsulted(true);
+          showToast("Datos de empresa encontrados", "success");
+        } else {
+          showToast("No se encontraron datos para este RUC", "error");
+        }
+      } else {
+        showToast("Consulta disponible solo para DNI y RUC", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      showToast("Error al consultar el documento", "error");
+    } finally {
+      setConsulting(false);
+    }
   };
 
   return (
@@ -164,11 +232,10 @@ export default function AutorizacionModal({
                   name="documentType"
                   value={formData.documentType}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border-2 rounded-sm transition bg-white text-gray-700 ${
-                    errors.documentType
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:ring-primary focus:border-transparent"
-                  }`}
+                  className={`w-full px-4 py-3 border-2 rounded-sm transition bg-white text-gray-700 ${errors.documentType
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-primary focus:border-transparent"
+                    }`}
                 >
                   <option value="">Seleccionar tipo</option>
                   <option value="DNI">DNI</option>
@@ -183,23 +250,40 @@ export default function AutorizacionModal({
                 )}
               </div>
 
+
+
               {/* Número de Documento */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Número de Documento *
                 </label>
-                <input
-                  type="text"
-                  name="documentNumber"
-                  value={formData.documentNumber}
-                  onChange={handleDocumentNumberChange}
-                  // placeholder="74218601"
-                  className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                    errors.documentNumber
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="documentNumber"
+                    value={formData.documentNumber}
+                    onChange={handleDocumentNumberChange}
+                    className={`w-full px-4 py-3 pr-12 border-2 rounded-sm transition ${errors.documentNumber
                       ? "border-red-500 focus:ring-red-500"
                       : "border-gray-300 focus:ring-primary focus:border-transparent"
-                  }`}
-                />
+                      }`}
+                  />
+                  {(formData.documentType === "DNI" || formData.documentType === "RUC") && (
+                    <button
+                      type="button"
+                      onClick={handleConsultation}
+                      disabled={consulting || !formData.documentNumber}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition disabled:opacity-50"
+                      title="Consultar Documento"
+                    >
+                      {consulting ? (
+                        <FaSpinner className="animate-spin text-lg" />
+                      ) : (
+                        <FaSearch className="text-lg" />
+                      )}
+                    </button>
+                  )}
+                </div>
                 {errors.documentNumber && (
                   <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                     <PiWarningCircleFill size={16} /> {errors.documentNumber}
@@ -217,12 +301,11 @@ export default function AutorizacionModal({
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
-                  // placeholder="Nombres Apellidos"
-                  className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                    errors.fullName
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:ring-primary focus:border-transparent"
-                  }`}
+                  disabled={isConsulted}
+                  className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.fullName
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-primary focus:border-transparent"
+                    } ${isConsulted ? "bg-gray-100 text-gray-500" : "bg-white text-gray-700"}`}
                 />
                 {errors.fullName && (
                   <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
