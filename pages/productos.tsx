@@ -11,6 +11,7 @@ import Contacto from "@/components/Contacto";
 import AddToCartModal from "@/components/AddToCartModal";
 import CategorySidebar from "@/components/CategorySidebar";
 import CategorySlider from "@/components/CategorySlider";
+import { motion } from "framer-motion";
 
 import { useCart } from "@/context/CartContext";
 import {
@@ -34,6 +35,8 @@ import {
   CategoryLevelTwo,
 } from "@/lib/catalog";
 import { FaRegHeart, FaPlus, FaMinus, FaHeart, FaFilter } from "react-icons/fa";
+import { fadeInUp, slideInRight } from "@/lib/motionVariants";
+import Button from "@/components/ui/Button";
 
 interface TiendaProps {
   products: Product[];
@@ -325,7 +328,7 @@ export default function Tienda({
   return (
     <Layout title="Tienda - Liwilu" description="Productos al por mayor">
       {/* Banner Hero con animación */}
-      <section className="relative text-white overflow-hidden">
+      {/* <section className="relative text-white overflow-hidden">
         <div className="absolute inset-0">
           <Image
             src="/images/productos/liwilu_banner_productos.png"
@@ -392,6 +395,168 @@ export default function Tienda({
               />
             </div>
           </div>
+        </div>
+      </section> */}
+
+      {/* Slider: Regreso a clases */}
+      <section className="relative text-white overflow-hidden md:h-[400px] flex items-center">
+        {/* Background */}
+        <motion.div
+          className="absolute inset-0 overflow-hidden"
+          initial={{ scale: 1.1 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+        >
+          <Image
+            src="/images/liwilu_home_banner_bg.png"
+            alt="Hero background"
+            fill
+            sizes="100vw"
+            className="object-cover"
+            priority
+          />
+        </motion.div>
+
+        {/* Vector flotante */}
+        <motion.div
+          className="absolute -right-10 md:-right-20 top-32 md:top-40 w-32 md:w-auto z-10"
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <Image
+            src="/images/vectores/liwilu_banner_productos_vector.png"
+            alt="Vector decoration"
+            width={295}
+            height={218}
+            quality={100}
+            className="h-auto"
+            priority
+          />
+        </motion.div>
+
+        <div className="relative max-w-7xl mx-auto md:px-6 w-full flex items-center justify-between md:flex-row flex-col z-20">
+          {/* Contenido izquierdo */}
+          <motion.div
+            className="w-full md:w-1/2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <div className="pt-10 md:py-12 mx-auto max-w-md md:max-w-full px-4 md:px-0">
+              {/* Título */}
+              <motion.h2
+                className="text-3xl md:text-4xl lg:text-5xl font-semibold mb-4 text-primary-light uppercase"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                Tu compra nuestro compromiso
+              </motion.h2>
+
+              {/* Iconos */}
+              <motion.div
+                className="flex flex-row gap-4 pt-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+              >
+                {[1, 2, 3].map((num, index) => (
+                  <motion.div
+                    key={num}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{
+                      duration: 0.4,
+                      delay: 0.7 + index * 0.1,
+                    }}
+                  >
+                    <Image
+                      src={`/images/liwilu_banner_home_icono-0${num}.png`}
+                      width={63}
+                      height={63}
+                      alt="Icon"
+                      className="w-12 h-12 md:w-16 md:h-16"
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+
+              {/* Texto */}
+              <motion.p
+                className="text-lg md:text-xl lg:text-2xl my-6 mr-12"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 1 }}
+              >
+                ¡Encuentra todo lo que necesitas con nosotros!
+              </motion.p>
+
+              {/* Botón */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 1.2 }}
+              >
+                <Button
+                  asChild
+                  variant="primary"
+                  size="lg"
+                  className="md:!px-12"
+                >
+                  <button>Ir a tienda</button>
+                </Button>
+              </motion.div>
+            </div>
+          </motion.div>
+
+          {/* Imagen derecha */}
+          <motion.div
+            className="relative w-full md:w-1/2 flex justify-end items-end min-h-[300px] md:min-h-[400px] overflow-visible"
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+          >
+            {/* Mobile */}
+            <div className="relative w-full h-[300px] md:hidden overflow-visible">
+              <Image
+                src="/images/productos/liwilu_banner_nuestro_compromiso_image-mob.png"
+                alt="Colegio"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-contain object-[right_bottom]"
+              />
+            </div>
+
+            {/* Desktop */}
+            <div className="relative w-full h-full hidden md:absolute md:inset-y-0 -right-6 md:-right-6 md:block md:w-[110%]">
+              <Image
+                src="/images/productos/liwilu_banner_nuestro_compromiso_img.png"
+                alt="Colegio"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover object-left"
+              />
+            </div>
+
+            {/* Vector flotante */}
+            <motion.div
+              className="absolute -bottom-2 md:-bottom-3 left-0 md:left-auto md:right-0 w-full md:w-auto z-10 floating-slow transition-all duration-1000"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.7 }}
+            >
+              <Image
+                src="/images/productos/liwilu_banner_estudiantes_img.png"
+                alt="Estudiantes"
+                width={452}
+                height={371}
+                quality={100}
+                className="h-auto w-full md:w-auto max-w-[280px] md:max-w-none ml-auto  mr-0 md:mx-0"
+                priority
+              />
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
