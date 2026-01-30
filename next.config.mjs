@@ -31,6 +31,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'prestashop.liwilu.com.pe',
       },
+      {
+        protocol: 'http',
+        hostname: 'prestashop.liwilu.com.pe',
+      },
     ],
   },
 };

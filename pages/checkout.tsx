@@ -654,7 +654,7 @@ export default function Checkout() {
                 </button>
 
                 {/* Yape */}
-                <button
+                {/* <button
                   onClick={() => setMetodoPago("yape")}
                   className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
                     metodoPago === "yape"
@@ -688,10 +688,10 @@ export default function Checkout() {
                       </svg>
                     </div>
                   )}
-                </button>
+                </button> */}
 
                 {/* Pago Efectivo */}
-                <button
+                {/* <button
                   onClick={() => setMetodoPago("efectivo")}
                   className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
                     metodoPago === "efectivo"
@@ -723,7 +723,7 @@ export default function Checkout() {
                       </svg>
                     </div>
                   )}
-                </button>
+                </button> */}
               </div>
 
               {errors.metodoPago && (
