@@ -5,6 +5,7 @@ import { DeliveryZone } from "@/lib/cart";
 import { showToast } from "@/lib/notifications";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
+import Select from "../ui/Select";
 
 interface DeliveryAddressFormProps {
   isLoggedIn: boolean;
@@ -111,8 +112,9 @@ export default function DeliveryAddressForm({
                 })
               }
               placeholder="Calle y número"
-              className={`w-full px-3 py-2 border rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary ${addressErrors.calle ? "border-red-500" : "border-gray-300"
-                }`}
+              className={`w-full px-3 py-2 border rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary ${
+                addressErrors.calle ? "border-red-500" : "border-gray-300"
+              }`}
             />
             {addressErrors.calle && (
               <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -121,7 +123,7 @@ export default function DeliveryAddressForm({
             )}
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <select
+            <Select
               value={direccionEnvio.departamento}
               onChange={(e) => {
                 const val = e.target.value;
@@ -133,7 +135,8 @@ export default function DeliveryAddressForm({
                 });
                 userLocations.handleDeptChange(val);
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+              // Removed manual border classes as Select handles them, but might need adjustments if style differs.
+              // Select default has w-full and border-2.
             >
               <option value="">Departamento</option>
               {userLocations.departments.map((d) => (
@@ -141,9 +144,9 @@ export default function DeliveryAddressForm({
                   {d}
                 </option>
               ))}
-            </select>
+            </Select>
 
-            <select
+            <Select
               value={direccionEnvio.ciudad}
               onChange={(e) => {
                 const val = e.target.value;
@@ -154,7 +157,6 @@ export default function DeliveryAddressForm({
                 });
                 userLocations.handleProvChange(val);
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
             >
               <option value="">Provincia</option>
               {userLocations.provinces.map((p) => (
@@ -162,10 +164,10 @@ export default function DeliveryAddressForm({
                   {p}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
-          <select
+          <Select
             value={direccionEnvio.distrito}
             onChange={(e) => {
               const val = e.target.value;
@@ -175,8 +177,8 @@ export default function DeliveryAddressForm({
               });
               userLocations.handleDistChange(val);
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary"
             disabled={!direccionEnvio.ciudad}
+            error={addressErrors.distrito}
           >
             <option value="">Distrito</option>
             {userLocations.districts.map((d) => (
@@ -184,12 +186,7 @@ export default function DeliveryAddressForm({
                 {d}
               </option>
             ))}
-          </select>
-          {addressErrors.distrito && (
-            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-              <PiWarningCircleFill size={16} /> {addressErrors.distrito}
-            </p>
-          )}
+          </Select>
 
           <Input
             value={direccionEnvio.numeroDptoPiso}

@@ -71,7 +71,13 @@ export const openCulqi = (options: CulqiOptions) => {
         const culqiOptions = {
             lang: 'auto',
             modal: true,
-            installments: false, // Desactivar cuotas para simplificar pruebas
+            installments: false,
+            onClose: () => {
+                console.log('🚪 [CULQI] onClose callback ejecutado');
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('culqi-modal-closed'));
+                }
+            }
         };
         console.log('📦 [CULQI-V6] Culqi.options:', culqiOptions);
         window.Culqi.options(culqiOptions);
@@ -79,6 +85,28 @@ export const openCulqi = (options: CulqiOptions) => {
         // 5. APERTURA
         console.log('🏁 [CULQI-V6] Ejecutando Culqi.open()...');
         window.Culqi.open();
+
+        // 6. POLLING para detectar cierre del modal (fallback si onClose no funciona)
+        let pollCount = 0;
+        const maxPolls = 600; // 5 minutos máximo (600 * 500ms)
+        const pollInterval = setInterval(() => {
+            pollCount++;
+            
+            // Verificar si el modal sigue abierto
+            const modalElement = document.querySelector('.culqi-container, #culqi-container, [class*="culqi"]');
+            const isModalVisible = modalElement && window.getComputedStyle(modalElement).display !== 'none';
+            
+            if (!isModalVisible || pollCount >= maxPolls) {
+                console.log('🔍 [CULQI] Modal cerrado detectado por polling');
+                clearInterval(pollInterval);
+                
+                // Solo disparar evento si el modal se cerró sin procesar pago
+                if (!window.Culqi.token && !window.Culqi.order) {
+                    console.log('🚪 [CULQI] Disparando evento culqi-modal-closed');
+                    window.dispatchEvent(new CustomEvent('culqi-modal-closed'));
+                }
+            }
+        }, 500);
 
     } catch (error) {
         console.error('❌ [CULQI-V6] Error crítico:', error);

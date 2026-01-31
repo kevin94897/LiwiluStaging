@@ -8,6 +8,8 @@ import { PiWarningCircleFill } from "react-icons/pi";
 import router from "next/router";
 import { showToast } from "@/lib/notifications";
 import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
 import {
   autorizacionSchema,
   AutorizacionSchemaType,
@@ -110,79 +112,46 @@ export default function AutorizarRetiroPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Tipo de documento */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tipo de documento *
-              </label>
-              <select
+              <Select
+                label="Tipo de documento *"
                 name="documentType"
                 value={formData.documentType}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border-2 rounded-sm transition bg-white text-gray-700 ${
-                  errors.documentType
-                    ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-green-500 focus:border-transparent"
-                }`}
+                error={errors.documentType}
               >
                 <option value="">Seleccionar tipo</option>
                 <option value="DNI">DNI</option>
                 <option value="RUC">RUC</option>
                 <option value="CE">Carnet de Extranjería</option>
                 <option value="Pasaporte">Pasaporte</option>
-              </select>
-              {errors.documentType && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                  <PiWarningCircleFill size={16} /> {errors.documentType}
-                </p>
-              )}
+              </Select>
             </div>
 
             {/* Número de Documento */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Número de Documento *
-              </label>
-              <input
+              <Input
+                label="Número de Documento *"
                 type="text"
                 name="documentNumber"
                 value={formData.documentNumber}
                 onChange={handleDocumentNumberChange}
                 placeholder="74218601"
-                className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                  errors.documentNumber
-                    ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-green-500 focus:border-transparent"
-                }`}
                 maxLength={formData.documentType === "RUC" ? 11 : 15}
+                error={errors.documentNumber}
               />
-              {errors.documentNumber && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                  <PiWarningCircleFill size={16} /> {errors.documentNumber}
-                </p>
-              )}
             </div>
 
             {/* Nombre y apellido */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Nombre y apellido *
-              </label>
-              <input
+              <Input
+                label="Nombre y apellido *"
                 type="text"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
                 placeholder="Nombres Apellidos"
-                className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                  errors.fullName
-                    ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-green-500 focus:border-transparent"
-                }`}
+                error={errors.fullName}
               />
-              {errors.fullName && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                  <PiWarningCircleFill size={16} /> {errors.fullName}
-                </p>
-              )}
             </div>
 
             {/* Botón Guardar */}

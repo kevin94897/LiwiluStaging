@@ -21,7 +21,10 @@ export const carritoRegisterSchema = z.object({
         .min(9, "El celular debe tener al menos 9 dígitos")
         .regex(/^[0-9]+$/, "El celular solo puede contener números"),
 
-    telefonoOpcional: z.string().optional(),
+    telefonoOpcional: z.string()
+        .regex(/^[0-9]+$/, "El teléfono opcional solo puede contener números")
+        .optional()
+        .or(z.literal("")),
 
     departamento: z.string().min(1, "El departamento es obligatorio"),
 
@@ -37,7 +40,8 @@ export const carritoRegisterSchema = z.object({
 
     email: z.string()
         .min(1, "El correo es obligatorio")
-        .email("Ingresa un correo válido"),
+        .email("Ingresa un correo válido")
+        .regex(/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, "El correo contiene caracteres no permitidos"),
 
     password: z.string()
         .min(6, "La contraseña debe tener al menos 6 caracteres"),

@@ -102,10 +102,11 @@ export default function CartItem({
 
   return (
     <div
-      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${itemStockStatus === "available"
+      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${
+        itemStockStatus === "available"
           ? "border-2 border-primary"
           : "border-2 border-transparent"
-        }`}
+      }`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
       {/* Overlay Loader */}
@@ -119,7 +120,7 @@ export default function CartItem({
       )}
 
       {itemStockStatus !== "neutral" && itemStockStatus !== "loading" && (
-        <div className="w-[25px] flex justify-center shrink-0 pt-1">
+        <div className="w-[25px] flex justify-center shrink-0">
           {itemStockStatus === "outOfStock" && (
             <FaTimesCircle size={25} className="text-red-500 animate-pulse" />
           )}
@@ -249,9 +250,14 @@ export default function CartItem({
               {/* Error de Stock Inline */}
               {(() => {
                 // Check if loading FIRST
-                if (metodoEnvio === "delivery" && isValidatingSavar) return null; // Handled by overlay
+                if (metodoEnvio === "delivery" && isValidatingSavar)
+                  return null; // Handled by overlay
 
-                if (itemStockStatus === "neutral" || itemStockStatus === "loading") return null;
+                if (
+                  itemStockStatus === "neutral" ||
+                  itemStockStatus === "loading"
+                )
+                  return null;
 
                 if (metodoEnvio === "delivery") {
                   const savarResult = savarStockResults.find(

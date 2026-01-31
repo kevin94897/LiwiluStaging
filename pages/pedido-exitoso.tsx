@@ -9,7 +9,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { formatPrice } from "@/lib/utils";
 import { FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import Button from "@/components/ui/Button";
-import { getOrderDetail, getOrderPaymentStatus, sendOrderPaidEmail } from "@/lib/cart";
+import {
+  getOrderDetail,
+  getOrderPaymentStatus,
+  sendOrderPaidEmail,
+} from "@/lib/cart";
 
 export default function PedidoExitoso() {
   const router = useRouter();
@@ -33,6 +37,12 @@ export default function PedidoExitoso() {
         if (response.success) {
           setOrder(response.data);
 
+          // Limpiar estado de checkout después de compra exitosa
+          localStorage.removeItem("liwilu_checkout_state");
+          console.log(
+            "✅ Estado de checkout limpiado después de compra exitosa",
+          );
+
           // 🛒 VERIFICACIÓN DE PAGO Y ENVÍO DE CORREO
           try {
             const statusResponse = await getOrderPaymentStatus(orderId);
@@ -46,17 +56,26 @@ export default function PedidoExitoso() {
                 const alreadySent = localStorage.getItem(mailSentKey);
 
                 if (!alreadySent) {
-                  console.log("📧 Disparando correo de confirmación de pago para orden:", orderId);
+                  console.log(
+                    "📧 Disparando correo de confirmación de pago para orden:",
+                    orderId,
+                  );
                   await sendOrderPaidEmail(orderId);
                   localStorage.setItem(mailSentKey, "true");
                 }
               }
             }
           } catch (statusErr) {
-            console.warn("⚠️ No se pudo verificar el estado de pago para el envío de correo:", statusErr);
+            console.warn(
+              "⚠️ No se pudo verificar el estado de pago para el envío de correo:",
+              statusErr,
+            );
           }
         } else {
-          setError(response.message || "No se pudieron obtener los detalles del pedido");
+          setError(
+            response.message ||
+              "No se pudieron obtener los detalles del pedido",
+          );
         }
       } catch (err: any) {
         console.error("Error fetching order details:", err);
@@ -71,11 +90,16 @@ export default function PedidoExitoso() {
 
   if (loading) {
     return (
-      <Layout title="Cargando Pedido - Liwilu" description="Estamos obteniendo los detalles de tu pedido">
+      <Layout
+        title="Cargando Pedido - Liwilu"
+        description="Estamos obteniendo los detalles de tu pedido"
+      >
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-gray-600 font-medium">Cargando detalles de tu compra...</p>
+            <p className="text-gray-600 font-medium">
+              Cargando detalles de tu compra...
+            </p>
           </div>
         </div>
       </Layout>
@@ -84,13 +108,23 @@ export default function PedidoExitoso() {
 
   if (error || !order) {
     return (
-      <Layout title="Error - Liwilu" description="No se pudo encontrar el pedido">
+      <Layout
+        title="Error - Liwilu"
+        description="No se pudo encontrar el pedido"
+      >
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
           <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
             <FaExclamationTriangle className="text-yellow-500 text-6xl mx-auto mb-6" />
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">¡Ups! Algo salió mal</h1>
-            <p className="text-gray-600 mb-8">{error || "No pudimos encontrar la información de tu pedido."}</p>
-            <Button className="w-full" onClick={() => router.push("/productos")}>
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+              ¡Ups! Algo salió mal
+            </h1>
+            <p className="text-gray-600 mb-8">
+              {error || "No pudimos encontrar la información de tu pedido."}
+            </p>
+            <Button
+              className="w-full"
+              onClick={() => router.push("/productos")}
+            >
               Volver a la tienda
             </Button>
           </div>
@@ -136,11 +170,10 @@ export default function PedidoExitoso() {
               {/* Mensaje de éxito */}
               <div className="space-y-4">
                 <h1 className="text-4xl font-normal text-gray-900 leading-tight">
-                  Gracias por tu compra,<br />
+                  Gracias por tu compra,
+                  <br />
                   <span className="font-semibold">{nombreCliente}</span>
                 </h1>
-
-
 
                 <div className="bg-white rounded-2xl shadow-lg p-6 max-w-md mx-auto">
                   <p className="text-gray-700 text-lg mb-2">
@@ -201,7 +234,11 @@ export default function PedidoExitoso() {
                     <div key={item.id} className="flex gap-4">
                       <div className="relative w-20 h-20 bg-gray-50 rounded-md overflow-hidden flex-shrink-0">
                         <Image
-                          src={item.variationImage || item.coverImage || "/images/placeholder-product.jpg"}
+                          src={
+                            item.variationImage ||
+                            item.coverImage ||
+                            "/images/placeholder-product.jpg"
+                          }
                           alt={item.variationName || item.name}
                           fill
                           className="object-contain"
@@ -219,7 +256,13 @@ export default function PedidoExitoso() {
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">
                           {formatPrice(
-                            (parseFloat(item.priceWithTax || item.variationPriceWithTax || "0") * item.quantity).toString(),
+                            (
+                              parseFloat(
+                                item.priceWithTax ||
+                                  item.variationPriceWithTax ||
+                                  "0",
+                              ) * item.quantity
+                            ).toString(),
                           )}
                         </p>
                       </div>
@@ -262,7 +305,10 @@ export default function PedidoExitoso() {
                   <div className="bg-green-50 rounded-sm p-4 border-2 border-green-200">
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-semibold text-green-800">
-                        {order.status === "PAID" || order.paymentStatus === "COMPLETED" ? "Pagado" : "Pendiente"}
+                        {order.status === "PAID" ||
+                        order.paymentStatus === "COMPLETED"
+                          ? "Pagado"
+                          : "Pendiente"}
                       </span>
                       <span className="text-xl font-semibold text-green-600">
                         {formatPrice(order.total || "0")}
@@ -292,7 +338,9 @@ export default function PedidoExitoso() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Método de pago:</span>
                     <span className="font-semibold text-gray-900">
-                      {order.paymentData?.brand ? `${order.paymentData.brand} ${order.paymentData.last4 || ""}` : (order.invoiceType || "Por definir")}
+                      {order.paymentData?.brand
+                        ? `${order.paymentData.brand} ${order.paymentData.last4 || ""}`
+                        : order.invoiceType || "Por definir"}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">

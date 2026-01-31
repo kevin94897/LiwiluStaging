@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "../ui/Button";
+import Input from "../ui/Input";
+import Select from "../ui/Select";
 import {
   autorizacionSchema,
   AutorizacionSchemaType,
@@ -225,32 +227,20 @@ export default function AutorizacionModal({
             <form onSubmit={handleSubmit} className="space-y-6" noValidate>
               {/* Tipo de documento */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Tipo de documento *
-                </label>
-                <select
+                <Select
+                  label="Tipo de documento *"
                   name="documentType"
                   value={formData.documentType}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border-2 rounded-sm transition bg-white text-gray-700 ${errors.documentType
-                    ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-primary focus:border-transparent"
-                    }`}
+                  error={errors.documentType}
                 >
                   <option value="">Seleccionar tipo</option>
                   <option value="DNI">DNI</option>
                   <option value="RUC">RUC</option>
                   <option value="CE">Carnet de Extranjería</option>
                   <option value="Pasaporte">Pasaporte</option>
-                </select>
-                {errors.documentType && (
-                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                    <PiWarningCircleFill size={16} /> {errors.documentType}
-                  </p>
-                )}
+                </Select>
               </div>
-
-
 
               {/* Número de Documento */}
               <div>
@@ -258,22 +248,21 @@ export default function AutorizacionModal({
                   Número de Documento *
                 </label>
                 <div className="relative">
-                  <input
+                  <Input
                     type="text"
                     name="documentNumber"
                     value={formData.documentNumber}
                     onChange={handleDocumentNumberChange}
-                    className={`w-full px-4 py-3 pr-12 border-2 rounded-sm transition ${errors.documentNumber
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:ring-primary focus:border-transparent"
-                      }`}
+                    className="pr-12"
+                    error={errors.documentNumber}
                   />
-                  {(formData.documentType === "DNI" || formData.documentType === "RUC") && (
+                  {(formData.documentType === "DNI" ||
+                    formData.documentType === "RUC") && (
                     <button
                       type="button"
                       onClick={handleConsultation}
                       disabled={consulting || !formData.documentNumber}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition disabled:opacity-50"
+                      className="absolute right-3 top-[14px] text-gray-400 hover:text-primary transition disabled:opacity-50"
                       title="Consultar Documento"
                     >
                       {consulting ? (
@@ -284,34 +273,24 @@ export default function AutorizacionModal({
                     </button>
                   )}
                 </div>
-                {errors.documentNumber && (
-                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                    <PiWarningCircleFill size={16} /> {errors.documentNumber}
-                  </p>
-                )}
               </div>
 
               {/* Nombre y apellido */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Nombre y apellido *
-                </label>
-                <input
+                <Input
+                  label="Nombre y apellido *"
                   type="text"
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
                   disabled={isConsulted}
-                  className={`w-full px-4 py-3 border-2 rounded-sm transition ${errors.fullName
-                    ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-primary focus:border-transparent"
-                    } ${isConsulted ? "bg-gray-100 text-gray-500" : "bg-white text-gray-700"}`}
+                  className={
+                    isConsulted
+                      ? "bg-gray-100 text-gray-500"
+                      : "bg-white text-gray-700"
+                  }
+                  error={errors.fullName}
                 />
-                {errors.fullName && (
-                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                    <PiWarningCircleFill size={16} /> {errors.fullName}
-                  </p>
-                )}
               </div>
 
               {/* Botón Guardar */}

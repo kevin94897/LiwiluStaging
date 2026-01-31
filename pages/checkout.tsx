@@ -58,6 +58,78 @@ export default function Checkout() {
     syncCart();
   }, []);
 
+  // Manejar cierre del modal de Culqi
+  useEffect(() => {
+    const handleCulqiModalClosed = () => {
+      console.log("🔄 Modal cerrado - reseteando estado de procesamiento");
+      setProcessing(false);
+      // Mantener currentOrderId para permitir reintentar el pago
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("culqi-modal-closed", handleCulqiModalClosed);
+      return () => {
+        window.removeEventListener(
+          "culqi-modal-closed",
+          handleCulqiModalClosed,
+        );
+      };
+    }
+  }, []);
+
+  // Persistir estado de checkout en localStorage
+  useEffect(() => {
+    const checkoutState = {
+      tipoComprobante,
+      metodoPago,
+      datosFactura,
+      tipoDocumentoBoleta,
+      datosBoletaRUC,
+      currentOrderId,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(
+      "liwilu_checkout_state",
+      JSON.stringify(checkoutState),
+    );
+  }, [
+    tipoComprobante,
+    metodoPago,
+    datosFactura,
+    tipoDocumentoBoleta,
+    datosBoletaRUC,
+    currentOrderId,
+  ]);
+
+  // Restaurar estado de checkout al montar
+  useEffect(() => {
+    const saved = localStorage.getItem("liwilu_checkout_state");
+    if (saved) {
+      try {
+        const state = JSON.parse(saved);
+
+        // Validar que no sea muy antiguo (1 hora)
+        const ONE_HOUR = 60 * 60 * 1000;
+        if (Date.now() - state.timestamp < ONE_HOUR) {
+          setTipoComprobante(state.tipoComprobante || "factura");
+          if (state.metodoPago) setMetodoPago(state.metodoPago);
+          if (state.datosFactura) setDatosFactura(state.datosFactura);
+          if (state.tipoDocumentoBoleta)
+            setTipoDocumentoBoleta(state.tipoDocumentoBoleta);
+          if (state.datosBoletaRUC) setDatosBoletaRUC(state.datosBoletaRUC);
+          if (state.currentOrderId) setCurrentOrderId(state.currentOrderId);
+          console.log("✅ Estado de checkout restaurado desde localStorage");
+        } else {
+          localStorage.removeItem("liwilu_checkout_state");
+          console.log("⏰ Estado de checkout expirado, limpiado");
+        }
+      } catch (e) {
+        console.error("Error restaurando estado de checkout:", e);
+        localStorage.removeItem("liwilu_checkout_state");
+      }
+    }
+  }, []);
+
   // Verificar si Culqi ya está cargado al montar el componente (para navegaciones SPA)
   useEffect(() => {
     if (typeof window !== "undefined" && window.Culqi) {
@@ -146,6 +218,7 @@ export default function Checkout() {
         console.log("❌ Error de Culqi:", error);
         showToast(error.user_message || "Error en el pago", "error");
         setProcessing(false);
+        closeCulqi();
       }
     };
   }, [
@@ -291,7 +364,9 @@ export default function Checkout() {
         }
 
         const orderId =
+          orderResponse.data?.pendingOrderId ||
           orderResponse.data?.orderId ||
+          orderResponse.pendingOrderId ||
           orderResponse.orderId ||
           orderResponse.id;
 
@@ -348,7 +423,8 @@ export default function Checkout() {
   };
 
   useEffect(() => {
-    if (items.length === 0 && !isSuccess) {
+    const hasCheckoutState = localStorage.getItem("liwilu_checkout_state");
+    if (items.length === 0 && !isSuccess && !hasCheckoutState) {
       router.push("/productos");
     }
   }, [items, router, isSuccess]);

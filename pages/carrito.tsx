@@ -42,6 +42,8 @@ import { registerUser } from "@/pages/api/auth/register";
 import { guestDataSchema, GuestDataSchemaType } from "@/lib/guestDataSchema";
 import { useLocations } from "@/hooks/useLocations";
 import { z } from "zod";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
 import AutorizacionModal from "@/components/cart/AutorizacionModal";
 import AuthorizedPersonInfo from "@/components/cart/AuthorizedPersonInfo";
 import CartItem from "@/components/cart/CartItem";
@@ -735,14 +737,25 @@ export default function Carrito() {
       const checked = (e.target as HTMLInputElement).checked;
       setRegistroData((prev) => ({ ...prev, [name]: checked }));
     } else {
-      if (name === "numeroDocumento") {
+      if (
+        name === "numeroDocumento" ||
+        name === "celular" ||
+        name === "telefonoOpcional"
+      ) {
         value = value.replace(/\D/g, "");
-        const maxLength =
-          registroData.tipoDocumento === "RUC"
-            ? 11
-            : registroData.tipoDocumento === "DNI"
-              ? 8
-              : 20;
+
+        let maxLength = 20;
+        if (name === "numeroDocumento") {
+          maxLength =
+            registroData.tipoDocumento === "RUC"
+              ? 11
+              : registroData.tipoDocumento === "DNI"
+                ? 8
+                : 20;
+        } else if (name === "celular" || name === "telefonoOpcional") {
+          maxLength = 9;
+        }
+
         if (value.length > maxLength) value = value.slice(0, maxLength);
       }
       setRegistroData((prev) => ({ ...prev, [name]: value }));
@@ -888,14 +901,25 @@ export default function Carrito() {
   ) => {
     let { name, value } = e.target;
 
-    if (name === "numeroDocumento") {
+    if (
+      name === "numeroDocumento" ||
+      name === "celular" ||
+      name === "telefonoOpcional"
+    ) {
       value = value.replace(/\D/g, "");
-      const maxLength =
-        guestData.tipoDocumento === "RUC"
-          ? 11
-          : guestData.tipoDocumento === "DNI"
-            ? 8
-            : 20;
+
+      let maxLength = 20; // default for others
+      if (name === "numeroDocumento") {
+        maxLength =
+          guestData.tipoDocumento === "RUC"
+            ? 11
+            : guestData.tipoDocumento === "DNI"
+              ? 8
+              : 20;
+      } else if (name === "celular" || name === "telefonoOpcional") {
+        maxLength = 9;
+      }
+
       if (value.length > maxLength) value = value.slice(0, maxLength);
     }
 
@@ -1589,50 +1613,27 @@ export default function Carrito() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Correo electrónico
-                      </label>
-                      <input
+                      <Input
+                        label="Correo electrónico"
                         type="email"
-                        name="email" // ✅ Agregar name
+                        name="email"
                         value={loginData.email}
-                        onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
+                        onChange={handleLoginChange}
                         placeholder="ejemplo@correo.com"
-                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                          loginErrors.email
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        error={loginErrors.email}
                       />
-                      {loginErrors.email && (
-                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                          <PiWarningCircleFill size={16} /> {loginErrors.email}
-                        </p>
-                      )}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Contraseña
-                      </label>
-                      <input
+                      <Input
+                        label="Contraseña"
                         type="password"
-                        name="password" // ✅ Agregar name
+                        name="password"
                         value={loginData.password}
-                        onChange={handleLoginChange} // ✅ Cambiar a handleLoginChange
+                        onChange={handleLoginChange}
                         placeholder="••••••••"
-                        className={`w-full px-4 py-3 border-2 rounded-sm transition ${
-                          loginErrors.password
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        error={loginErrors.password}
                       />
-                      {loginErrors.password && (
-                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                          <PiWarningCircleFill size={16} />{" "}
-                          {loginErrors.password}
-                        </p>
-                      )}
                     </div>
 
                     <div className="flex items-center justify-between text-sm">
@@ -1704,60 +1705,34 @@ export default function Carrito() {
                     {/* Datos Personales */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Nombre *
-                        </label>
-                        <input
+                        <Input
+                          label="Nombre *"
                           type="text"
-                          name="nombre" // ✅ Agregar
+                          name="nombre"
                           value={registroData.nombre}
-                          onChange={handleRegistroChange} // ✅ Cambiar
+                          onChange={handleRegistroChange}
                           placeholder="Nombres"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.nombre
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          error={registroErrors.nombre}
                         />
-                        {registroErrors.nombre && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {registroErrors.nombre}
-                          </p>
-                        )}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Apellido *
-                        </label>
-                        <input
+                        <Input
+                          label="Apellido *"
                           type="text"
-                          name="apellido" // ✅ Agregar
+                          name="apellido"
                           value={registroData.apellido}
-                          onChange={handleRegistroChange} // ✅ Cambiar
+                          onChange={handleRegistroChange}
                           placeholder="Apellidos"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.apellido
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          error={registroErrors.apellido}
                         />
-                        {registroErrors.apellido && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {registroErrors.apellido}
-                          </p>
-                        )}
                       </div>
                     </div>
 
                     {/* Documento */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tipo de documento *
-                      </label>
-                      <select
-                        name="tipoDocumento" // ✅ Agregar name
+                      <Select
+                        label="Tipo de documento *"
+                        name="tipoDocumento"
                         value={registroData.tipoDocumento}
                         onChange={(e) =>
                           setRegistroData({
@@ -1766,152 +1741,86 @@ export default function Carrito() {
                               | "DNI"
                               | "RUC"
                               | "CE"
-                              | "Pasaporte", // ✅ Type assertion
+                              | "Pasaporte",
                           })
                         }
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.tipoDocumento
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        error={registroErrors.tipoDocumento}
                       >
                         <option value="DNI">DNI</option>
                         <option value="RUC">RUC</option>
                         <option value="CE">Carnet de Extranjería</option>
                         <option value="Pasaporte">Pasaporte</option>
-                      </select>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Número de documento *
-                        </label>
-                        <input
+                      </Select>
+                      <div className="mt-4">
+                        <Input
+                          label="Número de documento *"
                           type="text"
                           name="numeroDocumento"
                           value={registroData.numeroDocumento}
                           onChange={handleRegistroChange}
                           placeholder="12345678"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.numeroDocumento
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          error={registroErrors.numeroDocumento}
                         />
-                        {registroErrors.numeroDocumento && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {registroErrors.numeroDocumento}
-                          </p>
-                        )}
                       </div>
-                      {registroErrors.tipoDocumento && (
-                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                          <PiWarningCircleFill size={16} />{" "}
-                          {registroErrors.tipoDocumento}
-                        </p>
-                      )}
                     </div>
 
                     {/* Teléfonos */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Celular *
-                        </label>
-                        <input
+                        <Input
+                          label="Celular *"
                           type="tel"
                           name="celular"
                           value={registroData.celular}
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.celular
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          error={registroErrors.celular}
                         />
-                        {registroErrors.celular && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {registroErrors.celular}
-                          </p>
-                        )}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Teléfono opcional
-                        </label>
-                        <input
+                        <Input
+                          label="Teléfono opcional"
                           type="tel"
                           name="telefonoOpcional"
                           value={registroData.telefonoOpcional}
                           onChange={handleRegistroChange}
                           placeholder="973 820 088"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.telefonoOpcional
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          error={registroErrors.telefonoOpcional}
                         />
-                        {registroErrors.telefonoOpcional && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {registroErrors.telefonoOpcional}
-                          </p>
-                        )}
                       </div>
                     </div>
 
                     {/* Ubicación */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Departamento *
-                        </label>
-                        <input
+                        <Input
+                          label="Departamento *"
                           type="text"
                           value={registroData.departamento}
-                          className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm bg-gray-50"
                           disabled
+                          containerClassName="bg-gray-50"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Provincia *
-                        </label>
-                        <input
+                        <Input
+                          label="Provincia *"
                           type="text"
                           name="provincia"
                           value={registroData.provincia}
                           onChange={handleRegistroChange}
                           placeholder="Lima"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.provincia
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          error={registroErrors.provincia}
                         />
-                        {registroErrors.provincia && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {registroErrors.provincia}
-                          </p>
-                        )}
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Distrito *
-                      </label>
-                      <select
+                      <Select
+                        label="Distrito *"
                         name="distrito"
                         value={registroData.distrito}
                         onChange={handleRegistroChange}
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.distrito
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        error={registroErrors.distrito}
                       >
                         <option value="">Seleccionar distrito</option>
                         {warehouseDistricts.map((d) => (
@@ -1919,160 +1828,82 @@ export default function Carrito() {
                             {d.desDistrito}
                           </option>
                         ))}
-                      </select>
-                      {registroErrors.distrito && (
-                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                          <PiWarningCircleFill size={16} />{" "}
-                          {registroErrors.distrito}
-                        </p>
-                      )}
+                      </Select>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Dirección *
-                      </label>
-                      <input
+                      <Input
+                        label="Dirección *"
                         type="text"
                         name="direccion"
                         value={registroData.direccion}
                         onChange={handleRegistroChange}
                         placeholder="Calle rosales 432"
-                        className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                          registroErrors.direccion
-                            ? "border-red-500"
-                            : "border-gray-200"
-                        }`}
+                        error={registroErrors.direccion}
                       />
-                      {registroErrors.direccion && (
-                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                          <PiWarningCircleFill size={16} />{" "}
-                          {registroErrors.direccion}
-                        </p>
-                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Nro. de dpto. / Piso
-                        </label>
-                        <input
+                        <Input
+                          label="Nro. de dpto. / Piso"
                           type="text"
                           name="numeroDpto"
                           value={registroData.numeroDpto}
                           onChange={handleRegistroChange}
                           placeholder="201"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.numeroDpto
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          error={registroErrors.numeroDpto}
                         />
-                        {registroErrors.numeroDpto && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {registroErrors.numeroDpto}
-                          </p>
-                        )}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Referencia
-                        </label>
-                        <input
+                        <Input
+                          label="Referencia"
                           type="text"
                           name="referencia"
                           value={registroData.referencia}
                           onChange={handleRegistroChange}
                           placeholder="Frente al parque"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.referencia
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          error={registroErrors.referencia}
                         />
-                        {registroErrors.referencia && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {registroErrors.referencia}
-                          </p>
-                        )}
                       </div>
                     </div>
 
                     {/* Credenciales */}
                     <div className="pt-4 border-t">
                       <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Correo electrónico *
-                        </label>
-                        <input
+                        <Input
+                          label="Correo electrónico *"
                           type="email"
                           name="email"
                           value={registroData.email}
                           onChange={handleRegistroChange}
                           placeholder="ejemplo@correo.com"
-                          className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                            registroErrors.email
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
+                          error={registroErrors.email}
                         />
-                        {registroErrors.email && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                            <PiWarningCircleFill size={16} />{" "}
-                            {registroErrors.email}
-                          </p>
-                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Contraseña *
-                          </label>
-                          <input
+                          <Input
+                            label="Contraseña *"
                             type="password"
                             name="password"
                             value={registroData.password}
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
-                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                              registroErrors.password
-                                ? "border-red-500"
-                                : "border-gray-200"
-                            }`}
+                            error={registroErrors.password}
                           />
-                          {registroErrors.password && (
-                            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                              <PiWarningCircleFill size={16} />{" "}
-                              {registroErrors.password}
-                            </p>
-                          )}
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Confirmar contraseña *
-                          </label>
-                          <input
+                          <Input
+                            label="Confirmar contraseña *"
                             type="password"
                             name="confirmarPassword"
                             value={registroData.confirmarPassword}
                             onChange={handleRegistroChange}
                             placeholder="••••••••"
-                            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${
-                              registroErrors.confirmarPassword
-                                ? "border-red-500"
-                                : "border-gray-200"
-                            }`}
+                            error={registroErrors.confirmarPassword}
                           />
-                          {registroErrors.confirmarPassword && (
-                            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                              <PiWarningCircleFill size={16} />{" "}
-                              {registroErrors.confirmarPassword}
-                            </p>
-                          )}
                         </div>
                       </div>
                     </div>

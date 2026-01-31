@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
 import { GuestDataSchemaType } from "@/lib/guestDataSchema";
 import { consultaDNI, consultaRUC } from "@/lib/general";
 import { showToast } from "@/lib/notifications";
@@ -100,6 +102,17 @@ export default function GuestDataForm({
   ) => {
     if (e.target.name === "numeroDocumento") {
       setConsulted(false);
+      // Clear auto-filled fields when document number changes
+      onSetGuestData((prev) => ({
+        ...prev,
+        nombre: "",
+        apellido: "",
+        // Only clear address if it was potentially filled by RUC (or just reset to be safe)
+        direccion: prev.tipoDocumento === "RUC" ? "" : prev.direccion,
+        departamento: prev.tipoDocumento === "RUC" ? "Lima" : prev.departamento, // Reset if RUC logic implies it, but let's stick to clearing basics
+        provincia: prev.tipoDocumento === "RUC" ? "Lima" : prev.provincia,
+        distrito: prev.tipoDocumento === "RUC" ? "" : prev.distrito,
+      }));
     }
     onGuestChange(e);
   };
@@ -114,14 +127,11 @@ export default function GuestDataForm({
       </p>
 
       <form onSubmit={onGuestSubmit} className="space-y-4">
-
         {/* Documento Section First (Common Flow) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tipo de documento
-            </label>
-            <select
+            <Select
+              label="Tipo de documento"
               name="tipoDocumento"
               value={guestData.tipoDocumento}
               onChange={(e) => {
@@ -131,159 +141,135 @@ export default function GuestDataForm({
                   tipoDocumento: val,
                   numeroDocumento: "", // Limpiar número al cambiar tipo
                   nombre: "",
-                  apellido: ""
+                  apellido: "",
                 }));
                 setConsulted(false);
               }}
-              className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.tipoDocumento ? "border-red-500" : "border-gray-200"
-                }`}
+              error={guestErrors.tipoDocumento}
             >
               <option value="DNI">DNI</option>
               <option value="RUC">RUC</option>
               <option value="CE">Carnet de Extranjería</option>
               <option value="Pasaporte">Pasaporte</option>
-            </select>
+            </Select>
           </div>
 
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Número de Documento
-            </label>
+          <div className="md:col-span-2 relative">
             <div className="relative">
-              <input
+              <Input
+                label="Número de Documento"
                 type="text"
                 name="numeroDocumento"
                 value={guestData.numeroDocumento}
                 onChange={handleInputChange}
-                placeholder={guestData.tipoDocumento === "RUC" ? "20100000001" : "74218601"}
-                maxLength={guestData.tipoDocumento === "DNI" ? 8 : guestData.tipoDocumento === "RUC" ? 11 : 15}
-                className={`w-full px-4 py-2.5 border-2 rounded-sm transition pr-12 ${guestErrors.numeroDocumento ? "border-red-500" : "border-gray-200"
-                  }`}
+                placeholder={
+                  guestData.tipoDocumento === "RUC" ? "20100000001" : "74218601"
+                }
+                maxLength={
+                  guestData.tipoDocumento === "DNI"
+                    ? 8
+                    : guestData.tipoDocumento === "RUC"
+                      ? 11
+                      : 15
+                }
+                error={guestErrors.numeroDocumento}
+                className="pr-12"
               />
 
-              {(guestData.tipoDocumento === "DNI" || guestData.tipoDocumento === "RUC") && (
+              {(guestData.tipoDocumento === "DNI" ||
+                guestData.tipoDocumento === "RUC") && (
                 <button
                   type="button"
                   onClick={handleConsultacion}
                   disabled={isConsulting || !guestData.numeroDocumento}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
+                  className="absolute right-2 top-[38px] text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
                   title="Consultar"
                 >
                   {isConsulting ? (
                     <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
                     </svg>
                   )}
                 </button>
               )}
             </div>
-            {guestErrors.numeroDocumento && (
-              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                <PiWarningCircleFill size={16} /> {guestErrors.numeroDocumento}
-              </p>
-            )}
           </div>
         </div>
 
         {/* Datos Personales */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nombre {guestData.tipoDocumento === "RUC" && "(Razón Social)"}
-            </label>
-            <input
+            <Input
+              label={`Nombre ${guestData.tipoDocumento === "RUC" ? "(Razón Social)" : ""}`}
               type="text"
               name="nombre"
               value={guestData.nombre}
               onChange={handleInputChange}
               placeholder="Nombres"
               disabled={consulted}
-              className={`w-full px-4 py-2.5 border-2 rounded-sm transition disabled:bg-gray-100 disabled:text-gray-500 ${guestErrors.nombre ? "border-red-500" : "border-gray-200"
-                }`}
+              error={guestErrors.nombre}
             />
-            {guestErrors.nombre && (
-              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                <PiWarningCircleFill size={16} /> {guestErrors.nombre}
-              </p>
-            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Apellido
-            </label>
-            <input
+            <Input
+              label="Apellido"
               type="text"
               name="apellido"
               value={guestData.apellido}
               onChange={handleInputChange}
               placeholder="Apellidos"
               disabled={consulted} // Si es DNI consultado, se deshabilita. Si es RUC, se llena con "-" y se deshabilita.
-              className={`w-full px-4 py-2.5 border-2 rounded-sm transition disabled:bg-gray-100 disabled:text-gray-500 ${guestErrors.apellido ? "border-red-500" : "border-gray-200"
-                }`}
+              error={guestErrors.apellido}
             />
-            {guestErrors.apellido && (
-              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                <PiWarningCircleFill size={16} /> {guestErrors.apellido}
-              </p>
-            )}
           </div>
         </div>
 
         {/* Email */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Correo electrónico
-          </label>
-          <input
+          <Input
+            label="Correo electrónico"
             type="email"
             name="email"
             value={guestData.email}
             onChange={onGuestChange}
             placeholder="ejemplo@correo.com"
-            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.email ? "border-red-500" : "border-gray-200"
-              }`}
+            error={guestErrors.email}
           />
-          {guestErrors.email && (
-            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-              <PiWarningCircleFill size={16} /> {guestErrors.email}
-            </p>
-          )}
         </div>
 
         {/* Teléfonos */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Celular
-            </label>
-            <input
+            <Input
+              label="Celular"
               type="tel"
               name="celular"
               value={guestData.celular}
               onChange={handleInputChange}
               placeholder="973 820 088"
-              className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.celular ? "border-red-500" : "border-gray-200"
-                }`}
+              error={guestErrors.celular}
             />
-            {guestErrors.celular && (
-              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                <PiWarningCircleFill size={16} /> {guestErrors.celular}
-              </p>
-            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Teléfono opcional
-            </label>
-            <input
+            <Input
+              label="Teléfono opcional"
               type="tel"
               name="telefonoOpcional"
               value={guestData.telefonoOpcional}
               onChange={handleInputChange}
               placeholder="973 820 088"
-              className={`w-full px-4 py-2.5 border-2 rounded-sm transition border-gray-200`}
             />
           </div>
         </div>
@@ -291,10 +277,8 @@ export default function GuestDataForm({
         {/* Ubicación */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Departamento
-            </label>
-            <select
+            <Select
+              label="Departamento"
               name="departamento"
               value={guestData.departamento}
               onChange={(e) => {
@@ -307,7 +291,6 @@ export default function GuestDataForm({
                 }));
                 guestLocations.handleDeptChange(val);
               }}
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-sm bg-gray-50"
               disabled
             >
               <option value="">Seleccionar</option>
@@ -316,13 +299,11 @@ export default function GuestDataForm({
                   {d}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Provincia
-            </label>
-            <select
+            <Select
+              label="Provincia"
               name="provincia"
               value={guestData.provincia}
               onChange={(e) => {
@@ -334,8 +315,8 @@ export default function GuestDataForm({
                 }));
                 guestLocations.handleProvChange(val);
               }}
-              className={`w-full px-4 py-2.5 border-2 rounded-sm bg-gray-50 transition border-gray-200`}
               disabled
+              error={guestErrors.provincia}
             >
               <option value="">Seleccionar</option>
               {guestLocations.provinces.map((p: any) => (
@@ -343,29 +324,21 @@ export default function GuestDataForm({
                   {p}
                 </option>
               ))}
-            </select>
-            {guestErrors.provincia && (
-              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                <PiWarningCircleFill size={16} /> {guestErrors.provincia}
-              </p>
-            )}
+            </Select>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Distrito
-          </label>
-          <select
+          <Select
+            label="Distrito"
             name="distrito"
             value={guestData.distrito}
             onChange={(e) => {
               onGuestChange(e);
               guestLocations.handleDistChange(e.target.value);
             }}
-            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.distrito ? "border-red-500" : "border-gray-200"
-              }`}
             disabled={!guestData.provincia}
+            error={guestErrors.distrito}
           >
             <option value="">Seleccionar</option>
             {guestLocations.districts.map((d: any) => (
@@ -373,72 +346,43 @@ export default function GuestDataForm({
                 {d}
               </option>
             ))}
-          </select>
-          {guestErrors.distrito && (
-            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-              <PiWarningCircleFill size={16} /> {guestErrors.distrito}
-            </p>
-          )}
+          </Select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Dirección
-          </label>
-          <input
+          <Input
+            label="Dirección"
             type="text"
             name="direccion"
             value={guestData.direccion}
             onChange={onGuestChange}
             placeholder="Calle rosales 432"
-            className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.direccion ? "border-red-500" : "border-gray-200"
-              }`}
+            error={guestErrors.direccion}
           />
-          {guestErrors.direccion && (
-            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-              <PiWarningCircleFill size={16} /> {guestErrors.direccion}
-            </p>
-          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nro. de dpto. / Piso
-            </label>
-            <input
+            <Input
+              label="Nro. de dpto. / Piso"
               type="text"
               name="numeroDpto"
               value={guestData.numeroDpto}
               onChange={onGuestChange}
               placeholder="101"
-              className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.numeroDpto ? "border-red-500" : "border-gray-200"
-                }`}
+              error={guestErrors.numeroDpto}
             />
-            {guestErrors.numeroDpto && (
-              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                <PiWarningCircleFill size={16} /> {guestErrors.numeroDpto}
-              </p>
-            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Referencia
-            </label>
-            <input
+            <Input
+              label="Referencia"
               type="text"
               name="referencia"
               value={guestData.referencia}
               onChange={onGuestChange}
               placeholder="Frente al parque"
-              className={`w-full px-4 py-2.5 border-2 rounded-sm transition ${guestErrors.referencia ? "border-red-500" : "border-gray-200"
-                }`}
+              error={guestErrors.referencia}
             />
-            {guestErrors.referencia && (
-              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                <PiWarningCircleFill size={16} /> {guestErrors.referencia}
-              </p>
-            )}
           </div>
         </div>
 

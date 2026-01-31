@@ -23,9 +23,13 @@ export const guestDataSchema = z.object({
 
     email: z.string()
         .min(1, "El correo electrónico es obligatorio")
-        .email("Ingresa un correo electrónico válido"),
+        .email("Ingresa un correo electrónico válido")
+        .regex(/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, "El correo contiene caracteres no permitidos"),
 
-    telefonoOpcional: z.string().optional(),
+    telefonoOpcional: z.string()
+        .regex(/^[0-9]+$/, "El teléfono opcional solo puede contener números")
+        .optional()
+        .or(z.literal("")),
 
     departamento: z.string().min(1, "El departamento es obligatorio"),
 
