@@ -338,11 +338,17 @@ export default function DeliveryAddressForm({
               error={addressErrors.distrito}
             >
               <option value="">Distrito</option>
-              {userLocations.districts.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
+              {deliveryZones && deliveryZones.length > 0
+                ? deliveryZones.map((z) => (
+                    <option key={z.zoneId} value={z.zoneName}>
+                      {z.zoneName}
+                    </option>
+                  ))
+                : userLocations.districts.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
             </Select>
 
             <Input
@@ -506,11 +512,17 @@ export default function DeliveryAddressForm({
               error={addressErrors.distrito}
             >
               <option value="">Distrito</option>
-              {userLocations.districts.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
+              {deliveryZones && deliveryZones.length > 0
+                ? deliveryZones.map((z) => (
+                    <option key={z.zoneId} value={z.zoneName}>
+                      {z.zoneName}
+                    </option>
+                  ))
+                : userLocations.districts.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
             </Select>
 
             <Input
