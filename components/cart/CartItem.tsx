@@ -209,7 +209,7 @@ export default function CartItem({
             {/* Info producto */}
             <div className="flex flex-col flex-1 min-w-0">
               <Link
-                href={`/tienda/${item.product.id || item.product.productId}`}
+                href={`/tienda/${item.product.linkRewrite || item.product.id || item.product.productId}${item.product.queryString ? `?${item.product.queryString}` : ""}`}
               >
                 <h3 className="font-semibold text-md md:text-lg leading-tight mb-2 hover:text-primary transition">
                   {getProductName(item.product)}

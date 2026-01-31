@@ -105,14 +105,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Construct defaultVariation for compatibility with utils.ts pricing logic
     const defaultVariation = cartProduct.idVariation
       ? {
-        prestashopCombinationId: cartProduct.prestashopCombinationId || 0,
-        name: cartProduct.name,
-        reference: cartProduct.variationReference || "",
-        price: cartProduct.variationPriceWithTax || 0, // Treated as Sale Price by utils
-        priceWithTax: cartProduct.variationPriceWithTax || 0,
-        priceImpact: cartProduct.priceWithTax, // Treated as Regular Price by utils (when > 0)
-        queryString: "",
-      }
+          prestashopCombinationId: cartProduct.prestashopCombinationId || 0,
+          name: cartProduct.name,
+          reference: cartProduct.variationReference || "",
+          price: cartProduct.variationPriceWithTax || 0, // Treated as Sale Price by utils
+          priceWithTax: cartProduct.variationPriceWithTax || 0,
+          priceImpact: cartProduct.priceWithTax, // Treated as Regular Price by utils (when > 0)
+          queryString: "",
+        }
       : null;
 
     // Ensure price is the final effective price (Sale Price)
@@ -120,27 +120,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const effectivePrice =
       cartProduct.variationPriceWithTax ||
       (cartProduct.discountPrice && cartProduct.discountPrice > 0
-        ? cartProduct.priceWithTax - cartProduct.discountPrice // If simple with discount, context priceWithTax likely includes it? 
-        // Logic check: usually cartProduct.priceWithTax IS the final price in cart API. 
-        // But if we follow utils: simple price = sale.
-        : cartProduct.priceWithTax) ||
+        ? cartProduct.priceWithTax - cartProduct.discountPrice // If simple with discount, context priceWithTax likely includes it?
+        : // Logic check: usually cartProduct.priceWithTax IS the final price in cart API.
+          // But if we follow utils: simple price = sale.
+          cartProduct.priceWithTax) ||
       0;
 
     // RE-EVALUATION:
     // cartProduct.priceWithTax from backend usually IS the price to pay.
-    // If discountPrice exists, it implies priceWithTax is ALREADY discounted? 
+    // If discountPrice exists, it implies priceWithTax is ALREADY discounted?
     // OR is it the original?
     // Let's assume priceWithTax is the FINAL price (Sale) because that's what's currently being summed for totals.
-    // So for simple: price = priceWithTax. 
+    // So for simple: price = priceWithTax.
     // And getRegularPrice will adds discountPrice to it. Correct.
 
     return {
       id: cartProduct.idProductCart,
       productId: cartProduct.prestashopId,
+      linkRewrite: cartProduct.linkRewrite, // ✅ Map slug from backend
+      queryString: cartProduct.queryString, // ✅ Map query string from backend
       name: cartProduct.name,
-      price:
-        cartProduct.variationPriceWithTax ||
-        cartProduct.priceWithTax, // Final Price
+      price: cartProduct.variationPriceWithTax || cartProduct.priceWithTax, // Final Price
       originalPrice: cartProduct.priceWithTax, // Legacy field, kept for safety
       quantity: cartProduct.quantity,
       coverImage: cartProduct.variationImage || cartProduct.coverImage,

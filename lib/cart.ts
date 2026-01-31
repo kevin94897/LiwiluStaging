@@ -11,6 +11,7 @@ export interface CartProduct {
     idArticle: number | null;
     idVariation?: number | null; // ID for variation-specific operations
     name: string;
+    linkRewrite?: string; // Product slug for URL generation
     price: number;
     priceWithTax: number;
     discountPrice?: number | null; // Changed to optional
@@ -25,6 +26,7 @@ export interface CartProduct {
     variationReference?: string | null; // Added
     variationAttributes?: any[]; // Added
     variationPriceWithTax?: number | null; // Added
+    queryString?: string; // Query string for variation-specific URLs
 }
 
 /**

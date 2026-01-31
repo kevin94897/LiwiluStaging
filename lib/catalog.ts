@@ -20,6 +20,8 @@ export interface Product {
     coverImage?: string;
     originalPrice?: string | number;
     productId?: string | number;
+    linkRewrite?: string; // Slug for URL (e.g., "polo")
+    queryString?: string; // Variation query params (e.g., "talla=4")
     prestashopCombinationId?: number | null;
     idVariation?: number | null; // ID for variation-specific cart operations
     hasVariations?: boolean;
@@ -468,6 +470,8 @@ export interface ProductVariation {
     sku: string;
     reference: string;
     name?: string;
+    url?: string; // e.g., "polo?talla=4"
+    queryString?: string; // e.g., "talla=4"
     price: ProductPrice;
     stock: ProductStock;
     attributes: ProductAttribute[];
@@ -483,6 +487,7 @@ export interface ProductVariation {
 export interface ProductVariationsData {
     productId: number;
     prestashopProductId: number;
+    linkRewrite: string; // e.g., "polo"
     base: {
         price: ProductPrice;
         stock: ProductStock;

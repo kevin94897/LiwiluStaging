@@ -67,9 +67,9 @@ export const PERU_LOCATIONS: Record<string, Record<string, string[]>> = {
     //     "Calca": ["Calca", "Coya", "Lamay", "Lares", "Pisac", "San Salvador", "Taray", "Yanatile"],
     //     "Urubamba": ["Urubamba", "Chinchero", "Huayllabamba", "Machupicchu", "Maras", "Ollantaytambo", "Yucay"]
     // },
-    // "Callao": {
-    //     "Callao": ["Callao", "Bellavista", "Carmen de la Legua Reynoso", "La Perla", "La Punta", "Mi Perú", "Ventanilla"]
-    // },
+    "Callao": {
+        "Callao": ["Callao", "Bellavista", "Carmen de la Legua Reynoso", "La Perla", "La Punta", "Mi Perú", "Ventanilla"]
+    }
     // "La Libertad": {
     //     "Trujillo": ["Trujillo", "El Porvenir", "Florencia de Mora", "Huanchaco", "La Esperanza", "Laredo", "Moche", "Poroto", "Salaverry", "Simbal", "Victor Larco Herrera"],
     //     "Ascope": ["Ascope", "Casa Grande", "Chocope", "Magdalena de Cao", "Paiján", "Rázuri", "Santiago de Cao", "Sausacocha"]

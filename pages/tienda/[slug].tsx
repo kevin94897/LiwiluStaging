@@ -29,25 +29,41 @@ import Button from "@/components/ui/Button";
 
 interface ProductDetailProps {
   productId: string;
+  slug: string;
   basicData: ProductBasicData | null;
   variationsData: ProductVariationsData | null;
+  queryParams: Record<string, string>;
   error?: string;
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ params }) => {
-  const id = params?.id as string;
+export const getServerSideProps: GetServerSideProps = async ({
+  params,
+  query,
+}) => {
+  const slug = params?.slug as string;
+
+  // Extract query parameters (e.g., talla=4, color=azul)
+  const queryParams: Record<string, string> = {};
+  Object.keys(query).forEach((key) => {
+    if (key !== "slug" && typeof query[key] === "string") {
+      queryParams[key] = query[key] as string;
+    }
+  });
+
   try {
     const [basicData, variationsData] = await Promise.all([
-      getProductBasic(id),
-      getProductVariations(id),
+      getProductBasic(slug),
+      getProductVariations(slug),
     ]);
 
     if (!basicData || !variationsData) {
       return {
         props: {
-          productId: id,
+          productId: variationsData?.productId?.toString() || "",
+          slug,
           basicData: null,
           variationsData: null,
+          queryParams,
           error: "Producto no encontrado",
         },
       };
@@ -55,9 +71,11 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
 
     return {
       props: {
-        productId: id,
+        productId: variationsData.productId.toString(),
+        slug,
         basicData,
         variationsData,
+        queryParams,
       },
     };
   } catch (error: unknown) {
@@ -65,9 +83,11 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
       error instanceof Error ? error.message : "Error desconocido";
     return {
       props: {
-        productId: id || "",
+        productId: "",
+        slug: slug || "",
         basicData: null,
         variationsData: null,
+        queryParams,
         error: message,
       },
     };
@@ -98,8 +118,10 @@ const getImageUrl = (urlOrObj: string | any | null | undefined): string => {
 
 export default function ProductDetail({
   productId,
+  slug,
   basicData,
   variationsData,
+  queryParams,
   error,
 }: ProductDetailProps) {
   const [quantity, setQuantity] = useState(1);
@@ -125,16 +147,45 @@ export default function ProductDetail({
     "Descripción del producto",
   );
 
-  // ✅ Inicializar variación por defecto
+  // ✅ Inicializar variación por defecto o desde query params
   useEffect(() => {
     if (variationsData?.variations && variationsData.variations.length > 0) {
+      // Try to find variation matching query params first
+      if (queryParams && Object.keys(queryParams).length > 0) {
+        const matchingVariation = variationsData.variations.find((v) => {
+          if (!v.attributes || v.attributes.length === 0) return false;
+
+          // Check if all query params match this variation's attributes
+          return Object.keys(queryParams).every((paramKey) => {
+            const paramValue = queryParams[paramKey].toLowerCase();
+            return v.attributes.some(
+              (attr) =>
+                attr.type.toLowerCase() === paramKey.toLowerCase() &&
+                (attr.slug?.toLowerCase() === paramValue ||
+                  attr.value?.toLowerCase() === paramValue ||
+                  attr.id.toString() === paramValue),
+            );
+          });
+        });
+
+        if (matchingVariation) {
+          const initialAttrs: Record<string, number> = {};
+          matchingVariation.attributes.forEach((attr) => {
+            initialAttrs[attr.type] = attr.id;
+          });
+          setSelectedAttributes(initialAttrs);
+          setCurrentVariation(matchingVariation);
+          return;
+        }
+      }
+
+      // Fallback to default variation
       const defaultVar =
         variationsData.variations.find((v) => v.isDefault) ||
         variationsData.variations[0];
 
       if (defaultVar) {
         const initialAttrs: Record<string, number> = {};
-        // Updated: variations attributes are now an array of objects {id, type, name, value...}
         if (defaultVar.attributes && Array.isArray(defaultVar.attributes)) {
           defaultVar.attributes.forEach((attr) => {
             initialAttrs[attr.type] = attr.id;
@@ -145,7 +196,7 @@ export default function ProductDetail({
         setCurrentVariation(defaultVar);
       }
     }
-  }, [variationsData]);
+  }, [variationsData, queryParams]);
 
   // ✅ Verificar si es favorito al cargar
   useEffect(() => {
@@ -381,6 +432,8 @@ export default function ProductDetail({
     const finalProduct: Product = {
       id: cartItemId, // ✅ Use productId for base, or productId_variant for variations
       productId: productId, // ✅ Use URL productId for correct cart links
+      linkRewrite: variationsData.linkRewrite || slug, // ✅ Store slug for URL generation
+      queryString: currentVariation?.queryString, // ✅ Store query string for variation-specific links
       prestashopCombinationId: currentVariation
         ? currentVariation.prestashopCombinationId
         : null,
@@ -478,6 +531,18 @@ export default function ProductDetail({
 
     if (foundVariation) {
       setCurrentVariation(foundVariation);
+
+      // Update URL with variation query string (shallow routing)
+      if (foundVariation.queryString) {
+        router.push(
+          `/tienda/${slug}?${foundVariation.queryString}`,
+          undefined,
+          { shallow: true },
+        );
+      } else {
+        // If no queryString, just use the slug
+        router.push(`/tienda/${slug}`, undefined, { shallow: true });
+      }
     } else {
       // 2. Si no hay exacta, buscar la mejor coincidencia posible
       // Priorizamos variaciones que tengan el atributo que acabamos de cambiar
@@ -526,8 +591,19 @@ export default function ProductDetail({
           updatedAttrs[a.type] = a.id;
         });
         setSelectedAttributes(updatedAttrs);
+
+        // Update URL with best match query string
+        if (bestMatch.variation.queryString) {
+          router.push(
+            `/tienda/${slug}?${bestMatch.variation.queryString}`,
+            undefined,
+            { shallow: true },
+          );
+        }
       } else {
         setCurrentVariation(null);
+        // Reset to base product URL
+        router.push(`/tienda/${slug}`, undefined, { shallow: true });
       }
     }
 
@@ -757,16 +833,18 @@ export default function ProductDetail({
                               key={actualIndex}
                               onClick={() => setSelectedImageIndex(actualIndex)}
                               className={`relative my-2 aspect-square bg-white rounded-sm shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
-																${isSelected
-                                  ? "ring-2 ring-primary scale-105"
-                                  : "hover:shadow-lg hover:scale-105"
+																${
+                                  isSelected
+                                    ? "ring-2 ring-primary scale-105"
+                                    : "hover:shadow-lg hover:scale-105"
                                 }
 															`}
                             >
                               <Image
                                 src={img}
-                                alt={`${basicData.name} - miniatura ${actualIndex + 1
-                                  }`}
+                                alt={`${basicData.name} - miniatura ${
+                                  actualIndex + 1
+                                }`}
                                 fill
                                 className="object-contain"
                                 unoptimized
@@ -993,14 +1071,16 @@ export default function ProductDetail({
                                     }
                                     className={
                                       attr.type === "color"
-                                        ? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
-                                          ? "border-primary border-4 scale-110"
-                                          : "border-gray-300 hover:scale-105"
-                                        }`
-                                        : `px-5 py-2 border rounded-sm font-medium transition ${isSelected
-                                          ? "bg-primary-dark text-white border-gray-900"
-                                          : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                        }`
+                                        ? `w-10 h-10 rounded-full border-2 transition relative ${
+                                            isSelected
+                                              ? "border-primary border-4 scale-110"
+                                              : "border-gray-300 hover:scale-105"
+                                          }`
+                                        : `px-5 py-2 border rounded-sm font-medium transition ${
+                                            isSelected
+                                              ? "bg-primary-dark text-white border-gray-900"
+                                              : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                          }`
                                     }
                                     style={
                                       attr.type === "color" && val.colorHex
@@ -1019,8 +1099,8 @@ export default function ProductDetail({
                                             <Image
                                               src={getImageUrl(
                                                 previewVariation.images?.[0] ||
-                                                variationsData.media
-                                                  ?.coverImage,
+                                                  variationsData.media
+                                                    ?.coverImage,
                                               )}
                                               alt={val.value}
                                               fill
@@ -1068,10 +1148,11 @@ export default function ProductDetail({
                                 setCurrentVariation(v);
                                 setSelectedAttributes({});
                               }}
-                              className={`px-4 py-2 border rounded-md font-medium transition ${isSelected
-                                ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
-                                : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                }`}
+                              className={`px-4 py-2 border rounded-md font-medium transition ${
+                                isSelected
+                                  ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
+                                  : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                              }`}
                             >
                               <div className="flex flex-col items-center">
                                 <span className="text-sm font-semibold">
@@ -1146,8 +1227,9 @@ export default function ProductDetail({
                   <button
                     onClick={handleToggleFavorite}
                     disabled={loadingFavorite}
-                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] min-w-[56px] min-h-[56px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
-                      }`}
+                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] min-w-[56px] min-h-[56px] rounded-full transition flex items-center justify-center ${
+                      isFavorite ? "text-primary" : "text-primary"
+                    }`}
                   >
                     {loadingFavorite ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
@@ -1181,10 +1263,11 @@ export default function ProductDetail({
             <button
               key={tab}
               onClick={() => setActiveTab(tab as TabKey)}
-              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${activeTab === tab
-                ? "border-gray-900 text-primary-dark"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
+              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${
+                activeTab === tab
+                  ? "border-gray-900 text-primary-dark"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
             >
               {tab}
             </button>

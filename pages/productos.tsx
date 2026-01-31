@@ -698,7 +698,7 @@ export default function Tienda({
                   return (
                     <Link
                       key={product.id}
-                      href={`/tienda/${product.id}`}
+                      href={`/tienda/${product.linkRewrite || product.id}`}
                       className="block animate-fade-in-up"
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
