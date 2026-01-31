@@ -6,7 +6,7 @@ export const PERU_LOCATIONS: Record<string, Record<string, string[]>> = {
             "Barranco",
             "Breña",
             "Carabayllo",
-            "Cercado de Lima",
+            "Lima",
             "Chaclacayo",
             "Chorrillos",
             "Cieneguilla",

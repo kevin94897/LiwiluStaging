@@ -282,7 +282,7 @@ export interface FavoriteProduct {
         linkRewrite: string;
     };
     price: number;
-    priceWithTax: number;
+    priceWithTax?: number;
     discountPrice: number | null;
     discountPercent: number;
     quantity: number;
@@ -294,6 +294,17 @@ export interface FavoriteProduct {
         position: number;
     }[];
     addedToFavoritesAt: string;
+    hasVariations: boolean;
+    defaultVariation: {
+        id: number;
+        prestashopCombinationId: number;
+        name: string;
+        reference: string;
+        price: number;
+        priceWithTax: number;
+        priceImpact?: number;
+        queryString: string;
+    } | null;
 }
 
 export interface FavoritesResponse {

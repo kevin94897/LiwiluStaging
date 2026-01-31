@@ -133,6 +133,8 @@ export default function Carrito() {
   const [editandoDireccion, setEditandoDireccion] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptNewsletter, setAcceptNewsletter] = useState(false);
+  const [saveAddressToProfile, setSaveAddressToProfile] = useState(false);
+  const [showAddressPreview, setShowAddressPreview] = useState(false);
 
   // Estados para autenticación
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -1411,7 +1413,7 @@ export default function Carrito() {
   }
 
   const handleSaveAddress = async () => {
-    // Validar datos con Zod ANTES de cualquier otra lógica
+    // 1. Validar datos con Zod ANTES de cualquier otra lógica
     const addressSchema = z.object({
       calle: z.string().min(5, "La dirección debe tener al menos 5 caracteres"),
       departamento: z.string().min(1, "Selecciona un departamento"),
@@ -1441,10 +1443,7 @@ export default function Carrito() {
     // Limpiar errores si pasa validación
     setAddressErrors({});
 
-    // 🔹 MOVED: La validación de cobertura se movió al checkout (handleCheckoutSubmit)
-    // Se permite guardar cualquier dirección, pero se valida antes de finalizar compra.
-
-    // 🔹 IMPORTANTE: Sincronizar siempre con la sesión del carrito para actualizar costos de envío
+    // 2. Sincronizar SIEMPRE con la sesión del carrito (para todos los usuarios)
     try {
       console.log("🚚 Sincronizando dirección con la sesión del carrito...");
       await saveCartDeliveryAddress({
@@ -1457,7 +1456,7 @@ export default function Carrito() {
       console.error("Error saving address to cart API:", apiError);
     }
 
-    // Guardar en localStorage siempre
+    // 3. Guardar en localStorage SIEMPRE (para todos los usuarios)
     try {
       localStorage.setItem(
         "liwilu_direccionEnvio",
@@ -1467,102 +1466,103 @@ export default function Carrito() {
       console.error("Error saving address to localStorage:", e);
     }
 
-    // Si no está autenticado o es invitado, solo actualiza el estado local para la UI
-    if (!isAuthenticated || isGuest) {
-      setEditandoDireccion(false);
-      showToast("Dirección guardada correctamente");
-      return;
-    }
+    // 4. Cerrar modo edición y mostrar mensaje de éxito
+    setEditandoDireccion(false);
+    setShowAddressPreview(true); // Mostrar preview de la dirección guardada
+    showToast("Dirección guardada correctamente");
 
-    // Si está autenticado, intentar actualizar/crear en el backend
-    try {
-      const token = localStorage.getItem("accessToken");
-      // Si no tiene direcciones previas, esta será la principal automáticamente
-      const hasNoAddresses = userAddresses.length === 0;
+    // 5. NUEVO: Solo guardar en perfil si el usuario lo solicitó explícitamente
+    if (isAuthenticated && !isGuest && saveAddressToProfile) {
+      try {
+        const token = localStorage.getItem("accessToken");
+        const hasNoAddresses = userAddresses.length === 0;
 
-      // Check if we're editing the main address
-      const isEditingMainAddress =
-        mainAddressId &&
-        userAddresses.find((addr) => addr.id === mainAddressId)?.isMain;
+        // Check if we're editing the main address
+        const isEditingMainAddress =
+          mainAddressId &&
+          userAddresses.find((addr) => addr.id === mainAddressId)?.isMain;
 
-      const addressData = {
-        department: direccionEnvio.departamento,
-        province: direccionEnvio.ciudad,
-        district: direccionEnvio.distrito,
-        address: direccionEnvio.calle,
-        apartment:
-          direccionEnvio.numeroDptoPiso ||
-          (mainAddressId ? "Mi Dirección" : "Nueva Dirección"),
-        reference: direccionEnvio.referencia || "",
-        isMain: isEditingMainAddress || hasNoAddresses || false,
-      };
+        const addressData = {
+          department: direccionEnvio.departamento,
+          province: direccionEnvio.ciudad,
+          district: direccionEnvio.distrito,
+          address: direccionEnvio.calle,
+          apartment:
+            direccionEnvio.numeroDptoPiso ||
+            (mainAddressId ? "Mi Dirección" : "Nueva Dirección"),
+          reference: direccionEnvio.referencia || "",
+          isMain: isEditingMainAddress || hasNoAddresses || false,
+        };
 
-      let response;
+        let response;
 
-      if (mainAddressId) {
-        // Actualizar existente
-        response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/users/addresses/${mainAddressId}`,
-          {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
+        if (mainAddressId) {
+          // Actualizar existente
+          response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/users/addresses/${mainAddressId}`,
+            {
+              method: "PUT",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(addressData),
             },
-            body: JSON.stringify(addressData),
-          },
-        );
-      } else {
-        // Crear nueva
-        response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/users/addresses`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
+          );
+        } else {
+          // Crear nueva
+          response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/users/addresses`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(addressData),
             },
-            body: JSON.stringify(addressData),
-          },
-        );
-      }
-
-      if (response && response.ok) {
-        const result = await response.json();
-        console.log("✅ Dirección persistida en el perfil del usuario");
-
-        // Refresh addresses to update dropdown and main selection
-        const refreshedResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/users/addresses`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-        if (refreshedResponse.ok) {
-          const refreshedResult = await refreshedResponse.json();
-          if (refreshedResult.success) {
-            const addresses = refreshedResult.data;
-            setUserAddresses(addresses);
-
-            // Si es la primera o se marcó como principal, actualizar mainAddressId
-            const savedAddressId =
-              result.data?.id || (hasNoAddresses ? addresses[0]?.id : null);
-            if (savedAddressId) {
-              setMainAddressId(savedAddressId);
-            }
-          }
+          );
         }
 
-        setEditandoDireccion(false);
-        showToast("Dirección vinculada a tu cuenta correctamente");
-      } else {
-        console.error("Error al guardar dirección en backend");
-        showToast("Error al vincular la dirección a tu cuenta", "error");
+        if (response && response.ok) {
+          const result = await response.json();
+          console.log("✅ Dirección guardada en el perfil del usuario");
+
+          // Refresh addresses to update dropdown and main selection
+          const refreshedResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/users/addresses`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
+          if (refreshedResponse.ok) {
+            const refreshedResult = await refreshedResponse.json();
+            if (refreshedResult.success) {
+              const addresses = refreshedResult.data;
+              setUserAddresses(addresses);
+
+              // Si es la primera o se marcó como principal, actualizar mainAddressId
+              const savedAddressId =
+                result.data?.id || (hasNoAddresses ? addresses[0]?.id : null);
+              if (savedAddressId) {
+                setMainAddressId(savedAddressId);
+              }
+            }
+          }
+
+          showToast("Dirección guardada en tu perfil");
+        } else {
+          console.error("Error al guardar dirección en backend");
+          showToast("Error al guardar en el perfil", "error");
+        }
+      } catch (error) {
+        console.error("Error al guardar dirección en perfil:", error);
+        showToast("Error al guardar en el perfil", "error");
       }
-    } catch (error) {
-      console.error("Error al guardar dirección:", error);
-      showToast("Ocurrió un error al procesar tu dirección", "error");
     }
+
+    // 6. Resetear el checkbox después de guardar
+    setSaveAddressToProfile(false);
   };
 
   return (
@@ -2052,6 +2052,10 @@ export default function Carrito() {
                 onSaveAddress={handleSaveAddress}
                 addressErrors={addressErrors}
                 deliveryZones={deliveryZones}
+                saveToProfile={saveAddressToProfile}
+                setSaveToProfile={setSaveAddressToProfile}
+                showPreview={showAddressPreview}
+                setShowPreview={setShowAddressPreview}
               />
             </DeliveryMethodSelector>
 
