@@ -836,6 +836,24 @@ export async function savePickupStore(data: SavePickupStoreRequest): Promise<Sav
 }
 
 /**
+ * Payment Order Response Interface
+ */
+export interface PayOrderResponse {
+    success: boolean;
+    message?: string;
+    data?: {
+        orderId: number;
+        orderNumber: string;
+        paymentStatus: string;
+        status: string;
+        chargeId: string;
+        amount: number;
+        currency: string;
+        paidAt: string;
+    };
+}
+
+/**
  * Process payment with Culqi token
  * @param orderId - The ID of the order or cart to pay
  * @param data - token and user email
@@ -843,7 +861,7 @@ export async function savePickupStore(data: SavePickupStoreRequest): Promise<Sav
 export async function payOrder(orderId: string | number, data: {
     token: string;
     email: string;
-}): Promise<{ success: boolean; message?: string;[key: string]: any }> {
+}): Promise<PayOrderResponse> {
     try {
         const response = await apiPost(`/payments/orders/${orderId}/pay`, data, {
             skipAuth: true // Payment might be for guest or handled by session headers
@@ -952,5 +970,70 @@ export async function sendOrderPaidEmail(orderId: string | number): Promise<{ su
     } catch (error) {
         console.error('Error in sendOrderPaidEmail:', error);
         throw error;
+    }
+}
+
+/**
+ * Checkout Summary Response Interface
+ */
+export interface CheckoutSummaryResponse {
+    success: boolean;
+    isComplete: boolean;
+    message?: string;
+    data?: {
+        cartId: string;
+        products: Array<{
+            id: number;
+            reference: string;
+            quantity: number;
+            name: string;
+            price: number;
+            subtotal: number;
+            [key: string]: any;
+        }>;
+        deliveryType: 'DELIVERY' | 'RETIRO' | string;
+        pickupStoreInfo?: {
+            idAlmacen: number;
+            desAlmacen: string;
+            [key: string]: any;
+        } | null;
+        [key: string]: any;
+    };
+}
+
+/**
+ * Get checkout summary to validate if all information is complete
+ */
+export async function getCheckoutSummary(): Promise<CheckoutSummaryResponse> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiGet('/cart/checkout-summary', {
+            skipAuth: !accessToken
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('❌ [getCheckoutSummary] API error:', {
+                status: response.status,
+                errorData
+            });
+            // Return success: false but with the error message from API
+            return {
+                success: false,
+                isComplete: false,
+                message: errorData.message || 'Error al validar el resumen del checkout'
+            };
+        }
+
+        const data = await response.json();
+        console.log('📦 [getCheckoutSummary] Success response:', data);
+        return data;
+    } catch (error: any) {
+        console.error('Error in getCheckoutSummary:', error);
+        return {
+            success: false,
+            isComplete: false,
+            message: error.message || 'Error de conexión al validar el checkout'
+        };
     }
 }

@@ -14,7 +14,13 @@ import Script from "next/script";
 import { openCulqi, configureCulqi, closeCulqi } from "@/lib/culqi";
 import { showToast } from "@/lib/notifications";
 import { validateDNI, validateRUC } from "@/lib/validations";
-import { createOrder, payOrder } from "@/lib/cart";
+import {
+  createOrder,
+  payOrder,
+  getCheckoutSummary,
+  validateStock,
+  validateSavarStock,
+} from "@/lib/cart";
 import { useAuth } from "@/hooks/useAuth";
 import { consultaRUC } from "@/lib/general";
 
@@ -48,6 +54,10 @@ export default function Checkout() {
   const [isConsultingRuc, setIsConsultingRuc] = useState(false);
   const [rucConsulted, setRucConsulted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Stock validation state
+  const [isVerifyingStock, setIsVerifyingStock] = useState(true);
+  const [stockErrorMessage, setStockErrorMessage] = useState("");
 
   const subtotal = getCartTotal();
   const envio = totals.shipping;
@@ -139,6 +149,93 @@ export default function Checkout() {
     }
   }, []);
 
+  // Segunda validación de stock al cargar la página
+  useEffect(() => {
+    const verifyStock = async () => {
+      setIsVerifyingStock(true);
+      try {
+        const summary = await getCheckoutSummary();
+        console.log("🔍 [Checkout] Initial summary check:", summary);
+
+        // FIXED: Check summary.data.isComplete instead of summary.isComplete
+        if (!summary.success || !summary.data?.isComplete || !summary.data) {
+          showToast(
+            summary.message || "La información del checkout está incompleta",
+            "error",
+          );
+          router.push("/carrito");
+          return;
+        }
+
+        const { products, deliveryType, pickupStoreInfo } = summary.data;
+
+        if (deliveryType === "DELIVERY") {
+          // Validar cada producto vía Savar
+          console.log("🚚 Validando stock de despacho (Savar)...");
+          const results = await Promise.all(
+            products.map((p: any) =>
+              validateSavarStock(p.reference, p.quantity),
+            ),
+          );
+
+          const invalidItems = results.filter((r) => !r.disponible);
+          if (invalidItems.length > 0) {
+            const names = invalidItems
+              .map((r) => {
+                const p = products.find(
+                  (prod: any) => prod.reference === r.reference,
+                );
+                return p?.name || r.reference;
+              })
+              .join(", ");
+            throw new Error(
+              `Los siguientes productos no tienen stock suficiente para delivery: ${names}`,
+            );
+          }
+        } else if (deliveryType === "RETIRO" && pickupStoreInfo) {
+          // Validar vía endpoint de almacén
+          console.log("🏪 Validando stock de retiro en tienda...");
+          const productsToValidate = products.map((p: any) => ({
+            reference: p.reference,
+            quantity: p.quantity,
+          }));
+
+          const stockResult = await validateStock(
+            [pickupStoreInfo.idAlmacen],
+            productsToValidate,
+          );
+
+          const storeResult = stockResult.resultadosPorAlmacen.find(
+            (r) => r.idAlmacen === pickupStoreInfo.idAlmacen,
+          );
+
+          if (!storeResult || !storeResult.todosDisponibles) {
+            const invalidNames =
+              storeResult?.productos
+                .filter((p) => !p.disponible)
+                .map((p) => p.nomArticulo)
+                .join(", ") || "algunos productos";
+            throw new Error(
+              `Los siguientes productos no tienen stock suficiente en la tienda seleccionada: ${invalidNames}`,
+            );
+          }
+        }
+
+        console.log("✅ Validación de stock exitosa en checkout");
+        setIsVerifyingStock(false);
+      } catch (error: any) {
+        console.error("❌ Error en validación de stock de checkout:", error);
+        showToast(
+          error.message || "Error al verificar el stock disponible",
+          "error",
+        );
+        router.push("/carrito");
+      }
+    };
+
+    verifyStock();
+  }, [router]);
+
   // Configurar Culqi cuando el script esté listo
   const handleCulqiLoad = () => {
     console.log("📦 Script de Culqi cargado");
@@ -185,14 +282,29 @@ export default function Checkout() {
             email: email,
           });
 
-          if (payResponse.success) {
+          console.log("📦 Payment response:", payResponse);
+
+          // Validate payment success with new fields
+          if (
+            payResponse.success &&
+            payResponse.data?.paymentStatus === "COMPLETED" &&
+            payResponse.data?.status === "PAID" &&
+            payResponse.data?.orderId
+          ) {
+            const confirmedOrderId = payResponse.data.orderId;
+            console.log(`✅ Pago confirmado para orden #${confirmedOrderId}`);
+
             closeCulqi();
             showToast("💳 ¡Compra realizada con éxito!", "success");
             setIsSuccess(true);
             clearCart();
-            router.push(`/pedido-exitoso?order=${currentOrderId}`);
+            router.push(`/pedido-exitoso?order=${confirmedOrderId}`);
           } else {
-            throw new Error(payResponse.message || "Error al procesar el pago");
+            // Payment not completed or missing required fields
+            const errorMsg =
+              payResponse.message ||
+              "El pago no pudo ser completado. Por favor, intenta nuevamente.";
+            throw new Error(errorMsg);
           }
         } catch (error: any) {
           console.error("❌ Error en el proceso de pago/orden:", error);
@@ -440,297 +552,308 @@ export default function Checkout() {
       background={true}
     >
       <div className="max-w-7xl mx-auto px-6 py-8 my-24 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Columna izquierda - Formulario */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={() => router.push("/carrito")}
-                className="group flex items-center gap-2 text-gray-500 hover:text-primary transition-colors text-sm font-medium"
-              >
-                <svg
-                  className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-                Volver al carrito
-              </button>
-              <div className="flex items-center gap-2 text-xs text-gray-400 uppercase font-semibold">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Pago Seguro SSL
-              </div>
-            </div>
-
-            {/* Tipo de Comprobante */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
-              <h2 className="text-xl font-semibold mb-2 text-gray-900">
-                Comprobante de Pago
-              </h2>
-              <p className="text-gray-500 mb-8">
-                Selecciona el tipo de documento para tu compra
-              </p>
-
-              <div className="flex gap-4 mb-6">
+        {isVerifyingStock ? (
+          <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-xl font-medium text-gray-600 animate-pulse">
+              Verificando stock...
+            </p>
+            <p className="text-sm text-gray-400">
+              Estamos asegurando que tus productos estén disponibles.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
+            {/* Columna izquierda - Formulario */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="flex items-center justify-between mb-4">
                 <button
-                  onClick={() => setTipoComprobante("boleta")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                    tipoComprobante === "boleta"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
+                  onClick={() => router.push("/carrito")}
+                  className="group flex items-center gap-2 text-gray-500 hover:text-primary transition-colors text-sm font-medium"
                 >
-                  Boleta
+                  <svg
+                    className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2.5}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                  Volver al carrito
                 </button>
-                <button
-                  onClick={() => setTipoComprobante("factura")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                    tipoComprobante === "factura"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    <svg
-                      className="w-5 h-5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                      <path
-                        fillRule="evenodd"
-                        d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Factura
-                  </span>
-                </button>
+                <div className="flex items-center gap-2 text-xs text-gray-400 uppercase font-semibold">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  Pago Seguro SSL
+                </div>
               </div>
 
-              {/* Formulario Boleta */}
-              {tipoComprobante === "boleta" && (
-                <div className="space-y-4 animate-fade-in">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tipo de documento
-                      </label>
-                      <select
-                        value={tipoDocumentoBoleta}
-                        onChange={(e) => {
-                          setTipoDocumentoBoleta(e.target.value);
-                          setDatosBoletaRUC("");
-                          const newErrors = { ...errors };
-                          delete newErrors.rucBoleta;
-                          setErrors(newErrors);
-                        }}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition appearance-none bg-white"
-                      >
-                        <option value="DNI">DNI</option>
-                        <option value="RUC">RUC</option>
-                        <option value="CE">Carnet de Extranjería</option>
-                        <option value="Pasaporte">Pasaporte</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Número de documento
-                      </label>
-                      <input
-                        type="text"
-                        value={datosBoletaRUC}
-                        onChange={(e) =>
-                          setDatosBoletaRUC(e.target.value.replace(/\D/g, ""))
-                        }
-                        placeholder={
-                          tipoDocumentoBoleta === "RUC"
-                            ? "20123456789"
-                            : "12345678"
-                        }
-                        maxLength={
-                          tipoDocumentoBoleta === "RUC"
-                            ? 11
-                            : tipoDocumentoBoleta === "DNI"
-                              ? 8
-                              : 20
-                        }
-                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-                      />
-                      {errors.rucBoleta && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {errors.rucBoleta}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Tipo de Comprobante */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
+                <h2 className="text-xl font-semibold mb-2 text-gray-900">
+                  Comprobante de Pago
+                </h2>
+                <p className="text-gray-500 mb-8">
+                  Selecciona el tipo de documento para tu compra
+                </p>
 
-              {/* Formulario Factura */}
-              {tipoComprobante === "factura" && (
-                <div className="space-y-4 animate-fade-in">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        RUC
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={datosFactura.ruc}
-                          onChange={(e) => {
-                            setDatosFactura({
-                              ...datosFactura,
-                              ruc: e.target.value.replace(/\D/g, ""),
-                              razonSocial: "",
-                              direccionFiscal: "",
-                            });
-                            setRucConsulted(false);
-                          }}
-                          placeholder="20123456789"
-                          maxLength={11}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition pr-12"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleConsultaRUC}
-                          disabled={
-                            isConsultingRuc || datosFactura.ruc.length !== 11
-                          }
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary-dark disabled:text-gray-300 p-2 transition-colors"
-                          title="Consultar RUC"
-                        >
-                          {isConsultingRuc ? (
-                            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                          ) : (
-                            <svg
-                              className="w-5 h-5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                              />
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                      {errors.rucFactura && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {errors.rucFactura}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Razón Social
-                      </label>
-                      <input
-                        type="text"
-                        value={datosFactura.razonSocial}
-                        disabled={rucConsulted}
-                        onChange={(e) =>
-                          setDatosFactura({
-                            ...datosFactura,
-                            razonSocial: e.target.value,
-                          })
-                        }
-                        placeholder="Nombre de la empresa"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition disabled:bg-gray-50 disabled:text-gray-500"
-                      />
-                      {errors.razonSocial && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {errors.razonSocial}
-                        </p>
-                      )}
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Dirección Fiscal
-                      </label>
-                      <input
-                        type="text"
-                        value={datosFactura.direccionFiscal}
-                        disabled={rucConsulted}
-                        onChange={(e) =>
-                          setDatosFactura({
-                            ...datosFactura,
-                            direccionFiscal: e.target.value,
-                          })
-                        }
-                        placeholder="Av. Principal 123"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition disabled:bg-gray-50 disabled:text-gray-500"
-                      />
-                      {errors.direccionFiscal && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {errors.direccionFiscal}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Tipo de pago */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
-              <h2 className="text-xl font-semibold mb-2 text-gray-900">
-                Método de pago
-              </h2>
-              <p className="text-gray-500 mb-8">
-                Elige la opción más conveniente para ti
-              </p>
-
-              <div className="space-y-3">
-                {/* Tarjeta de crédito/débito */}
-                <button
-                  onClick={() => setMetodoPago("tarjeta")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                    metodoPago === "tarjeta"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <FaCreditCard className="text-2xl text-gray-600" />
-                    <div className="text-left">
-                      <p className="font-medium">Tarjeta de crédito/débito</p>
-                      <p className="text-xs text-gray-500">
-                        Visa, Mastercard, American Express
-                      </p>
-                    </div>
-                  </div>
-                  {metodoPago === "tarjeta" && (
-                    <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                <div className="flex gap-4 mb-6">
+                  <button
+                    onClick={() => setTipoComprobante("boleta")}
+                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
+                      tipoComprobante === "boleta"
+                        ? "border-primary bg-primary text-white"
+                        : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
+                  >
+                    Boleta
+                  </button>
+                  <button
+                    onClick={() => setTipoComprobante("factura")}
+                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
+                      tipoComprobante === "factura"
+                        ? "border-primary bg-primary text-white"
+                        : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
+                  >
+                    <span className="flex items-center justify-center gap-2">
                       <svg
-                        className="w-4 h-4 text-white"
+                        className="w-5 h-5"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
+                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                         <path
                           fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
                           clipRule="evenodd"
                         />
                       </svg>
-                    </div>
-                  )}
-                </button>
+                      Factura
+                    </span>
+                  </button>
+                </div>
 
-                {/* Yape */}
-                {/* <button
+                {/* Formulario Boleta */}
+                {tipoComprobante === "boleta" && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Tipo de documento
+                        </label>
+                        <select
+                          value={tipoDocumentoBoleta}
+                          onChange={(e) => {
+                            setTipoDocumentoBoleta(e.target.value);
+                            setDatosBoletaRUC("");
+                            const newErrors = { ...errors };
+                            delete newErrors.rucBoleta;
+                            setErrors(newErrors);
+                          }}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition appearance-none bg-white"
+                        >
+                          <option value="DNI">DNI</option>
+                          <option value="RUC">RUC</option>
+                          <option value="CE">Carnet de Extranjería</option>
+                          <option value="Pasaporte">Pasaporte</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Número de documento
+                        </label>
+                        <input
+                          type="text"
+                          value={datosBoletaRUC}
+                          onChange={(e) =>
+                            setDatosBoletaRUC(e.target.value.replace(/\D/g, ""))
+                          }
+                          placeholder={
+                            tipoDocumentoBoleta === "RUC"
+                              ? "20123456789"
+                              : "12345678"
+                          }
+                          maxLength={
+                            tipoDocumentoBoleta === "RUC"
+                              ? 11
+                              : tipoDocumentoBoleta === "DNI"
+                                ? 8
+                                : 20
+                          }
+                          className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                        />
+                        {errors.rucBoleta && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {errors.rucBoleta}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Formulario Factura */}
+                {tipoComprobante === "factura" && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          RUC
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={datosFactura.ruc}
+                            onChange={(e) => {
+                              setDatosFactura({
+                                ...datosFactura,
+                                ruc: e.target.value.replace(/\D/g, ""),
+                                razonSocial: "",
+                                direccionFiscal: "",
+                              });
+                              setRucConsulted(false);
+                            }}
+                            placeholder="20123456789"
+                            maxLength={11}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition pr-12"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleConsultaRUC}
+                            disabled={
+                              isConsultingRuc || datosFactura.ruc.length !== 11
+                            }
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary-dark disabled:text-gray-300 p-2 transition-colors"
+                            title="Consultar RUC"
+                          >
+                            {isConsultingRuc ? (
+                              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        {errors.rucFactura && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {errors.rucFactura}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Razón Social
+                        </label>
+                        <input
+                          type="text"
+                          value={datosFactura.razonSocial}
+                          disabled={rucConsulted}
+                          onChange={(e) =>
+                            setDatosFactura({
+                              ...datosFactura,
+                              razonSocial: e.target.value,
+                            })
+                          }
+                          placeholder="Nombre de la empresa"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition disabled:bg-gray-50 disabled:text-gray-500"
+                        />
+                        {errors.razonSocial && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {errors.razonSocial}
+                          </p>
+                        )}
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Dirección Fiscal
+                        </label>
+                        <input
+                          type="text"
+                          value={datosFactura.direccionFiscal}
+                          disabled={rucConsulted}
+                          onChange={(e) =>
+                            setDatosFactura({
+                              ...datosFactura,
+                              direccionFiscal: e.target.value,
+                            })
+                          }
+                          placeholder="Av. Principal 123"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition disabled:bg-gray-50 disabled:text-gray-500"
+                        />
+                        {errors.direccionFiscal && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {errors.direccionFiscal}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Tipo de pago */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
+                <h2 className="text-xl font-semibold mb-2 text-gray-900">
+                  Método de pago
+                </h2>
+                <p className="text-gray-500 mb-8">
+                  Elige la opción más conveniente para ti
+                </p>
+
+                <div className="space-y-3">
+                  {/* Tarjeta de crédito/débito */}
+                  <button
+                    onClick={() => setMetodoPago("tarjeta")}
+                    className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
+                      metodoPago === "tarjeta"
+                        ? "border-primary bg-primary/5"
+                        : "border-gray-200 hover:border-primary/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <FaCreditCard className="text-2xl text-gray-600" />
+                      <div className="text-left">
+                        <p className="font-medium">Tarjeta de crédito/débito</p>
+                        <p className="text-xs text-gray-500">
+                          Visa, Mastercard, American Express
+                        </p>
+                      </div>
+                    </div>
+                    {metodoPago === "tarjeta" && (
+                      <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                        <svg
+                          className="w-4 h-4 text-white"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Yape */}
+                  {/* <button
                   onClick={() => setMetodoPago("yape")}
                   className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
                     metodoPago === "yape"
@@ -766,8 +889,8 @@ export default function Checkout() {
                   )}
                 </button> */}
 
-                {/* Pago Efectivo */}
-                {/* <button
+                  {/* Pago Efectivo */}
+                  {/* <button
                   onClick={() => setMetodoPago("efectivo")}
                   className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
                     metodoPago === "efectivo"
@@ -800,225 +923,235 @@ export default function Checkout() {
                     </div>
                   )}
                 </button> */}
-              </div>
-
-              {errors.metodoPago && (
-                <p className="text-red-500 text-sm mt-3">{errors.metodoPago}</p>
-              )}
-
-              {/* Información de Culqi para pruebas */}
-              {(metodoPago === "tarjeta" || metodoPago === "yape") && (
-                <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xl">🧪</span>
-                    <p className="text-sm font-semibold text-blue-900">
-                      Modo de pruebas activo
-                    </p>
-                  </div>
-
-                  {metodoPago === "tarjeta" ? (
-                    <div className="space-y-2 text-xs text-blue-800">
-                      <p className="flex justify-between">
-                        <span>Número:</span>{" "}
-                        <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
-                          4111 1111 1111 1111
-                        </code>
-                      </p>
-                      <p className="flex justify-between">
-                        <span>CVV:</span>{" "}
-                        <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
-                          123
-                        </code>
-                      </p>
-                      <p className="flex justify-between">
-                        <span>Expiración:</span>{" "}
-                        <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
-                          12 / 2026
-                        </code>
-                      </p>
-                      <p className="mt-3 py-2 px-3 bg-white/50 rounded text-[10px] italic">
-                        El modal de Culqi procesará estos datos de forma segura.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-xs text-amber-700 font-medium leading-relaxed">
-                        ⚠️{" "}
-                        <strong className="font-semibold">Nota técnica:</strong>{" "}
-                        El botón de Yape dentro del modal de Culqi requiere un
-                        backend real para funcionar.
-                      </p>
-                      <p className="text-[11px] text-blue-800">
-                        Para validar el flujo completo ahora, te recomendamos
-                        seleccionar <strong>Tarjeta</strong>.
-                      </p>
-                    </div>
-                  )}
                 </div>
-              )}
 
-              {/* Formulario de tarjeta nueva (No requerido para Culqi Checkout v4) */}
-            </div>
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4">
-              <div className="order-2 sm:order-1 text-center sm:text-left">
-                <Button
-                  onClick={handleProcesarPago}
-                  disabled={processing}
-                  className="shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow"
-                >
-                  {processing ? (
-                    <span className="flex items-center justify-center gap-3">
-                      <div className="animate-spin rounded-full h-4 w-4 border border-white/20 border-b-white"></div>
-                      Procesando...
-                    </span>
-                  ) : (
-                    "Confirmar Pago"
-                  )}
-                </Button>
-              </div>
-              <div className="order-1 sm:order-2 flex items-center gap-4 text-gray-500">
-                <div className="flex -space-x-1">
-                  {["VISA", "MC", "AMEX"].map((card) => (
-                    <div
-                      key={card}
-                      className="px-2 py-1 bg-gray-50 border border-gray-200 rounded text-[9px] font-semibold tracking-wider shadow-sm"
-                    >
-                      {card}
+                {errors.metodoPago && (
+                  <p className="text-red-500 text-sm mt-3">
+                    {errors.metodoPago}
+                  </p>
+                )}
+
+                {/* Información de Culqi para pruebas */}
+                {(metodoPago === "tarjeta" || metodoPago === "yape") && (
+                  <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xl">🧪</span>
+                      <p className="text-sm font-semibold text-blue-900">
+                        Modo de pruebas activo
+                      </p>
                     </div>
-                  ))}
-                </div>
-                <span className="text-xs font-medium hidden md:inline uppercase tracking-tight">
-                  Pagos seguros
-                </span>
-              </div>
-            </div>
-          </div>
 
-          {/* Columna derecha - Resumen */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-md shadow-lg p-6 sticky top-24">
-              <h2 className="text-xl font-semibold mb-6">Resumen del pedido</h2>
-
-              <div className="space-y-4 mb-6">
-                {items.map((item) => {
-                  const imageId = item.product.associations?.images?.[0]?.id;
-                  let imageUrl = item.product.coverImage;
-
-                  if (!imageUrl) {
-                    if (imageId) {
-                      imageUrl = getProductImageUrl(
-                        item.product.id.toString(),
-                        imageId,
-                      );
-                    } else {
-                      imageUrl = "/images/placeholder-product.jpg";
-                    }
-                  }
-
-                  return (
-                    <div key={item.product.id} className="flex gap-3">
-                      <div className="relative w-16 h-16 bg-gray-50 rounded overflow-hidden flex-shrink-0">
-                        <Image
-                          src={imageUrl}
-                          alt={getProductName(item.product)}
-                          fill
-                          className="object-contain"
-                          unoptimized
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-sm font-medium text-gray-900 line-clamp-2">
-                          {getProductName(item.product)}
-                        </h3>
-                        <p className="text-xs text-gray-500">
-                          X{item.quantity}
+                    {metodoPago === "tarjeta" ? (
+                      <div className="space-y-2 text-xs text-blue-800">
+                        <p className="flex justify-between">
+                          <span>Número:</span>{" "}
+                          <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
+                            4111 1111 1111 1111
+                          </code>
+                        </p>
+                        <p className="flex justify-between">
+                          <span>CVV:</span>{" "}
+                          <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
+                            123
+                          </code>
+                        </p>
+                        <p className="flex justify-between">
+                          <span>Expiración:</span>{" "}
+                          <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
+                            12 / 2026
+                          </code>
+                        </p>
+                        <p className="mt-3 py-2 px-3 bg-white/50 rounded text-[10px] italic">
+                          El modal de Culqi procesará estos datos de forma
+                          segura.
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">
-                          {formatPrice(
-                            (
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                          ⚠️{" "}
+                          <strong className="font-semibold">
+                            Nota técnica:
+                          </strong>{" "}
+                          El botón de Yape dentro del modal de Culqi requiere un
+                          backend real para funcionar.
+                        </p>
+                        <p className="text-[11px] text-blue-800">
+                          Para validar el flujo completo ahora, te recomendamos
+                          seleccionar <strong>Tarjeta</strong>.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Formulario de tarjeta nueva (No requerido para Culqi Checkout v4) */}
+              </div>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4">
+                <div className="order-2 sm:order-1 text-center sm:text-left">
+                  <Button
+                    onClick={handleProcesarPago}
+                    disabled={processing}
+                    className="shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow"
+                  >
+                    {processing ? (
+                      <span className="flex items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-4 w-4 border border-white/20 border-b-white"></div>
+                        Procesando...
+                      </span>
+                    ) : (
+                      "Confirmar Pago"
+                    )}
+                  </Button>
+                </div>
+                <div className="order-1 sm:order-2 flex items-center gap-4 text-gray-500">
+                  <div className="flex -space-x-1">
+                    {["VISA", "MC", "AMEX"].map((card) => (
+                      <div
+                        key={card}
+                        className="px-2 py-1 bg-gray-50 border border-gray-200 rounded text-[9px] font-semibold tracking-wider shadow-sm"
+                      >
+                        {card}
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-xs font-medium hidden md:inline uppercase tracking-tight">
+                    Pagos seguros
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Columna derecha - Resumen */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-md shadow-lg p-6 sticky top-24">
+                <h2 className="text-xl font-semibold mb-6">
+                  Resumen del pedido
+                </h2>
+
+                <div className="space-y-4 mb-6">
+                  {items.map((item) => {
+                    const imageId = item.product.associations?.images?.[0]?.id;
+                    let imageUrl = item.product.coverImage;
+
+                    if (!imageUrl) {
+                      if (imageId) {
+                        imageUrl = getProductImageUrl(
+                          item.product.id.toString(),
+                          imageId,
+                        );
+                      } else {
+                        imageUrl = "/images/placeholder-product.jpg";
+                      }
+                    }
+
+                    return (
+                      <div key={item.product.id} className="flex gap-3">
+                        <div className="relative w-16 h-16 bg-gray-50 rounded overflow-hidden flex-shrink-0">
+                          <Image
+                            src={imageUrl}
+                            alt={getProductName(item.product)}
+                            fill
+                            className="object-contain"
+                            unoptimized
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-sm font-medium text-gray-900 line-clamp-2">
+                            {getProductName(item.product)}
+                          </h3>
+                          <p className="text-xs text-gray-500">
+                            X{item.quantity}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-gray-900">
+                            {formatPrice(
+                              (
+                                parseFloat(
+                                  (item.product.price || "0").toString(),
+                                ) * item.quantity
+                              ).toString(),
+                            )}
+                          </p>
+                          {item.product.originalPrice &&
+                            parseFloat(item.product.originalPrice.toString()) >
                               parseFloat(
                                 (item.product.price || "0").toString(),
-                              ) * item.quantity
-                            ).toString(),
-                          )}
-                        </p>
-                        {item.product.originalPrice &&
-                          parseFloat(item.product.originalPrice.toString()) >
-                            parseFloat(
+                              ) && (
+                              <p className="text-xs text-gray-400 line-through">
+                                {formatPrice(
+                                  (
+                                    parseFloat(
+                                      item.product.originalPrice.toString(),
+                                    ) * item.quantity
+                                  ).toString(),
+                                )}
+                              </p>
+                            )}
+                          <p className="text-xs text-gray-500">
+                            {formatPrice(
                               (item.product.price || "0").toString(),
-                            ) && (
-                            <p className="text-xs text-gray-400 line-through">
-                              {formatPrice(
-                                (
-                                  parseFloat(
-                                    item.product.originalPrice.toString(),
-                                  ) * item.quantity
-                                ).toString(),
-                              )}
-                            </p>
-                          )}
-                        <p className="text-xs text-gray-500">
-                          {formatPrice((item.product.price || "0").toString())}{" "}
-                          c/u
+                            )}{" "}
+                            c/u
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="border-t pt-4 space-y-3">
+                  <div className="flex justify-between text-gray-500 text-sm">
+                    <span>Subtotal</span>
+                    <span className="font-medium text-gray-900">
+                      {formatPrice(subtotal.toString())}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-gray-500 text-sm">
+                    <span>Envío</span>
+                    <span className="font-medium text-gray-900">
+                      {formatPrice(envio.toString())}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-lg font-semibold pt-4 border-t border-gray-100">
+                    <span className="text-gray-900">Total</span>
+                    <span className="text-primary">
+                      {formatPrice(total.toString())}
+                    </span>
+                  </div>
+
+                  <div className="mt-6 pt-6 border-t border-gray-100 hidden lg:block">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border shadow-sm flex-shrink-0">
+                        <svg
+                          className="w-5 h-5 text-green-600"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M2.166 4.9L10 1.554L17.834 4.9c.45.19.73.635.73 1.127v3.5c0 5.474-3.41 10.371-8.288 12.236c-.183.07-.384.07-.567 0C4.244 19.897.834 15 .834 9.527v-3.5c0-.492.28-.936.73-1.127zM10 3.3l-6.5 2.763v2.983c0 4.007 2.353 7.749 6.5 9.45c4.147-1.7 6.5-5.443 6.5-9.45V6.063L10 3.3zm2.983 5.114a.75.75 0 10-1.066-1.053L9 10.3l-1.417-1.554a.75.75 0 00-1.102 1.018l2 2.2a.75.75 0 001.084.017l3.418-3.567z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold text-gray-800 uppercase tracking-tight">
+                          Compra 100% Segura
+                        </p>
+                        <p className="text-[10px] text-gray-500 line-clamp-2">
+                          Protegemos tus datos con los más altos estándares de
+                          seguridad (PCI DSS).
                         </p>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="border-t pt-4 space-y-3">
-                <div className="flex justify-between text-gray-500 text-sm">
-                  <span>Subtotal</span>
-                  <span className="font-medium text-gray-900">
-                    {formatPrice(subtotal.toString())}
-                  </span>
-                </div>
-                <div className="flex justify-between text-gray-500 text-sm">
-                  <span>Envío</span>
-                  <span className="font-medium text-gray-900">
-                    {formatPrice(envio.toString())}
-                  </span>
-                </div>
-                <div className="flex justify-between text-lg font-semibold pt-4 border-t border-gray-100">
-                  <span className="text-gray-900">Total</span>
-                  <span className="text-primary">
-                    {formatPrice(total.toString())}
-                  </span>
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-gray-100 hidden lg:block">
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border shadow-sm flex-shrink-0">
-                      <svg
-                        className="w-5 h-5 text-green-600"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M2.166 4.9L10 1.554L17.834 4.9c.45.19.73.635.73 1.127v3.5c0 5.474-3.41 10.371-8.288 12.236c-.183.07-.384.07-.567 0C4.244 19.897.834 15 .834 9.527v-3.5c0-.492.28-.936.73-1.127zM10 3.3l-6.5 2.763v2.983c0 4.007 2.353 7.749 6.5 9.45c4.147-1.7 6.5-5.443 6.5-9.45V6.063L10 3.3zm2.983 5.114a.75.75 0 10-1.066-1.053L9 10.3l-1.417-1.554a.75.75 0 00-1.102 1.018l2 2.2a.75.75 0 001.084.017l3.418-3.567z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-gray-800 uppercase tracking-tight">
-                        Compra 100% Segura
-                      </p>
-                      <p className="text-[10px] text-gray-500 line-clamp-2">
-                        Protegemos tus datos con los más altos estándares de
-                        seguridad (PCI DSS).
-                      </p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       <Script

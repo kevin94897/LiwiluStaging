@@ -77,6 +77,7 @@ import {
   WarehouseDetail,
   savePickupStore,
   SavePickupStoreRequest,
+  getCheckoutSummary,
 } from "@/lib/cart";
 
 // Distritos disponibles
@@ -1240,7 +1241,50 @@ export default function Carrito() {
       if (isGuest || isLoggedIn) {
         const synced = await syncCheckoutData();
         if (synced) {
-          router.push("/checkout");
+          // New validation with checkout-summary
+          const summary = await getCheckoutSummary();
+          console.log("🔍 [Carrito] Checkout summary response:", summary);
+
+          if (summary.data) {
+            console.log("📊 [Carrito] Summary Details:", {
+              isComplete: summary.data.isComplete,
+              hasPersonalData: !!summary.data.personalData,
+              hasAddress: !!summary.data.deliveryAddressData,
+              hasCarrier: !!summary.data.carrier,
+              deliveryType: summary.data.deliveryType,
+            });
+          }
+
+          // FIXED: Check summary.data.isComplete instead of summary.isComplete
+          if (summary.success && summary.data?.isComplete) {
+            router.push("/checkout");
+          } else {
+            console.warn("⚠️ [Carrito] Checkout incomplete or error:", summary);
+            const missingInfo = [];
+            if (summary.data && !summary.data.personalData)
+              missingInfo.push("Datos Personales");
+            if (
+              summary.data &&
+              !summary.data.deliveryAddressData &&
+              summary.data.deliveryType === "DELIVERY"
+            )
+              missingInfo.push("Dirección de Envío");
+            if (
+              summary.data &&
+              !summary.data.carrier &&
+              summary.data.deliveryType === "DELIVERY"
+            )
+              missingInfo.push("Método de Envío");
+
+            const errorMsg =
+              missingInfo.length > 0
+                ? `Falta información: ${missingInfo.join(", ")}`
+                : summary.message ||
+                  "Por favor completa toda la información requerida";
+
+            showToast(errorMsg, "error");
+            // We stay in the cart as per latest requirement
+          }
         }
         return;
       }
@@ -1270,7 +1314,19 @@ export default function Carrito() {
     if (stockValidationResult?.success) {
       const synced = await syncCheckoutData();
       if (synced) {
-        router.push("/checkout");
+        // New validation with checkout-summary
+        const summary = await getCheckoutSummary();
+        // FIXED: Check summary.data.isComplete instead of summary.isComplete
+        if (summary.success && summary.data?.isComplete) {
+          router.push("/checkout");
+        } else {
+          showToast(
+            summary.message ||
+              "Por favor completa toda la información requerida",
+            "error",
+          );
+          // We stay in the cart
+        }
       }
       return;
     }
@@ -1280,7 +1336,19 @@ export default function Carrito() {
     if (result?.success) {
       const synced = await syncCheckoutData();
       if (synced) {
-        router.push("/checkout");
+        // New validation with checkout-summary
+        const summary = await getCheckoutSummary();
+        // FIXED: Check summary.data.isComplete instead of summary.isComplete
+        if (summary.success && summary.data?.isComplete) {
+          router.push("/checkout");
+        } else {
+          showToast(
+            summary.message ||
+              "Por favor completa toda la información requerida",
+            "error",
+          );
+          // We stay in the cart
+        }
       }
     } else if (result) {
       if (metodoEnvio === "retiro") {
