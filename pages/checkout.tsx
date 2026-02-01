@@ -1,7 +1,7 @@
 // pages/checkout.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Layout from "@/components/Layout";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -39,6 +39,7 @@ export default function Checkout() {
   const [culqiReady, setCulqiReady] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
+  const processingToken = useRef<string | null>(null);
 
   // Datos para Boleta
   const [tipoDocumentoBoleta, setTipoDocumentoBoleta] = useState("DNI");
@@ -160,7 +161,7 @@ export default function Checkout() {
         // FIXED: Check summary.data.isComplete instead of summary.isComplete
         if (!summary.success || !summary.data?.isComplete || !summary.data) {
           showToast(
-            summary.message || "La información del checkout está incompleta",
+            summary.message || "La información del carrito está incompleta",
             "error",
           );
           router.push("/carrito");
@@ -249,6 +250,15 @@ export default function Checkout() {
       if (window.Culqi.token) {
         const token = window.Culqi.token;
         console.log("✅ Token de Culqi recibido:", token.id);
+
+        if (processingToken.current === token.id) {
+          console.warn(
+            "⚠️ Token ya procesado o en proceso, ignorando duplicado:",
+            token.id,
+          );
+          return;
+        }
+        processingToken.current = token.id;
 
         try {
           if (!currentOrderId) {

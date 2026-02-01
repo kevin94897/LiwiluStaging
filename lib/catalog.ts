@@ -8,6 +8,7 @@ export interface Product {
     name?: Array<{ value: string }> | string;
     description?: Array<{ value: string }> | string;
     price?: string | number;
+    discountPrice?: number | null;
     quantity?: number;
     reference?: string | null;
     sku?: string | null;

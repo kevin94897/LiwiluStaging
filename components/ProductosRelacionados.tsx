@@ -103,8 +103,13 @@ export default function ProductosRelacionados({
             productId: p.prestashopId || p.id,
             name: p.name,
             price: p.price,
+            discountPrice: p.discountPrice,
             quantity: p.quantity !== undefined ? p.quantity : 1, // Use actual quantity if available
-            reference: p.linkRewrite,
+            reference: p.reference,
+            linkRewrite: p.linkRewrite,
+            hasVariations: p.hasVariations,
+            defaultVariation: p.defaultVariation,
+            variationAttributes: p.variationAttributes,
             coverImage: p.coverImage,
             associations: {
               categories: p.defaultCategory

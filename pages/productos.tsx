@@ -399,7 +399,7 @@ export default function Tienda({
       </section> */}
 
       {/* Slider: Regreso a clases */}
-      <section className="relative text-white overflow-hidden md:h-[400px] flex items-center">
+      <section className="relative text-white overflow-hidden md:min-h-[400px] flex items-center">
         {/* Background */}
         <motion.div
           className="absolute inset-0 overflow-hidden"
@@ -443,7 +443,7 @@ export default function Tienda({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <div className="pt-10 md:py-12 mx-auto max-w-md md:max-w-full px-4 md:px-0">
+            <div className="pt-8 md:py-12 mx-auto max-w-md md:max-w-full px-4 md:px-0">
               {/* Título */}
               <motion.h2
                 className="text-3xl md:text-4xl lg:text-5xl font-semibold mb-4 text-primary-light uppercase"
@@ -456,7 +456,7 @@ export default function Tienda({
 
               {/* Iconos */}
               <motion.div
-                className="flex flex-row gap-4 pt-4"
+                className="flex flex-row gap-4 md:pt-4"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.6 }}
@@ -484,7 +484,7 @@ export default function Tienda({
 
               {/* Texto */}
               <motion.p
-                className="text-lg md:text-xl lg:text-2xl my-6 mr-12"
+                className="text-lg md:text-xl lg:text-2xl mt-2 mb-6 md:my-6 mr-12"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 1 }}
@@ -498,27 +498,25 @@ export default function Tienda({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 1.2 }}
               >
-                <Button
-                  asChild
-                  variant="primary"
-                  size="lg"
-                  className="md:!px-12"
+                <Link
+                  href="/productos"
+                  className="bg-primary text-white font-semibold rounded-full hover:bg-primary-dark transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl px-6 py-3"
                 >
-                  <button>Ir a tienda</button>
-                </Button>
+                  Ver productos
+                </Link>
               </motion.div>
             </div>
           </motion.div>
 
           {/* Imagen derecha */}
           <motion.div
-            className="relative w-full md:w-1/2 flex justify-end items-end min-h-[300px] md:min-h-[400px] overflow-visible"
+            className="relative w-full md:w-1/2 flex justify-end items-end min-h-[200px] xs:min-h-[300px] md:min-h-[420px] overflow-visible"
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
           >
             {/* Mobile */}
-            <div className="relative w-full h-[300px] md:hidden overflow-visible">
+            <div className="relative w-full h-[250px] xs:h-[300px] md:hidden overflow-visible">
               <Image
                 src="/images/productos/liwilu_banner_nuestro_compromiso_image-mob.png"
                 alt="Colegio"
@@ -541,7 +539,7 @@ export default function Tienda({
 
             {/* Vector flotante */}
             <motion.div
-              className="absolute -bottom-2 md:-bottom-3 left-0 md:left-auto md:right-0 w-full md:w-auto z-10 floating-slow transition-all duration-1000"
+              className="absolute -bottom-2 md:-bottom-3 left-0 lg:left-auto md:right-0 w-full md:w-auto z-10 floating-slow transition-all duration-1000"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.7 }}
@@ -552,7 +550,7 @@ export default function Tienda({
                 width={452}
                 height={371}
                 quality={100}
-                className="h-auto w-full md:w-auto max-w-[280px] md:max-w-none ml-auto  mr-0 md:mx-0"
+                className="h-auto w-full sm:w-[450px] md:w-[550px] max-w-[300px] md:max-w-none ml-auto mr-0 md:mx-0"
                 priority
               />
             </motion.div>
@@ -683,7 +681,7 @@ export default function Tienda({
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {currentProducts.map((product, index) => {
                   // Priority to coverImage from catalog, fallback to association logic
                   const imageUrl =
@@ -725,7 +723,7 @@ export default function Tienda({
                               />
                             )}
                           </button>
-                          <div className="relative w-full h-56 bg-gray-100 overflow-hidden">
+                          <div className="relative w-full h-44 lg:h-48 xl:h-56 bg-gray-100 overflow-hidden">
                             {/* {(product.quantity ?? 0) <= 0 && (
                               <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 pointer-events-none">
                                 <span className="bg-red-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg transform -rotate-12 scale-110">
@@ -765,7 +763,7 @@ export default function Tienda({
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 mb-6">
+                          <div className="flex items-center gap-2 mb-2 lg:mb-4 xl:mb-6">
                             {hasDiscount(product) && (
                               <span className="text-white text-sm line-through opacity-70">
                                 {formatPrice(getRegularPrice(product))}
