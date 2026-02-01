@@ -16,6 +16,7 @@ export interface CartProduct {
     priceWithTax: number;
     discountPrice?: number | null; // Changed to optional
     quantity: number;
+    priceImpact?: number; // Added
     coverImage: string;
     subtotal: number;
     codArticle: string | null;
@@ -85,6 +86,7 @@ export interface CartData {
         subtotal: number;
     };
     expiresAt?: string; // Changed from string | null to optional string
+    timeRemaining?: string; // Added
 }
 
 /**

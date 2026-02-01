@@ -108,9 +108,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           prestashopCombinationId: cartProduct.prestashopCombinationId || 0,
           name: cartProduct.name,
           reference: cartProduct.variationReference || "",
-          price: cartProduct.variationPriceWithTax || 0, // Treated as Sale Price by utils
-          priceWithTax: cartProduct.variationPriceWithTax || 0,
-          priceImpact: cartProduct.priceWithTax, // Treated as Regular Price by utils (when > 0)
+          price:
+            cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0, // Treated as Sale Price by utils
+          priceWithTax:
+            cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0,
+          priceImpact: cartProduct.priceImpact || 0, // Treated as Regular Price by utils (when > 0)
           queryString: "",
         }
       : null;
