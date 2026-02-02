@@ -2038,14 +2038,16 @@ export default function Carrito() {
                       <label className="text-xs text-gray-600">
                         Acepto los{" "}
                         <Link
-                          href="/terminos"
+                          href="/terminos-y-condiciones"
+                          target="_blank"
                           className="text-primary hover:underline"
                         >
                           términos y condiciones
                         </Link>{" "}
                         y las{" "}
                         <Link
-                          href="/privacidad"
+                          href="/politicas/politica-de-privacidad"
+                          target="_blank"
                           className="text-primary hover:underline"
                         >
                           políticas de privacidad
@@ -2105,7 +2107,8 @@ export default function Carrito() {
             </div>
           </div>
         </div>
-      )}
+      )
+      }
 
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="flex items-center justify-between mb-8">
@@ -2370,6 +2373,6 @@ export default function Carrito() {
         onCloseValidation={() => setShowValidationModal(false)}
         validationMessage={validationErrorMessage}
       />
-    </Layout>
+    </Layout >
   );
 }

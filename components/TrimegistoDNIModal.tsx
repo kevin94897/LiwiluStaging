@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import Button from "./ui/Button";
 import { dniSchema } from "../lib/dniSchema";
 import { z } from "zod";
@@ -300,8 +301,7 @@ export function TrimegistoRegisterModal({
   };
 
   const inputClasses = (fieldName: keyof FullRegisterValues) =>
-    `w-full px-4 py-3 border rounded-sm focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${
-      errors[fieldName] ? "border-red-500" : "border-gray-300"
+    `w-full px-4 py-3 border rounded-sm focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${errors[fieldName] ? "border-red-500" : "border-gray-300"
     }`;
 
   const fileName = formData.signatureFile ? formData.signatureFile.name : null;
@@ -473,11 +473,10 @@ export function TrimegistoRegisterModal({
 
               {/* Subida de Firma */}
               <div
-                className={`border-2 border-dashed rounded-sm p-4 ${
-                  errors.signatureFile
-                    ? "border-red-500 bg-red-50"
-                    : "border-green-300 bg-green-50"
-                }`}
+                className={`border-2 border-dashed rounded-sm p-4 ${errors.signatureFile
+                  ? "border-red-500 bg-red-50"
+                  : "border-green-300 bg-green-50"
+                  }`}
               >
                 <label
                   htmlFor="signature-upload"
@@ -537,8 +536,22 @@ export function TrimegistoRegisterModal({
                     className="mt-1 w-5 h-5 text-green-500 border-gray-300 rounded focus:ring-green-500"
                   />
                   <span className="text-sm text-gray-700">
-                    Acepto los Términos y Condiciones y la política de
-                    Privacidad
+                    Acepto los{" "}
+                    <Link
+                      href="/terminos-y-condiciones"
+                      className="text-primary hover:underline"
+                      target="_blank"
+                    >
+                      Términos y Condiciones
+                    </Link>{" "}
+                    y la{" "}
+                    <Link
+                      href="/politicas/politica-de-privacidad"
+                      className="text-primary hover:underline"
+                      target="_blank"
+                    >
+                      Política de Privacidad
+                    </Link>
                   </span>
                 </label>
                 {errors.acceptTerms && (

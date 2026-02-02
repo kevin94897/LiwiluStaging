@@ -113,19 +113,19 @@ export default function Footer() {
                 </div>
                 <ul>
                   <li>
-                    <Link href="/estaticas/nosotros">Nosotros</Link>
+                    <Link href="/nosotros">Nosotros</Link>
                   </li>
                   <li>
-                    <Link href="/estaticas/nosotros#mision">Misión</Link>
+                    <Link href="/nosotros#mision">Misión</Link>
                   </li>
                   <li>
-                    <Link href="/estaticas/nosotros#vision">Visión</Link>
+                    <Link href="/nosotros#vision">Visión</Link>
                   </li>
                   <li>
                     <Link href="#">Valores</Link>
                   </li>
                   <li>
-                    <Link href="/estaticas/trabajemos-juntos">
+                    <Link href="/trabajemos-juntos">
                       Trabaja con nosotros
                     </Link>
                   </li>
@@ -137,28 +137,33 @@ export default function Footer() {
                 <StoresModal />
                 <ul className="space-y-2 text-sm text-gray-200">
                   <li>
-                    <Link href="/estaticas/politicas">
+                    <Link href="/politicas/politica-de-cookies">
                       Políticas de cookies
                     </Link>
                   </li>
                   <li>
-                    <Link href="/estaticas/politicas">
+                    <Link href="/politicas/politica-de-privacidad">
                       Políticas de privacidad y manejo de datos personales
                     </Link>
                   </li>
                   <li>
-                    <Link href="/estaticas/politicas">
+                    <Link href="/politicas/politica-de-publicidad">
                       Políticas de aceptación de envío publicidad y promociones
                     </Link>
                   </li>
                   <li>
-                    <Link href="/estaticas/politicas">
+                    <Link href="/politicas/politica-de-devoluciones">
                       Políticas de cambios y devoluciones
                     </Link>
                   </li>
                   <li>
-                    <Link href="/estaticas/politicas">
+                    <Link href="/politicas/politica-de-envio-y-recojo-pedidos">
                       Políticas de envíos y recojo en tienda
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/terminos-y-condiciones">
+                      Términos y Condiciones
                     </Link>
                   </li>
                 </ul>
@@ -171,7 +176,7 @@ export default function Footer() {
         <div className="md:col-span-1">
           {/* Columna 3: Suscripción y redes */}
           <div className="space-y-4">
-            <Link href="/estaticas/libro-reclamaciones">
+            <Link href="/libro-reclamaciones">
               <Image
                 src="/images/liwilu_libro_reclamaciones.png"
                 alt="Libro de reclamaciones"
@@ -191,11 +196,10 @@ export default function Footer() {
                     value={newsletterData.email}
                     onChange={handleChange}
                     placeholder="Dirección de correo electrónico"
-                    className={`px-4 py-2 rounded-l-sm text-primary-dark text-sm w-full focus:outline-none focus:ring-2 transition ${
-                      errors.email
-                        ? "ring-2 ring-red-400"
-                        : "focus:ring-white/50"
-                    }`}
+                    className={`px-4 py-2 rounded-l-sm text-primary-dark text-sm w-full focus:outline-none focus:ring-2 transition ${errors.email
+                      ? "ring-2 ring-red-400"
+                      : "focus:ring-white/50"
+                      }`}
                     disabled={isSubmitting}
                   />
                   <button

@@ -17,7 +17,7 @@ const TrabajaConNosotros = () => {
                 <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-16">
 
                     <a
-                        href="#"
+                        href="https://pe.computrabajo.com/distribuidora-liwilu-sac"
                         target="_blank"
                         aria-label="Enlace a Plataforma de Contratación (Ct)"
                     >
@@ -27,7 +27,7 @@ const TrabajaConNosotros = () => {
                     </a>
 
                     <a
-                        href="https://www.linkedin.com/company/tunombre/"
+                        href="https://www.linkedin.com/company/liwilu-sac"
                         target="_blank"
                         aria-label="Enlace a LinkedIn"
                     >

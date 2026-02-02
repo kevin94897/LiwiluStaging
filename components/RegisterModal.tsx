@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
 import Button from "./ui/Button";
@@ -301,13 +302,26 @@ export default function RegisterModal({
                     checked={formData.acceptTerms}
                     onChange={handleCheckboxChange}
                     disabled={isLoading}
-                    className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
-                      errors.acceptTerms ? "border-error" : ""
-                    }`}
+                    className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${errors.acceptTerms ? "border-error" : ""
+                      }`}
                   />
                   <span className="text-sm text-gray-700">
-                    Acepto los Términos y Condiciones y la política de
-                    Privacidad
+                    Acepto los{" "}
+                    <Link
+                      href="/terminos-y-condiciones"
+                      className="text-primary hover:underline"
+                      target="_blank"
+                    >
+                      Términos y Condiciones
+                    </Link>{" "}
+                    y la{" "}
+                    <Link
+                      href="/politicas/politica-de-privacidad"
+                      className="text-primary hover:underline"
+                      target="_blank"
+                    >
+                      Política de Privacidad
+                    </Link>
                   </span>
                 </label>
                 {errors.acceptTerms && (
@@ -323,9 +337,8 @@ export default function RegisterModal({
                     checked={formData.receiveOffers}
                     onChange={handleCheckboxChange}
                     disabled={isLoading}
-                    className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
-                      errors.receiveOffers ? "border-error" : ""
-                    }`}
+                    className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${errors.receiveOffers ? "border-error" : ""
+                      }`}
                   />
                   <span className="text-sm text-gray-700">
                     Quiero recibir ofertas y beneficios exclusivos

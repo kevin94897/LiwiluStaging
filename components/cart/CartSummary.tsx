@@ -121,7 +121,7 @@ export default function CartSummary({
             >
               Acepto los{" "}
               <Link
-                href="/estaticas/terminos-y-condiciones"
+                href="/terminos-y-condiciones"
                 className="text-primary hover:underline"
                 target="_blank"
               >
@@ -129,7 +129,7 @@ export default function CartSummary({
               </Link>{" "}
               y la{" "}
               <Link
-                href="/estaticas/politicas"
+                href="/politicas/envio-y-recojo"
                 className="text-primary hover:underline"
                 target="_blank"
               >

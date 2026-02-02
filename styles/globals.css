@@ -557,10 +557,14 @@ body {
     color: #6b7280;
   }
 }
+
 @keyframes pulse-subtle {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.85;
   }
