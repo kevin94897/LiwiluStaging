@@ -74,7 +74,7 @@ export default function PedidoExitoso() {
         } else {
           setError(
             response.message ||
-              "No se pudieron obtener los detalles del pedido",
+            "No se pudieron obtener los detalles del pedido",
           );
         }
       } catch (err: any) {
@@ -259,8 +259,8 @@ export default function PedidoExitoso() {
                             (
                               parseFloat(
                                 item.priceWithTax ||
-                                  item.variationPriceWithTax ||
-                                  "0",
+                                item.variationPriceWithTax ||
+                                "0",
                               ) * item.quantity
                             ).toString(),
                           )}
@@ -306,7 +306,7 @@ export default function PedidoExitoso() {
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-semibold text-green-800">
                         {order.status === "PAID" ||
-                        order.paymentStatus === "COMPLETED"
+                          order.paymentStatus === "COMPLETED"
                           ? "Pagado"
                           : "Pendiente"}
                       </span>
@@ -359,7 +359,7 @@ export default function PedidoExitoso() {
                 </div>
 
                 {/* Tiempo estimado de entrega */}
-                <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-sm p-4 border border-blue-200">
+                {/* <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-sm p-4 border border-blue-200">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow">
                       <svg
@@ -383,7 +383,7 @@ export default function PedidoExitoso() {
                       <p className="text-sm text-gray-700">10 días hábiles</p>
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>

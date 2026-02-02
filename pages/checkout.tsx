@@ -56,9 +56,12 @@ export default function Checkout() {
   const [rucConsulted, setRucConsulted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Stock validation state
   const [isVerifyingStock, setIsVerifyingStock] = useState(true);
   const [stockErrorMessage, setStockErrorMessage] = useState("");
+
+  // Modo de simulación/prueba
+  const [testMode, setTestMode] = useState(false);
+  const [simulateRejection, setSimulateRejection] = useState(false);
 
   const subtotal = getCartTotal();
   const envio = totals.shipping;
@@ -147,6 +150,15 @@ export default function Checkout() {
       console.log("⚡ Culqi ya estaba cargado al montar");
       const configured = configureCulqi();
       setCulqiReady(configured);
+    }
+
+    // Detectar modo prueba desde la URL
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("test") === "true") {
+        console.log("🧪 [TEST MODE] Modo de prueba activado via URL");
+        setTestMode(true);
+      }
     }
   }, []);
 
@@ -259,6 +271,24 @@ export default function Checkout() {
           return;
         }
         processingToken.current = token.id;
+
+        // SIMULACIÓN DE RECHAZO (Si el modo prueba está activo)
+        if (testMode && simulateRejection) {
+          console.log("🧪 [SIMULACIÓN] Interceptando token para simular rechazo...");
+          setProcessing(true);
+          setTimeout(() => {
+            console.log("❌ [SIMULACIÓN] Venta denegada");
+            showToast(
+              "Operación denegada. Intente nuevamente ó utilice otra tarjeta.",
+              "error",
+            );
+            setProcessing(false);
+            closeCulqi();
+            // Permitimos re-usar el token en la simulación reseteando el processingToken
+            processingToken.current = null;
+          }, 2000);
+          return;
+        }
 
         try {
           if (!currentOrderId) {
@@ -933,6 +963,24 @@ export default function Checkout() {
                         Modo de pruebas activo
                       </p>
                     </div>
+
+                    {testMode && (
+                      <div className="flex items-center gap-3 mb-5 p-3 bg-red-50 border border-red-100 rounded-lg shadow-inner animate-pulse-subtle">
+                        <input
+                          type="checkbox"
+                          id="simulateRejection"
+                          checked={simulateRejection}
+                          onChange={(e) => setSimulateRejection(e.target.checked)}
+                          className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500 cursor-pointer"
+                        />
+                        <label
+                          htmlFor="simulateRejection"
+                          className="text-xs font-bold text-red-700 cursor-pointer select-none"
+                        >
+                          Simular rechazo de pago (Venta denegada)
+                        </label>
+                      </div>
+                    )}
 
                     {metodoPago === "tarjeta" ? (
                       <div className="space-y-2 text-xs text-blue-800">

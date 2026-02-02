@@ -343,6 +343,7 @@ export default function Carrito() {
         ((user && "token" in user) || localStorage.getItem("accessToken"))
       ) {
         setIsLoggedIn(true); // Asegurar que UI refleje logueo
+        setSaveAddressToProfile(true); // Default to save new addresses to profile
         try {
           const token = localStorage.getItem("accessToken");
           const response = await fetch(
@@ -1077,6 +1078,13 @@ export default function Carrito() {
       // 1. Guardar Datos Personales
       let personalData = null;
       if (isLoggedIn && user) {
+        // Para personal-data: SIEMPRE usar la dirección principal (isMain: true)
+        const mainAddress = userAddresses.find(a => a.isMain);
+
+        if (!mainAddress && metodoEnvio === "delivery") {
+          throw new Error("Debes configurar una dirección principal en tu cuenta. Ve a 'Mi Cuenta' para establecer una.");
+        }
+
         personalData = {
           nombre: user.firstName,
           apellido: user.lastName,
@@ -1085,12 +1093,13 @@ export default function Carrito() {
           celular: user.phone || "",
           telefono: "",
           email: user.email,
-          departamento: direccionEnvio.departamento,
-          provincia: direccionEnvio.ciudad,
-          distrito: direccionEnvio.distrito,
-          direccion: direccionEnvio.calle,
-          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
-          referencia: direccionEnvio.referencia,
+          // Usar dirección principal para datos de contacto
+          departamento: mainAddress ? mainAddress.department : "",
+          provincia: mainAddress ? mainAddress.province : "",
+          distrito: mainAddress ? mainAddress.district : "",
+          direccion: mainAddress ? mainAddress.address : "",
+          numeroDptoPiso: mainAddress ? mainAddress.apartment : "",
+          referencia: mainAddress ? mainAddress.reference : "",
         };
       } else if (isGuest) {
         personalData = {
@@ -1116,18 +1125,51 @@ export default function Carrito() {
 
       // 2. Guardar Dirección de Envío o Datos de Retiro
       if (metodoEnvio === "delivery") {
-        console.log("🚚 Sincronizando dirección de envío al finalizar:", {
-          distritoSeleccionado: direccionEnvio.distrito,
-          direccion: direccionEnvio.calle,
-          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
-          referencia: direccionEnvio.referencia,
-        });
-        await saveCartDeliveryAddress({
-          distritoSeleccionado: direccionEnvio.distrito,
-          direccion: direccionEnvio.calle,
-          numeroDptoPiso: direccionEnvio.numeroDptoPiso,
-          referencia: direccionEnvio.referencia,
-        });
+        let finalAddress;
+
+        if (isLoggedIn) {
+          // Authenticated user: respect the active tab in DeliveryAddressForm
+          if (mainAddressId) {
+            // Tab "Mis direcciones": use selected saved address
+            const selectedAddr = userAddresses.find(a => a.id === mainAddressId);
+            if (!selectedAddr) {
+              throw new Error("No se encontró la dirección seleccionada en tu cuenta.");
+            }
+            finalAddress = {
+              distritoSeleccionado: selectedAddr.district,
+              direccion: selectedAddr.address,
+              numeroDptoPiso: selectedAddr.apartment || "",
+              referencia: selectedAddr.reference || "",
+            };
+          } else if (direccionEnvio.calle) {
+            // Tab "Nueva dirección": use form data
+            finalAddress = {
+              distritoSeleccionado: direccionEnvio.distrito,
+              direccion: direccionEnvio.calle,
+              numeroDptoPiso: direccionEnvio.numeroDptoPiso,
+              referencia: direccionEnvio.referencia,
+            };
+          } else {
+            throw new Error("Debes seleccionar una dirección guardada o completar una nueva dirección.");
+          }
+        } else if (isGuest) {
+          // Guest user: DeliveryAddressForm is MANDATORY
+          if (direccionEnvio.calle) {
+            finalAddress = {
+              distritoSeleccionado: direccionEnvio.distrito,
+              direccion: direccionEnvio.calle,
+              numeroDptoPiso: direccionEnvio.numeroDptoPiso,
+              referencia: direccionEnvio.referencia,
+            };
+          } else {
+            throw new Error("Debes completar la dirección de envío en el formulario correspondiente.");
+          }
+        } else {
+          throw new Error("No se encontró una dirección de envío válida.");
+        }
+
+        console.log("🚚 Sincronizando dirección de envío al finalizar:", finalAddress);
+        await saveCartDeliveryAddress(finalAddress);
       } else if (metodoEnvio === "retiro") {
         // Guardar Tienda de Retiro
         if (selectedStoreData) {
@@ -1198,9 +1240,18 @@ export default function Carrito() {
         return;
       }
 
-      if (isLoggedIn && !direccionEnvio.calle) {
+      if (isLoggedIn && !mainAddressId && !direccionEnvio.calle) {
         showToast(
-          "Debes elegir una dirección de envío o agregar una nueva.",
+          "Debes elegir una dirección de envío de tu cuenta o completar una nueva dirección.",
+          "error",
+        );
+        return;
+      }
+
+      // Validation for guest users: must have address from DeliveryAddressForm
+      if (isGuest && !direccionEnvio.calle) {
+        showToast(
+          "Debes completar la dirección de envío para continuar.",
           "error",
         );
         return;
@@ -1280,7 +1331,7 @@ export default function Carrito() {
               missingInfo.length > 0
                 ? `Falta información: ${missingInfo.join(", ")}`
                 : summary.message ||
-                  "Por favor completa toda la información requerida";
+                "Por favor completa toda la información requerida";
 
             showToast(errorMsg, "error");
             // We stay in the cart as per latest requirement
@@ -1322,7 +1373,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-              "Por favor completa toda la información requerida",
+            "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
@@ -1344,7 +1395,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-              "Por favor completa toda la información requerida",
+            "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
