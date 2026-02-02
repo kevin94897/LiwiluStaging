@@ -151,7 +151,7 @@ export default function AutorizacionModal({
         }
       } else if (formData.documentType === "RUC") {
         if (formData.documentNumber.length !== 11) {
-          showToast("El RUC debe tener 11 dígitos", "error");
+          showToast("El RUC debe tener 11 números y empezar con 10, 15 o 20", "error");
           setConsulting(false);
           return;
         }
@@ -258,20 +258,20 @@ export default function AutorizacionModal({
                   />
                   {(formData.documentType === "DNI" ||
                     formData.documentType === "RUC") && (
-                    <button
-                      type="button"
-                      onClick={handleConsultation}
-                      disabled={consulting || !formData.documentNumber}
-                      className="absolute right-3 top-[14px] text-gray-400 hover:text-primary transition disabled:opacity-50"
-                      title="Consultar Documento"
-                    >
-                      {consulting ? (
-                        <FaSpinner className="animate-spin text-lg" />
-                      ) : (
-                        <FaSearch className="text-lg" />
-                      )}
-                    </button>
-                  )}
+                      <button
+                        type="button"
+                        onClick={handleConsultation}
+                        disabled={consulting || !formData.documentNumber}
+                        className="absolute right-3 top-[14px] text-gray-400 hover:text-primary transition disabled:opacity-50"
+                        title="Consultar Documento"
+                      >
+                        {consulting ? (
+                          <FaSpinner className="animate-spin text-lg" />
+                        ) : (
+                          <FaSearch className="text-lg" />
+                        )}
+                      </button>
+                    )}
                 </div>
               </div>
 
@@ -283,7 +283,6 @@ export default function AutorizacionModal({
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
-                  disabled={isConsulted}
                   className={
                     isConsulted
                       ? "bg-gray-100 text-gray-500"

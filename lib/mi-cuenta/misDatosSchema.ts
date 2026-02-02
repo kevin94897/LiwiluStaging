@@ -42,7 +42,7 @@ export const misDatosSchema = z.object({
         if (!RUC_REGEX.test(data.numeroDocumento)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "El RUC debe tener 11 números y empezar con 20",
+                message: "El RUC debe tener 11 números y empezar con 10, 15 o 20",
                 path: ["numeroDocumento"],
             });
         }

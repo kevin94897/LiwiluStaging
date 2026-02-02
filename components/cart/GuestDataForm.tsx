@@ -64,7 +64,7 @@ export default function GuestDataForm({
         }
       } else if (guestData.tipoDocumento === "RUC") {
         if (guestData.numeroDocumento.length !== 11) {
-          showToast("El RUC debe tener 11 dígitos", "error");
+          showToast("El RUC debe tener 11 números y empezar con 10, 15 o 20", "error");
           return;
         }
         const res = await consultaRUC(guestData.numeroDocumento);
@@ -178,32 +178,32 @@ export default function GuestDataForm({
 
               {(guestData.tipoDocumento === "DNI" ||
                 guestData.tipoDocumento === "RUC") && (
-                <button
-                  type="button"
-                  onClick={handleConsultacion}
-                  disabled={isConsulting || !guestData.numeroDocumento}
-                  className="absolute right-2 top-[38px] text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
-                  title="Consultar"
-                >
-                  {isConsulting ? (
-                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <svg
-                      className="w-6 h-6"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  )}
-                </button>
-              )}
+                  <button
+                    type="button"
+                    onClick={handleConsultacion}
+                    disabled={isConsulting || !guestData.numeroDocumento}
+                    className="absolute right-2 top-[38px] text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
+                    title="Consultar"
+                  >
+                    {isConsulting ? (
+                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                )}
             </div>
           </div>
         </div>
@@ -218,7 +218,6 @@ export default function GuestDataForm({
               value={guestData.nombre}
               onChange={handleInputChange}
               placeholder="Nombres"
-              disabled={consulted}
               error={guestErrors.nombre}
             />
           </div>
@@ -230,7 +229,6 @@ export default function GuestDataForm({
               value={guestData.apellido}
               onChange={handleInputChange}
               placeholder="Apellidos"
-              disabled={consulted} // Si es DNI consultado, se deshabilita. Si es RUC, se llena con "-" y se deshabilita.
               error={guestErrors.apellido}
             />
           </div>
@@ -291,7 +289,6 @@ export default function GuestDataForm({
                 }));
                 guestLocations.handleDeptChange(val);
               }}
-              disabled
             >
               <option value="">Seleccionar</option>
               {guestLocations.departments.map((d: any) => (
@@ -315,7 +312,6 @@ export default function GuestDataForm({
                 }));
                 guestLocations.handleProvChange(val);
               }}
-              disabled
               error={guestErrors.provincia}
             >
               <option value="">Seleccionar</option>

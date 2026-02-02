@@ -33,7 +33,7 @@ export default function Checkout() {
   const { items, getCartTotal, clearCart, totals, syncCart, cartId } =
     useCart();
   const [tipoComprobante, setTipoComprobante] =
-    useState<TipoComprobante>("factura");
+    useState<TipoComprobante>("boleta");
   const [metodoPago, setMetodoPago] = useState<MetodoPago | null>(null);
   const [processing, setProcessing] = useState(false);
   const [culqiReady, setCulqiReady] = useState(false);
@@ -122,7 +122,7 @@ export default function Checkout() {
         // Validar que no sea muy antiguo (1 hora)
         const ONE_HOUR = 60 * 60 * 1000;
         if (Date.now() - state.timestamp < ONE_HOUR) {
-          setTipoComprobante(state.tipoComprobante || "factura");
+          setTipoComprobante(state.tipoComprobante || "boleta");
           if (state.metodoPago) setMetodoPago(state.metodoPago);
           if (state.datosFactura) setDatosFactura(state.datosFactura);
           if (state.tipoDocumentoBoleta)
@@ -383,7 +383,7 @@ export default function Checkout() {
       } else {
         showToast(
           response.message ||
-            "No se encontró información para el RUC ingresado",
+          "No se encontró información para el RUC ingresado",
           "error",
         );
       }
@@ -406,15 +406,10 @@ export default function Checkout() {
         !validateDNI(datosBoletaRUC)
       ) {
         newErrors.rucBoleta = "Ingresa un DNI válido (8 números)";
-      } else if (
-        tipoDocumentoBoleta === "RUC" &&
-        !validateRUC(datosBoletaRUC)
-      ) {
-        newErrors.rucBoleta = "El RUC debe tener 11 números y empezar con 20";
       }
     } else {
       if (!datosFactura.ruc || !validateRUC(datosFactura.ruc)) {
-        newErrors.rucFactura = "El RUC debe tener 11 números y empezar con 20";
+        newErrors.rucFactura = "El RUC debe tener 11 números y empezar con 10, 15 o 20";
       }
       if (!datosFactura.razonSocial) {
         newErrors.razonSocial = "Ingresa la razón social";
@@ -614,21 +609,19 @@ export default function Checkout() {
                 <div className="flex gap-4 mb-6">
                   <button
                     onClick={() => setTipoComprobante("boleta")}
-                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                      tipoComprobante === "boleta"
-                        ? "border-primary bg-primary text-white"
-                        : "border-gray-200 text-gray-700 hover:border-primary"
-                    }`}
+                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "boleta"
+                      ? "border-primary bg-primary text-white"
+                      : "border-gray-200 text-gray-700 hover:border-primary"
+                      }`}
                   >
                     Boleta
                   </button>
                   <button
                     onClick={() => setTipoComprobante("factura")}
-                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                      tipoComprobante === "factura"
-                        ? "border-primary bg-primary text-white"
-                        : "border-gray-200 text-gray-700 hover:border-primary"
-                    }`}
+                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "factura"
+                      ? "border-primary bg-primary text-white"
+                      : "border-gray-200 text-gray-700 hover:border-primary"
+                      }`}
                   >
                     <span className="flex items-center justify-center gap-2">
                       <svg
@@ -668,7 +661,6 @@ export default function Checkout() {
                           className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition appearance-none bg-white"
                         >
                           <option value="DNI">DNI</option>
-                          <option value="RUC">RUC</option>
                           <option value="CE">Carnet de Extranjería</option>
                           <option value="Pasaporte">Pasaporte</option>
                         </select>
@@ -683,17 +675,11 @@ export default function Checkout() {
                           onChange={(e) =>
                             setDatosBoletaRUC(e.target.value.replace(/\D/g, ""))
                           }
-                          placeholder={
-                            tipoDocumentoBoleta === "RUC"
-                              ? "20123456789"
-                              : "12345678"
-                          }
+                          placeholder="12345678"
                           maxLength={
-                            tipoDocumentoBoleta === "RUC"
-                              ? 11
-                              : tipoDocumentoBoleta === "DNI"
-                                ? 8
-                                : 20
+                            tipoDocumentoBoleta === "DNI"
+                              ? 8
+                              : 20
                           }
                           className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
                         />
@@ -773,7 +759,6 @@ export default function Checkout() {
                         <input
                           type="text"
                           value={datosFactura.razonSocial}
-                          disabled={rucConsulted}
                           onChange={(e) =>
                             setDatosFactura({
                               ...datosFactura,
@@ -796,7 +781,6 @@ export default function Checkout() {
                         <input
                           type="text"
                           value={datosFactura.direccionFiscal}
-                          disabled={rucConsulted}
                           onChange={(e) =>
                             setDatosFactura({
                               ...datosFactura,
@@ -830,11 +814,10 @@ export default function Checkout() {
                   {/* Tarjeta de crédito/débito */}
                   <button
                     onClick={() => setMetodoPago("tarjeta")}
-                    className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                      metodoPago === "tarjeta"
-                        ? "border-primary bg-primary/5"
-                        : "border-gray-200 hover:border-primary/50"
-                    }`}
+                    className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "tarjeta"
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 hover:border-primary/50"
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <FaCreditCard className="text-2xl text-gray-600" />
@@ -1086,9 +1069,9 @@ export default function Checkout() {
                           </p>
                           {item.product.originalPrice &&
                             parseFloat(item.product.originalPrice.toString()) >
-                              parseFloat(
-                                (item.product.price || "0").toString(),
-                              ) && (
+                            parseFloat(
+                              (item.product.price || "0").toString(),
+                            ) && (
                               <p className="text-xs text-gray-400 line-through">
                                 {formatPrice(
                                   (
