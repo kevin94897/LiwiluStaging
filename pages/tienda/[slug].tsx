@@ -1,5 +1,6 @@
 import { GetServerSideProps } from "next";
 import { useState, useEffect, useMemo } from "react";
+import xss from "xss";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import Link from "next/link";
@@ -641,7 +642,9 @@ export default function ProductDetail({
         {basicData.description && (
           <div
             className="prose prose-sm max-w-none text-gray-600 space-y-4"
-            dangerouslySetInnerHTML={{ __html: basicData.description }}
+            dangerouslySetInnerHTML={{
+              __html: xss(basicData.description),
+            }}
           />
         )}
       </div>
@@ -671,7 +674,9 @@ export default function ProductDetail({
         {basicData.resume && (
           <div
             className="prose prose-sm max-w-none text-gray-600"
-            dangerouslySetInnerHTML={{ __html: basicData.resume }}
+            dangerouslySetInnerHTML={{
+              __html: xss(basicData.resume),
+            }}
           />
         )}
       </div>

@@ -126,19 +126,34 @@ export default function Tienda({
   const isFirstRender = useRef(true);
 
   // Scroll to top of grid when page changes (skip initial render)
+  // Scroll to top of grid when page changes or search is performed
   useEffect(() => {
+    // If it's the first render, only scroll if there's a search query (e.g. redirected from Home)
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      if (router.query.search) {
+        setTimeout(() => {
+          if (productsTopRef.current) {
+            const top =
+              productsTopRef.current.getBoundingClientRect().top +
+              window.scrollY -
+              100;
+            window.scrollTo({ top, behavior: "smooth" });
+          }
+        }, 100); // Small delay to ensure layout stability
+      }
       return;
     }
+
+    // For subsequent updates (pagination changed, or new search performed on same page)
     if (productsTopRef.current) {
       const top =
         productsTopRef.current.getBoundingClientRect().top +
         window.scrollY -
-        100; // Offset for header
+        100;
       window.scrollTo({ top, behavior: "smooth" });
     }
-  }, [pagination?.page]);
+  }, [pagination?.page, router.query.search]);
 
   // Sync state with URL query
   useEffect(() => {

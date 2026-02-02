@@ -1,49 +1,54 @@
 // components/Contacto.tsx
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Image from 'next/image';
-import Button from './ui/Button';
-import { contactoSchema, ContactoSchemaType } from '@/lib/componentcontactoSchema';
-import { PiWarningCircleFill } from 'react-icons/pi';
-import { showToast } from '@/lib/notifications';
-import { apiPost } from '@/lib/auth/apiClient';
+import { useState } from "react";
+import Image from "next/image";
+import Button from "./ui/Button";
+import {
+  contactoSchema,
+  ContactoSchemaType,
+} from "@/lib/componentcontactoSchema";
+import { PiWarningCircleFill } from "react-icons/pi";
+import { showToast } from "@/lib/notifications";
+import { apiPost } from "@/lib/auth/apiClient";
 
 export default function Contacto() {
   const [formData, setFormData] = useState<ContactoSchemaType>({
-    celular: '',
-    documento: '',
-    aceptaPrivacidad: false
+    celular: "",
+    documento: "",
+    aceptaPrivacidad: false,
   });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof ContactoSchemaType, string>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof ContactoSchemaType, string>>
+  >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
 
     // Limpiar error del campo
-    setErrors(prev => ({ ...prev, [name]: undefined }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
   const handleCelularChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Solo números
+    const value = e.target.value.replace(/\D/g, ""); // Solo números
     if (value.length <= 9) {
-      setFormData(prev => ({ ...prev, celular: value }));
-      setErrors(prev => ({ ...prev, celular: undefined }));
+      setFormData((prev) => ({ ...prev, celular: value }));
+      setErrors((prev) => ({ ...prev, celular: undefined }));
     }
   };
 
   const handleDocumentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Solo números
+    const value = e.target.value.replace(/\D/g, ""); // Solo números
     if (value.length <= 11) {
-      setFormData(prev => ({ ...prev, documento: value }));
-      setErrors(prev => ({ ...prev, documento: undefined }));
+      setFormData((prev) => ({ ...prev, documento: value }));
+      setErrors((prev) => ({ ...prev, documento: undefined }));
     }
   };
 
@@ -78,36 +83,43 @@ export default function Contacto() {
       const payload = {
         celular: `+51${formData.celular}`,
         numeroDocumento: formData.documento,
-        aceptaPoliticasPrivacidad: formData.aceptaPrivacidad
+        aceptaPoliticasPrivacidad: formData.aceptaPrivacidad,
       };
 
-      const response = await apiPost('/general/solicitud-mayorista', payload);
+      const response = await apiPost("/general/solicitud-mayorista", payload);
 
       if (response.ok) {
-        showToast('Solicitud enviada. Un asesor se contactará pronto.', 'success');
+        showToast(
+          "Solicitud enviada. Un asesor se contactará pronto.",
+          "success",
+        );
         // Resetear formulario
         setFormData({
-          celular: '',
-          documento: '',
-          aceptaPrivacidad: false
+          celular: "",
+          documento: "",
+          aceptaPrivacidad: false,
         });
       } else {
         const result = await response.json().catch(() => ({}));
-        const errorMessage = result.message || 'Error al enviar la solicitud';
+        const errorMessage = result.message || "Error al enviar la solicitud";
 
         if (result.errors) {
           // Mapear errores del backend a los campos del formulario
-          const backendErrors: Partial<Record<keyof ContactoSchemaType, string>> = {};
-          if (result.errors.celular) backendErrors.celular = result.errors.celular;
-          if (result.errors.numeroDocumento) backendErrors.documento = result.errors.numeroDocumento;
+          const backendErrors: Partial<
+            Record<keyof ContactoSchemaType, string>
+          > = {};
+          if (result.errors.celular)
+            backendErrors.celular = result.errors.celular;
+          if (result.errors.numeroDocumento)
+            backendErrors.documento = result.errors.numeroDocumento;
           setErrors(backendErrors);
         }
 
-        showToast(errorMessage, 'error');
+        showToast(errorMessage, "error");
       }
     } catch (error: any) {
-      console.error('Error al enviar:', error);
-      showToast(error.message || 'Hubo un error. Intenta nuevamente.', 'error');
+      console.error("Error al enviar:", error);
+      showToast(error.message || "Hubo un error. Intenta nuevamente.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -147,7 +159,10 @@ export default function Contacto() {
 
       {/* Lado Derecho - Formulario */}
       <div className="relative w-full md:w-1/2 bg-primary flex items-center justify-center p-10 md:-ml-12 z-20 rounded-tl-xl rounded-bl-xl">
-        <form onSubmit={handleSubmit} className="w-full max-w-md text-white space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          className="w-full max-w-md text-white space-y-6"
+        >
           <h2 className="text-3xl md:text-6xl font-semibold text-white text-left md:text-left">
             ¿Estás interesado(a)?
           </h2>
@@ -159,10 +174,11 @@ export default function Contacto() {
               name="celular"
               value={formData.celular}
               onChange={handleCelularChange}
-              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${errors.celular
-                ? 'border-red-500 focus:border-red-500'
-                : 'border-white/70 focus:border-white'
-                }`}
+              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${
+                errors.celular
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-white/70 focus:border-white"
+              }`}
               placeholder="Numero de celular (9 dígitos)"
               maxLength={9}
             />
@@ -180,10 +196,11 @@ export default function Contacto() {
               name="documento"
               value={formData.documento}
               onChange={handleDocumentoChange}
-              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${errors.documento
-                ? 'border-red-500 focus:border-red-500'
-                : 'border-white/70 focus:border-white'
-                }`}
+              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${
+                errors.documento
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-white/70 focus:border-white"
+              }`}
               placeholder="DNI / CE / RUC"
               maxLength={11}
             />
@@ -203,12 +220,21 @@ export default function Contacto() {
                 name="aceptaPrivacidad"
                 checked={formData.aceptaPrivacidad}
                 onChange={handleChange}
-                className={`mt-1 accent-white ${errors.aceptaPrivacidad ? 'outline outline-2 outline-red-300' : ''
-                  }`}
+                className={`mt-1 accent-white ${
+                  errors.aceptaPrivacidad
+                    ? "outline outline-2 outline-red-300"
+                    : ""
+                }`}
               />
-              <label htmlFor="privacidad" className="text-white/90 leading-snug">
-                He leído y acepto las{' '}
-                <a href="/privacidad" className="underline text-white hover:text-white/80">
+              <label
+                htmlFor="privacidad"
+                className="text-white/90 leading-snug"
+              >
+                He leído y acepto las{" "}
+                <a
+                  href="/privacidad"
+                  className="underline text-white hover:text-white/80"
+                >
                   políticas de privacidad
                 </a>
               </label>
@@ -225,7 +251,7 @@ export default function Contacto() {
             <Button
               variant="secondary"
               size="md"
-              className='w-full'
+              className="w-full"
               type="submit"
               disabled={isSubmitting}
             >
@@ -235,7 +261,7 @@ export default function Contacto() {
                   Enviando...
                 </span>
               ) : (
-                'Solicite un asesor'
+                "Solicite un asesor"
               )}
             </Button>
           </div>

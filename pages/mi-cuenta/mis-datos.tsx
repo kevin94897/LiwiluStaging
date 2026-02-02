@@ -154,10 +154,10 @@ export default function MisDatos() {
         updateData,
         accessToken
           ? {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
           : {},
       );
 
