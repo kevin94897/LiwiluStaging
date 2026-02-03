@@ -175,9 +175,8 @@ export default function LoginModal({
                   onChange={handleChange}
                   disabled={isLoading}
                   placeholder="correo@ejemplo.com"
-                  className={`w-full px-4 py-3 border rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition ${
-                    errors.email ? "border-red-500" : "border-gray-300"
-                  } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                  className={`w-full px-4 py-3 border rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition ${errors.email ? "border-red-500" : "border-gray-300"
+                    } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""}`}
                 />
                 {errors.email && (
                   <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -198,9 +197,8 @@ export default function LoginModal({
                   onChange={handleChange}
                   disabled={isLoading}
                   placeholder="Mínimo 6 caracteres"
-                  className={`w-full px-4 py-3 border rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition ${
-                    errors.password ? "border-red-500" : "border-gray-300"
-                  } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                  className={`w-full px-4 py-3 border rounded-sm focus:ring-2 focus:ring-primary focus:border-transparent transition ${errors.password ? "border-red-500" : "border-gray-300"
+                    } ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""}`}
                 />
                 {errors.password && (
                   <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -258,7 +256,7 @@ export default function LoginModal({
             </form>
 
             {/* Solo si no es Trimegisto */}
-            {!fromTrimegisto && (
+            {/* {!fromTrimegisto && (
               <>
                 <div className="flex items-center my-6">
                   <div className="flex-1 border-t border-gray-300"></div>
@@ -290,7 +288,7 @@ export default function LoginModal({
                   </button>
                 </div>
               </>
-            )}
+            )} */}
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">

@@ -24,6 +24,7 @@ export default function MisDatos() {
     tipoDocumento: "",
     numeroDocumento: "",
     celular: "",
+    email: "",
   });
 
   const [errors, setErrors] = useState<
@@ -58,6 +59,7 @@ export default function MisDatos() {
             tipoDocumento: userData.documentType || "",
             numeroDocumento: userData.documentNumber || "",
             celular: userData.phone || "",
+            email: userData.email || "",
           });
 
           // Actualizar localStorage con datos frescos usando la utilidad centralizada
@@ -144,6 +146,7 @@ export default function MisDatos() {
         documentType: formData.tipoDocumento,
         documentNumber: formData.numeroDocumento,
         phone: formData.celular,
+        email: formData.email,
         receiveOffers: originalUser?.receiveOffers || false, // ✅ Mantener preferencia actual
       };
 
@@ -154,10 +157,10 @@ export default function MisDatos() {
         updateData,
         accessToken
           ? {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
           : {},
       );
 
@@ -322,20 +325,35 @@ export default function MisDatos() {
                           </div>
                         </div>
 
-                        {/* Celular */}
-                        <div>
-                          <Input
-                            label="Celular *"
-                            type="tel"
-                            id="celular"
-                            name="celular"
-                            value={formData.celular}
-                            onChange={handleCelularChange}
-                            placeholder="973820088"
-                            maxLength={9}
-                            disabled={isSubmitting}
-                            error={errors.celular}
-                          />
+                        {/* Celular y Email */}
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <Input
+                              label="Celular *"
+                              type="tel"
+                              id="celular"
+                              name="celular"
+                              value={formData.celular}
+                              onChange={handleCelularChange}
+                              placeholder="973820088"
+                              maxLength={9}
+                              disabled={isSubmitting}
+                              error={errors.celular}
+                            />
+                          </div>
+                          <div>
+                            <Input
+                              label="Correo electrónico *"
+                              type="email"
+                              id="email"
+                              name="email"
+                              value={formData.email}
+                              onChange={handleChange}
+                              placeholder="ejemplo@correo.com"
+                              disabled={isSubmitting}
+                              error={errors.email}
+                            />
+                          </div>
                         </div>
 
                         {/* Botones de acción */}

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { DNI_REGEX, RUC_REGEX } from "./validations";
 
-const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/;
+const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s,]+$/;
 
 export const carritoRegisterSchema = z.object({
     nombre: z.string()

@@ -2103,6 +2103,9 @@ export default function Carrito() {
                 guestLocations={guestLocations}
                 onSetActiveTab={setActiveTab}
                 onSetGuestData={setGuestData}
+                deliveryZones={
+                  metodoEnvio === "delivery" ? deliveryZones : undefined
+                }
               />
             </div>
           </div>

@@ -17,6 +17,11 @@ export const misDatosSchema = z.object({
         .max(50, "El apellido no puede exceder 50 caracteres")
         .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, "El apellido solo puede contener letras"),
 
+    email: z
+        .string()
+        .min(1, "El correo electrónico es obligatorio")
+        .email("El correo electrónico no es válido"),
+
     tipoDocumento: z
         .string()
         .min(1, "El tipo de documento es obligatorio"),

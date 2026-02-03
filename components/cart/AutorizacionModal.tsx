@@ -283,11 +283,7 @@ export default function AutorizacionModal({
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
-                  className={
-                    isConsulted
-                      ? "bg-gray-100 text-gray-500"
-                      : "bg-white text-gray-700"
-                  }
+                  className="bg-white text-gray-700"
                   error={errors.fullName}
                 />
               </div>

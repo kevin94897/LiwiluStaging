@@ -15,7 +15,7 @@ export const autorizacionSchema = z.object({
         .string()
         .min(1, "El nombre completo es obligatorio")
         .min(3, "El nombre debe tener al menos 3 caracteres")
-        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, "El nombre solo puede contener letras"),
+        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s,]+$/, "El nombre solo puede contener letras"),
 }).superRefine((data, ctx) => {
     if (data.documentType === 'DNI') {
         if (!DNI_REGEX.test(data.documentNumber)) {

@@ -6,6 +6,7 @@ import Select from "@/components/ui/Select";
 import { GuestDataSchemaType } from "@/lib/guestDataSchema";
 import { consultaDNI, consultaRUC } from "@/lib/general";
 import { showToast } from "@/lib/notifications";
+import { DeliveryZone } from "@/lib/cart";
 
 interface GuestDataFormProps {
   activeTab: string;
@@ -20,6 +21,7 @@ interface GuestDataFormProps {
   onSetGuestData: (
     update: (prev: GuestDataSchemaType) => GuestDataSchemaType,
   ) => void;
+  deliveryZones?: DeliveryZone[];
 }
 
 export default function GuestDataForm({
@@ -31,6 +33,7 @@ export default function GuestDataForm({
   guestLocations,
   onSetActiveTab,
   onSetGuestData,
+  deliveryZones,
 }: GuestDataFormProps) {
   const [isConsulting, setIsConsulting] = useState(false);
   const [consulted, setConsulted] = useState(false);
@@ -337,11 +340,17 @@ export default function GuestDataForm({
             error={guestErrors.distrito}
           >
             <option value="">Seleccionar</option>
-            {guestLocations.districts.map((d: any) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
+            {deliveryZones && deliveryZones.length > 0
+              ? deliveryZones.map((z) => (
+                <option key={z.zoneId} value={z.zoneName}>
+                  {z.zoneName}
+                </option>
+              ))
+              : guestLocations.districts.map((d: any) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
           </Select>
         </div>
 

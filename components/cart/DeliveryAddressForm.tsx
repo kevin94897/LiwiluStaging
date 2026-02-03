@@ -382,7 +382,7 @@ export default function DeliveryAddressForm({
               </p>
             )}
 
-            {isLoggedIn && (
+            {/* {isLoggedIn && (
               <div className="flex items-center gap-2 mb-4 p-2 bg-primary/5 rounded-sm border border-primary/10">
                 <input
                   type="checkbox"
@@ -398,7 +398,7 @@ export default function DeliveryAddressForm({
                   Guardar esta dirección en mi perfil (Recomendado)
                 </label>
               </div>
-            )}
+            )} */}
 
             <div className="flex gap-2 md:flex-row flex-col justify-center">
               <Button onClick={onSaveAddress} variant="primary" size="sm">

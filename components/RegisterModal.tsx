@@ -381,14 +381,14 @@ export default function RegisterModal({
             </form>
 
             {/* Divider */}
-            <div className="flex items-center my-6">
+            {/* <div className="flex items-center my-6">
               <div className="flex-1 border-t border-gray-300"></div>
               <span className="px-4 text-sm text-gray-500">O</span>
               <div className="flex-1 border-t border-gray-300"></div>
-            </div>
+            </div> */}
 
             {/* Social Login */}
-            <div className="space-y-3">
+            {/* <div className="space-y-3">
               <button
                 onClick={handleGoogleSignup}
                 disabled={isLoading}
@@ -410,7 +410,7 @@ export default function RegisterModal({
                   Registrarse con Facebook
                 </span>
               </button>
-            </div>
+            </div> */}
 
             {/* Link a Login */}
             <div className="mt-6 text-center">

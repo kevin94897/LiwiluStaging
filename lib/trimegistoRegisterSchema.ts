@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/;
+const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s,]+$/;
 
 export const trimegistoRegisterSchema = z.object({
     firstName: z.string()
