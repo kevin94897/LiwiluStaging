@@ -74,7 +74,7 @@ export default function PedidoExitoso() {
         } else {
           setError(
             response.message ||
-            "No se pudieron obtener los detalles del pedido",
+              "No se pudieron obtener los detalles del pedido",
           );
         }
       } catch (err: any) {
@@ -134,7 +134,7 @@ export default function PedidoExitoso() {
   }
 
   const nombreCliente = order.personalData?.nombre || "Cliente";
-  const numeroPedido = order.orderNumber || order.id;
+  const numeroPedido = order.id;
   const deliveryType = order.deliveryType;
   const metodoPago = order.invoiceType || "TARJETA";
 
@@ -259,8 +259,8 @@ export default function PedidoExitoso() {
                             (
                               parseFloat(
                                 item.priceWithTax ||
-                                item.variationPriceWithTax ||
-                                "0",
+                                  item.variationPriceWithTax ||
+                                  "0",
                               ) * item.quantity
                             ).toString(),
                           )}
@@ -306,7 +306,7 @@ export default function PedidoExitoso() {
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-semibold text-green-800">
                         {order.status === "PAID" ||
-                          order.paymentStatus === "COMPLETED"
+                        order.paymentStatus === "COMPLETED"
                           ? "Pagado"
                           : "Pendiente"}
                       </span>

@@ -56,13 +56,25 @@ export default function Footer() {
     console.log("Newsletter suscripción:", newsletterData);
 
     try {
-      await apiPost("/general/newsletter", newsletterData, { skipAuth: true });
+      const response = await apiPost("/general/newsletter", newsletterData, {
+        skipAuth: true,
+      });
+      const data = await response.json();
 
-      setSuccessMessage("¡Suscripción exitosa! 🎉");
-      setNewsletterData({ email: "" });
+      if (data.alreadySubscribed) {
+        setErrors({ email: "Este correo ya está suscrito." });
+        return;
+      }
 
-      // Limpiar mensaje de éxito después de 5 segundos
-      setTimeout(() => setSuccessMessage(""), 5000);
+      if (data.success) {
+        setSuccessMessage(data.message || "¡Suscripción exitosa! 🎉");
+        setNewsletterData({ email: "" });
+
+        // Limpiar mensaje de éxito después de 5 segundos
+        setTimeout(() => setSuccessMessage(""), 5000);
+      } else {
+        throw new Error(data.message || "Error al suscribirse");
+      }
     } catch (error) {
       console.error("Error al suscribirse:", error);
       setErrors({ email: "Hubo un error al suscribirse. Intenta nuevamente." });
@@ -125,9 +137,7 @@ export default function Footer() {
                     <Link href="#">Valores</Link>
                   </li>
                   <li>
-                    <Link href="/trabajemos-juntos">
-                      Trabaja con nosotros
-                    </Link>
+                    <Link href="/trabajemos-juntos">Trabaja con nosotros</Link>
                   </li>
                 </ul>
               </div>
@@ -196,10 +206,11 @@ export default function Footer() {
                     value={newsletterData.email}
                     onChange={handleChange}
                     placeholder="Dirección de correo electrónico"
-                    className={`px-4 py-2 rounded-l-sm text-primary-dark text-sm w-full focus:outline-none focus:ring-2 transition ${errors.email
-                      ? "ring-2 ring-red-400"
-                      : "focus:ring-white/50"
-                      }`}
+                    className={`px-4 py-2 rounded-l-sm text-primary-dark text-sm w-full focus:outline-none focus:ring-2 transition ${
+                      errors.email
+                        ? "ring-2 ring-red-400"
+                        : "focus:ring-white/50"
+                    }`}
                     disabled={isSubmitting}
                   />
                   <button
