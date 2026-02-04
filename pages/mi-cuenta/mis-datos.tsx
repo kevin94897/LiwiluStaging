@@ -13,7 +13,7 @@ import {
   MisDatosSchemaType,
 } from "@/lib/mi-cuenta/misDatosSchema";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { apiGet, apiPut } from "@/lib/auth/apiClient";
+import { apiGet, apiPut, apiPost } from "@/lib/auth/apiClient";
 import toast from "react-hot-toast";
 import { showToast } from "@/lib/notifications";
 
@@ -33,6 +33,9 @@ export default function MisDatos() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [originalUser, setOriginalUser] = useState<any>(null);
+  const [originalEmail, setOriginalEmail] = useState("");
+  const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
+  const [pendingEmailChange, setPendingEmailChange] = useState("");
 
   // Cargar datos del usuario al montar el componente
   useEffect(() => {
@@ -51,6 +54,7 @@ export default function MisDatos() {
         if (result.success && result.data) {
           const userData = result.data;
           setOriginalUser(userData);
+          setOriginalEmail(userData.email || "");
 
           // Mapear los campos de la API a los campos del formulario
           setFormData({
@@ -104,8 +108,51 @@ export default function MisDatos() {
     }
   };
 
+  const handleEmailChangeRequest = async () => {
+    setShowEmailChangeDialog(false);
+    setIsSubmitting(true);
+
+    try {
+      const response = await apiPost("/users/request-email-change", {
+        newEmail: pendingEmailChange,
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        showToast(
+          result.message || "Se ha enviado un correo de verificación a tu nueva dirección. Por favor, revisa tu bandeja de entrada.",
+          "success"
+        );
+        setPendingEmailChange("");
+      } else {
+        throw new Error(result.message || "Error al solicitar cambio de email");
+      }
+    } catch (error) {
+      console.error("❌ Error al solicitar cambio de email:", error);
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Error al solicitar el cambio de email. Intenta nuevamente.",
+        "error"
+      );
+      // Revertir el email al original en caso de error
+      setFormData((prev) => ({ ...prev, email: originalEmail }));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Verificar si el email cambió
+    if (formData.email !== originalEmail) {
+      setPendingEmailChange(formData.email);
+      setShowEmailChangeDialog(true);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -140,13 +187,14 @@ export default function MisDatos() {
       setErrors({});
 
       // Mapear los campos del formulario a los campos de la API
+      // Nota: El email NO se actualiza aquí, se maneja por separado con el flujo de verificación
       const updateData = {
         firstName: formData.nombre,
         lastName: formData.apellido,
         documentType: formData.tipoDocumento,
         documentNumber: formData.numeroDocumento,
         phone: formData.celular,
-        email: formData.email,
+        // email: formData.email, // ❌ NO actualizar email aquí
         receiveOffers: originalUser?.receiveOffers || false, // ✅ Mantener preferencia actual
       };
 
@@ -244,6 +292,46 @@ export default function MisDatos() {
                         Mis datos
                       </h2>
                     </div>
+
+                    {/* Diálogo de confirmación de cambio de email */}
+                    {showEmailChangeDialog && (
+                      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+                        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                          <h3 className="text-xl font-semibold mb-4">
+                            Confirmar cambio de correo
+                          </h3>
+                          <p className="text-gray-600 mb-2">
+                            Estás a punto de cambiar tu correo electrónico a:
+                          </p>
+                          <p className="font-semibold text-primary mb-4">
+                            {pendingEmailChange}
+                          </p>
+                          <p className="text-sm text-gray-500 mb-6">
+                            Se enviará un correo de verificación a esta dirección. Deberás confirmar el cambio antes de que sea efectivo.
+                          </p>
+                          <div className="flex gap-3 justify-end">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => {
+                                setShowEmailChangeDialog(false);
+                                setPendingEmailChange("");
+                                setFormData((prev) => ({ ...prev, email: originalEmail }));
+                              }}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={handleEmailChangeRequest}
+                            >
+                              Confirmar cambio
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {isLoading ? (
                       <div className="flex items-center justify-center py-12">
