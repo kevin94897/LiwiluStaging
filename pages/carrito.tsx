@@ -162,6 +162,9 @@ export default function Carrito() {
   const [validationErrorMessage, setValidationErrorMessage] = useState("");
   const [selectedStoreData, setSelectedStoreData] =
     useState<SavePickupStoreRequest | null>(null);
+  const [userDataErrors, setUserDataErrors] = useState<Record<string, string>>(
+    {},
+  );
 
   // Estados para formulario de invitado
   const [guestData, setGuestData] = useState<GuestDataSchemaType>({
@@ -197,6 +200,38 @@ export default function Carrito() {
   // Hooks de ubicación
   const guestLocations = useLocations("Lima", "Lima", "");
   const userLocations = useLocations("Lima", "Lima", direccionEnvio.distrito);
+
+  // Utility function to parse API validation errors
+  const parseValidationErrors = (
+    messages: string[],
+  ): Record<string, string> => {
+    const errors: Record<string, string> = {};
+
+    const fieldMap: Record<string, RegExp> = {
+      documentNumber: /numero.*documento/i,
+      numeroDocumento: /numero.*documento/i,
+      phone: /celular/i,
+      celular: /celular/i,
+      documentType: /tipo.*documento/i,
+      tipoDocumento: /tipo.*documento/i,
+      firstName: /nombre/i,
+      nombre: /nombre/i,
+      lastName: /apellido/i,
+      apellido: /apellido/i,
+      email: /email|correo/i,
+    };
+
+    messages.forEach((msg) => {
+      for (const [field, pattern] of Object.entries(fieldMap)) {
+        if (pattern.test(msg)) {
+          errors[field] = msg;
+          break;
+        }
+      }
+    });
+
+    return errors;
+  };
 
   // Sincronizar estado local con hook de auth
   useEffect(() => {
@@ -1073,16 +1108,66 @@ export default function Carrito() {
     }
   };
 
+  // Handle user data updates from GuestDataSummary
+  const handleUpdateUserData = async (data: any) => {
+    try {
+      const { apiPut } = await import("@/lib/auth/apiClient");
+      const token = localStorage.getItem("accessToken");
+
+      const response = await apiPut(
+        "/users/profile",
+        data,
+        token ? { headers: { Authorization: `Bearer ${token}` } } : {},
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+
+        // Parse validation errors if they exist
+        if (errorData.message && Array.isArray(errorData.message)) {
+          const fieldErrors = parseValidationErrors(errorData.message);
+          throw { fieldErrors };
+        }
+
+        throw new Error(errorData.message || "Error al actualizar los datos");
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // Update local user session
+        const { updateUserSession } = await import("@/lib/auth/authUtils");
+        updateUserSession(result.data);
+
+        // Clear validation errors
+        setUserDataErrors({});
+
+        showToast("Datos actualizados correctamente", "success");
+      }
+    } catch (error: any) {
+      console.error("Error updating user data:", error);
+
+      // Re-throw with field errors for GuestDataSummary to handle
+      if (error.fieldErrors) {
+        throw error;
+      }
+
+      throw new Error(error.message || "Error al actualizar los datos");
+    }
+  };
+
   const syncCheckoutData = async () => {
     try {
       // 1. Guardar Datos Personales
       let personalData = null;
       if (isLoggedIn && user) {
         // Para personal-data: SIEMPRE usar la dirección principal (isMain: true)
-        const mainAddress = userAddresses.find(a => a.isMain);
+        const mainAddress = userAddresses.find((a) => a.isMain);
 
         if (!mainAddress && metodoEnvio === "delivery") {
-          throw new Error("Debes configurar una dirección principal en tu cuenta. Ve a 'Mi Cuenta' para establecer una.");
+          throw new Error(
+            "Debes configurar una dirección principal en tu cuenta. Ve a 'Mi Cuenta' para establecer una.",
+          );
         }
 
         personalData = {
@@ -1131,9 +1216,13 @@ export default function Carrito() {
           // Authenticated user: respect the active tab in DeliveryAddressForm
           if (mainAddressId) {
             // Tab "Mis direcciones": use selected saved address
-            const selectedAddr = userAddresses.find(a => a.id === mainAddressId);
+            const selectedAddr = userAddresses.find(
+              (a) => a.id === mainAddressId,
+            );
             if (!selectedAddr) {
-              throw new Error("No se encontró la dirección seleccionada en tu cuenta.");
+              throw new Error(
+                "No se encontró la dirección seleccionada en tu cuenta.",
+              );
             }
             finalAddress = {
               distritoSeleccionado: selectedAddr.district,
@@ -1150,7 +1239,9 @@ export default function Carrito() {
               referencia: direccionEnvio.referencia,
             };
           } else {
-            throw new Error("Debes seleccionar una dirección guardada o completar una nueva dirección.");
+            throw new Error(
+              "Debes seleccionar una dirección guardada o completar una nueva dirección.",
+            );
           }
         } else if (isGuest) {
           // Guest user: DeliveryAddressForm is MANDATORY
@@ -1162,13 +1253,18 @@ export default function Carrito() {
               referencia: direccionEnvio.referencia,
             };
           } else {
-            throw new Error("Debes completar la dirección de envío en el formulario correspondiente.");
+            throw new Error(
+              "Debes completar la dirección de envío en el formulario correspondiente.",
+            );
           }
         } else {
           throw new Error("No se encontró una dirección de envío válida.");
         }
 
-        console.log("🚚 Sincronizando dirección de envío al finalizar:", finalAddress);
+        console.log(
+          "🚚 Sincronizando dirección de envío al finalizar:",
+          finalAddress,
+        );
         await saveCartDeliveryAddress(finalAddress);
       } else if (metodoEnvio === "retiro") {
         // Guardar Tienda de Retiro
@@ -1203,14 +1299,53 @@ export default function Carrito() {
     } catch (error: any) {
       console.error("Error syncing checkout data:", error);
 
-      // Capturar errores de validación de datos personales (DNI, Celular, etc)
+      // Parse API validation errors for logged-in users
+      if (isLoggedIn && error.response) {
+        try {
+          const errorData = await error.response.json();
+
+          if (errorData.message && Array.isArray(errorData.message)) {
+            const fieldErrors = parseValidationErrors(errorData.message);
+            setUserDataErrors(fieldErrors);
+
+            // Scroll to GuestDataSummary to show errors
+            setTimeout(() => {
+              const summaryElement = document.querySelector(
+                '[data-component="guest-data-summary"]',
+              );
+              if (summaryElement) {
+                summaryElement.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
+              }
+            }, 100);
+
+            return false;
+          }
+        } catch (parseError) {
+          console.error("Error parsing validation errors:", parseError);
+        }
+      }
+
+      // Fallback: Check if error message contains validation keywords
       if (
         error.message &&
         (error.message.toLowerCase().includes("documento") ||
           error.message.toLowerCase().includes("celular"))
       ) {
-        setValidationErrorMessage(error.message);
-        setShowValidationModal(true);
+        if (isLoggedIn) {
+          // For logged users, try to parse the error message
+          const messages = error.message
+            .split(",")
+            .map((m: string) => m.trim());
+          const fieldErrors = parseValidationErrors(messages);
+          setUserDataErrors(fieldErrors);
+        } else {
+          // For guests, show the generic modal
+          setValidationErrorMessage(error.message);
+          setShowValidationModal(true);
+        }
       } else {
         showToast("Error al procesar la información del carrito", "error");
       }
@@ -1331,7 +1466,7 @@ export default function Carrito() {
               missingInfo.length > 0
                 ? `Falta información: ${missingInfo.join(", ")}`
                 : summary.message ||
-                "Por favor completa toda la información requerida";
+                  "Por favor completa toda la información requerida";
 
             showToast(errorMsg, "error");
             // We stay in the cart as per latest requirement
@@ -1373,7 +1508,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-            "Por favor completa toda la información requerida",
+              "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
@@ -1395,7 +1530,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-            "Por favor completa toda la información requerida",
+              "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
@@ -2110,8 +2245,7 @@ export default function Carrito() {
             </div>
           </div>
         </div>
-      )
-      }
+      )}
 
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="flex items-center justify-between mb-8">
@@ -2184,19 +2318,23 @@ export default function Carrito() {
               />
             </DeliveryMethodSelector>
 
-            <GuestDataSummary
-              isGuest={isGuest}
-              isLoggedIn={isLoggedIn}
-              guestDataCompleted={guestDataCompleted}
-              guestData={guestData}
-              userData={user}
-              userAddress={userAddresses.find((a) => a.isMain)}
-              onEdit={() => {
-                setActiveTab("guest");
-                setShowGuestForm(true);
-                setShowLoginModal(true);
-              }}
-            />
+            <div data-component="guest-data-summary">
+              <GuestDataSummary
+                isGuest={isGuest}
+                isLoggedIn={isLoggedIn}
+                guestDataCompleted={guestDataCompleted}
+                guestData={guestData}
+                userData={user}
+                userAddress={userAddresses.find((a) => a.isMain)}
+                onEdit={() => {
+                  setActiveTab("guest");
+                  setShowGuestForm(true);
+                  setShowLoginModal(true);
+                }}
+                onSave={handleUpdateUserData}
+                validationErrors={userDataErrors}
+              />
+            </div>
 
             <StorePickupContent
               metodoEnvio={metodoEnvio as any}
@@ -2376,6 +2514,6 @@ export default function Carrito() {
         onCloseValidation={() => setShowValidationModal(false)}
         validationMessage={validationErrorMessage}
       />
-    </Layout >
+    </Layout>
   );
 }
