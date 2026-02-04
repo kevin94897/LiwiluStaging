@@ -1036,6 +1036,44 @@ export async function getCheckoutSummary(): Promise<CheckoutSummaryResponse> {
             success: false,
             isComplete: false,
             message: error.message || 'Error de conexión al validar el checkout'
-        };
+        }
+    }
+}
+
+/**
+ * Merge guest cart with user cart after login
+ * @param accessToken - User's access token
+ * @param sessionId - Guest's session ID
+ * @returns Response from merge endpoint
+ */
+export async function mergeGuestCart(
+    accessToken: string,
+    sessionId: string
+): Promise<{
+    success: boolean;
+    message: string;
+    data?: any;
+}> {
+    try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart/merge`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`,
+                'X-Session-Id': sessionId,
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Error al fusionar carritos');
+        }
+
+        const data = await response.json();
+        console.log('✅ [mergeGuestCart] Cart merged successfully:', data);
+        return data;
+    } catch (error: any) {
+        console.error('❌ [mergeGuestCart] Error merging cart:', error);
+        throw error;
     }
 }

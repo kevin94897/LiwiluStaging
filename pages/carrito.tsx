@@ -33,10 +33,7 @@ import { showToast } from "@/lib/notifications";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
 import { loginSchema, LoginSchemaType } from "@/lib/loginSchema";
-import {
-  carritoRegisterSchema,
-  CarritoRegisterSchemaType,
-} from "@/lib/carritoRegisterSchema";
+import { registerSchema } from "@/lib/registerSchema";
 import { loginUser } from "@/pages/api/auth/login";
 import { registerUser } from "@/pages/api/auth/register";
 import { guestDataSchema, GuestDataSchemaType } from "@/lib/guestDataSchema";
@@ -78,13 +75,14 @@ import {
   savePickupStore,
   SavePickupStoreRequest,
   getCheckoutSummary,
+  mergeGuestCart,
 } from "@/lib/cart";
 
 // Distritos disponibles
 
 export default function Carrito() {
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
-  const [recordarme, setRecordarme] = useState(false);
+
   const {
     items,
     removeFromCart,
@@ -570,27 +568,20 @@ export default function Carrito() {
     "login",
   );
 
-  // NUEVO: Estados para registro
-  const [registroData, setRegistroData] = useState<CarritoRegisterSchemaType>({
-    nombre: "",
-    apellido: "",
-    tipoDocumento: "DNI",
-    numeroDocumento: "",
-    celular: "",
-    telefonoOpcional: "",
-    departamento: "Lima",
-    provincia: "Lima",
-    distrito: "",
-    direccion: "",
-    numeroDpto: "",
-    referencia: "",
+  // NUEVO: Estados para registro (usando el schema de RegisterModal)
+  type RegisterFormValues = z.infer<typeof registerSchema>;
+  const [registroData, setRegistroData] = useState<RegisterFormValues>({
+    firstName: "",
+    lastName: "",
     email: "",
+    emailConfirm: "",
     password: "",
-    confirmarPassword: "",
-    aceptoTerminos: false,
+    passwordConfirm: "",
+    acceptTerms: false,
+    receiveOffers: false,
   });
   const [registroErrors, setRegistroErrors] = useState<
-    Partial<Record<keyof CarritoRegisterSchemaType, string>>
+    Partial<Record<keyof RegisterFormValues, string>>
   >({});
 
   // NUEVO: Errores de validación
@@ -611,22 +602,14 @@ export default function Carrito() {
 
   const resetRegistroForm = () => {
     setRegistroData({
-      nombre: "",
-      apellido: "",
-      tipoDocumento: "DNI",
-      numeroDocumento: "",
-      celular: "",
-      telefonoOpcional: "",
-      departamento: "Lima",
-      provincia: "Lima",
-      distrito: "",
-      direccion: "",
-      numeroDpto: "",
-      referencia: "",
+      firstName: "",
+      lastName: "",
       email: "",
+      emailConfirm: "",
       password: "",
-      confirmarPassword: "",
-      aceptoTerminos: false,
+      passwordConfirm: "",
+      acceptTerms: false,
+      receiveOffers: false,
     });
     setRegistroErrors({});
   };
@@ -765,38 +748,13 @@ export default function Carrito() {
     setLoginErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  // Manejador para Registro
-  const handleRegistroChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    let { name, value, type } = e.target;
+  // Manejador para Registro (usando RegisterModal schema)
+  const handleRegistroChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
 
-    // Manejo correcto de checkbox
     if (type === "checkbox") {
-      const checked = (e.target as HTMLInputElement).checked;
       setRegistroData((prev) => ({ ...prev, [name]: checked }));
     } else {
-      if (
-        name === "numeroDocumento" ||
-        name === "celular" ||
-        name === "telefonoOpcional"
-      ) {
-        value = value.replace(/\D/g, "");
-
-        let maxLength = 20;
-        if (name === "numeroDocumento") {
-          maxLength =
-            registroData.tipoDocumento === "RUC"
-              ? 11
-              : registroData.tipoDocumento === "DNI"
-                ? 8
-                : 20;
-        } else if (name === "celular" || name === "telefonoOpcional") {
-          maxLength = 9;
-        }
-
-        if (value.length > maxLength) value = value.slice(0, maxLength);
-      }
       setRegistroData((prev) => ({ ...prev, [name]: value }));
     }
 
@@ -840,12 +798,64 @@ export default function Carrito() {
     const performLogin = async () => {
       setIsLoginLoading(true);
       try {
-        await loginUser(loginData, { redirectTo: "/carrito" });
+        // Check if user was a guest before login (no accessToken = guest)
+        const wasGuest =
+          typeof window !== "undefined" && !localStorage.getItem("accessToken");
+        const guestSessionId =
+          typeof window !== "undefined"
+            ? localStorage.getItem("liwilu_session_id")
+            : null;
+        const hasItems = items.length > 0;
+
+        console.log("🔍 [handleLogin] Pre-login state:", {
+          wasGuest,
+          guestSessionId,
+          hasItems,
+          itemsCount: items.length,
+        });
+
+        await loginUser(loginData, { skipRedirect: true });
 
         // Login exitoso
         setIsLoggedIn(true);
         setShowLoginModal(false);
-        // showToast("¡Bienvenido de vuelta!", "success"); // Toast eliminado por solicitud
+
+        // 🆕 Merge cart if user was guest with items
+        if (wasGuest && guestSessionId && hasItems) {
+          try {
+            const accessToken =
+              typeof window !== "undefined"
+                ? localStorage.getItem("accessToken")
+                : null;
+            console.log("🔄 [handleLogin] Attempting cart merge with:", {
+              hasAccessToken: !!accessToken,
+              sessionId: guestSessionId,
+            });
+
+            if (accessToken) {
+              await mergeGuestCart(accessToken, guestSessionId);
+              console.log("✅ Carrito fusionado exitosamente");
+            } else {
+              console.warn(
+                "⚠️ No se pudo obtener accessToken después del login",
+              );
+            }
+          } catch (mergeError) {
+            console.error("⚠️ Error al fusionar carrito:", mergeError);
+            // Don't block login if merge fails
+          }
+        } else {
+          console.log("ℹ️ [handleLogin] Cart merge skipped:", {
+            wasGuest,
+            hasSessionId: !!guestSessionId,
+            hasItems,
+          });
+        }
+
+        // Reload to sync cart AFTER merge completes
+        if (typeof window !== "undefined") {
+          window.location.reload();
+        }
       } catch (error: any) {
         console.error("Error en login:", error);
         setLoginErrors({
@@ -861,23 +871,21 @@ export default function Carrito() {
     performLogin();
   };
 
-  // NUEVO: Manejo de registro
-  const handleRegistro = (e: React.FormEvent) => {
+  // NUEVO: Manejo de registro (usando RegisterModal logic)
+  const handleRegistro = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validación con Zod
-    const result = carritoRegisterSchema.safeParse(registroData);
+    const result = registerSchema.safeParse(registroData);
 
     if (!result.success) {
       const formattedErrors = result.error.flatten().fieldErrors;
-      const newErrors: Partial<
-        Record<keyof CarritoRegisterSchemaType, string>
-      > = {};
+      const newErrors: Partial<Record<keyof RegisterFormValues, string>> = {};
 
       for (const key in formattedErrors) {
         const errorArray = formattedErrors[key as keyof typeof formattedErrors];
         if (errorArray && errorArray.length > 0) {
-          newErrors[key as keyof CarritoRegisterSchemaType] = errorArray[0];
+          newErrors[key as keyof RegisterFormValues] = errorArray[0];
         }
       }
 
@@ -887,46 +895,92 @@ export default function Carrito() {
     }
 
     // Si es válido
-    // Si es válido
     setRegistroErrors({});
-    console.log("Enviando registro...", registroData);
+    setIsLoginLoading(true);
 
-    const performRegister = async () => {
-      try {
-        await registerUser({
-          firstName: registroData.nombre,
-          lastName: registroData.apellido,
-          email: registroData.email,
-          confirmEmail: registroData.email,
-          password: registroData.password,
-          confirmPassword: registroData.confirmarPassword,
-          acceptTerms: registroData.aceptoTerminos,
-          receiveOffers: false,
-          documentType: registroData.tipoDocumento,
-          documentNumber: registroData.numeroDocumento,
-          phone: registroData.celular,
-        });
+    try {
+      // Check if user was a guest before registration (no accessToken = guest)
+      const wasGuest =
+        typeof window !== "undefined" && !localStorage.getItem("accessToken");
+      const guestSessionId =
+        typeof window !== "undefined"
+          ? localStorage.getItem("liwilu_session_id")
+          : null;
+      const hasItems = items.length > 0;
 
-        // Autologin after register or show success message
-        setIsLoggedIn(true);
-        setShowLoginModal(false);
-        showToast("¡Cuenta creada exitosamente! Bienvenido.", "success");
+      console.log("🔍 [handleRegistro] Pre-registration state:", {
+        wasGuest,
+        guestSessionId,
+        hasItems,
+        itemsCount: items.length,
+      });
 
-        // Opcional: recargar para asegurar estado global limpio
-        if (typeof window !== "undefined") window.location.reload();
-      } catch (error: any) {
-        console.error("Error en registro:", error);
+      await registerUser({
+        firstName: registroData.firstName,
+        lastName: registroData.lastName,
+        email: registroData.email,
+        confirmEmail: registroData.emailConfirm,
+        password: registroData.password,
+        confirmPassword: registroData.passwordConfirm,
+        acceptTerms: registroData.acceptTerms,
+        receiveOffers: registroData.receiveOffers,
+      });
 
-        if (error.message?.includes("correo")) {
-          setRegistroErrors({ email: error.message });
-        } else {
-          // Mostrar error general en algún campo o toast
-          showToast(error.message || "Error al registrar usuario", "error");
+      // 🆕 Merge cart if user was guest with items
+      if (wasGuest && guestSessionId && hasItems) {
+        try {
+          const accessToken =
+            typeof window !== "undefined"
+              ? localStorage.getItem("accessToken")
+              : null;
+          console.log("🔄 [handleRegistro] Attempting cart merge with:", {
+            hasAccessToken: !!accessToken,
+            sessionId: guestSessionId,
+          });
+
+          if (accessToken) {
+            await mergeGuestCart(accessToken, guestSessionId);
+            console.log("✅ Carrito fusionado exitosamente");
+          } else {
+            console.warn(
+              "⚠️ No se pudo obtener accessToken después del registro",
+            );
+          }
+        } catch (mergeError) {
+          console.error("⚠️ Error al fusionar carrito:", mergeError);
+          // Don't block registration if merge fails
         }
+      } else {
+        console.log("ℹ️ [handleRegistro] Cart merge skipped:", {
+          wasGuest,
+          hasSessionId: !!guestSessionId,
+          hasItems,
+        });
       }
-    };
 
-    performRegister();
+      console.log("Registro exitoso");
+      showToast("Cuenta creada con éxito. ¡Bienvenido!", "success");
+
+      // Close modal and stay in cart (no redirect)
+      setShowLoginModal(false);
+
+      // Optionally reload to sync user session
+      if (typeof window !== "undefined") {
+        window.location.reload();
+      }
+    } catch (error: any) {
+      console.error("Error en registro:", error);
+
+      if (error.message?.includes("correo ya está registrado")) {
+        setRegistroErrors({ email: "Este correo ya está registrado" });
+      } else if (error.message?.includes("validación")) {
+        showToast("Por favor verifica los datos ingresados", "error");
+      } else {
+        showToast(error.message || "Error al crear la cuenta", "error");
+      }
+    } finally {
+      setIsLoginLoading(false);
+    }
   };
 
   const handleContinueAsGuest = () => {
@@ -1890,19 +1944,10 @@ export default function Carrito() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between text-sm">
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={recordarme}
-                          onChange={(e) => setRecordarme(e.target.checked)}
-                          className="mt-1 mr-2"
-                        />
-                        <span className="text-gray-600">Recordarme</span>
-                      </label>
+                    <div className="text-right">
                       <Link
                         href="/recuperar-password"
-                        className="text-primary hover:text-primary-dark font-medium"
+                        className="text-sm text-primary hover:text-primary-dark font-medium"
                       >
                         ¿Olvidaste tu contraseña?
                       </Link>
@@ -1952,257 +1997,190 @@ export default function Carrito() {
                     Crea tu cuenta
                   </h2>
                   <p className="text-gray-600 text-center mb-6">
-                    Completa tus datos para continuar
+                    Regístrate para comprar más rápido y hacer seguimiento a tus
+                    pedidos
                   </p>
 
-                  <div className="space-y-4">
-                    {/* Datos Personales */}
+                  <form
+                    onSubmit={handleRegistro}
+                    className="space-y-4"
+                    noValidate
+                  >
+                    {/* Nombre y Apellido */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Input
-                          label="Nombre *"
+                          label="Nombre"
+                          name="firstName"
                           type="text"
-                          name="nombre"
-                          value={registroData.nombre}
+                          value={registroData.firstName}
                           onChange={handleRegistroChange}
+                          disabled={isLoginLoading}
                           placeholder="Nombres"
-                          error={registroErrors.nombre}
+                          error={registroErrors.firstName}
                         />
                       </div>
+
                       <div>
                         <Input
-                          label="Apellido *"
+                          label="Apellido"
+                          name="lastName"
                           type="text"
-                          name="apellido"
-                          value={registroData.apellido}
+                          value={registroData.lastName}
                           onChange={handleRegistroChange}
-                          placeholder="Apellidos"
-                          error={registroErrors.apellido}
+                          disabled={isLoginLoading}
+                          placeholder="García"
+                          error={registroErrors.lastName}
                         />
                       </div>
                     </div>
 
-                    {/* Documento */}
-                    <div>
-                      <Select
-                        label="Tipo de documento *"
-                        name="tipoDocumento"
-                        value={registroData.tipoDocumento}
-                        onChange={(e) =>
-                          setRegistroData({
-                            ...registroData,
-                            tipoDocumento: e.target.value as
-                              | "DNI"
-                              | "RUC"
-                              | "CE"
-                              | "Pasaporte",
-                          })
-                        }
-                        error={registroErrors.tipoDocumento}
-                      >
-                        <option value="DNI">DNI</option>
-                        <option value="RUC">RUC</option>
-                        <option value="CE">Carnet de Extranjería</option>
-                        <option value="Pasaporte">Pasaporte</option>
-                      </Select>
-                      <div className="mt-4">
-                        <Input
-                          label="Número de documento *"
-                          type="text"
-                          name="numeroDocumento"
-                          value={registroData.numeroDocumento}
-                          onChange={handleRegistroChange}
-                          placeholder="12345678"
-                          error={registroErrors.numeroDocumento}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Teléfonos */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Input
-                          label="Celular *"
-                          type="tel"
-                          name="celular"
-                          value={registroData.celular}
-                          onChange={handleRegistroChange}
-                          placeholder="973 820 088"
-                          error={registroErrors.celular}
-                        />
-                      </div>
-                      <div>
-                        <Input
-                          label="Teléfono opcional"
-                          type="tel"
-                          name="telefonoOpcional"
-                          value={registroData.telefonoOpcional}
-                          onChange={handleRegistroChange}
-                          placeholder="973 820 088"
-                          error={registroErrors.telefonoOpcional}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Ubicación */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Input
-                          label="Departamento *"
-                          type="text"
-                          value={registroData.departamento}
-                          disabled
-                          containerClassName="bg-gray-50"
-                        />
-                      </div>
-                      <div>
-                        <Input
-                          label="Provincia *"
-                          type="text"
-                          name="provincia"
-                          value={registroData.provincia}
-                          onChange={handleRegistroChange}
-                          placeholder="Lima"
-                          error={registroErrors.provincia}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Select
-                        label="Distrito *"
-                        name="distrito"
-                        value={registroData.distrito}
-                        onChange={handleRegistroChange}
-                        error={registroErrors.distrito}
-                      >
-                        <option value="">Seleccionar distrito</option>
-                        {warehouseDistricts.map((d) => (
-                          <option key={d.codUbigeoAlm} value={d.desDistrito}>
-                            {d.desDistrito}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-
+                    {/* Email */}
                     <div>
                       <Input
-                        label="Dirección *"
-                        type="text"
-                        name="direccion"
-                        value={registroData.direccion}
+                        label="Correo electrónico"
+                        name="email"
+                        type="email"
+                        value={registroData.email}
                         onChange={handleRegistroChange}
-                        placeholder="Calle rosales 432"
-                        error={registroErrors.direccion}
+                        disabled={isLoginLoading}
+                        placeholder="correo@ejemplo.com"
+                        error={registroErrors.email}
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Input
-                          label="Nro. de dpto. / Piso"
-                          type="text"
-                          name="numeroDpto"
-                          value={registroData.numeroDpto}
-                          onChange={handleRegistroChange}
-                          placeholder="201"
-                          error={registroErrors.numeroDpto}
-                        />
-                      </div>
-                      <div>
-                        <Input
-                          label="Referencia"
-                          type="text"
-                          name="referencia"
-                          value={registroData.referencia}
-                          onChange={handleRegistroChange}
-                          placeholder="Frente al parque"
-                          error={registroErrors.referencia}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Credenciales */}
-                    <div className="pt-4 border-t">
-                      <div className="mb-4">
-                        <Input
-                          label="Correo electrónico *"
-                          type="email"
-                          name="email"
-                          value={registroData.email}
-                          onChange={handleRegistroChange}
-                          placeholder="ejemplo@correo.com"
-                          error={registroErrors.email}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Input
-                            label="Contraseña *"
-                            type="password"
-                            name="password"
-                            value={registroData.password}
-                            onChange={handleRegistroChange}
-                            placeholder="••••••••"
-                            error={registroErrors.password}
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            label="Confirmar contraseña *"
-                            type="password"
-                            name="confirmarPassword"
-                            value={registroData.confirmarPassword}
-                            onChange={handleRegistroChange}
-                            placeholder="••••••••"
-                            error={registroErrors.confirmarPassword}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start pt-2">
-                      <input
-                        type="checkbox"
-                        name="aceptoTerminos"
-                        checked={registroData.aceptoTerminos}
+                    {/* Confirmar Email */}
+                    <div>
+                      <Input
+                        label="Confirmar correo electrónico"
+                        name="emailConfirm"
+                        type="email"
+                        value={registroData.emailConfirm}
                         onChange={handleRegistroChange}
-                        className="mt-1 mr-2"
+                        disabled={isLoginLoading}
+                        placeholder="correo@ejemplo.com"
+                        error={registroErrors.emailConfirm}
                       />
-                      <label className="text-xs text-gray-600">
-                        Acepto los{" "}
-                        <Link
-                          href="/terminos-y-condiciones"
-                          target="_blank"
-                          className="text-primary hover:underline"
-                        >
-                          términos y condiciones
-                        </Link>{" "}
-                        y las{" "}
-                        <Link
-                          href="/politicas/politica-de-privacidad"
-                          target="_blank"
-                          className="text-primary hover:underline"
-                        >
-                          políticas de privacidad
-                        </Link>
+                    </div>
+
+                    {/* Contraseña */}
+                    <div>
+                      <Input
+                        label="Contraseña"
+                        name="password"
+                        type="password"
+                        value={registroData.password}
+                        onChange={handleRegistroChange}
+                        disabled={isLoginLoading}
+                        placeholder="Mínimo 6 caracteres"
+                        error={registroErrors.password}
+                      />
+                    </div>
+
+                    {/* Confirmar Contraseña */}
+                    <div>
+                      <Input
+                        label="Confirmar contraseña"
+                        name="passwordConfirm"
+                        type="password"
+                        value={registroData.passwordConfirm}
+                        onChange={handleRegistroChange}
+                        disabled={isLoginLoading}
+                        placeholder="Repite tu contraseña"
+                        error={registroErrors.passwordConfirm}
+                      />
+                    </div>
+
+                    {/* Checkboxes */}
+                    <div className="space-y-3">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="acceptTerms"
+                          checked={registroData.acceptTerms}
+                          onChange={handleRegistroChange}
+                          disabled={isLoginLoading}
+                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
+                            registroErrors.acceptTerms ? "border-error" : ""
+                          }`}
+                        />
+                        <span className="text-sm text-gray-700">
+                          Acepto los{" "}
+                          <Link
+                            href="/terminos-y-condiciones"
+                            className="text-primary hover:underline"
+                            target="_blank"
+                          >
+                            Términos y Condiciones
+                          </Link>{" "}
+                          y la{" "}
+                          <Link
+                            href="/politicas/politica-de-privacidad"
+                            className="text-primary hover:underline"
+                            target="_blank"
+                          >
+                            Política de Privacidad
+                          </Link>
+                        </span>
+                      </label>
+                      {registroErrors.acceptTerms && (
+                        <p className="text-error text-xs mt-1 flex items-start gap-1">
+                          <PiWarningCircleFill size={16} />{" "}
+                          {registroErrors.acceptTerms}
+                        </p>
+                      )}
+
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="receiveOffers"
+                          checked={registroData.receiveOffers}
+                          onChange={handleRegistroChange}
+                          disabled={isLoginLoading}
+                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
+                            registroErrors.receiveOffers ? "border-error" : ""
+                          }`}
+                        />
+                        <span className="text-sm text-gray-700">
+                          Quiero recibir ofertas y beneficios exclusivos
+                        </span>
                       </label>
                     </div>
-                    {registroErrors.aceptoTerminos && (
-                      <p className="text-red-500 text-xs mt-0 flex items-center gap-1">
-                        <PiWarningCircleFill size={16} />{" "}
-                        {registroErrors.aceptoTerminos}
-                      </p>
-                    )}
 
+                    {/* Botón Submit */}
                     <Button
                       variant="primary"
                       size="md"
                       className="w-full"
-                      onClick={handleRegistro}
+                      type="submit"
+                      disabled={isLoginLoading}
                     >
-                      Crear cuenta
+                      {isLoginLoading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg
+                            className="animate-spin h-5 w-5"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                              fill="none"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                          Registrando...
+                        </span>
+                      ) : (
+                        "Registrarse"
+                      )}
                     </Button>
 
                     <Button
@@ -2210,6 +2188,8 @@ export default function Carrito() {
                       size="md"
                       className="w-full"
                       onClick={handleContinueAsGuest}
+                      type="button"
+                      disabled={isLoginLoading}
                     >
                       Continuar como invitado
                     </Button>
@@ -2219,13 +2199,15 @@ export default function Carrito() {
                         ¿Ya tienes cuenta?{" "}
                         <button
                           onClick={() => setActiveTab("login")}
-                          className="text-primary hover:text-primary-dark font-semibold transition-all"
+                          type="button"
+                          disabled={isLoginLoading}
+                          className="text-primary hover:text-primary-dark font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Inicia sesión aquí
                         </button>
                       </p>
                     </div>
-                  </div>
+                  </form>
                 </div>
               )}
 
