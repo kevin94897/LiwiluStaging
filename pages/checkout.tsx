@@ -438,10 +438,6 @@ export default function Checkout() {
           if (!/^\d{8}$/.test(datosBoletaRUC)) {
             newErrors.rucBoleta = "Ingresa un DNI válido (8 números)";
           }
-        } else if (tipoDocumentoBoleta === "RUC") {
-          if (!/^(10|15|20)\d{9}$/.test(datosBoletaRUC)) {
-            newErrors.rucBoleta = "Ingresa un RUC válido (11 números y empezar con 10, 15 o 20)";
-          }
         } else if (tipoDocumentoBoleta === "CE") {
           if (datosBoletaRUC.length < 6 || datosBoletaRUC.length > 12) {
             newErrors.rucBoleta = "El CE debe tener entre 6 y 12 caracteres";
@@ -704,7 +700,6 @@ export default function Checkout() {
                           }}
                         >
                           <option value="DNI">DNI</option>
-                          <option value="RUC">RUC</option>
                           <option value="CE">Carnet de Extranjería</option>
                           <option value="Pasaporte">Pasaporte</option>
                         </Select>
@@ -724,19 +719,15 @@ export default function Checkout() {
                             setDatosBoletaRUC(value);
                           }}
                           placeholder={
-                            tipoDocumentoBoleta === "RUC"
-                              ? "20100000001"
-                              : tipoDocumentoBoleta === "Pasaporte"
-                                ? "A1234567"
-                                : "12345678"
+                            tipoDocumentoBoleta === "Pasaporte"
+                              ? "A1234567"
+                              : "12345678"
                           }
                           maxLength={
-                            tipoDocumentoBoleta === "RUC"
-                              ? 11
-                              : tipoDocumentoBoleta === "DNI" ||
-                                tipoDocumentoBoleta === "Pasaporte"
-                                ? 8
-                                : 12
+                            tipoDocumentoBoleta === "DNI" ||
+                              tipoDocumentoBoleta === "Pasaporte"
+                              ? 8
+                              : 12
                           }
                           inputMode={
                             tipoDocumentoBoleta === "Pasaporte"
