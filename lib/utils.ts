@@ -32,11 +32,20 @@ export function getProductName(product: any): string {
 
     // Append variation attributes if present
     if (product.variationAttributes && Array.isArray(product.variationAttributes) && product.variationAttributes.length > 0) {
-        const attributes = product.variationAttributes
+        const attributes = [...product.variationAttributes]
+            .sort((a: any, b: any) => {
+                const aName = (a.name || '').toLowerCase();
+                const bName = (b.name || '').toLowerCase();
+                const aIsTipo = aName.includes('tipo');
+                const bIsTipo = bName.includes('tipo');
+                if (aIsTipo && !bIsTipo) return -1;
+                if (!aIsTipo && bIsTipo) return 1;
+                return 0;
+            })
             .map((attr: any) => attr.value)
             .filter(Boolean)
             .join(', ');
-        
+
         if (attributes) {
             return `${baseName} - ${attributes}`;
         }
@@ -84,19 +93,19 @@ export function getProductImageUrl(productId: string, imageId: string): string {
  */
 export function getSalePrice(product: any): number | null {
     if (!product) return null;
-    
+
     // 1. Variable product with defaultVariation
     // For variable products: defaultVariation.price = sale/offer price
     if (product.defaultVariation && product.defaultVariation.price !== undefined && product.defaultVariation.price !== null) {
         return Number(product.defaultVariation.price);
     }
-    
+
     // 2. Simple product with discount
     // For simple products: price = final price after discount, discountPrice = amount discounted
     if (product.discountPrice !== null && product.discountPrice !== undefined && product.discountPrice > 0) {
         return Number(product.price); // Return the discounted price (final price)
     }
-    
+
     return null;
 }
 
@@ -113,7 +122,7 @@ export function getSalePrice(product: any): number | null {
  */
 export function getRegularPrice(product: any): number {
     if (!product) return 0;
-    
+
     // 1. Variable product logic
     if (product.defaultVariation) {
         // For variable products: priceImpact = regular price (if available)
@@ -123,12 +132,12 @@ export function getRegularPrice(product: any): number {
         // Fallback to variation price if no priceImpact (no discount scenario)
         return Number(product.defaultVariation.price) || 0;
     }
-    
+
     // 2. Simple product: original price = current price + discount amount
     if (product.discountPrice && Number(product.discountPrice) > 0) {
         return Number(product.price) + Number(product.discountPrice);
     }
-    
+
     // No discount: return current price
     return Number(product.price) || 0;
 }
@@ -146,7 +155,7 @@ export function getRegularPrice(product: any): number {
 export function hasDiscount(product: any): boolean {
     const salePrice = getSalePrice(product);
     const regularPrice = getRegularPrice(product);
-    
+
     return salePrice !== null && salePrice > 0 && salePrice < regularPrice;
 }
 

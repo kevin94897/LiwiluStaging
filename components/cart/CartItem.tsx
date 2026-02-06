@@ -102,11 +102,10 @@ export default function CartItem({
 
   return (
     <div
-      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${
-        itemStockStatus === "available"
+      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${itemStockStatus === "available"
           ? "border-2 border-primary"
           : "border-2 border-transparent"
-      }`}
+        }`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
       {/* Overlay Loader */}
@@ -220,8 +219,17 @@ export default function CartItem({
               {item.product.variationAttributes &&
                 item.product.variationAttributes.length > 0 && (
                   <div className="flex flex-wrap gap-x-3 gap-y-1.5 mt-1 mb-3">
-                    {item.product.variationAttributes.map(
-                      (attr: any, i: number) => (
+                    {[...item.product.variationAttributes]
+                      .sort((a: any, b: any) => {
+                        const aName = (a.name || "").toLowerCase();
+                        const bName = (b.name || "").toLowerCase();
+                        const aIsTipo = aName.includes("tipo");
+                        const bIsTipo = bName.includes("tipo");
+                        if (aIsTipo && !bIsTipo) return -1;
+                        if (!aIsTipo && bIsTipo) return 1;
+                        return 0;
+                      })
+                      .map((attr: any, i: number) => (
                         <div
                           key={i}
                           className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-sm border border-gray-100"
@@ -242,8 +250,7 @@ export default function CartItem({
                             </span>
                           </div>
                         </div>
-                      ),
-                    )}
+                      ))}
                   </div>
                 )}
 

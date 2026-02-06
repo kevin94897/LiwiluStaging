@@ -612,7 +612,8 @@ export default function ProductDetail({
     console.log("🎯 Current Selection:", newAttrs);
   };
 
-  // ✅ Validar disponibilidad de atributos (si tiene precio > 0)
+  // ✅ Validar disponibilidad de atributos (si existe combinación con stock)
+  // Ahora valida de forma contextual: si selecciono Talla M, ¿qué colores están disponibles?
   const checkAttributeAvailability = (
     attributeType: string,
     attributeValueId: number,
@@ -620,21 +621,43 @@ export default function ProductDetail({
     if (!variationsData?.variations || variationsData.variations.length === 0)
       return true;
 
-    // We check if there is ANY variation that contains this attribute value
-    // and matches the "important" parts of our current selection (like the attribute type we just changed or others)
-    // For a stricter check, you could try to match all other selected attributes.
-
-    // Simplest reliable check: Is this value part of ANY active variation?
     return variationsData.variations.some((v) => {
-      return (
-        v.attributes &&
-        v.attributes.some(
-          (a) => a.type === attributeType && a.id === attributeValueId,
-        ) &&
-        v.stock?.inStock
+      // 1. Debe contener el valor objetivo
+      const hasTargetValue = v.attributes?.some(
+        (a) => a.type === attributeType && a.id === attributeValueId
       );
+      if (!hasTargetValue) return false;
+
+      // 2. Debe coincidir con el resto de selecciones actuales
+      const matchesOtherSelections = v.attributes?.every((a) => {
+        if (a.type === attributeType) return true; // Ignorar el atributo que estamos evaluando
+        if (!selectedAttributes[a.type]) return true; // Si no hay selección previa, es compatible
+        return selectedAttributes[a.type] === a.id;
+      });
+
+      // 3. Debe tener stock o ser la selección actual (aunque esté sin stock, mostrarla como seleccionada)
+      const isSelected = selectedAttributes[attributeType] === attributeValueId;
+      return (matchesOtherSelections && v.stock?.inStock) || isSelected;
     });
   };
+
+  // ✅ Ordenar atributos: los que contienen "tipo" van primero
+  const sortedAttributesList = useMemo(() => {
+    if (!variationsData.attributes) return [];
+    return [...variationsData.attributes].sort((a, b) => {
+      const aType = (a.type || "").toLowerCase();
+      const aName = (a.name || "").toLowerCase();
+      const bType = (b.type || "").toLowerCase();
+      const bName = (b.name || "").toLowerCase();
+
+      const aIsTipo = aType.includes("tipo") || aName.includes("tipo");
+      const bIsTipo = bType.includes("tipo") || bName.includes("tipo");
+
+      if (aIsTipo && !bIsTipo) return -1;
+      if (!aIsTipo && bIsTipo) return 1;
+      return 0;
+    });
+  }, [variationsData.attributes]);
 
   const tabs = {
     "Descripción del producto": (
@@ -838,18 +861,16 @@ export default function ProductDetail({
                               key={actualIndex}
                               onClick={() => setSelectedImageIndex(actualIndex)}
                               className={`relative my-2 aspect-square bg-white rounded-sm shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
-																${
-                                  isSelected
-                                    ? "ring-2 ring-primary scale-105"
-                                    : "hover:shadow-lg hover:scale-105"
+																${isSelected
+                                  ? "ring-2 ring-primary scale-105"
+                                  : "hover:shadow-lg hover:scale-105"
                                 }
 															`}
                             >
                               <Image
                                 src={img}
-                                alt={`${basicData.name} - miniatura ${
-                                  actualIndex + 1
-                                }`}
+                                alt={`${basicData.name} - miniatura ${actualIndex + 1
+                                  }`}
                                 fill
                                 className="object-contain"
                                 unoptimized
@@ -1029,104 +1050,104 @@ export default function ProductDetail({
                   </span>
                 </div>
 
-                {/* Opciones de personalización */}
                 {/* Opciones de personalización (Atributos) */}
-                {variationsData.attributes &&
-                  variationsData.attributes.length > 0 && (
-                    <div className="flex flex-col gap-6 mb-6">
-                      {variationsData.attributes.map((attr) => (
-                        <div key={attr.type}>
-                          <label className="block text-dark font-medium mb-3">
-                            {attr.name || attr.type}:
-                            {currentVariation &&
-                              currentVariation.attributes?.length > 0 && (
-                                <span className="ml-2 text-primary-dark font-normal">
-                                  {
-                                    currentVariation.attributes.find(
-                                      (a) => a.type === attr.type,
-                                    )?.value
-                                  }
-                                </span>
-                              )}
-                          </label>
-                          <div className="flex flex-wrap items-center gap-1 md:gap-3">
-                            {attr.values?.map((val) => {
-                              const isActuallyAvailable =
-                                checkAttributeAvailability(attr.type, val.id);
+                {sortedAttributesList.length > 0 && (
+                  <div className="flex flex-col gap-6 mb-6">
+                    {sortedAttributesList.map((attr) => (
+                      <div key={attr.type}>
+                        <label className="block text-dark font-medium mb-3">
+                          {attr.name || attr.type}:
+                          {currentVariation &&
+                            currentVariation.attributes?.length > 0 && (
+                              <span className="ml-2 text-primary-dark font-normal">
+                                {
+                                  currentVariation.attributes.find(
+                                    (a) => a.type === attr.type,
+                                  )?.value
+                                }
+                              </span>
+                            )}
+                        </label>
+                        <div className="flex flex-wrap items-center gap-1 md:gap-3">
+                          {attr.values?.map((val) => {
+                            const isAvailableInContext =
+                              checkAttributeAvailability(attr.type, val.id);
 
-                              if (!isActuallyAvailable) return null;
+                            const isSelected =
+                              selectedAttributes[attr.type] === val.id;
 
-                              const isSelected =
-                                selectedAttributes[attr.type] === val.id;
-
-                              const previewVariation =
-                                variationsData.variations.find((v) =>
-                                  v.attributes?.some(
-                                    (a) =>
-                                      a.type === attr.type && a.id === val.id,
-                                  ),
-                                );
-
-                              return (
-                                <div key={val.id} className="relative group">
-                                  <button
-                                    title={val.value}
-                                    onClick={() =>
-                                      handleAttributeChange(attr.type, val.id)
-                                    }
-                                    className={
-                                      attr.type === "color"
-                                        ? `w-10 h-10 rounded-full border-2 transition relative ${
-                                            isSelected
-                                              ? "border-primary border-4 scale-110"
-                                              : "border-gray-300 hover:scale-105"
-                                          }`
-                                        : `px-5 py-2 border rounded-sm font-medium transition ${
-                                            isSelected
-                                              ? "bg-primary-dark text-white border-gray-900"
-                                              : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                          }`
-                                    }
-                                    style={
-                                      attr.type === "color" && val.colorHex
-                                        ? { backgroundColor: val.colorHex }
-                                        : {}
-                                    }
-                                  >
-                                    {attr.type !== "color" && val.value}
-                                  </button>
-                                  {attr.type === "color" &&
-                                    previewVariation &&
-                                    !isSelected && (
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                        <div className="bg-white rounded-md shadow-xl border-2 border-gray-200 p-2">
-                                          <div className="relative w-24 h-24">
-                                            <Image
-                                              src={getImageUrl(
-                                                previewVariation.images?.[0] ||
-                                                  variationsData.media
-                                                    ?.coverImage,
-                                              )}
-                                              alt={val.value}
-                                              fill
-                                              className="object-contain rounded"
-                                              unoptimized
-                                            />
-                                          </div>
-                                          <p className="text-[10px] text-center mt-1 text-gray-600 font-semibold uppercase truncate max-w-[90px]">
-                                            {val.value}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    )}
-                                </div>
+                            const previewVariation =
+                              variationsData.variations.find((v) =>
+                                v.attributes?.some(
+                                  (a) =>
+                                    a.type === attr.type && a.id === val.id,
+                                ),
                               );
-                            })}
-                          </div>
+
+                            return (
+                              <div key={val.id} className="relative group">
+                                <button
+                                  title={val.value}
+                                  onClick={() =>
+                                    isAvailableInContext && handleAttributeChange(attr.type, val.id)
+                                  }
+                                  disabled={!isAvailableInContext}
+                                  className={
+                                    attr.type === "color"
+                                      ? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
+                                        ? "border-primary border-4 scale-110"
+                                        : !isAvailableInContext
+                                          ? "border-gray-100 opacity-30 cursor-not-allowed grayscale"
+                                          : "border-gray-300 hover:scale-105"
+                                      }`
+                                      : `px-5 py-2 border rounded-sm font-medium transition ${isSelected
+                                        ? "bg-primary-dark text-white border-gray-900"
+                                        : !isAvailableInContext
+                                          ? "border-gray-100 text-gray-300 cursor-not-allowed"
+                                          : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                      }`
+                                  }
+                                  style={
+                                    attr.type === "color" && val.colorHex
+                                      ? { backgroundColor: val.colorHex }
+                                      : {}
+                                  }
+                                >
+                                  {attr.type !== "color" && val.value}
+                                </button>
+                                {attr.type === "color" &&
+                                  previewVariation &&
+                                  isAvailableInContext &&
+                                  !isSelected && (
+                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                      <div className="bg-white rounded-md shadow-xl border-2 border-gray-200 p-2">
+                                        <div className="relative w-24 h-24">
+                                          <Image
+                                            src={getImageUrl(
+                                              previewVariation.images?.[0] ||
+                                              variationsData.media
+                                                ?.coverImage,
+                                            )}
+                                            alt={val.value}
+                                            fill
+                                            className="object-contain rounded"
+                                            unoptimized
+                                          />
+                                        </div>
+                                        <p className="text-[10px] text-center mt-1 text-gray-600 font-semibold uppercase truncate max-w-[90px]">
+                                          {val.value}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Variaciones Standalone (Sin atributos) */}
                 {(() => {
@@ -1153,11 +1174,10 @@ export default function ProductDetail({
                                 setCurrentVariation(v);
                                 setSelectedAttributes({});
                               }}
-                              className={`px-4 py-2 border rounded-md font-medium transition ${
-                                isSelected
+                              className={`px-4 py-2 border rounded-md font-medium transition ${isSelected
                                   ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
                                   : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                              }`}
+                                }`}
                             >
                               <div className="flex flex-col items-center">
                                 <span className="text-sm font-semibold">
@@ -1232,9 +1252,8 @@ export default function ProductDetail({
                   <button
                     onClick={handleToggleFavorite}
                     disabled={loadingFavorite}
-                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] min-w-[56px] min-h-[56px] rounded-full transition flex items-center justify-center ${
-                      isFavorite ? "text-primary" : "text-primary"
-                    }`}
+                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] min-w-[56px] min-h-[56px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
+                      }`}
                   >
                     {loadingFavorite ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
@@ -1268,11 +1287,10 @@ export default function ProductDetail({
             <button
               key={tab}
               onClick={() => setActiveTab(tab as TabKey)}
-              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${
-                activeTab === tab
+              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${activeTab === tab
                   ? "border-gray-900 text-primary-dark"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+                }`}
             >
               {tab}
             </button>

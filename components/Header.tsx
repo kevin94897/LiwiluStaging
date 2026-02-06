@@ -25,10 +25,6 @@ import {
   FaUserCircle,
 } from "react-icons/fa";
 import logo from "../public/images/liwilu_logo.png";
-import {
-  TrimegistoDNIModal,
-  TrimegistoRegisterModal,
-} from "./TrimegistoDNIModal";
 import Button from "./ui/Button";
 
 const topLinks = [
@@ -438,14 +434,6 @@ export default function Header() {
           highlight: false,
         }));
 
-        // Add static Trimegisto link
-        formattedCats.push({
-          href: "#",
-          label: "Trimegisto",
-          highlightBottom: true,
-          isModal: true,
-          highlight: false,
-        });
 
         setMenuCategories(formattedCats);
       } catch (error) {
@@ -460,10 +448,6 @@ export default function Header() {
   const [isSticky, setIsSticky] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
-  const [trimegistoDNIModalOpen, setTrimegistoDNIModalOpen] = useState(false);
-  const [trimegistoRegisterModalOpen, setTrimegistoRegisterModalOpen] =
-    useState(false);
-  const [isFromTrimegisto, setIsFromTrimegisto] = useState(false);
   const router = useRouter();
 
   const desktopMenuRef = useRef<HTMLDivElement | null>(null);
@@ -606,16 +590,8 @@ export default function Header() {
                       {menuCategories.map((c) => (
                         <li key={c.label}>
                           <Link
-                            href={c.isModal ? "#" : c.href}
-                            onClick={
-                              c.isModal
-                                ? (e) => {
-                                  e.preventDefault();
-                                  setTrimegistoDNIModalOpen(true);
-                                  setMobileCatsOpen(false);
-                                }
-                                : () => setMobileCatsOpen(false)
-                            }
+                            href={c.href}
+                            onClick={() => setMobileCatsOpen(false)}
                             className={`block px-4 py-3 text-white transition-colors ${c.highlight
                               ? "bg-primary hover:bg-primary-light rounded-xl font-medium text-[#0b2d2d]"
                               : c.highlightBottom
@@ -652,16 +628,8 @@ export default function Header() {
                         {menuCategories.map((c) => (
                           <li key={c.label}>
                             <Link
-                              href={c.isModal ? "#" : c.href}
-                              onClick={
-                                c.isModal
-                                  ? (e) => {
-                                    e.preventDefault();
-                                    setTrimegistoDNIModalOpen(true);
-                                    setMobileCatsOpen(false);
-                                  }
-                                  : () => setMobileCatsOpen(false)
-                              }
+                              href={c.href}
+                              onClick={() => setMobileCatsOpen(false)}
                               className={`group flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
                                 ? "bg-primary text-white hover:bg-primary-light"
                                 : c.highlightBottom
@@ -705,7 +673,6 @@ export default function Header() {
         isOpen={loginModalOpen}
         onClose={() => {
           setLoginModalOpen(false);
-          setIsFromTrimegisto(false);
           if (router.query.login === "true") {
             const { login, ...rest } = router.query;
             router.replace(
@@ -721,9 +688,7 @@ export default function Header() {
         onSwitchToRegister={() => {
           setLoginModalOpen(false);
           setRegisterModalOpen(true);
-          setIsFromTrimegisto(false);
         }}
-        fromTrimegisto={isFromTrimegisto}
       />
 
       <RegisterModal
@@ -735,29 +700,6 @@ export default function Header() {
         }}
       />
 
-      <TrimegistoDNIModal
-        isOpen={trimegistoDNIModalOpen}
-        onClose={() => setTrimegistoDNIModalOpen(false)}
-        onValidated={() => {
-          setTrimegistoDNIModalOpen(false);
-          setIsFromTrimegisto(true);
-          setLoginModalOpen(true);
-        }}
-        onNewUser={() => {
-          setTrimegistoDNIModalOpen(false);
-          setTrimegistoRegisterModalOpen(true);
-        }}
-      />
-
-      <TrimegistoRegisterModal
-        isOpen={trimegistoRegisterModalOpen}
-        onClose={() => setTrimegistoRegisterModalOpen(false)}
-        onSuccess={() => {
-          setTrimegistoRegisterModalOpen(false);
-          setIsFromTrimegisto(true);
-          setLoginModalOpen(true);
-        }}
-      />
     </>
   );
 }
