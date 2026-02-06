@@ -178,13 +178,18 @@ export default function GuestDataForm({
                 value={guestData.numeroDocumento}
                 onChange={handleInputChange}
                 placeholder={
-                  guestData.tipoDocumento === "RUC" ? "20100000001" : "74218601"
+                  guestData.tipoDocumento === "RUC"
+                    ? "20100000001"
+                    : guestData.tipoDocumento === "Pasaporte"
+                      ? "A1234567"
+                      : "74218601"
                 }
                 maxLength={
-                  guestData.tipoDocumento === "DNI" || guestData.tipoDocumento === "Pasaporte"
-                    ? 8
-                    : guestData.tipoDocumento === "RUC"
-                      ? 11
+                  guestData.tipoDocumento === "RUC"
+                    ? 11
+                    : guestData.tipoDocumento === "DNI" ||
+                      guestData.tipoDocumento === "Pasaporte"
+                      ? 8
                       : 12
                 }
                 error={guestErrors.numeroDocumento}
