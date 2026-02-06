@@ -164,7 +164,7 @@ export default function MisPedidos() {
                                 {getIconoEstado(order.paymentStatus)}
                                 <div>
                                   <h3 className="font-semibold text-primary-dark text-sm md:text-base">
-                                    Pedido #{order.orderId}
+                                    Pedido #{order.orderNumber}
                                   </h3>
                                   <span
                                     className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-xs font-semibold mt-1 ${badge.clase}`}
