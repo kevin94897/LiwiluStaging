@@ -999,16 +999,21 @@ export default function Carrito() {
       name === "celular" ||
       name === "telefonoOpcional"
     ) {
-      value = value.replace(/\D/g, "");
+      // Allow letters for Pasaporte
+      if (name === "numeroDocumento" && guestData.tipoDocumento === "Pasaporte") {
+        value = value.replace(/[^a-zA-Z0-9]/g, "");
+      } else {
+        value = value.replace(/\D/g, "");
+      }
 
       let maxLength = 20; // default for others
       if (name === "numeroDocumento") {
         maxLength =
           guestData.tipoDocumento === "RUC"
             ? 11
-            : guestData.tipoDocumento === "DNI"
+            : guestData.tipoDocumento === "DNI" || guestData.tipoDocumento === "Pasaporte"
               ? 8
-              : 20;
+              : 12; // CE
       } else if (name === "celular" || name === "telefonoOpcional") {
         maxLength = 9;
       }
@@ -1168,9 +1173,15 @@ export default function Carrito() {
       const { apiPut } = await import("@/lib/auth/apiClient");
       const token = localStorage.getItem("accessToken");
 
+      // Ensure document type is uppercase for backend validation
+      const payload = { ...data };
+      if (payload.documentType) {
+        payload.documentType = payload.documentType.toUpperCase();
+      }
+
       const response = await apiPut(
         "/users/profile",
-        data,
+        payload,
         token ? { headers: { Authorization: `Bearer ${token}` } } : {},
       );
 
@@ -2218,6 +2229,7 @@ export default function Carrito() {
                 guestLocations={guestLocations}
                 onSetActiveTab={setActiveTab}
                 onSetGuestData={setGuestData}
+                setGuestErrors={setGuestErrors}
                 deliveryZones={
                   metodoEnvio === "delivery" ? deliveryZones : undefined
                 }

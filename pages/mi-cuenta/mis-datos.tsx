@@ -93,8 +93,22 @@ export default function MisDatos() {
   };
 
   const handleDocumentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, "");
-    if (value.length <= 11) {
+    let value = e.target.value;
+
+    // Solo restringir a números si NO es pasaporte
+    if (formData.tipoDocumento !== "Pasaporte") {
+      value = value.replace(/\D/g, "");
+    } else {
+      // Para pasaporte, permitir letras y números, restringir otros símbolos si se desea, 
+      // pero la validación estricta ya está en el schema. 
+      // Podríamos limpiar espacios por UX.
+      value = value.replace(/[^a-zA-Z0-9]/g, "");
+    }
+
+    // Max length validation logic needs to be dynamic too
+    const maxLength = formData.tipoDocumento === 'RUC' ? 11 : formData.tipoDocumento === 'DNI' ? 8 : formData.tipoDocumento === 'Pasaporte' ? 8 : 12; // CE up to 12
+
+    if (value.length <= maxLength) {
       setFormData((prev) => ({ ...prev, numeroDocumento: value }));
       setErrors((prev) => ({ ...prev, numeroDocumento: undefined }));
     }
@@ -191,7 +205,7 @@ export default function MisDatos() {
       const updateData = {
         firstName: formData.nombre,
         lastName: formData.apellido,
-        documentType: formData.tipoDocumento,
+        documentType: formData.tipoDocumento ? formData.tipoDocumento.toUpperCase() : "",
         documentNumber: formData.numeroDocumento,
         phone: formData.celular,
         // email: formData.email, // ❌ NO actualizar email aquí
@@ -385,7 +399,12 @@ export default function MisDatos() {
                               id="tipoDocumento"
                               name="tipoDocumento"
                               value={formData.tipoDocumento}
-                              onChange={handleChange}
+                              onChange={(e) => {
+                                handleChange(e);
+                                // Clear document number and its errors when type changes
+                                setFormData((prev) => ({ ...prev, numeroDocumento: "" }));
+                                setErrors((prev) => ({ ...prev, numeroDocumento: undefined }));
+                              }}
                               disabled={isSubmitting}
                               error={errors.tipoDocumento}
                             >
@@ -405,8 +424,25 @@ export default function MisDatos() {
                               name="numeroDocumento"
                               value={formData.numeroDocumento}
                               onChange={handleDocumentoChange}
-                              placeholder="74218601"
-                              maxLength={11}
+                              placeholder={
+                                formData.tipoDocumento === "RUC"
+                                  ? "20100000001"
+                                  : formData.tipoDocumento === "Pasaporte"
+                                    ? "A1234567" // Example placeholder
+                                    : "74218601"
+                              }
+                              maxLength={
+                                formData.tipoDocumento === "RUC"
+                                  ? 11
+                                  : formData.tipoDocumento === "DNI" || formData.tipoDocumento === "Pasaporte"
+                                    ? 8
+                                    : 12
+                              }
+                              inputMode={
+                                formData.tipoDocumento === "Pasaporte"
+                                  ? "text"
+                                  : "numeric"
+                              }
                               disabled={isSubmitting}
                               error={errors.numeroDocumento}
                             />

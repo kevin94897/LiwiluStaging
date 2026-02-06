@@ -602,8 +602,14 @@ export async function validateStock(
  */
 export async function saveGuestPersonalData(data: any): Promise<{ success: boolean; message: string }> {
     try {
+        // Ensure document type is uppercase for backend validation
+        const payload = { ...data };
+        if (payload.tipoDocumento) {
+            payload.tipoDocumento = payload.tipoDocumento.toUpperCase();
+        }
+
         // X-Session-Id is automatically added by apiClient.ts from liwilu_session_id
-        const response = await apiPut('/cart/personal-data', data, {
+        const response = await apiPut('/cart/personal-data', payload, {
             skipAuth: true
         });
 
@@ -776,7 +782,14 @@ export async function savePickupPerson(data: {
 }): Promise<{ success: boolean; message: string }> {
     try {
         const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiPut('/cart/pickup-person', data, {
+
+        // Ensure document type is uppercase for backend validation
+        const payload = { ...data };
+        if (payload.tipoDocumento) {
+            payload.tipoDocumento = payload.tipoDocumento.toUpperCase();
+        }
+
+        const response = await apiPut('/cart/pickup-person', payload, {
             skipAuth: !accessToken
         });
 

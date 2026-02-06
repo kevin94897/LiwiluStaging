@@ -21,6 +21,11 @@ interface GuestDataFormProps {
   onSetGuestData: (
     update: (prev: GuestDataSchemaType) => GuestDataSchemaType,
   ) => void;
+  setGuestErrors: (
+    update: (
+      prev: Partial<Record<keyof GuestDataSchemaType, string>>,
+    ) => Partial<Record<keyof GuestDataSchemaType, string>>,
+  ) => void;
   deliveryZones?: DeliveryZone[];
 }
 
@@ -33,6 +38,7 @@ export default function GuestDataForm({
   guestLocations,
   onSetActiveTab,
   onSetGuestData,
+  setGuestErrors,
   deliveryZones,
 }: GuestDataFormProps) {
   const [isConsulting, setIsConsulting] = useState(false);
@@ -146,6 +152,12 @@ export default function GuestDataForm({
                   nombre: "",
                   apellido: "",
                 }));
+                // Clear errors for numeroDocumento
+                setGuestErrors((prev) => ({
+                  ...prev,
+                  numeroDocumento: undefined,
+                  tipoDocumento: undefined
+                }));
                 setConsulted(false);
               }}
               error={guestErrors.tipoDocumento}
@@ -169,13 +181,16 @@ export default function GuestDataForm({
                   guestData.tipoDocumento === "RUC" ? "20100000001" : "74218601"
                 }
                 maxLength={
-                  guestData.tipoDocumento === "DNI"
+                  guestData.tipoDocumento === "DNI" || guestData.tipoDocumento === "Pasaporte"
                     ? 8
                     : guestData.tipoDocumento === "RUC"
                       ? 11
-                      : 15
+                      : 12
                 }
                 error={guestErrors.numeroDocumento}
+                inputMode={
+                  guestData.tipoDocumento === "Pasaporte" ? "text" : "numeric"
+                }
                 className="pr-12"
               />
 

@@ -65,18 +65,29 @@ export default function GuestDataSummary({
   };
 
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, "");
+    let value = e.target.value;
+
+    if (formData.documentType === "Pasaporte") {
+      value = value.replace(/[^a-zA-Z0-9]/g, "");
+    } else {
+      value = value.replace(/\D/g, "");
+    }
+
     const maxLength =
       formData.documentType === "RUC"
         ? 11
-        : formData.documentType === "DNI"
+        : formData.documentType === "DNI" || formData.documentType === "Pasaporte"
           ? 8
-          : 20;
+          : 12; // CE max 12
+
     if (value.length > maxLength) value = value.slice(0, maxLength);
+
     setFormData((prev) => ({ ...prev, documentNumber: value }));
     setLocalErrors((prev) => {
       const newErrors = { ...prev };
       delete newErrors.documentNumber;
+      // Also delete mapped error key if exists (optional but safe)
+      delete newErrors.numeroDocumento;
       return newErrors;
     });
   };
@@ -232,7 +243,16 @@ export default function GuestDataSummary({
               label="Tipo de documento *"
               name="documentType"
               value={formData.documentType}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleChange(e);
+                setFormData((prev) => ({ ...prev, documentNumber: "" }));
+                setLocalErrors((prev) => {
+                  const newErrors = { ...prev };
+                  delete newErrors.documentNumber;
+                  delete newErrors.numeroDocumento;
+                  return newErrors;
+                });
+              }}
               error={displayErrors.documentType}
               disabled={isSaving}
             >
@@ -251,7 +271,23 @@ export default function GuestDataSummary({
                 displayErrors.documentNumber || displayErrors.numeroDocumento
               }
               disabled={isSaving}
-              placeholder="12345678"
+              placeholder={
+                formData.documentType === "RUC"
+                  ? "20100000001"
+                  : formData.documentType === "Pasaporte"
+                    ? "A1234567"
+                    : "74218601"
+              }
+              maxLength={
+                formData.documentType === "RUC"
+                  ? 11
+                  : formData.documentType === "DNI" || formData.documentType === "Pasaporte"
+                    ? 8
+                    : 12
+              }
+              inputMode={
+                formData.documentType === "Pasaporte" ? "text" : "numeric"
+              }
             />
           </div>
 

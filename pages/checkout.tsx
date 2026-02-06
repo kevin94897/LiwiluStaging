@@ -23,6 +23,8 @@ import {
 } from "@/lib/cart";
 import { useAuth } from "@/hooks/useAuth";
 import { consultaRUC } from "@/lib/general";
+import Select from "@/components/ui/Select";
+import Input from "@/components/ui/Input";
 
 type TipoComprobante = "boleta" | "factura";
 type MetodoPago = "tarjeta" | "yape" | "efectivo";
@@ -431,15 +433,29 @@ export default function Checkout() {
     if (tipoComprobante === "boleta") {
       if (!datosBoletaRUC) {
         newErrors.rucBoleta = "El número de documento es obligatorio";
-      } else if (
-        tipoDocumentoBoleta === "DNI" &&
-        !validateDNI(datosBoletaRUC)
-      ) {
-        newErrors.rucBoleta = "Ingresa un DNI válido (8 números)";
+      } else {
+        if (tipoDocumentoBoleta === "DNI") {
+          if (!/^\d{8}$/.test(datosBoletaRUC)) {
+            newErrors.rucBoleta = "Ingresa un DNI válido (8 números)";
+          }
+        } else if (tipoDocumentoBoleta === "RUC") {
+          if (!/^(10|15|20)\d{9}$/.test(datosBoletaRUC)) {
+            newErrors.rucBoleta = "Ingresa un RUC válido (11 números y empezar con 10, 15 o 20)";
+          }
+        } else if (tipoDocumentoBoleta === "CE") {
+          if (datosBoletaRUC.length < 6 || datosBoletaRUC.length > 12) {
+            newErrors.rucBoleta = "El CE debe tener entre 6 y 12 caracteres";
+          }
+        } else if (tipoDocumentoBoleta === "Pasaporte") {
+          if (!/^[A-Z][0-9]{7}$/.test(datosBoletaRUC)) {
+            newErrors.rucBoleta = "El pasaporte debe tener 1 letra y 7 números (ej. P1234567)";
+          }
+        }
       }
     } else {
       if (!datosFactura.ruc || !validateRUC(datosFactura.ruc)) {
-        newErrors.rucFactura = "El RUC debe tener 11 números y empezar con 10, 15 o 20";
+        newErrors.rucFactura =
+          "El RUC debe tener 11 números y empezar con 10, 15 o 20";
       }
       if (!datosFactura.razonSocial) {
         newErrors.razonSocial = "Ingresa la razón social";
@@ -499,7 +515,7 @@ export default function Checkout() {
           };
         } else {
           invoicePayload.invoiceData = {
-            tipoDocumento: tipoDocumentoBoleta,
+            tipoDocumento: tipoDocumentoBoleta.toUpperCase(), // Backend fix: uppercase
             numeroDocumento: datosBoletaRUC,
           };
         }
@@ -676,10 +692,8 @@ export default function Checkout() {
                   <div className="space-y-4 animate-fade-in">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Tipo de documento
-                        </label>
-                        <select
+                        <Select
+                          label="Tipo de documento"
                           value={tipoDocumentoBoleta}
                           onChange={(e) => {
                             setTipoDocumentoBoleta(e.target.value);
@@ -688,36 +702,49 @@ export default function Checkout() {
                             delete newErrors.rucBoleta;
                             setErrors(newErrors);
                           }}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition appearance-none bg-white"
                         >
                           <option value="DNI">DNI</option>
+                          <option value="RUC">RUC</option>
                           <option value="CE">Carnet de Extranjería</option>
                           <option value="Pasaporte">Pasaporte</option>
-                        </select>
+                        </Select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Número de documento
-                        </label>
-                        <input
+                        <Input
+                          label="Número de documento"
                           type="text"
                           value={datosBoletaRUC}
-                          onChange={(e) =>
-                            setDatosBoletaRUC(e.target.value.replace(/\D/g, ""))
+                          onChange={(e) => {
+                            let value = e.target.value;
+                            if (tipoDocumentoBoleta === "Pasaporte") {
+                              value = value.replace(/[^a-zA-Z0-9]/g, "");
+                            } else {
+                              value = value.replace(/\D/g, "");
+                            }
+                            setDatosBoletaRUC(value);
+                          }}
+                          placeholder={
+                            tipoDocumentoBoleta === "RUC"
+                              ? "20100000001"
+                              : tipoDocumentoBoleta === "Pasaporte"
+                                ? "A1234567"
+                                : "12345678"
                           }
-                          placeholder="12345678"
                           maxLength={
-                            tipoDocumentoBoleta === "DNI"
-                              ? 8
-                              : 20
+                            tipoDocumentoBoleta === "RUC"
+                              ? 11
+                              : tipoDocumentoBoleta === "DNI" ||
+                                tipoDocumentoBoleta === "Pasaporte"
+                                ? 8
+                                : 12
                           }
-                          className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                          inputMode={
+                            tipoDocumentoBoleta === "Pasaporte"
+                              ? "text"
+                              : "numeric"
+                          }
+                          error={errors.rucBoleta}
                         />
-                        {errors.rucBoleta && (
-                          <p className="text-red-500 text-xs mt-1">
-                            {errors.rucBoleta}
-                          </p>
-                        )}
                       </div>
                     </div>
                   </div>

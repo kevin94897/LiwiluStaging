@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DNI_REGEX, RUC_REGEX } from "./validations";
+import { DNI_REGEX, RUC_REGEX, CE_REGEX, PASSPORT_REGEX } from "./validations";
 
 const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s,]+$/;
 
@@ -12,7 +12,9 @@ export const carritoRegisterSchema = z.object({
         .min(1, "El apellido es obligatorio")
         .regex(onlyLetters, "El apellido solo puede contener letras"),
 
-    tipoDocumento: z.enum(['DNI', 'CE', 'Pasaporte', 'RUC']),
+    tipoDocumento: z.enum(['DNI', 'CE', 'Pasaporte', 'RUC'], {
+        message: "Seleccione un tipo de documento"
+    }),
 
     numeroDocumento: z.string()
         .min(1, "El número de documento es obligatorio"),
@@ -58,7 +60,7 @@ export const carritoRegisterSchema = z.object({
         if (!DNI_REGEX.test(data.numeroDocumento)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "El DNI debe tener exactamente 8 números",
+                message: "El DNI debe tener 8 dígitos numéricos",
                 path: ["numeroDocumento"],
             });
         }
@@ -66,15 +68,23 @@ export const carritoRegisterSchema = z.object({
         if (!RUC_REGEX.test(data.numeroDocumento)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "El RUC debe tener 11 números y empezar con 10, 15 o 20",
+                message: "El RUC debe tener 11 dígitos y comenzar con 10, 15 o 20",
                 path: ["numeroDocumento"],
             });
         }
-    } else {
-        if (data.numeroDocumento.length < 8 || data.numeroDocumento.length > 20) {
+    } else if (data.tipoDocumento === 'CE') {
+        if (!CE_REGEX.test(data.numeroDocumento)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "Número de documento inválido",
+                message: "El Carné de Extranjería debe contener entre 9 y 12 dígitos",
+                path: ["numeroDocumento"],
+            });
+        }
+    } else if (data.tipoDocumento === 'Pasaporte') {
+        if (!PASSPORT_REGEX.test(data.numeroDocumento)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "El pasaporte debe tener 1 letra y 7 números (ej. P1234567)",
                 path: ["numeroDocumento"],
             });
         }
