@@ -134,15 +134,7 @@ function QuickActions({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const loginRef = useRef<HTMLDivElement | null>(null);
 
-  // 🔹 DEBUG: Log para verificar el estado
-  useEffect(() => {
-    console.log("QuickActions render:", {
-      isLoading,
-      isAuthenticated,
-      user,
-      userName: user?.firstName,
-    });
-  }, [isLoading, isAuthenticated, user]);
+
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

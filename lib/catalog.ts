@@ -139,8 +139,6 @@ export async function searchProducts(params: FilterParams = {}): Promise<Catalog
     const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
     const url = `${baseUrl}/catalog/products/search${queryString}`;
 
-    console.log('Fetching products from:', url);
-
     try {
         // Try to fetch without auth first (public catalog)
         const response = await fetch(url, {
@@ -181,8 +179,6 @@ export async function getFeaturedProducts(): Promise<CatalogProduct[]> {
     // Ensure we have a base URL
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/catalog/products/featured`;
-
-    console.log('Fetching featured products from:', url);
 
     try {
         const response = await fetch(url, {
@@ -257,8 +253,6 @@ export interface LevelTwoCategoriesResponse {
 export async function getCatalogHierarchy(): Promise<HierarchyResponse | null> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/catalog/hierarchy`;
-
-    console.log('Fetching hierarchy from:', url);
 
     try {
         const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
@@ -537,7 +531,6 @@ export interface ProductVariationsResponse {
 export async function getProductBasic(productId: string | number): Promise<ProductBasicData | null> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/catalog/products/${productId}/basic`;
-    console.log('Fetching product basic from:', url);
     try {
         const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
         if (!response.ok) {
@@ -559,7 +552,6 @@ export async function getProductBasic(productId: string | number): Promise<Produ
 export async function getProductVariations(productId: string | number): Promise<ProductVariationsData | null> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/catalog/products/${productId}/variations`;
-    console.log('Fetching product variations from:', url);
     try {
         // MOCK RESPONSE FOR DEVELOPMENT
         // TODO: Uncomment the actual fetch when backend is ready
@@ -1155,7 +1147,7 @@ export async function getLevelTwoCategories(): Promise<CategoryLevelTwo[]> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/catalog/categories/level-two`;
 
-    console.log('Fetching level two categories from:', url);
+
 
     try {
         const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });

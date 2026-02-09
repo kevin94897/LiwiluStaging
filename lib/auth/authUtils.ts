@@ -68,7 +68,6 @@ export const saveSession = (user: any, accessToken: string, refreshToken: string
     const mappedUser = mapApiUserToUser(user);
     if (mappedUser) {
         localStorage.setItem('user', JSON.stringify(mappedUser));
-        console.log('✅ Standardized user saved:', mappedUser);
     }
 
     localStorage.setItem('accessToken', accessToken);
@@ -89,7 +88,6 @@ export const updateUserSession = (userData: Partial<User>) => {
 
     if (updatedUser) {
         localStorage.setItem('user', JSON.stringify(updatedUser));
-        console.log('🔄 User session updated:', updatedUser);
 
         // Dispatch event to notify other components/tabs
         window.dispatchEvent(new StorageEvent('storage', {
@@ -109,8 +107,6 @@ export const clearAuthSession = () => {
 
     // Total wipe for maximum security and fresh state
     localStorage.clear();
-
-    console.log('🧹 Total session and storage cleared');
 };
 
 /**

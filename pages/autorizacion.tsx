@@ -65,13 +65,12 @@ export default function AutorizarRetiroPage() {
       }
 
       setErrors(newErrors);
-      console.log("Errores de validación:", newErrors);
+      setErrors(newErrors);
       return;
     }
 
     // Si es válido
     setErrors({});
-    console.log("Autorización de retiro exitosa:", formData);
     // Aquí iría la lógica para guardar la autorización
     showToast("Autorización guardada exitosamente");
     router.back();

@@ -67,7 +67,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // 2. Cargar sessionId existente
     const currentSessionId = localStorage.getItem("liwilu_session_id");
     if (currentSessionId) {
-      console.log("📄 Loaded Existing Session ID:", currentSessionId);
+      // console.log("📄 Loaded Existing Session ID:", currentSessionId);
       setSessionId(currentSessionId);
     }
 
@@ -92,7 +92,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
    */
   const updateSessionId = (newSessionId?: string) => {
     if (newSessionId && newSessionId !== sessionId) {
-      console.log("♻️ Backend returned new Session ID:", newSessionId);
+      // console.log("♻️ Backend returned new Session ID:", newSessionId);
       localStorage.setItem("liwilu_session_id", newSessionId);
       setSessionId(newSessionId);
     }
@@ -105,16 +105,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Construct defaultVariation for compatibility with utils.ts pricing logic
     const defaultVariation = cartProduct.idVariation
       ? {
-          prestashopCombinationId: cartProduct.prestashopCombinationId || 0,
-          name: cartProduct.name,
-          reference: cartProduct.variationReference || "",
-          price:
-            cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0, // Treated as Sale Price by utils
-          priceWithTax:
-            cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0,
-          priceImpact: cartProduct.priceImpact || 0, // Treated as Regular Price by utils (when > 0)
-          queryString: "",
-        }
+        prestashopCombinationId: cartProduct.prestashopCombinationId || 0,
+        name: cartProduct.name,
+        reference: cartProduct.variationReference || "",
+        price:
+          cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0, // Treated as Sale Price by utils
+        priceWithTax:
+          cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0,
+        priceImpact: cartProduct.priceImpact || 0, // Treated as Regular Price by utils (when > 0)
+        queryString: "",
+      }
       : null;
 
     // Ensure price is the final effective price (Sale Price)
@@ -124,8 +124,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       (cartProduct.discountPrice && cartProduct.discountPrice > 0
         ? cartProduct.priceWithTax - cartProduct.discountPrice // If simple with discount, context priceWithTax likely includes it?
         : // Logic check: usually cartProduct.priceWithTax IS the final price in cart API.
-          // But if we follow utils: simple price = sale.
-          cartProduct.priceWithTax) ||
+        // But if we follow utils: simple price = sale.
+        cartProduct.priceWithTax) ||
       0;
 
     // RE-EVALUATION:
@@ -206,7 +206,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       // If not authenticated or error, keep local cart
-      console.log("Could not sync cart with backend:", error.message);
+      // console.log("Could not sync cart with backend:", error.message);
     }
   };
 
@@ -231,9 +231,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw new Error("ID de producto no válido");
       }
 
-      console.log(
-        `🛒 Adding to cart: ID ${productId}, Combination ID ${product.prestashopCombinationId ?? null}, Quantity ${cleanQuantity}`,
-      );
+
 
       // Call backend API
       const response = await apiAddToCart(
@@ -279,7 +277,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
 
       // Don't re-throw error - allow fallback to work silently
-      console.log("Using local cart fallback");
+
     } finally {
       setIsLoading(false);
     }

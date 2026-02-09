@@ -146,7 +146,6 @@ export async function addToCart(productId: number, quantity: number, prestashopC
         // Save session ID if returned (for anonymous carts)
         if (data?.data?.sessionId && typeof window !== 'undefined') {
             localStorage.setItem('liwilu_session_id', data.data.sessionId);
-            console.log('💾 Saved new session ID to localStorage:', data.data.sessionId);
         }
 
         return data;
@@ -190,7 +189,6 @@ export async function getCart(): Promise<GetCartResponse & { isExpired?: boolean
         // Save/Update session ID if returned
         if (data?.data?.sessionId && typeof window !== 'undefined') {
             localStorage.setItem('liwilu_session_id', data.data.sessionId);
-            console.log('💾 Updated session ID from getCart:', data.data.sessionId);
         }
 
         return data;
@@ -615,8 +613,6 @@ export async function saveGuestPersonalData(data: any): Promise<{ success: boole
             skipAuth: true
         });
 
-        console.log("Datos personales guardados:", data);
-
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || `Error saving guest data: ${response.statusText}`);
@@ -688,8 +684,6 @@ export async function saveCartDeliveryAddress(data: {
 }): Promise<{ success: boolean; message: string }> {
     try {
         const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        console.log('📡 Syncing delivery address to API:', data);
-        console.log('🔑 Access Token present:', !!accessToken);
 
         const response = await apiPut('/cart/delivery-address', data, {
             skipAuth: !accessToken
@@ -1043,7 +1037,7 @@ export async function getCheckoutSummary(): Promise<CheckoutSummaryResponse> {
         }
 
         const data = await response.json();
-        console.log('📦 [getCheckoutSummary] Success response:', data);
+
         return data;
     } catch (error: any) {
         console.error('Error in getCheckoutSummary:', error);
@@ -1085,7 +1079,7 @@ export async function mergeGuestCart(
         }
 
         const data = await response.json();
-        console.log('✅ [mergeGuestCart] Cart merged successfully:', data);
+
         return data;
     } catch (error: any) {
         console.error('❌ [mergeGuestCart] Error merging cart:', error);
