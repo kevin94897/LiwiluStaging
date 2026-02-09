@@ -386,9 +386,9 @@ export default function MisPedidos() {
                     >
                       Volver
                     </Link>
-                    <Button variant="primary" size="md">
+                    {/* <Button variant="primary" size="md">
                       Guardar
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
               </main>

@@ -42,6 +42,8 @@ export interface CartCarrier {
     isFree: boolean;
     logo: string;
     shippingCost: number;
+    zoneId?: number;
+    zoneName?: string;
 }
 
 /**

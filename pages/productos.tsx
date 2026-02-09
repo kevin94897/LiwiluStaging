@@ -34,7 +34,7 @@ import {
   HierarchyResponse,
   CategoryLevelTwo,
 } from "@/lib/catalog";
-import { FaRegHeart, FaPlus, FaMinus, FaHeart, FaFilter } from "react-icons/fa";
+import { FaRegHeart, FaPlus, FaMinus, FaHeart, FaFilter, FaTimes } from "react-icons/fa";
 import { fadeInUp, slideInRight } from "@/lib/motionVariants";
 import Button from "@/components/ui/Button";
 
@@ -56,6 +56,7 @@ interface TiendaProps {
 interface QueryParams {
   categoryIds?: string;
   brandIds?: string;
+  attributeIds?: string;
   inStock?: string;
   sortBy?: string;
   page?: string;
@@ -75,6 +76,9 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     const brandIds = params.brandIds
       ? params.brandIds.split(",").map(Number)
       : undefined;
+    const attributeIds = params.attributeIds
+      ? params.attributeIds.split(",").map(Number)
+      : undefined;
     const inStock = params.inStock === "true";
 
     const [searchResponse, levelTwoCategories, hierarchy] = await Promise.all([
@@ -82,6 +86,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         page,
         categoryIds,
         brandIds,
+        attributeIds,
         inStock,
         sortBy: params.sortBy,
         search: params.search,
@@ -601,9 +606,8 @@ export default function Tienda({
           {/* Grid de productos con animaciones */}
           <main className="flex-1" ref={productsTopRef}>
             <div
-              className={`bg-white rounded-sm shadow-md mb-14 overflow-hidden transition-all duration-700 transform hover:shadow-xl ${
-                isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
-              }`}
+              className={`bg-white rounded-sm shadow-md mb-14 overflow-hidden transition-all duration-700 transform hover:shadow-xl ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+                }`}
             >
               <div className="relative h-32 md:h-40">
                 <Image
@@ -633,10 +637,26 @@ export default function Tienda({
                   {(router.query.categoryIds ||
                     router.query.brandIds ||
                     router.query.attributeIds) && (
-                    <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                  )}
+                      <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                    )}
                 </button>
               </div>
+
+              {/* Search Query Display */}
+              {router.query.search && (
+                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-full animate-fade-in shadow-sm w-full sm:w-auto">
+                  <span className="text-sm font-medium text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
+                    {router.query.search}
+                  </span>
+                  <button
+                    onClick={() => updateFilters({ search: undefined })}
+                    className="ml-1 p-1 hover:bg-gray-200 rounded-full transition-colors text-gray-400 hover:text-red-500 group"
+                    title="Eliminar búsqueda"
+                  >
+                    <FaTimes className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
 
               <div className="flex items-center gap-3 w-full md:w-auto justify-end sm:justify-start">
                 <label
@@ -703,9 +723,9 @@ export default function Tienda({
                     product.coverImage ||
                     (product.associations?.images?.[0]?.id
                       ? getProductImageUrl(
-                          product.id.toString(),
-                          product.associations.images[0].id,
-                        )
+                        product.id.toString(),
+                        product.associations.images[0].id,
+                      )
                       : "/images/productos/placeholder_liwilu.png");
 
                   return (
@@ -730,11 +750,10 @@ export default function Tienda({
                               <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
                             ) : (
                               <FaHeart
-                                className={`w-5 h-5 transition ${
-                                  favoritos.includes(product.id.toString())
-                                    ? "text-red-500 fill-current"
-                                    : "text-gray-400 hover:text-red-500"
-                                }`}
+                                className={`w-5 h-5 transition ${favoritos.includes(product.id.toString())
+                                  ? "text-red-500 fill-current"
+                                  : "text-gray-400 hover:text-red-500"
+                                  }`}
                               />
                             )}
                           </button>
@@ -752,11 +771,10 @@ export default function Tienda({
                               width={400}
                               height={400}
                               sizes="400px"
-                              className={`object-cover transition-transform duration-500 group-hover:scale-105 ${
-                                (product.quantity ?? 0) <= 0
-                                  ? "grayscale opacity-70"
-                                  : ""
-                              }`}
+                              className={`object-cover transition-transform duration-500 group-hover:scale-105 ${(product.quantity ?? 0) <= 0
+                                ? "grayscale opacity-70"
+                                : ""
+                                }`}
                             />
                           </div>
                         </div>
@@ -790,11 +808,10 @@ export default function Tienda({
                           </div>
 
                           <button
-                            className={`w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 transform ${
-                              (product.quantity ?? 0) <= 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "hover:bg-gray-100 hover:shadow-lg"
-                            }`}
+                            className={`w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 transform ${(product.quantity ?? 0) <= 0
+                              ? "opacity-50 cursor-not-allowed"
+                              : "hover:bg-gray-100 hover:shadow-lg"
+                              }`}
                             onClick={(e) => {
                               if ((product.quantity ?? 0) > 0) {
                                 handleAddToCart(e, product);
@@ -873,11 +890,10 @@ export default function Tienda({
                       <button
                         key={page}
                         onClick={() => updateFilters({ page: page.toString() })}
-                        className={`px-4 py-2 rounded-sm transition-all duration-300 transform hover:scale-110 ${
-                          currentPage === page
-                            ? "bg-primary text-white font-semibold shadow-lg"
-                            : "border hover:bg-gray-100"
-                        }`}
+                        className={`px-4 py-2 rounded-sm transition-all duration-300 transform hover:scale-110 ${currentPage === page
+                          ? "bg-primary text-white font-semibold shadow-lg"
+                          : "border hover:bg-gray-100"
+                          }`}
                       >
                         {page}
                       </button>

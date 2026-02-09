@@ -147,7 +147,7 @@ export default function MisDatos() {
       if (response.ok && result.success) {
         showToast(
           result.message ||
-            "Se ha enviado un correo de verificación a tu nueva dirección. Por favor, revisa tu bandeja de entrada.",
+          "Se ha enviado un correo de verificación a tu nueva dirección. Por favor, revisa tu bandeja de entrada.",
           "success",
         );
         setPendingEmailChange("");
@@ -233,10 +233,10 @@ export default function MisDatos() {
         updateData,
         accessToken
           ? {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
           : {},
       );
 
@@ -397,14 +397,19 @@ export default function MisDatos() {
 
                           <div>
                             <Input
-                              label="Apellido *"
+                              label="Apellido"
                               type="text"
-                              id="apellido"
                               name="apellido"
                               value={formData.apellido}
                               onChange={handleChange}
-                              maxLength={50}
-                              disabled={isSubmitting}
+                              placeholder={
+                                formData.tipoDocumento === "RUC"
+                                  ? "No requerido para RUC"
+                                  : undefined
+                              }
+                              disabled={
+                                isSubmitting || formData.tipoDocumento === "RUC"
+                              }
                               error={errors.apellido}
                             />
                           </div>
@@ -420,10 +425,13 @@ export default function MisDatos() {
                               value={formData.tipoDocumento}
                               onChange={(e) => {
                                 handleChange(e);
+                                const newDocType = e.target.value;
                                 // Clear document number and its errors when type changes
                                 setFormData((prev) => ({
                                   ...prev,
                                   numeroDocumento: "",
+                                  // Auto-fill apellido with "No aplica" for RUC to avoid empty submission
+                                  apellido: newDocType === "RUC" ? "No aplica" : prev.apellido,
                                 }));
                                 setErrors((prev) => ({
                                   ...prev,
@@ -460,7 +468,7 @@ export default function MisDatos() {
                                 formData.tipoDocumento === "RUC"
                                   ? 11
                                   : formData.tipoDocumento === "DNI" ||
-                                      formData.tipoDocumento === "Pasaporte"
+                                    formData.tipoDocumento === "Pasaporte"
                                     ? 8
                                     : 12
                               }

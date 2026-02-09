@@ -100,9 +100,83 @@ function getDescriptionForStatus(statusName: string): string {
   return descriptions[statusName] || "Estado actualizado";
 }
 
+const FIXED_STEPS = [
+  { id: "confirmado", titulo: "Pedido confirmado", keywords: ["confirmado", "creado"], codes: [] as string[] },
+  { id: "recepcionado", titulo: "Recepcionado", keywords: ["almacén", "recepcion"], codes: ["30"] },
+  { id: "planificado", titulo: "Despacho/Planificado", keywords: ["planificado", "preparado"], codes: [] as string[] },
+  { id: "ruta", titulo: "En Ruta", keywords: ["ruta", "camino"], codes: [] as string[] },
+  { id: "entregado", titulo: "Entregado", keywords: ["entregado"], codes: [] as string[] },
+];
+
 function mapSAVARToUI(savarData: any): PedidoInfo {
-  const estados = savarData.Estados || [];
-  const lastEstado = estados[estados.length - 1];
+  const estadosApi = savarData.Estados || [];
+
+  // 1. Determine the furthest step reached based on API history
+  let currentStepIndex = 0; // Default to first step (Pedido confirmado)
+
+  // Helper to find index in our FIXED_STEPS based on API status string and code
+  const getStepIndexForStatus = (statusName: string, statusCode: string) => {
+    const s = statusName.toLowerCase();
+    const c = statusCode;
+
+    if (s.includes("entregado")) return 4;
+    if (s.includes("ruta") || s.includes("camino")) return 3;
+    if (s.includes("planificado") || s.includes("preparado") || s.includes("despacho")) return 2;
+    if (c === "30" || s.includes("almacén") || s.includes("recepcion")) return 1;
+    return 0;
+  };
+
+  // Find the max step index reached from all API states
+  estadosApi.forEach((estado: any) => {
+    const idx = getStepIndexForStatus(estado.vNombreEstado, estado.vCodEstado);
+    if (idx > currentStepIndex) {
+      currentStepIndex = idx;
+    }
+  });
+
+  // 2. Map FIXED_STEPS to UI states
+  const mappedEstados = FIXED_STEPS.map((step, index) => {
+    // Find specific API info for this step if available. 
+    // Prioritize exact code matching if defined.
+    let apiMatch = step.codes.length > 0
+      ? estadosApi.find((e: any) => step.codes.includes(e.vCodEstado))
+      : null;
+
+    // Fallback to keyword matching if no code match found
+    if (!apiMatch) {
+      apiMatch = estadosApi.find((e: any) =>
+        step.keywords.some(k => e.vNombreEstado.toLowerCase().includes(k))
+      );
+    }
+
+    // Special case: "Pedido confirmado" usually doesn't have an API match, use the first available date or current
+    let fecha = apiMatch ? formatDate(apiMatch.dFechaEstado, "date") : "";
+    let hora = apiMatch ? formatDate(apiMatch.dFechaEstado, "time") : "";
+
+    // Fallback for "Pedido confirmado" if no match
+    if (index === 0 && !apiMatch && estadosApi.length > 0) {
+      // Use the earliest state date as confirmation date approx
+      fecha = formatDate(estadosApi[0].dFechaEstado, "date");
+      hora = formatDate(estadosApi[0].dFechaEstado, "time");
+    }
+
+    const isCompleted = index <= currentStepIndex;
+    const isActive = index === currentStepIndex;
+
+    return {
+      id: step.id,
+      titulo: step.titulo,
+      vCodEstado: apiMatch?.vCodEstado || "",
+      descripcion: apiMatch?.vMotivo || (isCompleted
+        ? (index === 0 ? "Tu pedido ha sido confirmado exitosamente" : getDescriptionForStatus(step.titulo))
+        : "Pendiente"),
+      fecha,
+      hora,
+      completado: isCompleted,
+      activo: isActive,
+      fotos: apiMatch?.lstfotos || [],
+    };
+  });
 
   return {
     numero: savarData.vcodpaquete,
@@ -113,17 +187,7 @@ function mapSAVARToUI(savarData: any): PedidoInfo {
       precio: 0,
       imagen: "/images/productos/liwilu_producto_example.png",
     },
-    estados: estados.map((estado: SAVAREstado, index: number) => ({
-      id: estado.vCodEstado,
-      titulo: estado.vNombreEstado,
-      descripcion:
-        estado.vMotivo || getDescriptionForStatus(estado.vNombreEstado),
-      fecha: formatDate(estado.dFechaEstado, "date"),
-      hora: formatDate(estado.dFechaEstado, "time"),
-      completado: true,
-      activo: index === estados.length - 1,
-      fotos: estado.lstfotos || [],
-    })),
+    estados: mappedEstados,
   };
 }
 
@@ -144,8 +208,9 @@ export default function RastreoPedidoDetalle() {
     setError("");
     setBuscando(true);
 
+    const numeroLimpio = num.replace("#", "");
+
     try {
-      const numeroLimpio = num.replace("#", "");
       const response = await getPackageStatus(numeroLimpio);
 
       if (response && response.nIdePaquete) {
@@ -157,11 +222,19 @@ export default function RastreoPedidoDetalle() {
           "No se encontró el pedido. Verifica el número e intenta nuevamente.",
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching package status:", error);
-      setError(
-        "No se encontró el pedido. Verifica el número e intenta nuevamente.",
-      );
+
+      // Check if it's a 404 package not found error
+      if (error.isPackageNotFound || error.statusCode === 404) {
+        setError(
+          `No se encontró el paquete #${numeroLimpio}. Por favor verifica el número de seguimiento e intenta nuevamente.`,
+        );
+      } else {
+        setError(
+          error.message || "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
+        );
+      }
     } finally {
       setBuscando(false);
     }
@@ -315,11 +388,10 @@ export default function RastreoPedidoDetalle() {
                         {/* Línea vertical */}
                         {index !== pedidoEncontrado.estados.length - 1 && (
                           <div
-                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${
-                              estado.completado
-                                ? "border border-dashed border-primary"
-                                : "border border-dashed border-gray-300"
-                            }`}
+                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${estado.completado
+                              ? "border border-dashed border-primary"
+                              : "border border-dashed border-gray-300"
+                              }`}
                           ></div>
                         )}
 
@@ -340,34 +412,38 @@ export default function RastreoPedidoDetalle() {
 
                           {/* Icono */}
                           <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 ${
-                              estado.completado
-                                ? "bg-green-500 text-white shadow-lg shadow-green-200"
-                                : estado.activo
-                                  ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
-                                  : "bg-gray-300 text-gray-500"
-                            }`}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 ${estado.completado
+                              ? "bg-green-500 text-white shadow-lg shadow-green-200"
+                              : estado.activo
+                                ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
+                                : "bg-gray-300 text-gray-500"
+                              }`}
                           >
                             {getIconoEstado(estado.titulo)}
                           </div>
 
                           {/* Contenido */}
                           <div className="flex-1 pt-1">
-                            <h3
-                              className={`text-xl font-semibold mb-2 ${
-                                estado.completado || estado.activo
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3
+                                className={`text-xl font-semibold ${estado.completado || estado.activo
                                   ? "text-gray-900"
                                   : "text-gray-500"
-                              }`}
-                            >
-                              {estado.titulo}
-                            </h3>
+                                  }`}
+                              >
+                                {estado.titulo}
+                              </h3>
+                              {(estado as any).vCodEstado && (
+                                <span className="text-xs font-mono bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded border border-gray-200">
+                                  {(estado as any).vCodEstado}
+                                </span>
+                              )}
+                            </div>
                             <p
-                              className={`text-sm ${
-                                estado.completado || estado.activo
-                                  ? "text-gray-700"
-                                  : "text-gray-500"
-                              }`}
+                              className={`text-sm ${estado.completado || estado.activo
+                                ? "text-gray-700"
+                                : "text-gray-500"
+                                }`}
                             >
                               {estado.descripcion}
                             </p>

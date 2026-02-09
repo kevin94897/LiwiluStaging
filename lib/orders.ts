@@ -158,12 +158,33 @@ export async function getPackageStatus(orderId: string): Promise<PackageStatusRe
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+
+            // Create a more specific error for 404 package not found
+            if (response.status === 404) {
+                const error: any = new Error(
+                    errorData.message ||
+                    `No se encontró información para el paquete ${orderId}. Verifica el número e intenta nuevamente.`
+                );
+                error.statusCode = 404;
+                error.isPackageNotFound = true;
+                throw error;
+            }
+
             throw new Error(errorData.message || `Error fetching package status: ${response.statusText}`);
         }
 
         return await response.json();
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error in getPackageStatus:', error);
+
+        // Re-throw with additional context if it's not already our custom error
+        if (!error.isPackageNotFound && error.message) {
+            const enhancedError: any = new Error(error.message);
+            enhancedError.statusCode = error.statusCode;
+            enhancedError.originalError = error;
+            throw enhancedError;
+        }
+
         throw error;
     }
 }

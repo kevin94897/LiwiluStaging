@@ -334,7 +334,7 @@ export default function Checkout() {
           }
 
           setProcessing(true);
-          setProcessingStage("completing");
+          setProcessingStage("processing-payment");
 
           // 1. Obtener email (Usuario o Invitado)
           let email = "";
@@ -373,6 +373,7 @@ export default function Checkout() {
             const confirmedOrderId = payResponse.data.orderId;
             console.log(`✅ Pago confirmado para orden #${confirmedOrderId}`);
 
+            setProcessingStage("completing");
             closeCulqi();
             showToast("💳 ¡Compra realizada con éxito!", "success");
             setIsSuccess(true);
@@ -394,10 +395,8 @@ export default function Checkout() {
             // Use multiple redirect strategies for reliability on slow connections
             console.log(`🚀 Redirigiendo a página de éxito...`);
 
-            // Determine redirect URL based on authentication status
-            const redirectUrl = isAuthenticated
-              ? `/mi-cuenta/mis-pedidos?highlight=${confirmedOrderId}`
-              : `/pedido-exitoso?order=${confirmedOrderId}`;
+            // Determine redirect URL (always show success page for better UX)
+            const redirectUrl = `/pedido-exitoso?order=${confirmedOrderId}`;
 
             console.log(
               `📍 Redirect URL: ${redirectUrl} (authenticated: ${isAuthenticated})`,
@@ -500,7 +499,7 @@ export default function Checkout() {
       } else {
         showToast(
           response.message ||
-            "No se encontró información para el RUC ingresado",
+          "No se encontró información para el RUC ingresado",
           "error",
         );
       }
@@ -634,7 +633,9 @@ export default function Checkout() {
 
         console.log("✅ Orden creada:", orderId);
         setCurrentOrderId(orderId);
-        setProcessingStage("processing-payment");
+
+        // Ocultar overlay para que el usuario pueda interactuar con Culqi
+        setProcessing(false);
 
         // 2. Abrir pasarela Culqi
         console.log("🚀 [Checkout] Iniciando flujo Culqi");
@@ -752,21 +753,19 @@ export default function Checkout() {
                 <div className="flex gap-4 mb-6">
                   <button
                     onClick={() => setTipoComprobante("boleta")}
-                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                      tipoComprobante === "boleta"
-                        ? "border-primary bg-primary text-white"
-                        : "border-gray-200 text-gray-700 hover:border-primary"
-                    }`}
+                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "boleta"
+                      ? "border-primary bg-primary text-white"
+                      : "border-gray-200 text-gray-700 hover:border-primary"
+                      }`}
                   >
                     Boleta
                   </button>
                   <button
                     onClick={() => setTipoComprobante("factura")}
-                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                      tipoComprobante === "factura"
-                        ? "border-primary bg-primary text-white"
-                        : "border-gray-200 text-gray-700 hover:border-primary"
-                    }`}
+                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "factura"
+                      ? "border-primary bg-primary text-white"
+                      : "border-gray-200 text-gray-700 hover:border-primary"
+                      }`}
                   >
                     <span className="flex items-center justify-center gap-2">
                       <svg
@@ -828,7 +827,7 @@ export default function Checkout() {
                           }
                           maxLength={
                             tipoDocumentoBoleta === "DNI" ||
-                            tipoDocumentoBoleta === "Pasaporte"
+                              tipoDocumentoBoleta === "Pasaporte"
                               ? 8
                               : 12
                           }
@@ -965,11 +964,10 @@ export default function Checkout() {
                   {/* Tarjeta de crédito/débito */}
                   <button
                     onClick={() => setMetodoPago("tarjeta")}
-                    className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                      metodoPago === "tarjeta"
-                        ? "border-primary bg-primary/5"
-                        : "border-gray-200 hover:border-primary/50"
-                    }`}
+                    className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "tarjeta"
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 hover:border-primary/50"
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <FaCreditCard className="text-2xl text-gray-600" />
@@ -1241,9 +1239,9 @@ export default function Checkout() {
                           </p>
                           {item.product.originalPrice &&
                             parseFloat(item.product.originalPrice.toString()) >
-                              parseFloat(
-                                (item.product.price || "0").toString(),
-                              ) && (
+                            parseFloat(
+                              (item.product.price || "0").toString(),
+                            ) && (
                               <p className="text-xs text-gray-400 line-through">
                                 {formatPrice(
                                   (

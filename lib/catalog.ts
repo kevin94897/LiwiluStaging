@@ -104,6 +104,7 @@ export interface FilterParams {
     limit?: number;
     categoryIds?: number[];
     brandIds?: number[];
+    attributeIds?: number[];
     inStock?: boolean;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
@@ -126,6 +127,7 @@ export async function searchProducts(params: FilterParams = {}): Promise<Catalog
     if (params.limit) queryParts.push(`limit=${params.limit}`);
     if (params.categoryIds && params.categoryIds.length > 0) queryParts.push(`categoryIds=${params.categoryIds.join(',')}`);
     if (params.brandIds && params.brandIds.length > 0) queryParts.push(`brandIds=${params.brandIds.join(',')}`);
+    if (params.attributeIds && params.attributeIds.length > 0) queryParts.push(`attributeIds=${params.attributeIds.join(',')}`);
     if (params.inStock !== undefined) queryParts.push(`inStock=${params.inStock}`);
     if (params.sortBy) queryParts.push(`sortBy=${params.sortBy}`);
     if (params.sortOrder) queryParts.push(`sortOrder=${params.sortOrder}`);

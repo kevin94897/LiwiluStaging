@@ -69,6 +69,14 @@ function SearchBar({ isMobile = false }) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Sincronizar el campo de búsqueda con la URL
+  useEffect(() => {
+    if (router.isReady) {
+      const querySearch = router.query.search as string;
+      setSearchQuery(querySearch || "");
+    }
+  }, [router.isReady, router.query.search]);
+
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (searchQuery.trim()) {

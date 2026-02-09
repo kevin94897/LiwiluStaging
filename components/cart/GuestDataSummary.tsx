@@ -233,8 +233,13 @@ export default function GuestDataSummary({
               name="lastName"
               value={formData.lastName}
               onChange={handleChange}
+              placeholder={
+                formData.documentType === "RUC"
+                  ? "No requerido para RUC"
+                  : undefined
+              }
               error={displayErrors.lastName}
-              disabled={isSaving}
+              disabled={isSaving || formData.documentType === "RUC"}
             />
           </div>
 
@@ -245,7 +250,13 @@ export default function GuestDataSummary({
               value={formData.documentType}
               onChange={(e) => {
                 handleChange(e);
-                setFormData((prev) => ({ ...prev, documentNumber: "" }));
+                const newDocType = e.target.value;
+                setFormData((prev) => ({
+                  ...prev,
+                  documentNumber: "",
+                  // Auto-fill lastName with "No aplica" for RUC to avoid empty submission
+                  lastName: newDocType === "RUC" ? "No aplica" : prev.lastName
+                }));
                 setLocalErrors((prev) => {
                   const newErrors = { ...prev };
                   delete newErrors.documentNumber;

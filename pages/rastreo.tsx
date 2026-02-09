@@ -138,10 +138,10 @@ export default function RastreoPedido() {
 
     setBuscando(true);
 
-    try {
-      // Remove # if present
-      const numeroLimpio = numeroPedido.replace("#", "");
+    // Remove # if present
+    const numeroLimpio = numeroPedido.replace("#", "");
 
+    try {
       // Call real API endpoint
       const response = await getPackageStatus(numeroLimpio);
 
@@ -154,11 +154,19 @@ export default function RastreoPedido() {
           "No se encontró el pedido. Verifica el número e intenta nuevamente.",
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching package status:", error);
-      setError(
-        "No se encontró el pedido. Verifica el número e intenta nuevamente.",
-      );
+
+      // Check if it's a 404 package not found error
+      if (error.isPackageNotFound || error.statusCode === 404) {
+        setError(
+          `No se encontró el paquete #${numeroLimpio}. Por favor verifica el número de seguimiento e intenta nuevamente.`,
+        );
+      } else {
+        setError(
+          error.message || "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
+        );
+      }
     } finally {
       setBuscando(false);
     }
@@ -308,11 +316,10 @@ export default function RastreoPedido() {
                         {/* Línea vertical */}
                         {index !== pedidoEncontrado.estados.length - 1 && (
                           <div
-                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${
-                              estado.completado
-                                ? "border border-dashed border-primary"
-                                : "border border-dashed border-gray-300"
-                            }`}
+                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${estado.completado
+                              ? "border border-dashed border-primary"
+                              : "border border-dashed border-gray-300"
+                              }`}
                           ></div>
                         )}
 
@@ -333,13 +340,12 @@ export default function RastreoPedido() {
 
                           {/* Icono */}
                           <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 ${
-                              estado.completado
-                                ? "bg-green-500 text-white shadow-lg shadow-green-200"
-                                : estado.activo
-                                  ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
-                                  : "bg-gray-300 text-gray-500"
-                            }`}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 ${estado.completado
+                              ? "bg-green-500 text-white shadow-lg shadow-green-200"
+                              : estado.activo
+                                ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
+                                : "bg-gray-300 text-gray-500"
+                              }`}
                           >
                             {getIconoEstado(estado.titulo)}
                           </div>
@@ -347,20 +353,18 @@ export default function RastreoPedido() {
                           {/* Contenido */}
                           <div className="flex-1 pt-1">
                             <h3
-                              className={`text-xl font-semibold mb-2 ${
-                                estado.completado || estado.activo
-                                  ? "text-gray-900"
-                                  : "text-gray-500"
-                              }`}
+                              className={`text-xl font-semibold mb-2 ${estado.completado || estado.activo
+                                ? "text-gray-900"
+                                : "text-gray-500"
+                                }`}
                             >
                               {estado.titulo}
                             </h3>
                             <p
-                              className={`text-sm ${
-                                estado.completado || estado.activo
-                                  ? "text-gray-700"
-                                  : "text-gray-500"
-                              }`}
+                              className={`text-sm ${estado.completado || estado.activo
+                                ? "text-gray-700"
+                                : "text-gray-500"
+                                }`}
                             >
                               {estado.descripcion}
                             </p>
