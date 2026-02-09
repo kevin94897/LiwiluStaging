@@ -185,7 +185,7 @@ export default function Footer() {
         <div className="md:col-span-1">
           {/* Columna 3: Suscripción y redes */}
           <div className="space-y-4">
-            <Link href="/libro-reclamaciones">
+            <Link href="https://libro-de-reclamaciones.liwilu.com.pe/" target="_blank">
               <Image
                 src="/images/liwilu_libro_reclamaciones.png"
                 alt="Libro de reclamaciones"

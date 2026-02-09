@@ -1084,7 +1084,7 @@ export default function Carrito() {
 
         await saveGuestPersonalData(payload);
 
-        console.log("Datos de invitado guardados:", guestData);
+        // console.log("Datos de invitado guardados:", guestData);
 
         // Guardar en localStorage
         localStorage.setItem("liwilu_guestData", JSON.stringify(guestData));
