@@ -206,11 +206,10 @@ export default function Footer() {
                     value={newsletterData.email}
                     onChange={handleChange}
                     placeholder="Dirección de correo electrónico"
-                    className={`px-4 py-2 rounded-l-sm text-primary-dark text-sm w-full focus:outline-none focus:ring-2 transition ${
-                      errors.email
+                    className={`px-4 py-2 rounded-l-sm text-primary-dark text-sm w-full focus:outline-none focus:ring-2 transition ${errors.email
                         ? "ring-2 ring-red-400"
                         : "focus:ring-white/50"
-                    }`}
+                      }`}
                     disabled={isSubmitting}
                   />
                   <button
@@ -246,13 +245,13 @@ export default function Footer() {
 
             {/* Redes sociales */}
             <div className="flex items-center gap-4 mt-6">
-              <Link href="#" className="hover:opacity-80">
+              <Link href="https://www.facebook.com/LiwiluPeru" className="hover:opacity-80">
                 <FaFacebook className="w-6 h-6 hover:text-blue-400 transition" />
               </Link>
-              <Link href="#" className="hover:opacity-80">
+              <Link href="https://www.instagram.com/liwiluperu/" className="hover:opacity-80">
                 <FaInstagram className="w-6 h-6 hover:text-pink-400 transition" />
               </Link>
-              <Link href="#" className="hover:opacity-80">
+              <Link href="https://www.tiktok.com/@liwilu.peru?lang=es" className="hover:opacity-80">
                 <FaTiktok className="w-6 h-6 hover:text-gray-300 transition" />
               </Link>
             </div>

@@ -11,6 +11,7 @@ import RegisterModal from "@/components/RegisterModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/router";
 import { showToast } from "@/lib/notifications";
+import StoresModal from "@/components/StoresModal";
 
 import {
   FaRegHeart,
@@ -184,7 +185,9 @@ function QuickActions({
     return (
       <div className="flex items-center gap-4">
         {/* <FaBoxes size={20} /> */}
-        <FaTruck size={20} />
+        <Link href="/rastreo" className="relative">
+          <FaTruck size={20} />
+        </Link>
         {isAuthenticated ? (
           <Link href="/mi-cuenta" className="relative">
             <FaUser size={18} />
@@ -533,22 +536,44 @@ export default function Header() {
         >
           <div className="max-w-3xl mx-auto flex justify-between items-center flex-wrap">
             <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-1">
-              {topLinks.map((link, i) => (
-                <Link
-                  key={i}
-                  href={link.href}
-                  className="flex items-center gap-1 hover:underline shrink-0 text-primary-dark"
-                  onClick={(e) => {
-                    if (link.label === "Mis favoritos" && !isAuthenticated) {
-                      e.preventDefault();
-                      setLoginModalOpen(true);
-                    }
-                  }}
-                >
-                  {link.icon && link.icon}
-                  {link.label}
-                </Link>
-              ))}
+              {topLinks.map((link, i) => {
+                if (link.label === "Regístrate") {
+                  if (isAuthenticated) return null;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setRegisterModalOpen(true)}
+                      className="flex items-center gap-1 hover:underline shrink-0 text-primary-dark"
+                    >
+                      {link.label}
+                    </button>
+                  );
+                }
+                if (link.label === "Tiendas campañas 2026") {
+                  return (
+                    <StoresModal
+                      key={i}
+                      buttonClassName="flex items-center gap-1 hover:underline shrink-0 text-primary-dark"
+                    />
+                  );
+                }
+                return (
+                  <Link
+                    key={i}
+                    href={link.href}
+                    className="flex items-center gap-1 hover:underline shrink-0 text-primary-dark"
+                    onClick={(e) => {
+                      if (link.label === "Mis favoritos" && !isAuthenticated) {
+                        e.preventDefault();
+                        setLoginModalOpen(true);
+                      }
+                    }}
+                  >
+                    {link.icon && link.icon}
+                    {link.label}
+                  </Link>
+                );
+              })}
             </div>
             <span className="hidden lg:block text-primary-dark">
               Contáctanos: (01) 7020868 - Anexo 2

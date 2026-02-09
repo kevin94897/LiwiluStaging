@@ -82,7 +82,14 @@ export default function Direcciones() {
 			const result = await response.json();
 
 			if (result.success && result.data) {
-				setDirecciones(result.data);
+				const addresses = result.data;
+				setDirecciones(addresses);
+
+				// Si es la primera vez que se cargan y no hay direcciones,
+				// pre-seleccionar "esPrincipal" para el próximo uso
+				if (addresses.length === 0) {
+					setFormData(prev => ({ ...prev, esPrincipal: true }));
+				}
 			}
 		} catch (error) {
 			console.error('Error al cargar direcciones:', error);
@@ -143,6 +150,8 @@ export default function Direcciones() {
 				return;
 			}
 
+			const isFirstAddress = direcciones.length === 0;
+
 			// Mapear los campos del formulario a los campos de la API
 			const addressData = {
 				department: formData.ciudad,
@@ -151,7 +160,7 @@ export default function Direcciones() {
 				address: formData.direccion,
 				apartment: formData.numeroDptoPiso,
 				reference: formData.referencia || '',
-				isMain: formData.esPrincipal,
+				isMain: isFirstAddress ? true : formData.esPrincipal,
 			};
 
 			// Si se establece como principal, desmarcar la anterior
@@ -238,7 +247,7 @@ export default function Direcciones() {
 			provincia: '',
 			distrito: '',
 			codigoPostal: '',
-			esPrincipal: false,
+			esPrincipal: direcciones.length === 0,
 		});
 		locations.setLocationValues("", "", "");
 	};

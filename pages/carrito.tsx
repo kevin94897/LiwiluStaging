@@ -376,7 +376,25 @@ export default function Carrito() {
         ((user && "token" in user) || localStorage.getItem("accessToken"))
       ) {
         setIsLoggedIn(true); // Asegurar que UI refleje logueo
-        setSaveAddressToProfile(true); // Default to save new addresses to profile
+        const addressesResult = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/users/addresses`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            },
+          },
+        );
+
+        let hasNoStoredAddresses = true;
+        if (addressesResult.ok) {
+          const res = await addressesResult.json();
+          if (res.success && res.data && res.data.length > 0) {
+            hasNoStoredAddresses = false;
+          }
+        }
+
+        setSaveAddressToProfile(hasNoStoredAddresses); // Default to save new addresses to profile ONLY if they have none, or always? User said "Recommended" so keeping it mostly on.
+
         try {
           const token = localStorage.getItem("accessToken");
           const response = await fetch(
@@ -1810,7 +1828,7 @@ export default function Carrito() {
             direccionEnvio.numeroDptoPiso ||
             (mainAddressId ? "Mi Dirección" : "Nueva Dirección"),
           reference: direccionEnvio.referencia || "",
-          isMain: isEditingMainAddress || hasNoAddresses || false,
+          isMain: hasNoAddresses || isEditingMainAddress || false,
         };
 
         let response;

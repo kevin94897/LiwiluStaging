@@ -119,7 +119,11 @@ export default function StorePickupContent({
         <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in-up mt-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Puntos de retiro más cercanos</h2>
+
           </div>
+          <p className="text-sm text-gray-700 mb-3">
+            Selecciona la tienda para confirmar el retiro
+          </p>
 
           {/* Mapa Interactivo */}
           <div className="relative h-96 bg-gray-100 rounded-sm mb-6 overflow-hidden border">

@@ -440,7 +440,7 @@ export default function LibroReclamaciones() {
                                         name="pedidoDetalle"
                                         value={formData.pedidoDetalle}
                                         onChange={handleInputChange}
-                                        placeholder="#2153603"
+                                        placeholder="ej. 2153603"
                                     />
                                 </div>
                             </div>

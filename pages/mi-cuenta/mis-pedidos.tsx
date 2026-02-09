@@ -361,13 +361,12 @@ export default function MisPedidos() {
                                   </div>
 
                                   <div className="flex justify-end pt-4 border-t">
-                                    <Button
-                                      variant="primary"
-                                      size="sm"
-                                      className="w-full md:w-auto"
+                                    <Link
+                                      className="w-full md:w-auto bg-primary text-white py-2 px-4 rounded-full text-xs"
+                                      href={`/rastreo/${order.id}`}
                                     >
                                       Seguir pedido
-                                    </Button>
+                                    </Link>
                                   </div>
                                 </div>
                               </div>

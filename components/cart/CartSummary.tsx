@@ -129,11 +129,11 @@ export default function CartSummary({
               </Link>{" "}
               y la{" "}
               <Link
-                href="/politicas/envio-y-recojo"
+                href="/politicas/politica-de-envio-y-recojo-pedidos"
                 className="text-primary hover:underline"
                 target="_blank"
               >
-                Política de Privacidad
+                Política de Envío y Recojo de Pedidos
               </Link>
             </label>
           </div>

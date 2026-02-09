@@ -1,6 +1,8 @@
 // components/AccountSidebar.tsx
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useAuth } from "@/hooks/useAuth";
+import { showToast } from "@/lib/notifications";
 
 interface AccountSidebarProps {
   activeSection?: string;
@@ -8,6 +10,7 @@ interface AccountSidebarProps {
 
 export default function AccountSidebar({ activeSection }: AccountSidebarProps) {
   const router = useRouter();
+  const { logout } = useAuth();
 
   const menuItems = [
     { id: "mi-cuenta", label: "Mi cuenta", href: "/mi-cuenta" },
@@ -21,10 +24,17 @@ export default function AccountSidebar({ activeSection }: AccountSidebarProps) {
     },
   ];
 
-  const handleLogout = () => {
-    // Aquí iría la lógica de cierre de sesión
-    console.log("Cerrando sesión...");
-    router.push("/");
+  const handleLogout = async () => {
+    if (!confirm("¿Estás seguro que deseas cerrar sesión?")) return;
+
+    try {
+      await logout();
+      showToast("Sesión cerrada correctamente", "success");
+      router.push("/");
+    } catch (error: any) {
+      console.error("Error al cerrar sesión:", error);
+      showToast(error.message || "Error al cerrar sesión", "error");
+    }
   };
 
   return (
@@ -65,7 +75,10 @@ export default function AccountSidebar({ activeSection }: AccountSidebarProps) {
         })}
 
         {/* Cerrar sesión */}
-        <button className="w-full flex items-center justify-between px-6 py-4 text-red-600 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors duration-200 text-left">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-between px-6 py-4 text-red-600 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors duration-200 text-left"
+        >
           <span className="font-medium">Cerrar sesión</span>
 
           <svg

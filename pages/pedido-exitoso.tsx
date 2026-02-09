@@ -1,7 +1,7 @@
 // pages/pedido-exitoso.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Layout from "@/components/Layout";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,6 +21,8 @@ export default function PedidoExitoso() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<any>(null);
+
+  const initializationStarted = useRef(false);
 
   useEffect(() => {
     let orderId = searchParams?.get("order");
@@ -61,6 +63,13 @@ export default function PedidoExitoso() {
       return;
     }
 
+    // 🛡️ Guard to prevent duplicate execution
+    if (initializationStarted.current) {
+      console.log("🛑 [PedidoExitoso] Inicialización ya en proceso, ignorando duplicado");
+      return;
+    }
+    initializationStarted.current = true;
+
     const fetchOrderDetails = async () => {
       try {
         setLoading(true);
@@ -94,6 +103,8 @@ export default function PedidoExitoso() {
                   );
                   await sendOrderPaidEmail(orderId);
                   localStorage.setItem(mailSentKey, "true");
+                } else {
+                  console.log("📧 Correo ya enviado previamente (según localStorage)");
                 }
               }
             }
@@ -106,7 +117,7 @@ export default function PedidoExitoso() {
         } else {
           setError(
             response.message ||
-              "No se pudieron obtener los detalles del pedido",
+            "No se pudieron obtener los detalles del pedido",
           );
         }
       } catch (err: any) {
@@ -291,8 +302,8 @@ export default function PedidoExitoso() {
                             (
                               parseFloat(
                                 item.priceWithTax ||
-                                  item.variationPriceWithTax ||
-                                  "0",
+                                item.variationPriceWithTax ||
+                                "0",
                               ) * item.quantity
                             ).toString(),
                           )}
@@ -338,7 +349,7 @@ export default function PedidoExitoso() {
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-semibold text-green-800">
                         {order.status === "PAID" ||
-                        order.paymentStatus === "COMPLETED"
+                          order.paymentStatus === "COMPLETED"
                           ? "Pagado"
                           : "Pendiente"}
                       </span>

@@ -299,7 +299,7 @@ export default function RastreoPedidoDetalle() {
                     value={numeroPedido}
                     onChange={(e) => setNumeroPedido(e.target.value)}
                     onKeyPress={(e) => e.key === "Enter" && handleBuscarClick()}
-                    placeholder="#2153603"
+                    placeholder="ej. 2153603"
                     className="w-full px-6 py-2 border-2 border-gray-200 rounded-full focus:border-green-500 focus:ring-2 focus:ring-green-200 transition text-lg"
                   />
                   <FaSearch className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400" />
