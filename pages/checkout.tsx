@@ -1079,7 +1079,7 @@ export default function Checkout() {
                 )}
 
                 {/* Información de Culqi para pruebas */}
-                {(metodoPago === "tarjeta" || metodoPago === "yape") && (
+                {/* {(metodoPago === "tarjeta" || metodoPago === "yape") && (
                   <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-xl">🧪</span>
@@ -1150,7 +1150,7 @@ export default function Checkout() {
                       </div>
                     )}
                   </div>
-                )}
+                )} */}
 
                 {/* Formulario de tarjeta nueva (No requerido para Culqi Checkout v4) */}
               </div>
