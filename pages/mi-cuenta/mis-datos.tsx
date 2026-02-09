@@ -52,23 +52,27 @@ export default function MisDatos() {
         const result = await response.json();
 
         if (result.success && result.data) {
-          const userData = result.data;
-          setOriginalUser(userData);
-          setOriginalEmail(userData.email || "");
+          const { mapApiUserToUser, updateUserSession } =
+            await import("@/lib/auth/authUtils");
+          const userData = mapApiUserToUser(result.data);
 
-          // Mapear los campos de la API a los campos del formulario
-          setFormData({
-            nombre: userData.firstName || "",
-            apellido: userData.lastName || "",
-            tipoDocumento: userData.documentType || "",
-            numeroDocumento: userData.documentNumber || "",
-            celular: userData.phone || "",
-            email: userData.email || "",
-          });
+          if (userData) {
+            setOriginalUser(userData);
+            setOriginalEmail(userData.email || "");
 
-          // Actualizar localStorage con datos frescos usando la utilidad centralizada
-          const { updateUserSession } = await import("@/lib/auth/authUtils");
-          updateUserSession(userData);
+            // Mapear los campos estandarizados al formulario
+            setFormData({
+              nombre: userData.firstName || "",
+              apellido: userData.lastName || "",
+              tipoDocumento: userData.documentType || "",
+              numeroDocumento: userData.documentNumber || "",
+              celular: userData.phone || "",
+              email: userData.email || "",
+            });
+
+            // Actualizar localStorage con datos frescos usando la utilidad centralizada
+            updateUserSession(userData);
+          }
         }
       } catch (error) {
         console.error("❌ Error al cargar datos del usuario:", error);
@@ -99,14 +103,21 @@ export default function MisDatos() {
     if (formData.tipoDocumento !== "Pasaporte") {
       value = value.replace(/\D/g, "");
     } else {
-      // Para pasaporte, permitir letras y números, restringir otros símbolos si se desea, 
-      // pero la validación estricta ya está en el schema. 
+      // Para pasaporte, permitir letras y números, restringir otros símbolos si se desea,
+      // pero la validación estricta ya está en el schema.
       // Podríamos limpiar espacios por UX.
       value = value.replace(/[^a-zA-Z0-9]/g, "");
     }
 
     // Max length validation logic needs to be dynamic too
-    const maxLength = formData.tipoDocumento === 'RUC' ? 11 : formData.tipoDocumento === 'DNI' ? 8 : formData.tipoDocumento === 'Pasaporte' ? 8 : 12; // CE up to 12
+    const maxLength =
+      formData.tipoDocumento === "RUC"
+        ? 11
+        : formData.tipoDocumento === "DNI"
+          ? 8
+          : formData.tipoDocumento === "Pasaporte"
+            ? 8
+            : 12; // CE up to 12
 
     if (value.length <= maxLength) {
       setFormData((prev) => ({ ...prev, numeroDocumento: value }));
@@ -135,8 +146,9 @@ export default function MisDatos() {
 
       if (response.ok && result.success) {
         showToast(
-          result.message || "Se ha enviado un correo de verificación a tu nueva dirección. Por favor, revisa tu bandeja de entrada.",
-          "success"
+          result.message ||
+            "Se ha enviado un correo de verificación a tu nueva dirección. Por favor, revisa tu bandeja de entrada.",
+          "success",
         );
         setPendingEmailChange("");
       } else {
@@ -148,7 +160,7 @@ export default function MisDatos() {
         error instanceof Error
           ? error.message
           : "Error al solicitar el cambio de email. Intenta nuevamente.",
-        "error"
+        "error",
       );
       // Revertir el email al original en caso de error
       setFormData((prev) => ({ ...prev, email: originalEmail }));
@@ -205,7 +217,9 @@ export default function MisDatos() {
       const updateData = {
         firstName: formData.nombre,
         lastName: formData.apellido,
-        documentType: formData.tipoDocumento ? formData.tipoDocumento.toUpperCase() : "",
+        documentType: formData.tipoDocumento
+          ? formData.tipoDocumento.toUpperCase()
+          : "",
         documentNumber: formData.numeroDocumento,
         phone: formData.celular,
         // email: formData.email, // ❌ NO actualizar email aquí
@@ -219,10 +233,10 @@ export default function MisDatos() {
         updateData,
         accessToken
           ? {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
           : {},
       );
 
@@ -321,7 +335,9 @@ export default function MisDatos() {
                             {pendingEmailChange}
                           </p>
                           <p className="text-sm text-gray-500 mb-6">
-                            Se enviará un correo de verificación a esta dirección. Deberás confirmar el cambio antes de que sea efectivo.
+                            Se enviará un correo de verificación a esta
+                            dirección. Deberás confirmar el cambio antes de que
+                            sea efectivo.
                           </p>
                           <div className="flex gap-3 justify-end">
                             <Button
@@ -330,7 +346,10 @@ export default function MisDatos() {
                               onClick={() => {
                                 setShowEmailChangeDialog(false);
                                 setPendingEmailChange("");
-                                setFormData((prev) => ({ ...prev, email: originalEmail }));
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  email: originalEmail,
+                                }));
                               }}
                             >
                               Cancelar
@@ -402,8 +421,14 @@ export default function MisDatos() {
                               onChange={(e) => {
                                 handleChange(e);
                                 // Clear document number and its errors when type changes
-                                setFormData((prev) => ({ ...prev, numeroDocumento: "" }));
-                                setErrors((prev) => ({ ...prev, numeroDocumento: undefined }));
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  numeroDocumento: "",
+                                }));
+                                setErrors((prev) => ({
+                                  ...prev,
+                                  numeroDocumento: undefined,
+                                }));
                               }}
                               disabled={isSubmitting}
                               error={errors.tipoDocumento}
@@ -434,7 +459,8 @@ export default function MisDatos() {
                               maxLength={
                                 formData.tipoDocumento === "RUC"
                                   ? 11
-                                  : formData.tipoDocumento === "DNI" || formData.tipoDocumento === "Pasaporte"
+                                  : formData.tipoDocumento === "DNI" ||
+                                      formData.tipoDocumento === "Pasaporte"
                                     ? 8
                                     : 12
                               }

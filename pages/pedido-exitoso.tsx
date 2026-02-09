@@ -23,7 +23,38 @@ export default function PedidoExitoso() {
   const [order, setOrder] = useState<any>(null);
 
   useEffect(() => {
-    const orderId = searchParams?.get("order");
+    let orderId = searchParams?.get("order");
+
+    // If orderId is not in URL, try to recover from localStorage
+    if (!orderId) {
+      const successfulOrder = localStorage.getItem("liwilu_successful_order");
+      if (successfulOrder) {
+        try {
+          const orderData = JSON.parse(successfulOrder);
+          const elapsed = Date.now() - orderData.timestamp;
+
+          // If less than 10 minutes old, use it
+          if (elapsed < 10 * 60 * 1000) {
+            orderId = orderData.orderId.toString();
+            console.log("✅ OrderId recuperado desde localStorage:", orderId);
+
+            // Update URL to include the orderId
+            window.history.replaceState(
+              null,
+              "",
+              `/pedido-exitoso?order=${orderId}`,
+            );
+          } else {
+            // Old data, clear it
+            localStorage.removeItem("liwilu_successful_order");
+          }
+        } catch (e) {
+          console.error("Error parsing successful order from localStorage:", e);
+          localStorage.removeItem("liwilu_successful_order");
+        }
+      }
+    }
+
     if (!orderId) {
       setLoading(false);
       setError("No se encontró el ID de la orden");
@@ -39,6 +70,7 @@ export default function PedidoExitoso() {
 
           // Limpiar estado de checkout después de compra exitosa
           localStorage.removeItem("liwilu_checkout_state");
+          localStorage.removeItem("liwilu_successful_order"); // Clear recovery data
           console.log(
             "✅ Estado de checkout limpiado después de compra exitosa",
           );
@@ -389,7 +421,7 @@ export default function PedidoExitoso() {
           </div>
 
           {/* Sección de ayuda */}
-          <div className="mt-12 bg-white rounded-2xl shadow-lg p-8 text-center">
+          {/* <div className="mt-12 bg-white rounded-2xl shadow-lg p-8 text-center">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">
               ¿Necesitas ayuda con tu pedido?
             </h3>
@@ -411,7 +443,7 @@ export default function PedidoExitoso() {
                 Centro de ayuda
               </Link>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 

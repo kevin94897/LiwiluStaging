@@ -1,6 +1,7 @@
 // lib/autorizacionSchema.ts
 import { z } from "zod";
-import { DNI_REGEX, RUC_REGEX } from "./validations";
+import { DNI_REGEX, RUC_REGEX, PASSPORT_REGEX } from "./validations";
+
 
 export const autorizacionSchema = z.object({
     documentType: z
@@ -15,7 +16,9 @@ export const autorizacionSchema = z.object({
         .string()
         .min(1, "El nombre completo es obligatorio")
         .min(3, "El nombre debe tener al menos 3 caracteres")
-        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s,]+$/, "El nombre solo puede contener letras"),
+        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s,.-]+$/, "El nombre solo puede contener letras, puntos, comas y guiones"),
+
+
 }).superRefine((data, ctx) => {
     if (data.documentType === 'DNI') {
         if (!DNI_REGEX.test(data.documentNumber)) {
@@ -33,6 +36,15 @@ export const autorizacionSchema = z.object({
                 path: ["documentNumber"],
             });
         }
+    } else if (data.documentType === 'Pasaporte') {
+        if (!PASSPORT_REGEX.test(data.documentNumber)) {
+
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "El pasaporte debe tener 1 letra y 7 números (ej. P1234567)",
+                path: ["documentNumber"],
+            });
+        }
     } else {
         if (data.documentNumber.length < 8 || data.documentNumber.length > 20) {
             ctx.addIssue({
@@ -42,6 +54,7 @@ export const autorizacionSchema = z.object({
             });
         }
     }
+
 });
 
 export type AutorizacionSchemaType = z.infer<typeof autorizacionSchema>;

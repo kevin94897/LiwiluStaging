@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 export const registerSchema = z.object({
-    firstName: z.string().min(1, "El nombre es obligatorio").regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ,]+$/, "El nombre solo puede contener letras"),
-    lastName: z.string().min(1, "El apellido es obligatorio").regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ,]+$/, "El apellido solo puede contener letras"),
+    firstName: z.string().min(1, "El nombre es obligatorio").regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ,.-]+$/, "El nombre solo puede contener letras, puntos, comas y guiones"),
+
+    lastName: z.string().min(1, "El apellido es obligatorio").regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ,.-]+$/, "El apellido solo puede contener letras, puntos, comas y guiones"),
+
 
     email: z
         .string()

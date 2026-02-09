@@ -105,3 +105,66 @@ export async function getMyOrders(): Promise<MyOrdersResponse> {
         throw error;
     }
 }
+
+// Package Tracking Interfaces
+export interface TrackingState {
+    id: string;
+    titulo: string;
+    descripcion: string;
+    fecha: string;
+    hora: string;
+    completado: boolean;
+    activo: boolean;
+}
+
+export interface PackageProduct {
+    nombre: string;
+    talla: string;
+    precio: number;
+    precioAnterior?: number;
+    imagen: string;
+}
+
+export interface SAVARPackageResponse {
+    nIdePaquete: number;
+    vcodpaquete: string;
+    vCodSubServicio: string;
+    vSubServicio: string;
+    vfechadetalleestado: string;
+    vRutaSeguimiento: string;
+    Estados: {
+        vCodEstado: string;
+        vNombreEstado: string;
+        dFechaEstado: string;
+        vMotivo: string;
+        vCodMotivo: string;
+        lstfotos: string[];
+    }[];
+}
+
+export type PackageStatusResponse = SAVARPackageResponse;
+
+
+/**
+ * Fetches the package tracking status for a specific order.
+ * @param orderId - The order ID to track
+ * @returns Package tracking information
+ */
+export async function getPackageStatus(orderId: string): Promise<PackageStatusResponse> {
+    try {
+        const response = await apiGet(`/orders/delivery/package-status/${orderId}`, {
+            skipAuth: true // Tracking might be public, or at least we don't want to fail if token is missing for public page
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error fetching package status: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error in getPackageStatus:', error);
+        throw error;
+    }
+}
+

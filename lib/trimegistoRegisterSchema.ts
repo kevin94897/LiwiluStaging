@@ -1,15 +1,18 @@
 import { z } from "zod";
 
-const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s,]+$/;
+const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s,.-]+$/;
+
 
 export const trimegistoRegisterSchema = z.object({
     firstName: z.string()
         .min(1, "El nombre es obligatorio")
-        .regex(onlyLetters, "El nombre solo puede contener letras"),
+        .regex(onlyLetters, "El nombre solo puede contener letras, puntos, comas y guiones"),
+
 
     lastName: z.string()
         .min(1, "El apellido es obligatorio")
-        .regex(onlyLetters, "El apellido solo puede contener letras"),
+        .regex(onlyLetters, "El apellido solo puede contener letras, puntos, comas y guiones"),
+
 
     email: z.string()
         .min(1, "El correo es obligatorio")

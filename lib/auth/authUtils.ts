@@ -33,6 +33,17 @@ export const mapApiUserToUser = (userData: any): User | null => {
         lastName = parts.slice(1).join(' ');
     }
 
+    // Normalizar tipo de documento para el frontend
+    const normalizeDocumentType = (type: string): string => {
+        if (!type) return '';
+        const upperType = String(type).toUpperCase();
+        if (upperType === 'DNI') return 'DNI';
+        if (upperType === 'RUC') return 'RUC';
+        if (upperType === 'CE' || upperType === 'CARNET_EXTRANJERIA' || upperType === 'CARNET DE EXTRANJERIA') return 'CE';
+        if (upperType === 'PASAPORTE') return 'Pasaporte';
+        return type;
+    };
+
     return {
         id: String(userData.id || userData.uuid || ''),
         email: userData.email || '',
@@ -41,11 +52,12 @@ export const mapApiUserToUser = (userData: any): User | null => {
         role: userData.role || '',
         electronicSignatureUrl: userData.electronicSignatureUrl || null,
         emailVerified: !!userData.emailVerified,
-        documentType: userData.documentType || userData.tipoDocumento || userData.typeDocument || '',
+        documentType: normalizeDocumentType(userData.documentType || userData.tipoDocumento || userData.typeDocument || ''),
         documentNumber: userData.documentNumber || userData.numeroDocumento || userData.dni || userData.ruc || userData.document || '',
         phone: userData.phone || userData.celular || userData.mobile || userData.telefono || ''
     };
 };
+
 
 /**
  * Saves user data and tokens to localStorage

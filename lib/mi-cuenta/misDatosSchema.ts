@@ -8,14 +8,17 @@ export const misDatosSchema = z.object({
         .min(1, "El nombre es obligatorio")
         .min(2, "El nombre debe tener al menos 2 caracteres")
         .max(50, "El nombre no puede exceder 50 caracteres")
-        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, "El nombre solo puede contener letras"),
+        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s,.-]+$/, "El nombre solo puede contener letras, puntos, comas y guiones"),
+
 
     apellido: z
         .string()
-        .min(1, "El apellido es obligatorio")
         .min(2, "El apellido debe tener al menos 2 caracteres")
         .max(50, "El apellido no puede exceder 50 caracteres")
-        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, "El apellido solo puede contener letras"),
+        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s,.-]+$/, "El apellido solo puede contener letras, puntos, comas y guiones")
+        .optional()
+        .or(z.literal("")),
+
 
     email: z
         .string()
@@ -65,6 +68,17 @@ export const misDatosSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "El pasaporte debe tener 1 letra y 7 números (ej. P1234567)",
                 path: ["numeroDocumento"],
+            });
+        }
+    }
+    
+    // Validate apellido is required for non-RUC document types
+    if (data.tipoDocumento !== 'RUC') {
+        if (!data.apellido || data.apellido.trim() === '') {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "El apellido es obligatorio",
+                path: ["apellido"],
             });
         }
     }

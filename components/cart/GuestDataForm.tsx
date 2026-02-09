@@ -73,7 +73,10 @@ export default function GuestDataForm({
         }
       } else if (guestData.tipoDocumento === "RUC") {
         if (guestData.numeroDocumento.length !== 11) {
-          showToast("El RUC debe tener 11 números y empezar con 10, 15 o 20", "error");
+          showToast(
+            "El RUC debe tener 11 números y empezar con 10, 15 o 20",
+            "error",
+          );
           return;
         }
         const res = await consultaRUC(guestData.numeroDocumento);
@@ -156,7 +159,7 @@ export default function GuestDataForm({
                 setGuestErrors((prev) => ({
                   ...prev,
                   numeroDocumento: undefined,
-                  tipoDocumento: undefined
+                  tipoDocumento: undefined,
                 }));
                 setConsulted(false);
               }}
@@ -188,7 +191,7 @@ export default function GuestDataForm({
                   guestData.tipoDocumento === "RUC"
                     ? 11
                     : guestData.tipoDocumento === "DNI" ||
-                      guestData.tipoDocumento === "Pasaporte"
+                        guestData.tipoDocumento === "Pasaporte"
                       ? 8
                       : 12
                 }
@@ -201,32 +204,32 @@ export default function GuestDataForm({
 
               {(guestData.tipoDocumento === "DNI" ||
                 guestData.tipoDocumento === "RUC") && (
-                  <button
-                    type="button"
-                    onClick={handleConsultacion}
-                    disabled={isConsulting || !guestData.numeroDocumento}
-                    className="absolute right-2 top-[38px] text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
-                    title="Consultar"
-                  >
-                    {isConsulting ? (
-                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                      <svg
-                        className="w-6 h-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleConsultacion}
+                  disabled={isConsulting || !guestData.numeroDocumento}
+                  className="absolute right-2 top-[38px] text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
+                  title="Consultar"
+                >
+                  {isConsulting ? (
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -251,8 +254,13 @@ export default function GuestDataForm({
               name="apellido"
               value={guestData.apellido}
               onChange={handleInputChange}
-              placeholder="Apellidos"
+              placeholder={
+                guestData.tipoDocumento === "RUC"
+                  ? "No requerido para RUC"
+                  : "Apellidos"
+              }
               error={guestErrors.apellido}
+              disabled={guestData.tipoDocumento === "RUC"}
             />
           </div>
         </div>
@@ -362,15 +370,15 @@ export default function GuestDataForm({
             <option value="">Seleccionar</option>
             {deliveryZones && deliveryZones.length > 0
               ? deliveryZones.map((z) => (
-                <option key={z.zoneId} value={z.zoneName}>
-                  {z.zoneName}
-                </option>
-              ))
+                  <option key={z.zoneId} value={z.zoneName}>
+                    {z.zoneName}
+                  </option>
+                ))
               : guestLocations.districts.map((d: any) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
           </Select>
         </div>
 

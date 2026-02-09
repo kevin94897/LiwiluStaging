@@ -1,16 +1,20 @@
 import { z } from "zod";
 import { DNI_REGEX, RUC_REGEX, CE_REGEX, PASSPORT_REGEX } from "./validations";
 
-const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s,]+$/;
+const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s,.-]+$/;
+
 
 export const guestDataSchema = z.object({
     nombre: z.string()
         .min(1, "El nombre es obligatorio")
-        .regex(onlyLetters, "El nombre solo puede contener letras"),
+        .regex(onlyLetters, "El nombre solo puede contener letras, puntos, comas y guiones"),
+
 
     apellido: z.string()
-        .min(1, "El apellido es obligatorio")
-        .regex(onlyLetters, "El apellido solo puede contener letras"),
+        .regex(onlyLetters, "El apellido solo puede contener letras, puntos, comas y guiones")
+        .optional()
+        .or(z.literal("")),
+
 
     tipoDocumento: z.enum(['DNI', 'CE', 'Pasaporte', 'RUC'], {
         message: "Seleccione un tipo de documento"
@@ -75,6 +79,17 @@ export const guestDataSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "El pasaporte debe tener 1 letra y 7 números (ej. P1234567)",
                 path: ["numeroDocumento"],
+            });
+        }
+    }
+    
+    // Validate apellido is required for non-RUC document types
+    if (data.tipoDocumento !== 'RUC') {
+        if (!data.apellido || data.apellido.trim() === '') {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "El apellido es obligatorio",
+                path: ["apellido"],
             });
         }
     }

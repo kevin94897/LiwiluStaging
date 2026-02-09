@@ -25,6 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { consultaRUC } from "@/lib/general";
 import Select from "@/components/ui/Select";
 import Input from "@/components/ui/Input";
+import ProcessingOverlay from "@/components/checkout/ProcessingOverlay";
 
 type TipoComprobante = "boleta" | "factura";
 type MetodoPago = "tarjeta" | "yape" | "efectivo";
@@ -38,6 +39,9 @@ export default function Checkout() {
     useState<TipoComprobante>("boleta");
   const [metodoPago, setMetodoPago] = useState<MetodoPago | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [processingStage, setProcessingStage] = useState<
+    "creating-order" | "processing-payment" | "completing"
+  >("creating-order");
   const [culqiReady, setCulqiReady] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
@@ -164,6 +168,32 @@ export default function Checkout() {
     }
   }, []);
 
+  // Check for pending transactions on mount (user may have refreshed during payment)
+  useEffect(() => {
+    const pendingTx = localStorage.getItem("liwilu_pending_transaction");
+    if (pendingTx) {
+      try {
+        const tx = JSON.parse(pendingTx);
+        const elapsed = Date.now() - tx.timestamp;
+
+        // If less than 5 minutes, warn user
+        if (elapsed < 5 * 60 * 1000) {
+          console.warn("⚠️ Transacción pendiente detectada:", tx);
+          showToast(
+            "Detectamos un pago en proceso. Si ya completaste tu compra, verifica en 'Mis Pedidos'.",
+            "error",
+          );
+        } else {
+          // Old transaction, clear it
+          localStorage.removeItem("liwilu_pending_transaction");
+        }
+      } catch (e) {
+        console.error("Error parsing pending transaction:", e);
+        localStorage.removeItem("liwilu_pending_transaction");
+      }
+    }
+  }, []);
+
   // Segunda validación de stock al cargar la página
   useEffect(() => {
     const verifyStock = async () => {
@@ -270,13 +300,19 @@ export default function Checkout() {
             "⚠️ Token ya procesado o en proceso, ignorando duplicado:",
             token.id,
           );
+          showToast(
+            "Este pago ya está siendo procesado. Por favor espera.",
+            "error",
+          );
           return;
         }
         processingToken.current = token.id;
 
         // SIMULACIÓN DE RECHAZO (Si el modo prueba está activo)
         if (testMode && simulateRejection) {
-          console.log("🧪 [SIMULACIÓN] Interceptando token para simular rechazo...");
+          console.log(
+            "🧪 [SIMULACIÓN] Interceptando token para simular rechazo...",
+          );
           setProcessing(true);
           setTimeout(() => {
             console.log("❌ [SIMULACIÓN] Venta denegada");
@@ -298,6 +334,7 @@ export default function Checkout() {
           }
 
           setProcessing(true);
+          setProcessingStage("completing");
 
           // 1. Obtener email (Usuario o Invitado)
           let email = "";
@@ -339,8 +376,53 @@ export default function Checkout() {
             closeCulqi();
             showToast("💳 ¡Compra realizada con éxito!", "success");
             setIsSuccess(true);
+
+            // Clear pending transaction
+            localStorage.removeItem("liwilu_pending_transaction");
+
+            // Save successful order ID for recovery
+            localStorage.setItem(
+              "liwilu_successful_order",
+              JSON.stringify({
+                orderId: confirmedOrderId,
+                timestamp: Date.now(),
+              }),
+            );
+
             clearCart();
-            router.push(`/pedido-exitoso?order=${confirmedOrderId}`);
+
+            // Use multiple redirect strategies for reliability on slow connections
+            console.log(`🚀 Redirigiendo a página de éxito...`);
+
+            // Determine redirect URL based on authentication status
+            const redirectUrl = isAuthenticated
+              ? `/mi-cuenta/mis-pedidos?highlight=${confirmedOrderId}`
+              : `/pedido-exitoso?order=${confirmedOrderId}`;
+
+            console.log(
+              `📍 Redirect URL: ${redirectUrl} (authenticated: ${isAuthenticated})`,
+            );
+
+            // Strategy 1: Next.js router (preferred)
+            router.push(redirectUrl);
+
+            // Strategy 2: Fallback with window.location after 2 seconds if router fails
+            setTimeout(() => {
+              if (window.location.pathname === "/checkout") {
+                console.warn(
+                  "⚠️ Router.push no completó, usando window.location.href",
+                );
+                window.location.href = redirectUrl;
+              }
+            }, 2000);
+
+            // Strategy 3: Force redirect after 5 seconds as last resort
+            setTimeout(() => {
+              if (window.location.pathname === "/checkout") {
+                console.error("❌ Forzando redirección como último recurso");
+                window.location.replace(redirectUrl);
+              }
+            }, 5000);
           } else {
             // Payment not completed or missing required fields
             const errorMsg =
@@ -350,6 +432,9 @@ export default function Checkout() {
           }
         } catch (error: any) {
           console.error("❌ Error en el proceso de pago/orden:", error);
+          // Clear pending transaction on error
+          localStorage.removeItem("liwilu_pending_transaction");
+
           // Si el mensaje tiene formato de stock, mostrarlo claramente
           const errorMessage = error.message || "Error al completar la compra";
           showToast(errorMessage, "error");
@@ -415,7 +500,7 @@ export default function Checkout() {
       } else {
         showToast(
           response.message ||
-          "No se encontró información para el RUC ingresado",
+            "No se encontró información para el RUC ingresado",
           "error",
         );
       }
@@ -443,8 +528,9 @@ export default function Checkout() {
             newErrors.rucBoleta = "El CE debe tener entre 6 y 12 caracteres";
           }
         } else if (tipoDocumentoBoleta === "Pasaporte") {
-          if (!/^[A-Z][0-9]{7}$/.test(datosBoletaRUC)) {
-            newErrors.rucBoleta = "El pasaporte debe tener 1 letra y 7 números (ej. P1234567)";
+          if (!/^[a-zA-Z][0-9]{7}$/.test(datosBoletaRUC)) {
+            newErrors.rucBoleta =
+              "El pasaporte debe tener 1 letra y 7 números (ej. P1234567)";
           }
         }
       }
@@ -495,7 +581,20 @@ export default function Checkout() {
       }
 
       try {
+        // Mark transaction as pending to prevent duplicates on refresh
+        const transactionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem(
+          "liwilu_pending_transaction",
+          JSON.stringify({
+            transactionId,
+            timestamp: Date.now(),
+            cartId,
+            total,
+          }),
+        );
+
         setProcessing(true);
+        setProcessingStage("creating-order");
 
         // 1. Crear la orden primero
         console.log("📝 Generando orden...");
@@ -535,6 +634,7 @@ export default function Checkout() {
 
         console.log("✅ Orden creada:", orderId);
         setCurrentOrderId(orderId);
+        setProcessingStage("processing-payment");
 
         // 2. Abrir pasarela Culqi
         console.log("🚀 [Checkout] Iniciando flujo Culqi");
@@ -598,6 +698,7 @@ export default function Checkout() {
       description="Finalizar compra"
       background={true}
     >
+      <ProcessingOverlay isProcessing={processing} stage={processingStage} />
       <div className="max-w-7xl mx-auto px-6 py-8 my-24 relative z-10">
         {isVerifyingStock ? (
           <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4">
@@ -651,19 +752,21 @@ export default function Checkout() {
                 <div className="flex gap-4 mb-6">
                   <button
                     onClick={() => setTipoComprobante("boleta")}
-                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "boleta"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                      }`}
+                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
+                      tipoComprobante === "boleta"
+                        ? "border-primary bg-primary text-white"
+                        : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                   >
                     Boleta
                   </button>
                   <button
                     onClick={() => setTipoComprobante("factura")}
-                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "factura"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                      }`}
+                    className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
+                      tipoComprobante === "factura"
+                        ? "border-primary bg-primary text-white"
+                        : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                   >
                     <span className="flex items-center justify-center gap-2">
                       <svg
@@ -725,7 +828,7 @@ export default function Checkout() {
                           }
                           maxLength={
                             tipoDocumentoBoleta === "DNI" ||
-                              tipoDocumentoBoleta === "Pasaporte"
+                            tipoDocumentoBoleta === "Pasaporte"
                               ? 8
                               : 12
                           }
@@ -862,10 +965,11 @@ export default function Checkout() {
                   {/* Tarjeta de crédito/débito */}
                   <button
                     onClick={() => setMetodoPago("tarjeta")}
-                    className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "tarjeta"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                      }`}
+                    className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
+                      metodoPago === "tarjeta"
+                        ? "border-primary bg-primary/5"
+                        : "border-gray-200 hover:border-primary/50"
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <FaCreditCard className="text-2xl text-gray-600" />
@@ -988,7 +1092,9 @@ export default function Checkout() {
                           type="checkbox"
                           id="simulateRejection"
                           checked={simulateRejection}
-                          onChange={(e) => setSimulateRejection(e.target.checked)}
+                          onChange={(e) =>
+                            setSimulateRejection(e.target.checked)
+                          }
                           className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500 cursor-pointer"
                         />
                         <label
@@ -1135,9 +1241,9 @@ export default function Checkout() {
                           </p>
                           {item.product.originalPrice &&
                             parseFloat(item.product.originalPrice.toString()) >
-                            parseFloat(
-                              (item.product.price || "0").toString(),
-                            ) && (
+                              parseFloat(
+                                (item.product.price || "0").toString(),
+                              ) && (
                               <p className="text-xs text-gray-400 line-through">
                                 {formatPrice(
                                   (

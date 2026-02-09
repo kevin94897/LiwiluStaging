@@ -14,6 +14,27 @@ import {
   FaHome,
 } from "react-icons/fa";
 import Button from "@/components/ui/Button";
+import { getPackageStatus } from "@/lib/orders";
+
+// SAVAR API Response Interfaces
+interface SAVAREstado {
+  vCodEstado: string;
+  vNombreEstado: string;
+  dFechaEstado: string;
+  vMotivo: string;
+  vCodMotivo: string;
+  lstfotos: string[];
+}
+
+interface SAVARPackageResponse {
+  nIdePaquete: number;
+  vcodpaquete: string;
+  vCodSubServicio: string;
+  vSubServicio: string;
+  vfechadetalleestado: string;
+  vRutaSeguimiento: string;
+  Estados: SAVAREstado[];
+}
 
 interface EstadoPedido {
   id: string;
@@ -23,6 +44,7 @@ interface EstadoPedido {
   hora: string;
   completado: boolean;
   activo: boolean;
+  fotos?: string[];
 }
 
 interface PedidoInfo {
@@ -38,6 +60,73 @@ interface PedidoInfo {
   estados: EstadoPedido[];
 }
 
+// Helper Functions
+function formatDate(
+  isoDate: string,
+  type: "date" | "time" | "full" = "full",
+): string {
+  const date = new Date(isoDate);
+
+  if (type === "date") {
+    return date.toLocaleDateString("es-PE", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  if (type === "time") {
+    return date.toLocaleTimeString("es-PE", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+
+  return date.toLocaleString("es-PE");
+}
+
+function getDescriptionForStatus(statusName: string): string {
+  const descriptions: Record<string, string> = {
+    "Pendiente de Recepción": "Tu pedido está siendo preparado para el envío",
+    Recepcionado: "Hemos recibido tu pedido en nuestro almacén",
+    "En almacén": "Tu pedido está en nuestro almacén",
+    "Despacho/Planificado": "Tu pedido está siendo preparado para el despacho",
+    "Despacho/En ruta": "Tu pedido está en camino",
+    "Despacho/Entregado":
+      "Tu pedido ha sido entregado. ¡Gracias por tu compra!",
+  };
+
+  return descriptions[statusName] || "Estado actualizado";
+}
+
+function mapSAVARToUI(savarData: any): PedidoInfo {
+  const estados = savarData.Estados || [];
+  const lastEstado = estados[estados.length - 1];
+
+  return {
+    numero: savarData.vcodpaquete,
+    fecha: formatDate(savarData.vfechadetalleestado),
+    producto: {
+      nombre: `Envío ${savarData.vSubServicio || "Express"}`,
+      talla: `Paquete #${savarData.vcodpaquete}`,
+      precio: 0,
+      imagen: "/images/productos/liwilu_producto_example.png",
+    },
+    estados: estados.map((estado: SAVAREstado, index: number) => ({
+      id: estado.vCodEstado,
+      titulo: estado.vNombreEstado,
+      descripcion:
+        estado.vMotivo || getDescriptionForStatus(estado.vNombreEstado),
+      fecha: formatDate(estado.dFechaEstado, "date"),
+      hora: formatDate(estado.dFechaEstado, "time"),
+      completado: true,
+      activo: index === estados.length - 1,
+      fotos: estado.lstfotos || [],
+    })),
+  };
+}
+
 export default function RastreoPedidoDetalle() {
   const router = useRouter();
   const { id } = router.query;
@@ -49,217 +138,33 @@ export default function RastreoPedidoDetalle() {
   const [buscando, setBuscando] = useState(false);
   const [error, setError] = useState("");
 
-  // Datos de ejemplo (Sincronizado con rastreo.tsx)
-  const pedidosEjemplo: Record<string, PedidoInfo> = {
-    "2153603": {
-      numero: "2153603",
-      fecha: "20.30.2025 15.45PM",
-      producto: {
-        nombre: "Polo Sport Saco Oliveros",
-        talla: "Talla 12",
-        precio: 50.0,
-        precioAnterior: 80.0,
-        imagen: "/images/productos/liwilu_producto_example.png",
-      },
-      estados: [
-        {
-          id: "1",
-          titulo: "Pedido ingresado",
-          descripcion:
-            "Hemos recibido tu pedido y estamos procesando la información",
-          fecha: "25 Sep 2025",
-          hora: "2:40 PM",
-          completado: true,
-          activo: false,
-        },
-        {
-          id: "2",
-          titulo: "Pedido confirmado",
-          descripcion: "Estamos alistando tus productos en nuestra tienda.",
-          fecha: "26 Sep 2025",
-          hora: "4:40 PM",
-          completado: true,
-          activo: true,
-        },
-        {
-          id: "3",
-          titulo: "Pendiente de armado",
-          descripcion: "Tu pedido está siendo preparado",
-          fecha: "",
-          hora: "",
-          completado: false,
-          activo: false,
-        },
-        {
-          id: "4",
-          titulo: "Ruta",
-          descripcion: "Tu pedido está en camino.",
-          fecha: "",
-          hora: "",
-          completado: false,
-          activo: false,
-        },
-        {
-          id: "5",
-          titulo: "Entregado",
-          descripcion: "Tu pedido ha sido entregado. ¡Gracias por tu compra!",
-          fecha: "",
-          hora: "",
-          completado: false,
-          activo: false,
-        },
-      ],
-    },
-    "737474883": {
-      numero: "737474883",
-      fecha: "20.30.2025 15.45PM",
-      producto: {
-        nombre: "Polo Sport Saco Oliveros",
-        talla: "Talla 12",
-        precio: 50.0,
-        precioAnterior: 80.0,
-        imagen: "/images/polo-ejemplo.jpg",
-      },
-      estados: [
-        {
-          id: "1",
-          titulo: "Pedido ingresado",
-          descripcion:
-            "Hemos recibido tu pedido y estamos procesando la información",
-          fecha: "25 Sep 2025",
-          hora: "2:40 PM",
-          completado: true,
-          activo: false,
-        },
-        {
-          id: "2",
-          titulo: "Pedido confirmado",
-          descripcion: "Estamos alistando tus productos en nuestra tienda.",
-          fecha: "26 Sep 2025",
-          hora: "4:40 PM",
-          completado: true,
-          activo: true,
-        },
-        {
-          id: "3",
-          titulo: "Pendiente de armado",
-          descripcion: "Tu pedido está siendo preparado",
-          fecha: "",
-          hora: "",
-          completado: false,
-          activo: false,
-        },
-        {
-          id: "4",
-          titulo: "Ruta",
-          descripcion: "Tu pedido está en camino.",
-          fecha: "",
-          hora: "",
-          completado: false,
-          activo: false,
-        },
-        {
-          id: "5",
-          titulo: "Entregado",
-          descripcion: "Tu pedido ha sido entregado. ¡Gracias por tu compra!",
-          fecha: "",
-          hora: "",
-          completado: false,
-          activo: false,
-        },
-      ],
-    },
-  };
-
   const buscarPedido = async (num: string) => {
     if (!num.trim()) return;
 
     setError("");
     setBuscando(true);
 
-    // Simular búsqueda en API
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      const numeroLimpio = num.replace("#", "");
+      const response = await getPackageStatus(numeroLimpio);
 
-    const numeroLimpio = num.replace("#", "");
-    let pedido = pedidosEjemplo[numeroLimpio];
-
-    if (!pedido) {
-      // Generar pedido simulado si no existe
-      console.log(`🔍 Generando pedido simulado para #${numeroLimpio}`);
-      pedido = {
-        numero: numeroLimpio,
-        fecha:
-          new Date().toLocaleDateString("es-PE", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          }) +
-          " " +
-          new Date().toLocaleTimeString("es-PE", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-        producto: {
-          nombre: "Polo Sport Saco Oliveros",
-          talla: "Talla 12",
-          precio: 82.0,
-          imagen: "/images/productos/liwilu_producto_example.png",
-        },
-        estados: [
-          {
-            id: "1",
-            titulo: "Pedido ingresado",
-            descripcion:
-              "Hemos recibido tu pedido y estamos procesando la información",
-            fecha: "Hoy",
-            hora: "Hace un momento",
-            completado: true,
-            activo: false,
-          },
-          {
-            id: "2",
-            titulo: "Pedido confirmado",
-            descripcion: "Estamos alistando tus productos en nuestra tienda.",
-            fecha: "Hoy",
-            hora: "Hace un momento",
-            completado: true,
-            activo: true,
-          },
-          {
-            id: "3",
-            titulo: "Pendiente de armado",
-            descripcion: "Tu pedido está siendo preparado",
-            fecha: "",
-            hora: "",
-            completado: false,
-            activo: false,
-          },
-          {
-            id: "4",
-            titulo: "Ruta",
-            descripcion: "Tu pedido está en camino.",
-            fecha: "",
-            hora: "",
-            completado: false,
-            activo: false,
-          },
-          {
-            id: "5",
-            titulo: "Entregado",
-            descripcion: "Tu pedido ha sido entregado. ¡Gracias por tu compra!",
-            fecha: "",
-            hora: "",
-            completado: false,
-            activo: false,
-          },
-        ],
-      };
+      if (response && response.nIdePaquete) {
+        // Map SAVAR response to UI structure
+        const mappedData = mapSAVARToUI(response);
+        setPedidoEncontrado(mappedData);
+      } else {
+        setError(
+          "No se encontró el pedido. Verifica el número e intenta nuevamente.",
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching package status:", error);
+      setError(
+        "No se encontró el pedido. Verifica el número e intenta nuevamente.",
+      );
+    } finally {
+      setBuscando(false);
     }
-
-    setPedidoEncontrado(pedido);
-
-    setBuscando(false);
   };
 
   // Buscar automáticamente al cargar si hay un ID
@@ -472,6 +377,27 @@ export default function RastreoPedidoDetalle() {
                               <span className="inline-block mt-3 px-4 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
                                 Estado actual
                               </span>
+                            )}
+
+                            {/* Fotos del estado */}
+                            {estado.fotos && estado.fotos.length > 0 && (
+                              <div className="mt-4 flex flex-wrap gap-2">
+                                {estado.fotos.map((foto, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 shadow-sm cursor-pointer hover:opacity-90 transition"
+                                    onClick={() => window.open(foto, "_blank")}
+                                  >
+                                    <Image
+                                      src={foto}
+                                      alt={`Foto ${idx + 1}`}
+                                      fill
+                                      className="object-cover"
+                                      unoptimized
+                                    />
+                                  </div>
+                                ))}
+                              </div>
                             )}
                           </div>
                         </div>

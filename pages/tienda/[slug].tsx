@@ -199,6 +199,11 @@ export default function ProductDetail({
     }
   }, [variationsData, queryParams]);
 
+  // ✅ Scroll to top when product page loads or slug changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [slug]);
+
   // ✅ Verificar si es favorito al cargar
   useEffect(() => {
     const checkFavorite = async () => {
@@ -624,7 +629,7 @@ export default function ProductDetail({
     return variationsData.variations.some((v) => {
       // 1. Debe contener el valor objetivo
       const hasTargetValue = v.attributes?.some(
-        (a) => a.type === attributeType && a.id === attributeValueId
+        (a) => a.type === attributeType && a.id === attributeValueId,
       );
       if (!hasTargetValue) return false;
 
@@ -783,7 +788,7 @@ export default function ProductDetail({
         />
       </div>
       {/* Breadcrumb */}
-      <div className="mt-14">
+      <div className="md:mt-14 mt-10">
         <div className="max-w-7xl mx-auto px-6 xl:px-0 py-4">
           <div className="text-neutral-gray text-md font-semibold">
             <Link href="/" className="hover:underline">
@@ -860,17 +865,19 @@ export default function ProductDetail({
                             <div
                               key={actualIndex}
                               onClick={() => setSelectedImageIndex(actualIndex)}
-                              className={`relative my-2 aspect-square bg-white rounded-sm shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
-																${isSelected
-                                  ? "ring-2 ring-primary scale-105"
-                                  : "hover:shadow-lg hover:scale-105"
+                              className={`relative my-2 ml-2 aspect-square bg-white rounded-sm shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
+																${
+                                  isSelected
+                                    ? "ring-2 ring-primary scale-105"
+                                    : "hover:shadow-lg hover:scale-105"
                                 }
 															`}
                             >
                               <Image
                                 src={img}
-                                alt={`${basicData.name} - miniatura ${actualIndex + 1
-                                  }`}
+                                alt={`${basicData.name} - miniatura ${
+                                  actualIndex + 1
+                                }`}
                                 fill
                                 className="object-contain"
                                 unoptimized
@@ -967,7 +974,7 @@ export default function ProductDetail({
                         disabled={
                           selectedImageIndex === currentGallery.length - 1
                         }
-                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition lg:hidden"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white md:p-3 p-2 rounded-full shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition lg:hidden"
                         aria-label="Siguiente imagen"
                       >
                         <svg
@@ -1045,7 +1052,7 @@ export default function ProductDetail({
                       {formatPrice(priceInfo.regularPrice)}
                     </span>
                   )}
-                  <span className="text-4xl font-semibold text-primary-dark">
+                  <span className="md:text-4xl text-2xl font-semibold text-primary-dark">
                     {formatPrice(priceInfo.salePrice)}
                   </span>
                 </div>
@@ -1089,23 +1096,26 @@ export default function ProductDetail({
                                 <button
                                   title={val.value}
                                   onClick={() =>
-                                    isAvailableInContext && handleAttributeChange(attr.type, val.id)
+                                    isAvailableInContext &&
+                                    handleAttributeChange(attr.type, val.id)
                                   }
                                   disabled={!isAvailableInContext}
                                   className={
                                     attr.type === "color"
-                                      ? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
-                                        ? "border-primary border-4 scale-110"
-                                        : !isAvailableInContext
-                                          ? "border-gray-100 opacity-30 cursor-not-allowed grayscale"
-                                          : "border-gray-300 hover:scale-105"
-                                      }`
-                                      : `px-5 py-2 border rounded-sm font-medium transition ${isSelected
-                                        ? "bg-primary-dark text-white border-gray-900"
-                                        : !isAvailableInContext
-                                          ? "border-gray-100 text-gray-300 cursor-not-allowed"
-                                          : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                      }`
+                                      ? `w-10 h-10 rounded-full border-2 transition relative ${
+                                          isSelected
+                                            ? "border-primary border-4 scale-110"
+                                            : !isAvailableInContext
+                                              ? "border-gray-100 opacity-30 cursor-not-allowed grayscale"
+                                              : "border-gray-300 hover:scale-105"
+                                        }`
+                                      : `px-5 py-2 border rounded-sm font-medium transition ${
+                                          isSelected
+                                            ? "bg-primary-dark text-white border-gray-900"
+                                            : !isAvailableInContext
+                                              ? "border-gray-100 text-gray-300 cursor-not-allowed"
+                                              : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                        }`
                                   }
                                   style={
                                     attr.type === "color" && val.colorHex
@@ -1125,8 +1135,8 @@ export default function ProductDetail({
                                           <Image
                                             src={getImageUrl(
                                               previewVariation.images?.[0] ||
-                                              variationsData.media
-                                                ?.coverImage,
+                                                variationsData.media
+                                                  ?.coverImage,
                                             )}
                                             alt={val.value}
                                             fill
@@ -1174,10 +1184,11 @@ export default function ProductDetail({
                                 setCurrentVariation(v);
                                 setSelectedAttributes({});
                               }}
-                              className={`px-4 py-2 border rounded-md font-medium transition ${isSelected
+                              className={`px-4 py-2 border rounded-md font-medium transition ${
+                                isSelected
                                   ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
                                   : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                }`}
+                              }`}
                             >
                               <div className="flex flex-col items-center">
                                 <span className="text-sm font-semibold">
@@ -1252,8 +1263,9 @@ export default function ProductDetail({
                   <button
                     onClick={handleToggleFavorite}
                     disabled={loadingFavorite}
-                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] min-w-[56px] min-h-[56px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
-                      }`}
+                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] min-w-[56px] min-h-[56px] rounded-full transition flex items-center justify-center ${
+                      isFavorite ? "text-primary" : "text-primary"
+                    }`}
                   >
                     {loadingFavorite ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
@@ -1287,10 +1299,11 @@ export default function ProductDetail({
             <button
               key={tab}
               onClick={() => setActiveTab(tab as TabKey)}
-              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${activeTab === tab
+              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${
+                activeTab === tab
                   ? "border-gray-900 text-primary-dark"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
+              }`}
             >
               {tab}
             </button>

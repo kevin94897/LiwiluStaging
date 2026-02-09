@@ -19,7 +19,8 @@ export const CE_REGEX = /^[0-9]{9,12}$/;
 /**
  * Validates a Pasaporte (Perú): 1 letter + 7 numbers.
  */
-export const PASSPORT_REGEX = /^[A-Z][0-9]{7}$/;
+export const PASSPORT_REGEX = /^[a-zA-Z][0-9]{7}$/;
+
 
 export const validateDNI = (dni: string) => DNI_REGEX.test(dni);
 export const validateRUC = (ruc: string) => RUC_REGEX.test(ruc);
