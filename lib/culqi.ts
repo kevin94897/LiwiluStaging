@@ -7,7 +7,7 @@ declare global {
     }
 }
 
-export const CULQI_PUBLIC_KEY = 'pk_live_1qModDuy4o2dZOf4';
+export const CULQI_PUBLIC_KEY = 'pk_test_VEN0u2ywGdZ9Yvuy';
 
 export interface CulqiOptions {
     title: string;
