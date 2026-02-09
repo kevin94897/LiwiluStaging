@@ -26,6 +26,7 @@ import { consultaRUC } from "@/lib/general";
 import Select from "@/components/ui/Select";
 import Input from "@/components/ui/Input";
 import ProcessingOverlay from "@/components/checkout/ProcessingOverlay";
+import ErrorModal from "@/components/ui/ErrorModal";
 
 type TipoComprobante = "boleta" | "factura";
 type MetodoPago = "tarjeta" | "yape" | "efectivo";
@@ -46,6 +47,17 @@ export default function Checkout() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
   const processingToken = useRef<string | null>(null);
+
+  // Estado para el modal de error
+  const [errorModal, setErrorModal] = useState<{
+    isOpen: boolean;
+    message: string;
+  }>({
+    isOpen: false,
+    message: "",
+  });
+
+
 
   // Datos para Boleta
   const [tipoDocumentoBoleta, setTipoDocumentoBoleta] = useState("DNI");
@@ -308,6 +320,9 @@ export default function Checkout() {
         }
         processingToken.current = token.id;
 
+        // CERRAR MODAL INMEDIATAMENTE para evitar múltiples clicks
+        closeCulqi();
+
         // SIMULACIÓN DE RECHAZO (Si el modo prueba está activo)
         if (testMode && simulateRejection) {
           console.log(
@@ -374,7 +389,7 @@ export default function Checkout() {
             console.log(`✅ Pago confirmado para orden #${confirmedOrderId}`);
 
             setProcessingStage("completing");
-            closeCulqi();
+            // closeCulqi(); // Ya se cerró al inicio
             showToast("💳 ¡Compra realizada con éxito!", "success");
             setIsSuccess(true);
 
@@ -451,14 +466,22 @@ export default function Checkout() {
         // Aquí deberías guardar la orden y redirigir a una página de espera
         const numeroPedido = Math.floor(Math.random() * 9000) + 1000;
         router.push(`/pedido-exitoso?order=${numeroPedido}&pending=true`);
+      } else if (window.Culqi.order) {
+        const order = window.Culqi.order;
+        console.log("✅ Orden creada en Culqi:", order);
       } else if (window.Culqi.error) {
         const error = window.Culqi.error;
         console.log("❌ Error de Culqi:", error);
-        showToast(error.user_message || "Error en el pago", "error");
+        // showToast(error.user_message || "Error en el pago", "error");
+        setErrorModal({
+          isOpen: true,
+          message: error.user_message || "Ocurrió un error al procesar el pago. Por favor, intenta con otra tarjeta o método de pago."
+        });
         setProcessing(false);
         closeCulqi();
       }
     };
+
   }, [
     router,
     clearCart,
@@ -700,6 +723,14 @@ export default function Checkout() {
       background={true}
     >
       <ProcessingOverlay isProcessing={processing} stage={processingStage} />
+
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ ...errorModal, isOpen: false })}
+        message={errorModal.message}
+        title="Error en el pago"
+      />
+
       <div className="max-w-7xl mx-auto px-6 py-8 my-24 relative z-10">
         {isVerifyingStock ? (
           <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4">
