@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import logger from '@/lib/logger';
 import Layout from '@/components/Layout';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -61,7 +62,7 @@ export default function ResetPassword() {
                     setGeneralError(errorData.message || 'El enlace de recuperación es inválido o ha expirado');
                 }
             } catch (error) {
-                console.error('Error validating token:', error);
+                logger.error('Error validating token:', error);
                 setGeneralError('Error al validar el enlace de recuperación');
             } finally {
                 setIsValidatingToken(false);
@@ -139,7 +140,7 @@ export default function ResetPassword() {
 
         } catch (error: unknown) {
             if (error instanceof Error) {
-                console.error('❌ Error al restablecer contraseña:', error.message);
+                logger.error('❌ Error al restablecer contraseña:', error.message);
                 setGeneralError(error.message || 'Error al restablecer la contraseña');
             } else {
                 setGeneralError('Error desconocido en el servidor');

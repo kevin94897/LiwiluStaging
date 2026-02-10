@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import logger from '@/lib/logger';
 import Image from "next/image";
 import Link from "next/link";
 import { FaInstagram, FaFacebook, FaTiktok } from "react-icons/fa";
@@ -53,6 +54,7 @@ export default function Footer() {
 
     // Si es válido
     setErrors({});
+    logger.log("Newsletter suscripción:", newsletterData);
 
     try {
       const response = await apiPost("/general/newsletter", newsletterData, {
@@ -75,7 +77,7 @@ export default function Footer() {
         throw new Error(data.message || "Error al suscribirse");
       }
     } catch (error) {
-      console.error("Error al suscribirse:", error);
+      logger.error("Error al suscribirse:", error);
       setErrors({ email: "Hubo un error al suscribirse. Intenta nuevamente." });
     } finally {
       setIsSubmitting(false);
@@ -185,7 +187,7 @@ export default function Footer() {
         <div className="md:col-span-1">
           {/* Columna 3: Suscripción y redes */}
           <div className="space-y-4">
-            <Link href="https://libro-de-reclamaciones.liwilu.com.pe/" target="_blank">
+            <Link href="/libro-reclamaciones">
               <Image
                 src="/images/liwilu_libro_reclamaciones.png"
                 alt="Libro de reclamaciones"

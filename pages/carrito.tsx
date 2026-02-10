@@ -77,6 +77,7 @@ import {
   getCheckoutSummary,
   mergeGuestCart,
 } from "@/lib/cart";
+import logger from "@/lib/logger";
 
 // Distritos disponibles
 
@@ -260,7 +261,7 @@ export default function Carrito() {
           setDeliveryZones([]);
         }
       } catch (error) {
-        console.error("Error fetching delivery zones:", error);
+        logger.error("Error fetching delivery zones:", error);
         setDeliveryZones([]);
       }
     };
@@ -296,6 +297,7 @@ export default function Carrito() {
               zoneId: matchingZone.zoneId,
               zoneName: matchingZone.zoneName,
             });
+            logger.log("Delivery price synced to API:", matchingZone.zoneName);
           } catch (error: any) {
             // Silenciar error "Carrito no encontrado" para evitar overlay en desarrollo
             // Esto ocurre si el frontend tiene items pero el backend perdió la sesión
@@ -303,11 +305,11 @@ export default function Carrito() {
               error.message?.includes("Carrito no encontrado") ||
               error.message?.includes("Cart not found")
             ) {
-              console.warn(
+              logger.warn(
                 "Sync skipped: Backend cart session missing (expected in some guest states).",
               );
             } else {
-              console.error("Error syncing delivery price:", error);
+              logger.error("Error syncing delivery price:", error);
             }
           }
         }
@@ -434,7 +436,7 @@ export default function Carrito() {
             }
           }
         } catch (error) {
-          console.error("Error al cargar direcciones:", error);
+          logger.error("Error al cargar direcciones:", error);
         }
       }
     };
@@ -467,7 +469,7 @@ export default function Carrito() {
       try {
         setAutorizacionData(JSON.parse(saved));
       } catch (e) {
-        console.error("Error al cargar autorización:", e);
+        logger.error("Error al cargar autorización:", e);
       }
     }
   }, []);
@@ -490,7 +492,7 @@ export default function Carrito() {
         setGuestDataCompleted(true);
         setIsGuest(true); // Marcar como invitado
       } catch (e) {
-        console.error("Error al cargar datos del invitado:", e);
+        logger.error("Error al cargar datos del invitado:", e);
       }
     }
   }, []);
@@ -502,7 +504,7 @@ export default function Carrito() {
       try {
         setDireccionEnvio(JSON.parse(saved));
       } catch (e) {
-        console.error("Error al cargar dirección de envío:", e);
+        logger.error("Error al cargar dirección de envío:", e);
       }
     }
   }, []);
@@ -536,7 +538,7 @@ export default function Carrito() {
           }
         }
       } catch (error) {
-        console.error("Error fetching carriers:", error);
+        logger.error("Error fetching carriers:", error);
       } finally {
         setLoadingCarriers(false);
       }
@@ -561,7 +563,7 @@ export default function Carrito() {
           setWarehouseProvinces(provincesRes.data);
         }
       } catch (error) {
-        console.error("Error fetching warehouse locations:", error);
+        logger.error("Error fetching warehouse locations:", error);
       }
     };
 
@@ -701,7 +703,7 @@ export default function Carrito() {
             setMapWarehouses(response.data);
           }
         } catch (error) {
-          console.error("Error syncing delivery warehouses:", error);
+          logger.error("Error syncing delivery warehouses:", error);
         }
       }
     };
@@ -730,6 +732,9 @@ export default function Carrito() {
         pickupTab === "lima" ? warehouseDistricts : warehouseProvinces;
       const location = locationList.find((l) => l.desDistrito === distrito);
       if (location) {
+        logger.log(
+          `📍 Buscando almacenes para: ${distrito} (${location.codUbigeoAlm})`,
+        );
         const response = await getWarehouseMap(location.codUbigeoAlm);
         if (response.success) {
           setMapWarehouses(response.data);
@@ -745,7 +750,7 @@ export default function Carrito() {
         }
       }
     } catch (error) {
-      console.error("Error fetching map warehouses:", error);
+      logger.error("Error fetching map warehouses:", error);
     } finally {
       setLoadingStores(false);
     }
@@ -753,6 +758,7 @@ export default function Carrito() {
 
   const handleSelectStore = async (store: SavePickupStoreRequest) => {
     setSelectedStoreData(store);
+    logger.log("🏪 Pickup store selected (local):", store.desAlmacen);
   };
 
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -820,7 +826,7 @@ export default function Carrito() {
             : null;
         const hasItems = items.length > 0;
 
-        console.log("🔍 [handleLogin] Pre-login state:", {
+        logger.log("🔍 [handleLogin] Pre-login state:", {
           wasGuest,
           guestSessionId,
           hasItems,
@@ -840,25 +846,25 @@ export default function Carrito() {
               typeof window !== "undefined"
                 ? localStorage.getItem("accessToken")
                 : null;
-            console.log("🔄 [handleLogin] Attempting cart merge with:", {
+            logger.log("🔄 [handleLogin] Attempting cart merge with:", {
               hasAccessToken: !!accessToken,
               sessionId: guestSessionId,
             });
 
             if (accessToken) {
               await mergeGuestCart(accessToken, guestSessionId);
-              console.log("✅ Carrito fusionado exitosamente");
+              logger.log("✅ Carrito fusionado exitosamente");
             } else {
-              console.warn(
+              logger.warn(
                 "⚠️ No se pudo obtener accessToken después del login",
               );
             }
           } catch (mergeError) {
-            console.error("⚠️ Error al fusionar carrito:", mergeError);
+            logger.error("⚠️ Error al fusionar carrito:", mergeError);
             // Don't block login if merge fails
           }
         } else {
-          console.log("ℹ️ [handleLogin] Cart merge skipped:", {
+          logger.log("ℹ️ [handleLogin] Cart merge skipped:", {
             wasGuest,
             hasSessionId: !!guestSessionId,
             hasItems,
@@ -870,7 +876,7 @@ export default function Carrito() {
           window.location.reload();
         }
       } catch (error: any) {
-        console.error("Error en login:", error);
+        logger.error("Error en login:", error);
         setLoginErrors({
           password:
             error.message ||
@@ -903,7 +909,7 @@ export default function Carrito() {
       }
 
       setRegistroErrors(newErrors);
-      console.log("Errores de validación:", newErrors);
+      logger.log("Errores de validación:", newErrors);
       return;
     }
 
@@ -921,7 +927,7 @@ export default function Carrito() {
           : null;
       const hasItems = items.length > 0;
 
-      console.log("🔍 [handleRegistro] Pre-registration state:", {
+      logger.log("🔍 [handleRegistro] Pre-registration state:", {
         wasGuest,
         guestSessionId,
         hasItems,
@@ -946,32 +952,32 @@ export default function Carrito() {
             typeof window !== "undefined"
               ? localStorage.getItem("accessToken")
               : null;
-          console.log("🔄 [handleRegistro] Attempting cart merge with:", {
+          logger.log("🔄 [handleRegistro] Attempting cart merge with:", {
             hasAccessToken: !!accessToken,
             sessionId: guestSessionId,
           });
 
           if (accessToken) {
             await mergeGuestCart(accessToken, guestSessionId);
-            console.log("✅ Carrito fusionado exitosamente");
+            logger.log("✅ Carrito fusionado exitosamente");
           } else {
-            console.warn(
+            logger.warn(
               "⚠️ No se pudo obtener accessToken después del registro",
             );
           }
         } catch (mergeError) {
-          console.error("⚠️ Error al fusionar carrito:", mergeError);
+          logger.error("⚠️ Error al fusionar carrito:", mergeError);
           // Don't block registration if merge fails
         }
       } else {
-        console.log("ℹ️ [handleRegistro] Cart merge skipped:", {
+        logger.log("ℹ️ [handleRegistro] Cart merge skipped:", {
           wasGuest,
           hasSessionId: !!guestSessionId,
           hasItems,
         });
       }
 
-      console.log("Registro exitoso");
+      logger.log("Registro exitoso");
       showToast("Cuenta creada con éxito. ¡Bienvenido!", "success");
 
       // Close modal and stay in cart (no redirect)
@@ -982,7 +988,7 @@ export default function Carrito() {
         window.location.reload();
       }
     } catch (error: any) {
-      console.error("Error en registro:", error);
+      logger.error("Error en registro:", error);
 
       if (error.message?.includes("correo ya está registrado")) {
         setRegistroErrors({ email: "Este correo ya está registrado" });
@@ -1056,7 +1062,7 @@ export default function Carrito() {
       }
 
       setGuestErrors(newErrors);
-      console.log("Errores de validación:", newErrors);
+      logger.log("Errores de validación:", newErrors);
       return;
     }
 
@@ -1084,7 +1090,7 @@ export default function Carrito() {
 
         await saveGuestPersonalData(payload);
 
-        // console.log("Datos de invitado guardados:", guestData);
+        logger.log("Datos de invitado guardados:", guestData);
 
         // Guardar en localStorage
         localStorage.setItem("liwilu_guestData", JSON.stringify(guestData));
@@ -1095,7 +1101,7 @@ export default function Carrito() {
         setShowGuestForm(false);
         showToast("¡Datos guardados! Continúa con tu compra.", "success");
       } catch (error: any) {
-        console.error("Error saving guest data:", error);
+        logger.error("Error saving guest data:", error);
         showToast(error.message || "Error al guardar datos", "error");
       }
     };
@@ -1141,7 +1147,7 @@ export default function Carrito() {
       setStockValidationResult(result);
       return result;
     } catch (error: any) {
-      console.error("Error validating stock:", error);
+      logger.error("Error validating stock:", error);
       showToast(error.message || "Error al validar stock", "error");
       return null;
     } finally {
@@ -1172,7 +1178,7 @@ export default function Carrito() {
       setSavarStockResults(results);
       return results;
     } catch (error: any) {
-      console.error("Error validating Savar stock:", error);
+      logger.error("Error validating Savar stock:", error);
       showToast(error.message || "Error al validar stock de despacho", "error");
       return null;
     } finally {
@@ -1223,7 +1229,7 @@ export default function Carrito() {
         showToast("Datos actualizados correctamente", "success");
       }
     } catch (error: any) {
-      console.error("Error updating user data:", error);
+      logger.error("Error updating user data:", error);
 
       // Re-throw with field errors for GuestDataSummary to handle
       if (error.fieldErrors) {
@@ -1339,7 +1345,7 @@ export default function Carrito() {
           throw new Error("No se encontró una dirección de envío válida.");
         }
 
-        console.log(
+        logger.log(
           "🚚 Sincronizando dirección de envío al finalizar:",
           finalAddress,
         );
@@ -1347,13 +1353,13 @@ export default function Carrito() {
       } else if (metodoEnvio === "retiro") {
         // Guardar Tienda de Retiro
         if (selectedStoreData) {
-          console.log("🏪 Sincronizando tienda de retiro...");
+          logger.log("🏪 Sincronizando tienda de retiro...");
           await savePickupStore(selectedStoreData);
         }
 
         // Guardar Persona Autorizada
         if (!isSelfPickup && autorizacionData) {
-          console.log("👤 Sincronizando persona autorizada...");
+          logger.log("👤 Sincronizando persona autorizada...");
           await savePickupPerson({
             tipoDocumento: autorizacionData.documentType,
             numeroDocumento: autorizacionData.documentNumber,
@@ -1361,7 +1367,7 @@ export default function Carrito() {
           });
         } else {
           // Si es retiro propio, enviamos los datos del titular
-          console.log("👤 Sincronizando retiro propio...");
+          logger.log("👤 Sincronizando retiro propio...");
           const titular = personalData;
           if (titular) {
             await savePickupPerson({
@@ -1375,7 +1381,7 @@ export default function Carrito() {
 
       return true;
     } catch (error: any) {
-      console.error("Error syncing checkout data:", error);
+      logger.error("Error syncing checkout data:", error);
 
       // Parse API validation errors for logged-in users
       if (isLoggedIn && error.response) {
@@ -1402,7 +1408,7 @@ export default function Carrito() {
             return false;
           }
         } catch (parseError) {
-          console.error("Error parsing validation errors:", parseError);
+          logger.error("Error parsing validation errors:", parseError);
         }
       }
 
@@ -1507,10 +1513,10 @@ export default function Carrito() {
         if (synced) {
           // New validation with checkout-summary
           const summary = await getCheckoutSummary();
-          console.log("🔍 [Carrito] Checkout summary response:", summary);
+          logger.log("🔍 [Carrito] Checkout summary response:", summary);
 
           if (summary.data) {
-            console.log("📊 [Carrito] Summary Details:", {
+            logger.log("📊 [Carrito] Summary Details:", {
               isComplete: summary.data.isComplete,
               hasPersonalData: !!summary.data.personalData,
               hasAddress: !!summary.data.deliveryAddressData,
@@ -1523,7 +1529,7 @@ export default function Carrito() {
           if (summary.success && summary.data?.isComplete) {
             router.push("/checkout");
           } else {
-            console.warn("⚠️ [Carrito] Checkout incomplete or error:", summary);
+            logger.warn("⚠️ [Carrito] Checkout incomplete or error:", summary);
             const missingInfo = [];
             if (summary.data && !summary.data.personalData)
               missingInfo.push("Datos Personales");
@@ -1777,7 +1783,7 @@ export default function Carrito() {
 
     // 2. Sincronizar SIEMPRE con la sesión del carrito (para todos los usuarios)
     try {
-      console.log("🚚 Sincronizando dirección con la sesión del carrito...");
+      logger.log("🚚 Sincronizando dirección con la sesión del carrito...");
       await saveCartDeliveryAddress({
         distritoSeleccionado: direccionEnvio.distrito,
         direccion: direccionEnvio.calle,
@@ -1785,7 +1791,7 @@ export default function Carrito() {
         referencia: direccionEnvio.referencia,
       });
     } catch (apiError) {
-      console.error("Error saving address to cart API:", apiError);
+      logger.error("Error saving address to cart API:", apiError);
     }
 
     // 3. Guardar en localStorage SIEMPRE (para todos los usuarios)
@@ -1795,7 +1801,7 @@ export default function Carrito() {
         JSON.stringify(direccionEnvio),
       );
     } catch (e) {
-      console.error("Error saving address to localStorage:", e);
+      logger.error("Error saving address to localStorage:", e);
     }
 
     // 4. Cerrar modo edición y mostrar mensaje de éxito
@@ -1858,7 +1864,7 @@ export default function Carrito() {
 
         if (response && response.ok) {
           const result = await response.json();
-          console.log("✅ Dirección guardada en el perfil del usuario");
+          logger.log("✅ Dirección guardada en el perfil del usuario");
 
           // Refresh addresses to update dropdown and main selection
           const refreshedResponse = await fetch(
@@ -1884,11 +1890,11 @@ export default function Carrito() {
 
           showToast("Dirección guardada en tu perfil");
         } else {
-          console.error("Error al guardar dirección en backend");
+          logger.error("Error al guardar dirección en backend");
           showToast("Error al guardar en el perfil", "error");
         }
       } catch (error) {
-        console.error("Error al guardar dirección en perfil:", error);
+        logger.error("Error al guardar dirección en perfil:", error);
         showToast("Error al guardar en el perfil", "error");
       }
     }

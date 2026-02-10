@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useAuth } from "@/hooks/useAuth";
 import { showToast } from "@/lib/notifications";
+import logger from "@/lib/logger";
 
 interface AccountSidebarProps {
   activeSection?: string;
@@ -32,7 +33,7 @@ export default function AccountSidebar({ activeSection }: AccountSidebarProps) {
       showToast("Sesión cerrada correctamente", "success");
       router.push("/");
     } catch (error: any) {
-      console.error("Error al cerrar sesión:", error);
+      logger.error("Error al cerrar sesión:", error);
       showToast(error.message || "Error al cerrar sesión", "error");
     }
   };

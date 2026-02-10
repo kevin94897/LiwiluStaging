@@ -1,3 +1,4 @@
+import logger from '../logger';
 // lib/auth/apiClient.ts
 
 import { refreshAccessToken, clearSession } from './tokenManager';
@@ -38,10 +39,12 @@ export const authenticatedFetch = async (
 
     // Determinar qué headers usar
     if (accessToken) {
+        logger.log('📡 Request with Authorization header');
         baseHeaders['Authorization'] = `Bearer ${accessToken}`;
     } else if (sessionId) {
         // Solo enviamos X-Session-Id si NO hay un accessToken, 
         // para evitar conflictos en el backend entre sesión de usuario e invitado.
+        logger.log('📡 Request with X-Session-Id header (Guest Mode):', sessionId);
         baseHeaders['X-Session-Id'] = sessionId;
     }
 
@@ -58,17 +61,21 @@ export const authenticatedFetch = async (
 
     // Si es 401 (Unauthorized), el token expiró
     if (response.status === 401 && !skipRetry && accessToken) {
+        logger.log('⚠️ Token expirado (401), intentando renovar...');
+
         // Intentar renovar el token
         const refreshSuccess = await refreshAccessToken();
 
         if (refreshSuccess) {
+            logger.log('✅ Token renovado, reintentando petición...');
+
             // Reintentar la petición original con el nuevo token
             return authenticatedFetch(url, {
                 ...options,
                 skipRetry: true, // Evitar loop infinito
             });
         } else {
-            console.error('❌ No se pudo renovar el token, cerrando sesión...');
+            logger.error('❌ No se pudo renovar el token, cerrando sesión...');
             clearSession();
             window.location.href = '/';
             throw new Error('Sesión expirada');
@@ -87,8 +94,11 @@ export const validateToken = async (): Promise<boolean> => {
         const accessToken = localStorage.getItem('accessToken');
 
         if (!accessToken) {
+            logger.log('⚠️ No hay accessToken para validar');
             return false;
         }
+
+        logger.log('🔍 Validando token con /auth/profile...');
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/profile`, {
             method: 'GET',
@@ -99,26 +109,30 @@ export const validateToken = async (): Promise<boolean> => {
         });
 
         if (response.ok) {
+            logger.log('✅ Token válido');
             return true;
         }
 
         // Si es 401, el token expiró
         if (response.status === 401) {
-            const refreshSuccess = await refreshAccessToken();
-            if (refreshSuccess) {
+            logger.log('⚠️ Token expirado, intentando renovar...');
 
+            const refreshSuccess = await refreshAccessToken();
+
+            if (refreshSuccess) {
+                logger.log('✅ Token renovado exitosamente');
                 return true;
             } else {
-                console.error('❌ No se pudo renovar el token');
+                logger.error('❌ No se pudo renovar el token');
                 clearSession();
                 return false;
             }
         }
 
-        console.error('❌ Error al validar token:', response.status);
+        logger.error('❌ Error al validar token:', response.status);
         return false;
     } catch (error) {
-        console.error('❌ Error en validateToken:', error);
+        logger.error('❌ Error en validateToken:', error);
         return false;
     }
 };
@@ -132,6 +146,7 @@ export const fetchUserProfile = async (): Promise<any | null> => {
         const accessToken = localStorage.getItem('accessToken');
         if (!accessToken) return null;
 
+        logger.log('🔄 Fetching user profile from API...');
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/profile`, {
             method: 'GET',
             headers: {
@@ -159,7 +174,7 @@ export const fetchUserProfile = async (): Promise<any | null> => {
         }
         return null;
     } catch (error) {
-        console.error('❌ Error fetching user profile:', error);
+        logger.error('❌ Error fetching user profile:', error);
         return null;
     }
 };
@@ -172,6 +187,7 @@ export const useAuthGuard = async (): Promise<boolean> => {
     const isValid = await validateToken();
 
     if (!isValid) {
+        logger.log('🔒 Acceso denegado, redirigiendo...');
         if (typeof window !== 'undefined') {
             window.location.href = '/';
         }

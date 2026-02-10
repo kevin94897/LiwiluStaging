@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 import { startTokenRefresh } from '@/lib/auth/tokenManager';
 import { User, saveSession, getCurrentUser, isAuthenticated, clearAuthSession } from '@/lib/auth/authUtils';
 
@@ -47,8 +48,9 @@ export const loginUser = async (
     // 🛒 Intentar refrescar el carrito para el usuario autenticado
     try {
       // Al no existir mergeCart, simplemente pedimos el carrito o dejamos que el componente cargue los datos
+      logger.log("🛒 Login exitoso, el carrito debería sincronizarse automáticamente");
     } catch (cartError) {
-      console.warn("⚠️ No se pudo sincronizar el carrito:", cartError);
+      logger.warn("⚠️ No se pudo sincronizar el carrito:", cartError);
     }
 
     // 🆕 Iniciar sistema de renovación automática de tokens
@@ -83,7 +85,7 @@ export const logoutUser = async (): Promise<any> => {
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ refreshToken }),
-      }).catch(err => console.warn("Silent logout failure:", err));
+      }).catch(err => logger.warn("Silent logout failure:", err));
     }
 
     clearAuthSession();

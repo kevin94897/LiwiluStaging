@@ -1,5 +1,6 @@
 // lib/cart.ts
 import { apiPost, apiGet, apiDelete, apiPut } from './auth/apiClient';
+import logger from './logger';
 
 /**
  * Cart Product Interface
@@ -146,11 +147,12 @@ export async function addToCart(productId: number, quantity: number, prestashopC
         // Save session ID if returned (for anonymous carts)
         if (data?.data?.sessionId && typeof window !== 'undefined') {
             localStorage.setItem('liwilu_session_id', data.data.sessionId);
+            logger.log('💾 Saved new session ID to localStorage:', data.data.sessionId);
         }
 
         return data;
     } catch (error) {
-        console.error('Error in addToCart:', error);
+        logger.error('Error in addToCart:', error);
         throw error;
     }
 }
@@ -173,7 +175,7 @@ export async function getCart(): Promise<GetCartResponse & { isExpired?: boolean
 
             // Si es 404 o el mensaje indica que no existe/expiró, lo tratamos como expirado
             if (response.status === 404 || errorData.message?.toLowerCase().includes('expired') || errorData.message?.toLowerCase().includes('not found') || errorData.message?.toLowerCase().includes('expirado')) {
-                console.warn('🛒 Cart session expired or not found');
+                logger.warn('🛒 Cart session expired or not found');
                 return {
                     success: false,
                     isExpired: true,
@@ -189,11 +191,12 @@ export async function getCart(): Promise<GetCartResponse & { isExpired?: boolean
         // Save/Update session ID if returned
         if (data?.data?.sessionId && typeof window !== 'undefined') {
             localStorage.setItem('liwilu_session_id', data.data.sessionId);
+            logger.log('💾 Updated session ID from getCart:', data.data.sessionId);
         }
 
         return data;
     } catch (error) {
-        console.error('Error in getCart:', error);
+        logger.error('Error in getCart:', error);
         throw error;
     }
 }
@@ -243,7 +246,7 @@ export async function updateCartQuantity(productId: number, quantity: number): P
 
         return data;
     } catch (error) {
-        console.error('Error in updateCartQuantity:', error);
+        logger.error('Error in updateCartQuantity:', error);
         throw error;
     }
 }
@@ -274,7 +277,7 @@ export async function removeFromCart(productId: number): Promise<AddToCartRespon
 
         return data;
     } catch (error) {
-        console.error('Error in removeFromCart:', error);
+        logger.error('Error in removeFromCart:', error);
         throw error;
     }
 }
@@ -306,7 +309,7 @@ export async function updateCartVariationQuantity(idVariation: number, quantity:
 
         return data;
     } catch (error) {
-        console.error('Error in updateCartVariationQuantity:', error);
+        logger.error('Error in updateCartVariationQuantity:', error);
         throw error;
     }
 }
@@ -337,7 +340,7 @@ export async function removeCartVariation(idVariation: number): Promise<AddToCar
 
         return data;
     } catch (error) {
-        console.error('Error in removeCartVariation:', error);
+        logger.error('Error in removeCartVariation:', error);
         throw error;
     }
 }
@@ -367,7 +370,7 @@ export async function clearCart(): Promise<AddToCartResponse> {
 
         return data;
     } catch (error) {
-        console.error('Error in clearCart:', error);
+        logger.error('Error in clearCart:', error);
         throw error;
     }
 }
@@ -392,7 +395,7 @@ export async function getCarriers(): Promise<{ success: boolean; data: CartCarri
 
         return await response.json();
     } catch (error) {
-        console.error('Error in getCarriers:', error);
+        logger.error('Error in getCarriers:', error);
         throw error;
     }
 }
@@ -423,7 +426,7 @@ export async function updateCartCarrier(carrierId: number): Promise<AddToCartRes
 
         return data;
     } catch (error) {
-        console.error('Error in updateCartCarrier:', error);
+        logger.error('Error in updateCartCarrier:', error);
         throw error;
     }
 }
@@ -445,7 +448,7 @@ export async function getWarehouseDistricts(): Promise<{ success: boolean; data:
 
         return await response.json();
     } catch (error) {
-        console.error('Error in getWarehouseDistricts:', error);
+        logger.error('Error in getWarehouseDistricts:', error);
         throw error;
     }
 }
@@ -467,7 +470,7 @@ export async function getWarehouseProvinces(): Promise<{ success: boolean; data:
 
         return await response.json();
     } catch (error) {
-        console.error('Error in getWarehouseProvinces:', error);
+        logger.error('Error in getWarehouseProvinces:', error);
         throw error;
     }
 }
@@ -490,7 +493,7 @@ export async function getWarehouseMap(ubigeo: string): Promise<{ success: boolea
 
         return await response.json();
     } catch (error) {
-        console.error('Error in getWarehouseMap:', error);
+        logger.error('Error in getWarehouseMap:', error);
         throw error;
     }
 }
@@ -525,7 +528,7 @@ export async function getWarehouseDetails(ubigeo: string): Promise<{ success: bo
         return await response.json();
     } catch (error) {
         // Fallback or empty array if endpoint fails or doesn't exist yet
-        console.warn('Error in getWarehouseDetails, returning empty list:', error);
+        logger.warn('Error in getWarehouseDetails, returning empty list:', error);
         return { success: false, data: [], total: 0 };
     }
 }
@@ -590,7 +593,7 @@ export async function validateStock(
 
         return await response.json();
     } catch (error) {
-        console.error('Error in validateStock:', error);
+        logger.error('Error in validateStock:', error);
         throw error;
     }
 }
@@ -613,6 +616,8 @@ export async function saveGuestPersonalData(data: any): Promise<{ success: boole
             skipAuth: true
         });
 
+        logger.log("Datos personales guardados:", data);
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || `Error saving guest data: ${response.statusText}`);
@@ -620,7 +625,7 @@ export async function saveGuestPersonalData(data: any): Promise<{ success: boole
 
         return await response.json();
     } catch (error) {
-        console.error('Error in saveGuestPersonalData:', error);
+        logger.error('Error in saveGuestPersonalData:', error);
         throw error;
     }
 }
@@ -666,7 +671,7 @@ export async function getDeliveryZones(carrierId: number): Promise<DeliveryZones
 
         return await response.json();
     } catch (error) {
-        console.error('Error in getDeliveryZones:', error);
+        logger.error('Error in getDeliveryZones:', error);
         throw error;
     }
 }
@@ -684,6 +689,8 @@ export async function saveCartDeliveryAddress(data: {
 }): Promise<{ success: boolean; message: string }> {
     try {
         const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        logger.log('📡 Syncing delivery address to API:', data);
+        logger.log('🔑 Access Token present:', !!accessToken);
 
         const response = await apiPut('/cart/delivery-address', data, {
             skipAuth: !accessToken
@@ -696,7 +703,7 @@ export async function saveCartDeliveryAddress(data: {
 
         return await response.json();
     } catch (error) {
-        console.error('Error in saveCartDeliveryAddress:', error);
+        logger.error('Error in saveCartDeliveryAddress:', error);
         throw error;
     }
 }
@@ -734,7 +741,7 @@ export async function validateSavarStock(reference: string, quantity: number): P
 
         return await response.json();
     } catch (error) {
-        console.error('Error in validateSavarStock:', error);
+        logger.error('Error in validateSavarStock:', error);
         throw error;
     }
 }
@@ -761,7 +768,7 @@ export async function saveCartDeliveryPrice(data: {
 
         return await response.json();
     } catch (error) {
-        console.error('Error in saveCartDeliveryPrice:', error);
+        logger.error('Error in saveCartDeliveryPrice:', error);
         throw error;
     }
 }
@@ -796,7 +803,7 @@ export async function savePickupPerson(data: {
 
         return await response.json();
     } catch (error) {
-        console.error('Error in savePickupPerson:', error);
+        logger.error('Error in savePickupPerson:', error);
         throw error;
     }
 }
@@ -841,7 +848,7 @@ export async function savePickupStore(data: SavePickupStoreRequest): Promise<Sav
 
         return await response.json();
     } catch (error) {
-        console.error('Error in savePickupStore:', error);
+        logger.error('Error in savePickupStore:', error);
         throw error;
     }
 }
@@ -885,7 +892,7 @@ export async function payOrder(orderId: string | number, data: {
 
         return await response.json();
     } catch (error) {
-        console.error('Error in payOrder:', error);
+        logger.error('Error in payOrder:', error);
         throw error;
     }
 }
@@ -911,7 +918,7 @@ export async function createOrder(data: {
 
         return result;
     } catch (error) {
-        console.error('Error in createOrder:', error);
+        logger.error('Error in createOrder:', error);
         throw error;
     }
 }
@@ -933,7 +940,7 @@ export async function getOrderDetail(orderId: string): Promise<{ success: boolea
 
         return result;
     } catch (error) {
-        console.error('Error in getOrderDetail:', error);
+        logger.error('Error in getOrderDetail:', error);
         throw error;
     }
 }
@@ -956,7 +963,7 @@ export async function getOrderPaymentStatus(orderId: string | number): Promise<{
 
         return result;
     } catch (error) {
-        console.error('Error in getOrderPaymentStatus:', error);
+        logger.error('Error in getOrderPaymentStatus:', error);
         throw error;
     }
 }
@@ -979,7 +986,7 @@ export async function sendOrderPaidEmail(orderId: string | number): Promise<{ su
 
         return result;
     } catch (error) {
-        console.error('Error in sendOrderPaidEmail:', error);
+        logger.error('Error in sendOrderPaidEmail:', error);
         throw error;
     }
 }
@@ -1024,7 +1031,7 @@ export async function getCheckoutSummary(): Promise<CheckoutSummaryResponse> {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            console.error('❌ [getCheckoutSummary] API error:', {
+            logger.error('❌ [getCheckoutSummary] API error:', {
                 status: response.status,
                 errorData
             });
@@ -1037,10 +1044,10 @@ export async function getCheckoutSummary(): Promise<CheckoutSummaryResponse> {
         }
 
         const data = await response.json();
-
+        logger.log('📦 [getCheckoutSummary] Success response:', data);
         return data;
     } catch (error: any) {
-        console.error('Error in getCheckoutSummary:', error);
+        logger.error('Error in getCheckoutSummary:', error);
         return {
             success: false,
             isComplete: false,
@@ -1079,10 +1086,10 @@ export async function mergeGuestCart(
         }
 
         const data = await response.json();
-
+        logger.log('✅ [mergeGuestCart] Cart merged successfully:', data);
         return data;
     } catch (error: any) {
-        console.error('❌ [mergeGuestCart] Error merging cart:', error);
+        logger.error('❌ [mergeGuestCart] Error merging cart:', error);
         throw error;
     }
 }

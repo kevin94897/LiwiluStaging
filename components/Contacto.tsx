@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import logger from '@/lib/logger';
 import Image from "next/image";
 import Button from "./ui/Button";
 import {
@@ -72,6 +73,7 @@ export default function Contacto() {
 
       setErrors(newErrors);
       setIsSubmitting(false);
+      logger.log("Errores de validación:", newErrors);
       return;
     }
 
@@ -117,7 +119,7 @@ export default function Contacto() {
         showToast(errorMessage, "error");
       }
     } catch (error: any) {
-      console.error("Error al enviar:", error);
+      logger.error("Error al enviar:", error);
       showToast(error.message || "Hubo un error. Intenta nuevamente.", "error");
     } finally {
       setIsSubmitting(false);

@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import logger from '@/lib/logger';
 import Layout from "@/components/Layout";
 import Image from "next/image";
 import Link from "next/link";
@@ -38,6 +39,8 @@ export default function PedidoExitoso() {
           // If less than 10 minutes old, use it
           if (elapsed < 10 * 60 * 1000) {
             orderId = orderData.orderId.toString();
+            logger.log("✅ OrderId recuperado desde localStorage:", orderId);
+
             // Update URL to include the orderId
             window.history.replaceState(
               null,
@@ -49,7 +52,7 @@ export default function PedidoExitoso() {
             localStorage.removeItem("liwilu_successful_order");
           }
         } catch (e) {
-          console.error("Error parsing successful order from localStorage:", e);
+          logger.error("Error parsing successful order from localStorage:", e);
           localStorage.removeItem("liwilu_successful_order");
         }
       }
@@ -63,6 +66,7 @@ export default function PedidoExitoso() {
 
     // 🛡️ Guard to prevent duplicate execution
     if (initializationStarted.current) {
+      logger.log("🛑 [PedidoExitoso] Inicialización ya en proceso, ignorando duplicado");
       return;
     }
     initializationStarted.current = true;
@@ -77,8 +81,9 @@ export default function PedidoExitoso() {
           // Limpiar estado de checkout después de compra exitosa
           localStorage.removeItem("liwilu_checkout_state");
           localStorage.removeItem("liwilu_successful_order"); // Clear recovery data
-          localStorage.removeItem("liwilu_checkout_state");
-          localStorage.removeItem("liwilu_successful_order"); // Clear recovery data
+          logger.log(
+            "✅ Estado de checkout limpiado después de compra exitosa",
+          );
 
           // 🛒 VERIFICACIÓN DE PAGO Y ENVÍO DE CORREO
           try {
@@ -93,14 +98,19 @@ export default function PedidoExitoso() {
                 const alreadySent = localStorage.getItem(mailSentKey);
 
                 if (!alreadySent) {
+                  logger.log(
+                    "📧 Disparando correo de confirmación de pago para orden:",
+                    orderId,
+                  );
                   await sendOrderPaidEmail(orderId);
                   localStorage.setItem(mailSentKey, "true");
                 } else {
+                  logger.log("📧 Correo ya enviado previamente (según localStorage)");
                 }
               }
             }
           } catch (statusErr) {
-            console.warn(
+            logger.warn(
               "⚠️ No se pudo verificar el estado de pago para el envío de correo:",
               statusErr,
             );
@@ -112,7 +122,7 @@ export default function PedidoExitoso() {
           );
         }
       } catch (err: any) {
-        console.error("Error fetching order details:", err);
+        logger.error("Error fetching order details:", err);
         setError(err.message || "Error al conectar con el servidor");
       } finally {
         setLoading(false);

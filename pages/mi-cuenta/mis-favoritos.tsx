@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import logger from '@/lib/logger';
 import { showToast } from "@/lib/notifications";
 
 import Layout from "@/components/Layout";
@@ -40,7 +41,7 @@ export default function MisFavoritos() {
           setError("No se pudieron cargar los favoritos.");
         }
       } catch (err) {
-        console.error(err);
+        logger.error(err);
         setError("Error al cargar favoritos.");
       } finally {
         setLoading(false);
@@ -60,7 +61,7 @@ export default function MisFavoritos() {
       setFavoritesCount((prev) => Math.max(0, prev - 1));
       showToast("Producto eliminado de favoritos");
     } catch (err) {
-      console.error("Error removing favorite:", err);
+      logger.error("Error removing favorite:", err);
       showToast("Error al eliminar de favoritos", "error");
     } finally {
       setRemovingId(null);

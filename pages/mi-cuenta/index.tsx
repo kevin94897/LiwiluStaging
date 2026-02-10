@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import logger from '@/lib/logger';
 import Layout from '@/components/Layout';
 import AccountSidebar from '@/components/AccountSidebar';
 import Link from 'next/link';
@@ -73,7 +74,7 @@ export default function MiCuenta() {
 					}
 				}
 			} catch (error) {
-				console.error('❌ Error al cargar datos del usuario:', error);
+				logger.error('❌ Error al cargar datos del usuario:', error);
 			} finally {
 				setIsLoading(false);
 			}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import logger from '@/lib/logger';
 import { GuestDataSchemaType } from "@/lib/guestDataSchema";
 import { FaEdit, FaSave, FaTimes } from "react-icons/fa";
 import { PiWarningCircleFill } from "react-icons/pi";
@@ -156,7 +157,7 @@ export default function GuestDataSummary({
       setIsEditing(false);
       setLocalErrors({});
     } catch (error: any) {
-      console.error("Error saving user data:", error);
+      logger.error("Error saving user data:", error);
       if (error.fieldErrors) {
         setLocalErrors(error.fieldErrors);
       }

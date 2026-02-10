@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import logger from '@/lib/logger';
 import Layout from '@/components/Layout';
 import AccountSidebar from '@/components/AccountSidebar';
 import Link from 'next/link';
@@ -78,7 +79,7 @@ export default function CambiarPassword() {
 
         } catch (error: unknown) {
             if (error instanceof Error) {
-                console.error('❌ Error al enviar correo:', error.message);
+                logger.error('❌ Error al enviar correo:', error.message);
                 setGeneralError(error.message || 'Error al enviar el correo de recuperación');
             } else {
                 setGeneralError('Error desconocido en el servidor');

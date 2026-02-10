@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import logger from '@/lib/logger';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { Outfit } from 'next/font/google';
@@ -72,7 +73,7 @@ export default function StoresModal({
                 if (distRes.success) setDistricts(distRes.data);
                 if (provRes.success) setProvinces(provRes.data);
             } catch (error) {
-                console.error("Error loading locations:", error);
+                logger.error("Error loading locations:", error);
             } finally {
                 setLoadingLocations(false);
             }
@@ -105,7 +106,7 @@ export default function StoresModal({
                     if (detailsRes.success) setWarehouseDetails(detailsRes.data);
                 }
             } catch (error) {
-                console.error("Error loading stores:", error);
+                logger.error("Error loading stores:", error);
             } finally {
                 setLoadingStores(false);
             }

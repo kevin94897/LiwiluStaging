@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import logger from '@/lib/logger';
 import { useRouter } from "next/router";
 import Layout from "@/components/Layout";
 import Button from "@/components/ui/Button";
@@ -27,6 +28,7 @@ export default function VerificarEmail() {
             }
 
             try {
+                logger.log("🔄 Confirmando cambio de email con token:", token);
 
                 const response = await fetch(
                     `${process.env.NEXT_PUBLIC_API_URL}/auth/confirm-email-change?token=${token}`,
@@ -66,7 +68,7 @@ export default function VerificarEmail() {
                     );
                 }
             } catch (error) {
-                console.error("❌ Error al confirmar cambio de email:", error);
+                logger.error("❌ Error al confirmar cambio de email:", error);
                 setStatus("error");
                 setMessage("Ocurrió un error al procesar tu solicitud. Por favor, intenta nuevamente.");
             }

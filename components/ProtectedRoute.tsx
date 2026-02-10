@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import logger from '@/lib/logger';
 import { useRouter } from "next/router";
 import { validateToken } from "@/lib/auth/apiClient";
 
@@ -36,6 +37,7 @@ export default function ProtectedRoute({
         const refreshToken = localStorage.getItem("refreshToken");
 
         if (!accessToken || !refreshToken) {
+          logger.log("🔒 No hay tokens, redirigiendo al home...");
           router.push("/");
           return;
         }
@@ -46,6 +48,7 @@ export default function ProtectedRoute({
         const isValid = await validateToken();
 
         if (!isValid) {
+          logger.log("🔒 Token inválido, redirigiendo al home...");
           router.push("/");
           return;
         }
@@ -53,7 +56,7 @@ export default function ProtectedRoute({
         setIsAuthenticated(true);
         setIsValidating(false);
       } catch (error) {
-        console.error("❌ Error al validar autenticación:", error);
+        logger.error("❌ Error al validar autenticación:", error);
         router.push("/");
       }
     };

@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import logger from '@/lib/logger';
 import Layout from '@/components/Layout';
 import Link from 'next/link';
 import AccountSidebar from '@/components/AccountSidebar';
@@ -62,7 +63,7 @@ export default function Direcciones() {
 			const accessToken = localStorage.getItem('accessToken');
 
 			if (!accessToken) {
-				console.error('No hay token de acceso');
+				logger.error('No hay token de acceso');
 				setIsLoading(false);
 				return;
 			}
@@ -92,7 +93,7 @@ export default function Direcciones() {
 				}
 			}
 		} catch (error) {
-			console.error('Error al cargar direcciones:', error);
+			logger.error('Error al cargar direcciones:', error);
 			showToast('Error al cargar las direcciones. Por favor, intenta nuevamente.', 'error');
 		} finally {
 			setIsLoading(false);
@@ -130,7 +131,7 @@ export default function Direcciones() {
 
 			setErrors(newErrors);
 			setIsSubmitting(false);
-			setIsSubmitting(false);
+			logger.log("Errores de validación:", newErrors);
 
 			// Scroll al primer error
 			const firstError = document.querySelector('.border-red-500');
@@ -219,7 +220,7 @@ export default function Direcciones() {
 				resetFormulario();
 			}
 		} catch (error) {
-			console.error('Error al guardar:', error);
+			logger.error('Error al guardar:', error);
 			showToast('Hubo un error al guardar. Intenta nuevamente.', 'error');
 		} finally {
 			setIsSubmitting(false);
@@ -305,7 +306,7 @@ export default function Direcciones() {
 			showToast('Dirección eliminada correctamente');
 			await fetchDirecciones();
 		} catch (error) {
-			console.error('Error al eliminar:', error);
+			logger.error('Error al eliminar:', error);
 			showToast('Hubo un error al eliminar. Intenta nuevamente.', 'error');
 		}
 	};

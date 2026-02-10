@@ -6,6 +6,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import logger from '@/lib/logger';
 import { useCart } from "@/context/CartContext";
 import AddToCartModal from "@/components/AddToCartModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -121,7 +122,7 @@ export default function ProductosRelacionados({
 
         setRelatedProducts(products);
       } catch (err) {
-        console.error("Error fetching related products:", err);
+        logger.error("Error fetching related products:", err);
         setError("No se pudieron cargar los productos relacionados");
       } finally {
         setLoading(false);
@@ -141,6 +142,7 @@ export default function ProductosRelacionados({
           setFavoritos(favoriteIds);
         }
       } catch (error) {
+        logger.log("Could not load favorites:", error);
       }
     }
 
@@ -167,7 +169,7 @@ export default function ProductosRelacionados({
         showToast("Producto eliminado de favoritos", "success");
       }
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      logger.error("Error toggling favorite:", error);
 
       if (
         error instanceof Error &&
@@ -230,7 +232,7 @@ export default function ProductosRelacionados({
       addToCart(cartProduct, 1);
       setModalProduct(producto);
     } catch (error) {
-      console.error("Error al agregar al carrito:", error);
+      logger.error("Error al agregar al carrito:", error);
       showToast("Error al agregar el producto al carrito", "error");
     } finally {
       setLoadingCart(null);

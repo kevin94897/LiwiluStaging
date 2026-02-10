@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import logger from '@/lib/logger';
 import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
@@ -186,7 +187,7 @@ export default function AutorizacionModal({
         showToast("Consulta disponible solo para DNI y RUC", "error");
       }
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       showToast("Error al consultar el documento", "error");
     } finally {
       setConsulting(false);

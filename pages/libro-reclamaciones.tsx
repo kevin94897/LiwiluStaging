@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import logger from '@/lib/logger';
 import { showToast } from '@/lib/notifications';
 import Layout from '@/components/Layout';
 import { FaCheckCircle } from 'react-icons/fa';
@@ -185,7 +186,7 @@ export default function LibroReclamaciones() {
             }, 5000);
 
         } catch (error) {
-            console.error('Error enviando reclamo:', error);
+            logger.error('Error enviando reclamo:', error);
             showToast('Hubo un error al enviar tu reclamo. Por favor intenta nuevamente.', 'error');
         } finally {
             setEnviando(false);

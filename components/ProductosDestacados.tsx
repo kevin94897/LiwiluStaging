@@ -5,6 +5,7 @@ import Link from "next/link";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { useState, useEffect } from "react";
+import logger from '@/lib/logger';
 import toast from "react-hot-toast";
 import { useCart } from "@/context/CartContext";
 import AddToCartModal from "@/components/AddToCartModal";
@@ -76,7 +77,7 @@ export default function ProductosDestacados({
         showToast("Producto eliminado de favoritos", "success");
       }
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      logger.error("Error toggling favorite:", error);
 
       if (
         error instanceof Error &&
@@ -113,6 +114,7 @@ export default function ProductosDestacados({
           setFavoritos(favoriteIds);
         }
       } catch (error) {
+        logger.log("Could not load favorites:", error);
       }
     }
 
@@ -142,7 +144,7 @@ export default function ProductosDestacados({
       addToCart(cartProduct, 1);
       setModalProduct(producto);
     } catch (error) {
-      console.error("Error al agregar al carrito:", error);
+      logger.error("Error al agregar al carrito:", error);
       showToast("Error al agregar el producto al carrito", "error");
     } finally {
       setLoadingCart(null);

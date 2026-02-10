@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import logger from '@/lib/logger';
 import Layout from "@/components/Layout";
 import Image from "next/image";
 import {
@@ -155,7 +156,7 @@ export default function RastreoPedido() {
         );
       }
     } catch (error: any) {
-      console.error("Error fetching package status:", error);
+      logger.error("Error fetching package status:", error);
 
       // Check if it's a 404 package not found error
       if (error.isPackageNotFound || error.statusCode === 404) {

@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import logger from '@/lib/logger';
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import AccountSidebar from "@/components/AccountSidebar";
@@ -75,7 +76,7 @@ export default function MisDatos() {
           }
         }
       } catch (error) {
-        console.error("❌ Error al cargar datos del usuario:", error);
+        logger.error("❌ Error al cargar datos del usuario:", error);
         showToast(
           "Error al cargar tus datos. Por favor, recarga la página.",
           "error",
@@ -155,7 +156,7 @@ export default function MisDatos() {
         throw new Error(result.message || "Error al solicitar cambio de email");
       }
     } catch (error) {
-      console.error("❌ Error al solicitar cambio de email:", error);
+      logger.error("❌ Error al solicitar cambio de email:", error);
       showToast(
         error instanceof Error
           ? error.message
@@ -198,7 +199,7 @@ export default function MisDatos() {
         }
 
         setErrors(newErrors);
-        setErrors(newErrors);
+        logger.log("Errores de validación:", newErrors);
 
         // Scroll al primer error
         const firstError = document.querySelector(".border-red-500");
@@ -266,7 +267,7 @@ export default function MisDatos() {
         // ✅ NO recargar la página - dejar que el usuario continúe navegando
       }
     } catch (error) {
-      console.error("❌ Error al guardar:", error);
+      logger.error("❌ Error al guardar:", error);
       showToast(
         error instanceof Error
           ? error.message

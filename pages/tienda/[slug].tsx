@@ -613,6 +613,8 @@ export default function ProductDetail({
       }
     }
 
+    console.log("🔄 Attribute Changed:", type, valueId);
+    console.log("🎯 Current Selection:", newAttrs);
   };
 
   // ✅ Validar disponibilidad de atributos (si existe combinación con stock)
@@ -1179,8 +1181,8 @@ export default function ProductDetail({
                                 setSelectedAttributes({});
                               }}
                               className={`px-4 py-2 border rounded-md font-medium transition ${isSelected
-                                  ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
-                                  : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
+                                : "border-gray-300 text-gray-700 hover:bg-gray-100"
                                 }`}
                             >
                               <div className="flex flex-col items-center">
@@ -1292,8 +1294,8 @@ export default function ProductDetail({
               key={tab}
               onClick={() => setActiveTab(tab as TabKey)}
               className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${activeTab === tab
-                  ? "border-gray-900 text-primary-dark"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "border-gray-900 text-primary-dark"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
             >
               {tab}

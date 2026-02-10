@@ -1,3 +1,4 @@
+import logger from '../logger';
 // lib/auth/authUtils.ts
 import { stopTokenRefresh } from './tokenManager';
 
@@ -68,6 +69,7 @@ export const saveSession = (user: any, accessToken: string, refreshToken: string
     const mappedUser = mapApiUserToUser(user);
     if (mappedUser) {
         localStorage.setItem('user', JSON.stringify(mappedUser));
+        logger.log('✅ Standardized user saved:', mappedUser);
     }
 
     localStorage.setItem('accessToken', accessToken);
@@ -88,6 +90,7 @@ export const updateUserSession = (userData: Partial<User>) => {
 
     if (updatedUser) {
         localStorage.setItem('user', JSON.stringify(updatedUser));
+        logger.log('🔄 User session updated:', updatedUser);
 
         // Dispatch event to notify other components/tabs
         window.dispatchEvent(new StorageEvent('storage', {
@@ -107,6 +110,8 @@ export const clearAuthSession = () => {
 
     // Total wipe for maximum security and fresh state
     localStorage.clear();
+
+    logger.log('🧹 Total session and storage cleared');
 };
 
 /**
@@ -124,7 +129,7 @@ export const getCurrentUser = (): User | null => {
         // to ensure it's always in the correct format.
         return mapApiUserToUser(rawUser);
     } catch (error) {
-        console.error('❌ Error parsing user from localStorage:', error);
+        logger.error('❌ Error parsing user from localStorage:', error);
         return null;
     }
 };

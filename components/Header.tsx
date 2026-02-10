@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
+import logger from '@/lib/logger';
 import { IoMenu } from "react-icons/io5";
 import { HiChevronRight } from "react-icons/hi";
 import { useCart } from "@/context/CartContext";
@@ -134,7 +135,15 @@ function QuickActions({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const loginRef = useRef<HTMLDivElement | null>(null);
 
-
+  // 🔹 DEBUG: Log para verificar el estado
+  useEffect(() => {
+    logger.log("QuickActions render:", {
+      isLoading,
+      isAuthenticated,
+      user,
+      userName: user?.firstName,
+    });
+  }, [isLoading, isAuthenticated, user]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -157,7 +166,7 @@ function QuickActions({
       await logout();
       setIsOpen(false);
     } catch (error: unknown) {
-      console.error("Error al cerrar sesión:", error);
+      logger.error("Error al cerrar sesión:", error);
       setIsLoggingOut(false);
       if (error instanceof Error) showToast(error.message, "error");
       else showToast("Error desconocido al cerrar sesión", "error");
@@ -440,7 +449,7 @@ export default function Header() {
 
         setMenuCategories(formattedCats);
       } catch (error) {
-        console.error("Failed to load header categories", error);
+        logger.error("Failed to load header categories", error);
         // Fallback or keep empty
       }
     }

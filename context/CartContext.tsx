@@ -67,7 +67,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // 2. Cargar sessionId existente
     const currentSessionId = localStorage.getItem("liwilu_session_id");
     if (currentSessionId) {
-      // console.log("📄 Loaded Existing Session ID:", currentSessionId);
+      console.log("📄 Loaded Existing Session ID:", currentSessionId);
       setSessionId(currentSessionId);
     }
 
@@ -92,7 +92,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
    */
   const updateSessionId = (newSessionId?: string) => {
     if (newSessionId && newSessionId !== sessionId) {
-      // console.log("♻️ Backend returned new Session ID:", newSessionId);
+      console.log("♻️ Backend returned new Session ID:", newSessionId);
       localStorage.setItem("liwilu_session_id", newSessionId);
       setSessionId(newSessionId);
     }
@@ -206,7 +206,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       // If not authenticated or error, keep local cart
-      // console.log("Could not sync cart with backend:", error.message);
+      console.log("Could not sync cart with backend:", error.message);
     }
   };
 
@@ -231,7 +231,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw new Error("ID de producto no válido");
       }
 
-
+      console.log(
+        `🛒 Adding to cart: ID ${productId}, Combination ID ${product.prestashopCombinationId ?? null}, Quantity ${cleanQuantity}`,
+      );
 
       // Call backend API
       const response = await apiAddToCart(
@@ -277,7 +279,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
 
       // Don't re-throw error - allow fallback to work silently
-
+      console.log("Using local cart fallback");
     } finally {
       setIsLoading(false);
     }

@@ -27,6 +27,7 @@ import Select from "@/components/ui/Select";
 import Input from "@/components/ui/Input";
 import ProcessingOverlay from "@/components/checkout/ProcessingOverlay";
 import ErrorModal from "@/components/ui/ErrorModal";
+import logger from "@/lib/logger";
 
 type TipoComprobante = "boleta" | "factura";
 type MetodoPago = "tarjeta" | "yape" | "efectivo";
@@ -93,6 +94,7 @@ export default function Checkout() {
   // Manejar cierre del modal de Culqi
   useEffect(() => {
     const handleCulqiModalClosed = () => {
+      logger.log("🔄 Modal cerrado - reseteando estado de procesamiento");
       setProcessing(false);
       // Mantener currentOrderId para permitir reintentar el pago
     };
@@ -149,11 +151,13 @@ export default function Checkout() {
             setTipoDocumentoBoleta(state.tipoDocumentoBoleta);
           if (state.datosBoletaRUC) setDatosBoletaRUC(state.datosBoletaRUC);
           if (state.currentOrderId) setCurrentOrderId(state.currentOrderId);
+          logger.log("✅ Estado de checkout restaurado desde localStorage");
         } else {
           localStorage.removeItem("liwilu_checkout_state");
+          logger.log("⏰ Estado de checkout expirado, limpiado");
         }
       } catch (e) {
-        console.error("Error restaurando estado de checkout:", e);
+        logger.error("Error restaurando estado de checkout:", e);
         localStorage.removeItem("liwilu_checkout_state");
       }
     }
@@ -162,6 +166,7 @@ export default function Checkout() {
   // Verificar si Culqi ya está cargado al montar el componente (para navegaciones SPA)
   useEffect(() => {
     if (typeof window !== "undefined" && window.Culqi) {
+      logger.log("⚡ Culqi ya estaba cargado al montar");
       const configured = configureCulqi();
       setCulqiReady(configured);
     }
@@ -170,6 +175,7 @@ export default function Checkout() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("test") === "true") {
+        logger.log("🧪 [TEST MODE] Modo de prueba activado via URL");
         setTestMode(true);
       }
     }
@@ -185,7 +191,7 @@ export default function Checkout() {
 
         // If less than 5 minutes, warn user
         if (elapsed < 5 * 60 * 1000) {
-          console.warn("⚠️ Transacción pendiente detectada:", tx);
+          logger.warn("⚠️ Transacción pendiente detectada:", tx);
           showToast(
             "Detectamos un pago en proceso. Si ya completaste tu compra, verifica en 'Mis Pedidos'.",
             "error",
@@ -195,7 +201,7 @@ export default function Checkout() {
           localStorage.removeItem("liwilu_pending_transaction");
         }
       } catch (e) {
-        console.error("Error parsing pending transaction:", e);
+        logger.error("Error parsing pending transaction:", e);
         localStorage.removeItem("liwilu_pending_transaction");
       }
     }
@@ -207,6 +213,7 @@ export default function Checkout() {
       setIsVerifyingStock(true);
       try {
         const summary = await getCheckoutSummary();
+        logger.log("🔍 [Checkout] Initial summary check:", summary);
 
         // FIXED: Check summary.data.isComplete instead of summary.isComplete
         if (!summary.success || !summary.data?.isComplete || !summary.data) {
@@ -222,6 +229,7 @@ export default function Checkout() {
 
         if (deliveryType === "DELIVERY") {
           // Validar cada producto vía Savar
+          logger.log("🚚 Validando stock de despacho (Savar)...");
           const results = await Promise.all(
             products.map((p: any) =>
               validateSavarStock(p.reference, p.quantity),
@@ -244,6 +252,7 @@ export default function Checkout() {
           }
         } else if (deliveryType === "RETIRO" && pickupStoreInfo) {
           // Validar vía endpoint de almacén
+          logger.log("🏪 Validando stock de retiro en tienda...");
           const productsToValidate = products.map((p: any) => ({
             reference: p.reference,
             quantity: p.quantity,
@@ -270,9 +279,10 @@ export default function Checkout() {
           }
         }
 
+        logger.log("✅ Validación de stock exitosa en checkout");
         setIsVerifyingStock(false);
       } catch (error: any) {
-        console.error("❌ Error en validación de stock de checkout:", error);
+        logger.error("❌ Error en validación de stock de checkout:", error);
         showToast(
           error.message || "Error al verificar el stock disponible",
           "error",
@@ -286,6 +296,7 @@ export default function Checkout() {
 
   // Configurar Culqi cuando el script esté listo
   const handleCulqiLoad = () => {
+    logger.log("📦 Script de Culqi cargado");
     const configured = configureCulqi();
     setCulqiReady(configured);
   };
@@ -295,9 +306,10 @@ export default function Checkout() {
     window.culqi = async () => {
       if (window.Culqi.token) {
         const token = window.Culqi.token;
+        logger.log("✅ Token de Culqi recibido:", token.id);
 
         if (processingToken.current === token.id) {
-          console.warn(
+          logger.warn(
             "⚠️ Token ya procesado o en proceso, ignorando duplicado:",
             token.id,
           );
@@ -314,8 +326,12 @@ export default function Checkout() {
 
         // SIMULACIÓN DE RECHAZO (Si el modo prueba está activo)
         if (testMode && simulateRejection) {
+          logger.log(
+            "🧪 [SIMULACIÓN] Interceptando token para simular rechazo...",
+          );
           setProcessing(true);
           setTimeout(() => {
+            logger.log("❌ [SIMULACIÓN] Venta denegada");
             showToast(
               "Operación denegada. Intente nuevamente ó utilice otra tarjeta.",
               "error",
@@ -355,10 +371,13 @@ export default function Checkout() {
           }
 
           // 2. Procesar Pago
+          logger.log(`💳 Procesando pago para la orden ${currentOrderId}...`);
           const payResponse = await payOrder(currentOrderId.toString(), {
             token: token.id,
             email: email,
           });
+
+          logger.log("📦 Payment response:", payResponse);
 
           // Validate payment success with new fields
           if (
@@ -368,6 +387,7 @@ export default function Checkout() {
             payResponse.data?.orderId
           ) {
             const confirmedOrderId = payResponse.data.orderId;
+            logger.log(`✅ Pago confirmado para orden #${confirmedOrderId}`);
 
             setProcessingStage("completing");
             // closeCulqi(); // Ya se cerró al inicio
@@ -388,12 +408,15 @@ export default function Checkout() {
 
             clearCart();
 
-            clearCart();
-
             // Use multiple redirect strategies for reliability on slow connections
+            logger.log(`🚀 Redirigiendo a página de éxito...`);
 
             // Determine redirect URL (always show success page for better UX)
             const redirectUrl = `/pedido-exitoso?order=${confirmedOrderId}`;
+
+            logger.log(
+              `📍 Redirect URL: ${redirectUrl} (authenticated: ${isAuthenticated})`,
+            );
 
             // Strategy 1: Next.js router (preferred)
             router.push(redirectUrl);
@@ -401,7 +424,7 @@ export default function Checkout() {
             // Strategy 2: Fallback with window.location after 2 seconds if router fails
             setTimeout(() => {
               if (window.location.pathname === "/checkout") {
-                console.warn(
+                logger.warn(
                   "⚠️ Router.push no completó, usando window.location.href",
                 );
                 window.location.href = redirectUrl;
@@ -411,7 +434,7 @@ export default function Checkout() {
             // Strategy 3: Force redirect after 5 seconds as last resort
             setTimeout(() => {
               if (window.location.pathname === "/checkout") {
-                console.error("❌ Forzando redirección como último recurso");
+                logger.error("❌ Forzando redirección como último recurso");
                 window.location.replace(redirectUrl);
               }
             }, 5000);
@@ -423,7 +446,7 @@ export default function Checkout() {
             throw new Error(errorMsg);
           }
         } catch (error: any) {
-          console.error("❌ Error en el proceso de pago/orden:", error);
+          logger.error("❌ Error en el proceso de pago/orden:", error);
           // Clear pending transaction on error
           localStorage.removeItem("liwilu_pending_transaction");
 
@@ -436,6 +459,7 @@ export default function Checkout() {
       } else if (window.Culqi.order) {
         // Manejo de pedidos (Yape/PagoEfectivo)
         const order = window.Culqi.order;
+        logger.log("✅ Orden de Culqi recibida:", order);
 
         closeCulqi();
         showToast("📱 Orden generada. Completa el pago en tu app", "success");
@@ -445,8 +469,10 @@ export default function Checkout() {
         router.push(`/pedido-exitoso?order=${numeroPedido}&pending=true`);
       } else if (window.Culqi.order) {
         const order = window.Culqi.order;
+        logger.log("✅ Orden creada en Culqi:", order);
       } else if (window.Culqi.error) {
         const error = window.Culqi.error;
+        logger.log("❌ Error de Culqi:", error);
         // showToast(error.user_message || "Error en el pago", "error");
         setErrorModal({
           isOpen: true,
@@ -564,6 +590,7 @@ export default function Checkout() {
 
       // Intento final de inicialización si no estaba listo
       if (!isReady && typeof window !== "undefined" && window.Culqi) {
+        logger.log("🔄 Intentando configurar Culqi bajo demanda...");
         isReady = configureCulqi();
         setCulqiReady(isReady);
       }
@@ -593,6 +620,7 @@ export default function Checkout() {
         setProcessingStage("creating-order");
 
         // 1. Crear la orden primero
+        logger.log("📝 Generando orden...");
         const invoicePayload: any = {
           invoiceType: tipoComprobante.toUpperCase(), // "FACTURA" o "BOLETA"
         };
@@ -627,14 +655,14 @@ export default function Checkout() {
           throw new Error("No se recibió un ID de orden del servidor");
         }
 
+        logger.log("✅ Orden creada:", orderId);
         setCurrentOrderId(orderId);
 
         // Ocultar overlay para que el usuario pueda interactuar con Culqi
         setProcessing(false);
 
-        setProcessing(false);
-
         // 2. Abrir pasarela Culqi
+        logger.log("🚀 [Checkout] Iniciando flujo Culqi");
         openCulqi({
           title: "Liwilu",
           currency: "PEN",
@@ -642,7 +670,7 @@ export default function Checkout() {
           amount: total,
         });
       } catch (error: any) {
-        console.error("❌ Error en handleProcesarPago:", error);
+        logger.error("❌ Error en handleProcesarPago:", error);
         showToast(
           error.message || "Ocurrió un error al procesar tu solicitud",
           "error",
@@ -1078,79 +1106,80 @@ export default function Checkout() {
                   </p>
                 )}
 
-                {/* Información de Culqi para pruebas */}
-                {/* {(metodoPago === "tarjeta" || metodoPago === "yape") && (
-                  <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-xl">🧪</span>
-                      <p className="text-sm font-semibold text-blue-900">
-                        Modo de pruebas activo
-                      </p>
+                {/* Información de Culqi para pruebas - SOLO DEV */}
+                {process.env.NODE_ENV === "development" &&
+                  (metodoPago === "tarjeta" || metodoPago === "yape") && (
+                    <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xl">🧪</span>
+                        <p className="text-sm font-semibold text-blue-900">
+                          Modo de pruebas activo
+                        </p>
+                      </div>
+
+                      {testMode && (
+                        <div className="flex items-center gap-3 mb-5 p-3 bg-red-50 border border-red-100 rounded-lg shadow-inner animate-pulse-subtle">
+                          <input
+                            type="checkbox"
+                            id="simulateRejection"
+                            checked={simulateRejection}
+                            onChange={(e) =>
+                              setSimulateRejection(e.target.checked)
+                            }
+                            className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500 cursor-pointer"
+                          />
+                          <label
+                            htmlFor="simulateRejection"
+                            className="text-xs font-bold text-red-700 cursor-pointer select-none"
+                          >
+                            Simular rechazo de pago (Venta denegada)
+                          </label>
+                        </div>
+                      )}
+
+                      {metodoPago === "tarjeta" ? (
+                        <div className="space-y-2 text-xs text-blue-800">
+                          <p className="flex justify-between">
+                            <span>Número:</span>{" "}
+                            <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
+                              4111 1111 1111 1111
+                            </code>
+                          </p>
+                          <p className="flex justify-between">
+                            <span>CVV:</span>{" "}
+                            <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
+                              123
+                            </code>
+                          </p>
+                          <p className="flex justify-between">
+                            <span>Expiración:</span>{" "}
+                            <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
+                              12 / 2026
+                            </code>
+                          </p>
+                          <p className="mt-3 py-2 px-3 bg-white/50 rounded text-[10px] italic">
+                            El modal de Culqi procesará estos datos de forma
+                            segura.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                            ⚠️{" "}
+                            <strong className="font-semibold">
+                              Nota técnica:
+                            </strong>{" "}
+                            El botón de Yape dentro del modal de Culqi requiere un
+                            backend real para funcionar.
+                          </p>
+                          <p className="text-[11px] text-blue-800">
+                            Para validar el flujo completo ahora, te recomendamos
+                            seleccionar <strong>Tarjeta</strong>.
+                          </p>
+                        </div>
+                      )}
                     </div>
-
-                    {testMode && (
-                      <div className="flex items-center gap-3 mb-5 p-3 bg-red-50 border border-red-100 rounded-lg shadow-inner animate-pulse-subtle">
-                        <input
-                          type="checkbox"
-                          id="simulateRejection"
-                          checked={simulateRejection}
-                          onChange={(e) =>
-                            setSimulateRejection(e.target.checked)
-                          }
-                          className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500 cursor-pointer"
-                        />
-                        <label
-                          htmlFor="simulateRejection"
-                          className="text-xs font-bold text-red-700 cursor-pointer select-none"
-                        >
-                          Simular rechazo de pago (Venta denegada)
-                        </label>
-                      </div>
-                    )}
-
-                    {metodoPago === "tarjeta" ? (
-                      <div className="space-y-2 text-xs text-blue-800">
-                        <p className="flex justify-between">
-                          <span>Número:</span>{" "}
-                          <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
-                            4111 1111 1111 1111
-                          </code>
-                        </p>
-                        <p className="flex justify-between">
-                          <span>CVV:</span>{" "}
-                          <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
-                            123
-                          </code>
-                        </p>
-                        <p className="flex justify-between">
-                          <span>Expiración:</span>{" "}
-                          <code className="bg-white px-1.5 py-0.5 rounded border font-semibold">
-                            12 / 2026
-                          </code>
-                        </p>
-                        <p className="mt-3 py-2 px-3 bg-white/50 rounded text-[10px] italic">
-                          El modal de Culqi procesará estos datos de forma
-                          segura.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <p className="text-xs text-amber-700 font-medium leading-relaxed">
-                          ⚠️{" "}
-                          <strong className="font-semibold">
-                            Nota técnica:
-                          </strong>{" "}
-                          El botón de Yape dentro del modal de Culqi requiere un
-                          backend real para funcionar.
-                        </p>
-                        <p className="text-[11px] text-blue-800">
-                          Para validar el flujo completo ahora, te recomendamos
-                          seleccionar <strong>Tarjeta</strong>.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )} */}
+                  )}
 
                 {/* Formulario de tarjeta nueva (No requerido para Culqi Checkout v4) */}
               </div>
@@ -1325,7 +1354,7 @@ export default function Checkout() {
         src="https://checkout.culqi.com/js/v4"
         strategy="afterInteractive"
         onLoad={handleCulqiLoad}
-        onError={() => console.error("❌ Error al cargar Culqi")}
+        onError={() => logger.error("❌ Error al cargar Culqi")}
       />
       <style jsx global>{`
         @keyframes fade-in {

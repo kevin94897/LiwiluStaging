@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import logger from '@/lib/logger';
 import Link from "next/link";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
@@ -128,12 +129,15 @@ export default function RegisterModal({
         acceptTerms: formData.acceptTerms,
         receiveOffers: formData.receiveOffers,
       });
+
+      logger.log("Registro exitoso", response);
       showToast("Cuenta creada con éxito. ¡Bienvenido!");
       onClose();
     } catch (error: unknown) {
+      logger.log("Error en registro", error);
 
       if (error instanceof Error) {
-        console.error("Error en registro:", error.message);
+        logger.error("Error en registro:", error.message);
 
         if (error.message.includes("correo ya está registrado")) {
           setErrors({ email: "Este correo ya está registrado" });
@@ -151,10 +155,12 @@ export default function RegisterModal({
   };
 
   const handleGoogleSignup = () => {
+    logger.log("Signup with Google");
     // TODO: Implementar OAuth con Google
   };
 
   const handleFacebookSignup = () => {
+    logger.log("Signup with Facebook");
     // TODO: Implementar OAuth con Facebook
   };
 

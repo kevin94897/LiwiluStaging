@@ -5,6 +5,7 @@ import Link from "next/link";
 import { GetServerSideProps } from "next";
 import Layout from "@/components/Layout";
 import { useState, useEffect, useRef } from "react";
+import logger from '@/lib/logger';
 import { useRouter } from "next/router";
 import { showToast } from "@/lib/notifications";
 import Contacto from "@/components/Contacto";
@@ -224,6 +225,7 @@ export default function Tienda({
         }
       } catch (error) {
         // Silently fail if user is not authenticated
+        logger.log("Could not load favorites:", error);
       }
     }
 
@@ -257,6 +259,7 @@ export default function Tienda({
           return Array.from(newFavorites);
         });
       } catch (error) {
+        logger.log("Error checking favorites:", error);
       }
     }
 
@@ -282,7 +285,7 @@ export default function Tienda({
         showToast("Producto eliminado de favoritos");
       }
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      logger.error("Error toggling favorite:", error);
 
       // Check if it's an authentication error
       if (
@@ -329,7 +332,7 @@ export default function Tienda({
       addToCart(cartProduct, 1);
       setModalProduct(cartProduct);
     } catch (error) {
-      console.error("Error al agregar al carrito:", error);
+      logger.error("Error al agregar al carrito:", error);
       showToast("Error al agregar el producto al carrito", "error");
     } finally {
       setLoadingCart(null);

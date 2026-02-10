@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import logger from '@/lib/logger';
 import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "./ui/Button";
 import { apiPost } from "@/lib/auth/apiClient";
@@ -124,7 +125,7 @@ export default function ForgotPasswordModal({
 
         } catch (error: unknown) {
             if (error instanceof Error) {
-                console.error("❌ Error al enviar recuperación:", error.message);
+                logger.error("❌ Error al enviar recuperación:", error.message);
 
                 if (error.message.includes("no encontrado") || error.message.includes("not found")) {
                     setErrors({ email: "No existe una cuenta con este correo electrónico" });

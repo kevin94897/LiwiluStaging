@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 import { User, clearAuthSession, getCurrentUser, isAuthenticated } from '@/lib/auth/authUtils';
 
 export type { User };
@@ -24,7 +25,7 @@ export const logoutUser = async (): Promise<LogoutResponse> => {
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ refreshToken }),
-      }).catch(err => console.warn("Logout warning:", err));
+      }).catch(err => logger.warn("Logout warning:", err));
     }
 
     // 🔹 Siempre limpiar la sesión localmente

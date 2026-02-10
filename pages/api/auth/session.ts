@@ -1,5 +1,6 @@
 // pages/api/auth/session.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
+import logger from '@/lib/logger';
 
 /**
  * Endpoint para obtener el accessToken desde la cookie HttpOnly
@@ -30,7 +31,7 @@ export default async function handler(
       accessToken,
     });
   } catch (error) {
-    console.error('Error in /api/auth/session:', error);
+    logger.error('Error in /api/auth/session:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

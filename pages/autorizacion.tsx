@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import logger from '@/lib/logger';
 import Layout from "@/components/Layout";
 import { HiArrowLeft } from "react-icons/hi";
 import { PiWarningCircleFill } from "react-icons/pi";
@@ -65,12 +66,13 @@ export default function AutorizarRetiroPage() {
       }
 
       setErrors(newErrors);
-      setErrors(newErrors);
+      logger.log("Errores de validación:", newErrors);
       return;
     }
 
     // Si es válido
     setErrors({});
+    logger.log("Autorización de retiro exitosa:", formData);
     // Aquí iría la lógica para guardar la autorización
     showToast("Autorización guardada exitosamente");
     router.back();

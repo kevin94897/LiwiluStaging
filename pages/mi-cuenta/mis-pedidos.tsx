@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import logger from '@/lib/logger';
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import Image from "next/image";
@@ -28,7 +29,7 @@ export default function MisPedidos() {
           setError("No se pudieron cargar los pedidos");
         }
       } catch (err: any) {
-        console.error("Error fetching orders:", err);
+        logger.error("Error fetching orders:", err);
         setError(err.message || "Error al cargar los pedidos");
       } finally {
         setLoading(false);

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import logger from '@/lib/logger';
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { motion } from "framer-motion";
@@ -74,6 +75,7 @@ export default function NuestrosProductos({
           setFavoritos(favoriteIds);
         }
       } catch (error) {
+        logger.log("Could not load favorites:", error);
       }
     }
     loadFavorites();
@@ -95,7 +97,7 @@ export default function NuestrosProductos({
         showToast("Producto eliminado de favoritos", "success");
       }
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      logger.error("Error toggling favorite:", error);
 
       if (
         error instanceof Error &&
@@ -138,7 +140,7 @@ export default function NuestrosProductos({
       addToCart(cartProduct, 1);
       setModalProduct(producto);
     } catch (error) {
-      console.error("Error al agregar al carrito:", error);
+      logger.error("Error al agregar al carrito:", error);
       showToast("Error al agregar el producto al carrito", "error");
     } finally {
       setLoadingCart(null);

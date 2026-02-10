@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import logger from '@/lib/logger';
 import Link from "next/link";
 import Button from "./ui/Button";
 import { dniSchema } from "../lib/dniSchema";
@@ -289,11 +290,13 @@ export function TrimegistoRegisterModal({
       }
 
       setErrors(newErrors);
+      logger.log("Errores de validación:", newErrors);
       return;
     }
 
     // Si es válido
     setErrors({});
+    logger.log("Registro exitoso:", formData);
     onSuccess();
     onClose();
   };

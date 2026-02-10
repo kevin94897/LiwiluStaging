@@ -1,5 +1,6 @@
 // lib/orders.ts
 import { apiGet } from './auth/apiClient';
+import logger from './logger';
 
 export interface OrderItem {
     reference: string;
@@ -101,7 +102,7 @@ export async function getMyOrders(): Promise<MyOrdersResponse> {
 
         return await response.json();
     } catch (error) {
-        console.error('Error in getMyOrders:', error);
+        logger.error('Error in getMyOrders:', error);
         throw error;
     }
 }
@@ -175,7 +176,7 @@ export async function getPackageStatus(orderId: string): Promise<PackageStatusRe
 
         return await response.json();
     } catch (error: any) {
-        console.error('Error in getPackageStatus:', error);
+        logger.error('Error in getPackageStatus:', error);
 
         // Re-throw with additional context if it's not already our custom error
         if (!error.isPackageNotFound && error.message) {

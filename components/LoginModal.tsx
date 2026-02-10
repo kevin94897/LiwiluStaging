@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import logger from '@/lib/logger';
 import { FcGoogle } from "react-icons/fc";
 import { PiWarningCircleFill } from "react-icons/pi";
 import { FaFacebook } from "react-icons/fa";
@@ -101,6 +102,7 @@ export default function LoginModal({
       }
 
       setErrors(newErrors);
+      logger.log("Errores de validación:", newErrors);
       return;
     }
 
@@ -116,7 +118,7 @@ export default function LoginModal({
       // Por lo tanto, no necesitamos hacer nada más aquí
     } catch (err) {
       setIsLoading(false);
-      console.error("Error en login:", err);
+      logger.error("Error en login:", err);
 
       const errorMessage =
         err instanceof Error
@@ -128,9 +130,11 @@ export default function LoginModal({
   };
 
   const handleGoogleLogin = () => {
+    logger.log("Login with Google");
   };
 
   const handleFacebookLogin = () => {
+    logger.log("Login with Facebook");
   };
 
   return (

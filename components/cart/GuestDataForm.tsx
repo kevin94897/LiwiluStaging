@@ -1,4 +1,5 @@
 import { useState } from "react";
+import logger from '@/lib/logger';
 import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -102,7 +103,7 @@ export default function GuestDataForm({
         showToast("Consulta disponible solo para DNI y RUC", "error");
       }
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       showToast("Error al consultar el documento", "error");
     } finally {
       setIsConsulting(false);

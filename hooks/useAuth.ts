@@ -38,7 +38,7 @@ export function useAuth() {
         );
 
         if (isIncomplete) {
-
+          console.log('🔄 Rehidratando perfil por datos incompletos o faltantes...');
           import('@/lib/auth/apiClient').then(({ fetchUserProfile }) => {
             fetchUserProfile().then((apiUser) => {
               if (apiUser) {

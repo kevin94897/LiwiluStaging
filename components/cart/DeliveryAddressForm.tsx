@@ -1,4 +1,5 @@
 import { useState } from "react";
+import logger from '@/lib/logger';
 import { FaPencil, FaPlus } from "react-icons/fa6";
 import { formatPrice } from "@/lib/utils";
 import { PiWarningCircleFill } from "react-icons/pi";
@@ -125,7 +126,7 @@ export default function DeliveryAddressForm({
                     throw new Error("Empty address data");
                   }
                 } catch (e) {
-                  console.error("Error parsing saved address:", e);
+                  logger.error("Error parsing saved address:", e);
                   // Fallback reset
                   setShowPreview(false);
                   setDireccionEnvio({

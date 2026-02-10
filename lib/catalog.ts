@@ -1,3 +1,4 @@
+import logger from './logger';
 import { authenticatedFetch } from './auth/apiClient';
 
 /**
@@ -139,6 +140,8 @@ export async function searchProducts(params: FilterParams = {}): Promise<Catalog
     const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
     const url = `${baseUrl}/catalog/products/search${queryString}`;
 
+    logger.log('Fetching products from:', url);
+
     try {
         // Try to fetch without auth first (public catalog)
         const response = await fetch(url, {
@@ -154,7 +157,7 @@ export async function searchProducts(params: FilterParams = {}): Promise<Catalog
         const data = await response.json();
         return data;
     } catch (error) {
-        console.error('Error in searchProducts:', error);
+        logger.error('Error in searchProducts:', error);
         // Return empty structure on error to prevent crashes
         return {
             success: false,
@@ -180,6 +183,8 @@ export async function getFeaturedProducts(): Promise<CatalogProduct[]> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/catalog/products/featured`;
 
+    logger.log('Fetching featured products from:', url);
+
     try {
         const response = await fetch(url, {
             headers: {
@@ -194,7 +199,7 @@ export async function getFeaturedProducts(): Promise<CatalogProduct[]> {
         const data: FeaturedProductsResponse = await response.json();
         return data.data;
     } catch (error) {
-        console.error('Error in getFeaturedProducts:', error);
+        logger.error('Error in getFeaturedProducts:', error);
         return [];
     }
 }
@@ -254,12 +259,14 @@ export async function getCatalogHierarchy(): Promise<HierarchyResponse | null> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/catalog/hierarchy`;
 
+    logger.log('Fetching hierarchy from:', url);
+
     try {
         const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
         if (!response.ok) throw new Error(`Error fetching hierarchy: ${response.statusText}`);
         return await response.json();
     } catch (error) {
-        console.error('Error in getCatalogHierarchy:', error);
+        logger.error('Error in getCatalogHierarchy:', error);
         return null;
     }
 }
@@ -342,7 +349,7 @@ export async function toggleFavorite(productId: number): Promise<{
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error('Toggle favorite error:', response.status, errorText);
+        logger.error('Toggle favorite error:', response.status, errorText);
         throw new Error(`Error toggling favorite (${response.status}): ${errorText}`);
     }
 
@@ -531,16 +538,17 @@ export interface ProductVariationsResponse {
 export async function getProductBasic(productId: string | number): Promise<ProductBasicData | null> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/catalog/products/${productId}/basic`;
+    logger.log('Fetching product basic from:', url);
     try {
         const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
         if (!response.ok) {
-            console.error(`Error fetching product basic: ${response.status} ${response.statusText} URL: ${url}`);
+            logger.error(`Error fetching product basic: ${response.status} ${response.statusText} URL: ${url}`);
             throw new Error(`Error fetching product basic: ${response.statusText}`);
         }
         const data: ProductBasicResponse = await response.json();
         return data.data;
     } catch (error) {
-        console.error('Error in getProductBasic:', error);
+        logger.error('Error in getProductBasic:', error);
         return null;
     }
 }
@@ -552,13 +560,14 @@ export async function getProductBasic(productId: string | number): Promise<Produ
 export async function getProductVariations(productId: string | number): Promise<ProductVariationsData | null> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/catalog/products/${productId}/variations`;
+    logger.log('Fetching product variations from:', url);
     try {
         // MOCK RESPONSE FOR DEVELOPMENT
         // TODO: Uncomment the actual fetch when backend is ready
         // /*
         const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
         if (!response.ok) {
-            console.error(`Error fetching product variations: ${response.status} ${response.statusText} URL: ${url}`);
+            logger.error(`Error fetching product variations: ${response.status} ${response.statusText} URL: ${url}`);
             throw new Error(`Error fetching product variations: ${response.statusText}`);
         }
         const data: ProductVariationsResponse = await response.json();
@@ -1135,7 +1144,7 @@ export async function getProductVariations(productId: string | number): Promise<
         //     }
         // };
     } catch (error) {
-        console.error('Error in getProductVariations:', error);
+        logger.error('Error in getProductVariations:', error);
         return null;
     }
 }
@@ -1147,7 +1156,7 @@ export async function getLevelTwoCategories(): Promise<CategoryLevelTwo[]> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/catalog/categories/level-two`;
 
-
+    logger.log('Fetching level two categories from:', url);
 
     try {
         const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
@@ -1155,7 +1164,7 @@ export async function getLevelTwoCategories(): Promise<CategoryLevelTwo[]> {
         const data: LevelTwoCategoriesResponse = await response.json();
         return data.data || [];
     } catch (error) {
-        console.error('Error in getLevelTwoCategories:', error);
+        logger.error('Error in getLevelTwoCategories:', error);
         return [];
     }
 }
@@ -1206,7 +1215,7 @@ export async function getRelatedProducts(
                 }
             }));
     } catch (error) {
-        console.error('Error in getRelatedProducts fallback:', error);
+        logger.error('Error in getRelatedProducts fallback:', error);
         return [];
     }
 }

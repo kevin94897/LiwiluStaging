@@ -1,5 +1,6 @@
 // lib/general.ts
 import { apiGet } from './auth/apiClient';
+import logger from './logger';
 
 export interface RucConsultationData {
     ruc: string;
@@ -42,7 +43,7 @@ export async function consultaRUC(ruc: string): Promise<RucConsultationResponse>
 
         return await response.json();
     } catch (error) {
-        console.error('Error in consultaRUC:', error);
+        logger.error('Error in consultaRUC:', error);
         throw error;
     }
 }
@@ -79,7 +80,7 @@ export async function consultaDNI(dni: string): Promise<DniConsultationResponse>
 
         return await response.json();
     } catch (error) {
-        console.error('Error in consultaDNI:', error);
+        logger.error('Error in consultaDNI:', error);
         throw error;
     }
 }
