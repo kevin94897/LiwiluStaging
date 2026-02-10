@@ -30,7 +30,7 @@ export const authenticatedFetch = async (
     // Obtener tokens/session
     let accessToken: string | null = null;
     let sessionId: string | null = null;
-    
+
     if (typeof window !== 'undefined') {
         accessToken = localStorage.getItem('accessToken');
         sessionId = localStorage.getItem('liwilu_session_id');
@@ -38,12 +38,10 @@ export const authenticatedFetch = async (
 
     // Determinar qué headers usar
     if (accessToken) {
-        console.log('📡 Request with Authorization header');
         baseHeaders['Authorization'] = `Bearer ${accessToken}`;
     } else if (sessionId) {
         // Solo enviamos X-Session-Id si NO hay un accessToken, 
         // para evitar conflictos en el backend entre sesión de usuario e invitado.
-        console.log('📡 Request with X-Session-Id header (Guest Mode):', sessionId);
         baseHeaders['X-Session-Id'] = sessionId;
     }
 
@@ -60,14 +58,10 @@ export const authenticatedFetch = async (
 
     // Si es 401 (Unauthorized), el token expiró
     if (response.status === 401 && !skipRetry && accessToken) {
-        console.log('⚠️ Token expirado (401), intentando renovar...');
-
         // Intentar renovar el token
         const refreshSuccess = await refreshAccessToken();
 
         if (refreshSuccess) {
-            console.log('✅ Token renovado, reintentando petición...');
-
             // Reintentar la petición original con el nuevo token
             return authenticatedFetch(url, {
                 ...options,
@@ -93,11 +87,8 @@ export const validateToken = async (): Promise<boolean> => {
         const accessToken = localStorage.getItem('accessToken');
 
         if (!accessToken) {
-            console.log('⚠️ No hay accessToken para validar');
             return false;
         }
-
-        console.log('🔍 Validando token con /auth/profile...');
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/profile`, {
             method: 'GET',
@@ -108,18 +99,14 @@ export const validateToken = async (): Promise<boolean> => {
         });
 
         if (response.ok) {
-            console.log('✅ Token válido');
             return true;
         }
 
         // Si es 401, el token expiró
         if (response.status === 401) {
-            console.log('⚠️ Token expirado, intentando renovar...');
-
             const refreshSuccess = await refreshAccessToken();
-
             if (refreshSuccess) {
-                console.log('✅ Token renovado exitosamente');
+
                 return true;
             } else {
                 console.error('❌ No se pudo renovar el token');
@@ -145,7 +132,6 @@ export const fetchUserProfile = async (): Promise<any | null> => {
         const accessToken = localStorage.getItem('accessToken');
         if (!accessToken) return null;
 
-        console.log('🔄 Fetching user profile from API...');
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/profile`, {
             method: 'GET',
             headers: {
@@ -186,7 +172,6 @@ export const useAuthGuard = async (): Promise<boolean> => {
     const isValid = await validateToken();
 
     if (!isValid) {
-        console.log('🔒 Acceso denegado, redirigiendo...');
         if (typeof window !== 'undefined') {
             window.location.href = '/';
         }

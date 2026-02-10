@@ -36,7 +36,6 @@ export default function ProtectedRoute({
         const refreshToken = localStorage.getItem("refreshToken");
 
         if (!accessToken || !refreshToken) {
-          console.log("🔒 No hay tokens, redirigiendo al home...");
           router.push("/");
           return;
         }
@@ -47,7 +46,6 @@ export default function ProtectedRoute({
         const isValid = await validateToken();
 
         if (!isValid) {
-          console.log("🔒 Token inválido, redirigiendo al home...");
           router.push("/");
           return;
         }

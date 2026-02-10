@@ -130,7 +130,7 @@ export default function Direcciones() {
 
 			setErrors(newErrors);
 			setIsSubmitting(false);
-			console.log("Errores de validación:", newErrors);
+			setIsSubmitting(false);
 
 			// Scroll al primer error
 			const firstError = document.querySelector('.border-red-500');

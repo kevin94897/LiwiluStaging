@@ -101,7 +101,6 @@ export default function LoginModal({
       }
 
       setErrors(newErrors);
-      console.log("Errores de validación:", newErrors);
       return;
     }
 
@@ -129,11 +128,9 @@ export default function LoginModal({
   };
 
   const handleGoogleLogin = () => {
-    console.log("Login with Google");
   };
 
   const handleFacebookLogin = () => {
-    console.log("Login with Facebook");
   };
 
   return (

@@ -26,6 +26,7 @@ import { consultaRUC } from "@/lib/general";
 import Select from "@/components/ui/Select";
 import Input from "@/components/ui/Input";
 import ProcessingOverlay from "@/components/checkout/ProcessingOverlay";
+import ErrorModal from "@/components/ui/ErrorModal";
 
 type TipoComprobante = "boleta" | "factura";
 type MetodoPago = "tarjeta" | "yape" | "efectivo";
@@ -46,6 +47,17 @@ export default function Checkout() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
   const processingToken = useRef<string | null>(null);
+
+  // Estado para el modal de error
+  const [errorModal, setErrorModal] = useState<{
+    isOpen: boolean;
+    message: string;
+  }>({
+    isOpen: false,
+    message: "",
+  });
+
+
 
   // Datos para Boleta
   const [tipoDocumentoBoleta, setTipoDocumentoBoleta] = useState("DNI");
@@ -81,7 +93,6 @@ export default function Checkout() {
   // Manejar cierre del modal de Culqi
   useEffect(() => {
     const handleCulqiModalClosed = () => {
-      console.log("🔄 Modal cerrado - reseteando estado de procesamiento");
       setProcessing(false);
       // Mantener currentOrderId para permitir reintentar el pago
     };
@@ -138,10 +149,8 @@ export default function Checkout() {
             setTipoDocumentoBoleta(state.tipoDocumentoBoleta);
           if (state.datosBoletaRUC) setDatosBoletaRUC(state.datosBoletaRUC);
           if (state.currentOrderId) setCurrentOrderId(state.currentOrderId);
-          console.log("✅ Estado de checkout restaurado desde localStorage");
         } else {
           localStorage.removeItem("liwilu_checkout_state");
-          console.log("⏰ Estado de checkout expirado, limpiado");
         }
       } catch (e) {
         console.error("Error restaurando estado de checkout:", e);
@@ -153,7 +162,6 @@ export default function Checkout() {
   // Verificar si Culqi ya está cargado al montar el componente (para navegaciones SPA)
   useEffect(() => {
     if (typeof window !== "undefined" && window.Culqi) {
-      console.log("⚡ Culqi ya estaba cargado al montar");
       const configured = configureCulqi();
       setCulqiReady(configured);
     }
@@ -162,7 +170,6 @@ export default function Checkout() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("test") === "true") {
-        console.log("🧪 [TEST MODE] Modo de prueba activado via URL");
         setTestMode(true);
       }
     }
@@ -200,7 +207,6 @@ export default function Checkout() {
       setIsVerifyingStock(true);
       try {
         const summary = await getCheckoutSummary();
-        console.log("🔍 [Checkout] Initial summary check:", summary);
 
         // FIXED: Check summary.data.isComplete instead of summary.isComplete
         if (!summary.success || !summary.data?.isComplete || !summary.data) {
@@ -216,7 +222,6 @@ export default function Checkout() {
 
         if (deliveryType === "DELIVERY") {
           // Validar cada producto vía Savar
-          console.log("🚚 Validando stock de despacho (Savar)...");
           const results = await Promise.all(
             products.map((p: any) =>
               validateSavarStock(p.reference, p.quantity),
@@ -239,7 +244,6 @@ export default function Checkout() {
           }
         } else if (deliveryType === "RETIRO" && pickupStoreInfo) {
           // Validar vía endpoint de almacén
-          console.log("🏪 Validando stock de retiro en tienda...");
           const productsToValidate = products.map((p: any) => ({
             reference: p.reference,
             quantity: p.quantity,
@@ -266,7 +270,6 @@ export default function Checkout() {
           }
         }
 
-        console.log("✅ Validación de stock exitosa en checkout");
         setIsVerifyingStock(false);
       } catch (error: any) {
         console.error("❌ Error en validación de stock de checkout:", error);
@@ -283,7 +286,6 @@ export default function Checkout() {
 
   // Configurar Culqi cuando el script esté listo
   const handleCulqiLoad = () => {
-    console.log("📦 Script de Culqi cargado");
     const configured = configureCulqi();
     setCulqiReady(configured);
   };
@@ -293,7 +295,6 @@ export default function Checkout() {
     window.culqi = async () => {
       if (window.Culqi.token) {
         const token = window.Culqi.token;
-        console.log("✅ Token de Culqi recibido:", token.id);
 
         if (processingToken.current === token.id) {
           console.warn(
@@ -308,14 +309,13 @@ export default function Checkout() {
         }
         processingToken.current = token.id;
 
+        // CERRAR MODAL INMEDIATAMENTE para evitar múltiples clicks
+        closeCulqi();
+
         // SIMULACIÓN DE RECHAZO (Si el modo prueba está activo)
         if (testMode && simulateRejection) {
-          console.log(
-            "🧪 [SIMULACIÓN] Interceptando token para simular rechazo...",
-          );
           setProcessing(true);
           setTimeout(() => {
-            console.log("❌ [SIMULACIÓN] Venta denegada");
             showToast(
               "Operación denegada. Intente nuevamente ó utilice otra tarjeta.",
               "error",
@@ -355,13 +355,10 @@ export default function Checkout() {
           }
 
           // 2. Procesar Pago
-          console.log(`💳 Procesando pago para la orden ${currentOrderId}...`);
           const payResponse = await payOrder(currentOrderId.toString(), {
             token: token.id,
             email: email,
           });
-
-          console.log("📦 Payment response:", payResponse);
 
           // Validate payment success with new fields
           if (
@@ -371,10 +368,9 @@ export default function Checkout() {
             payResponse.data?.orderId
           ) {
             const confirmedOrderId = payResponse.data.orderId;
-            console.log(`✅ Pago confirmado para orden #${confirmedOrderId}`);
 
             setProcessingStage("completing");
-            closeCulqi();
+            // closeCulqi(); // Ya se cerró al inicio
             showToast("💳 ¡Compra realizada con éxito!", "success");
             setIsSuccess(true);
 
@@ -392,15 +388,12 @@ export default function Checkout() {
 
             clearCart();
 
+            clearCart();
+
             // Use multiple redirect strategies for reliability on slow connections
-            console.log(`🚀 Redirigiendo a página de éxito...`);
 
             // Determine redirect URL (always show success page for better UX)
             const redirectUrl = `/pedido-exitoso?order=${confirmedOrderId}`;
-
-            console.log(
-              `📍 Redirect URL: ${redirectUrl} (authenticated: ${isAuthenticated})`,
-            );
 
             // Strategy 1: Next.js router (preferred)
             router.push(redirectUrl);
@@ -443,7 +436,6 @@ export default function Checkout() {
       } else if (window.Culqi.order) {
         // Manejo de pedidos (Yape/PagoEfectivo)
         const order = window.Culqi.order;
-        console.log("✅ Orden de Culqi recibida:", order);
 
         closeCulqi();
         showToast("📱 Orden generada. Completa el pago en tu app", "success");
@@ -451,14 +443,20 @@ export default function Checkout() {
         // Aquí deberías guardar la orden y redirigir a una página de espera
         const numeroPedido = Math.floor(Math.random() * 9000) + 1000;
         router.push(`/pedido-exitoso?order=${numeroPedido}&pending=true`);
+      } else if (window.Culqi.order) {
+        const order = window.Culqi.order;
       } else if (window.Culqi.error) {
         const error = window.Culqi.error;
-        console.log("❌ Error de Culqi:", error);
-        showToast(error.user_message || "Error en el pago", "error");
+        // showToast(error.user_message || "Error en el pago", "error");
+        setErrorModal({
+          isOpen: true,
+          message: error.user_message || "Ocurrió un error al procesar el pago. Por favor, intenta con otra tarjeta o método de pago."
+        });
         setProcessing(false);
         closeCulqi();
       }
     };
+
   }, [
     router,
     clearCart,
@@ -566,7 +564,6 @@ export default function Checkout() {
 
       // Intento final de inicialización si no estaba listo
       if (!isReady && typeof window !== "undefined" && window.Culqi) {
-        console.log("🔄 Intentando configurar Culqi bajo demanda...");
         isReady = configureCulqi();
         setCulqiReady(isReady);
       }
@@ -596,7 +593,6 @@ export default function Checkout() {
         setProcessingStage("creating-order");
 
         // 1. Crear la orden primero
-        console.log("📝 Generando orden...");
         const invoicePayload: any = {
           invoiceType: tipoComprobante.toUpperCase(), // "FACTURA" o "BOLETA"
         };
@@ -631,14 +627,14 @@ export default function Checkout() {
           throw new Error("No se recibió un ID de orden del servidor");
         }
 
-        console.log("✅ Orden creada:", orderId);
         setCurrentOrderId(orderId);
 
         // Ocultar overlay para que el usuario pueda interactuar con Culqi
         setProcessing(false);
 
+        setProcessing(false);
+
         // 2. Abrir pasarela Culqi
-        console.log("🚀 [Checkout] Iniciando flujo Culqi");
         openCulqi({
           title: "Liwilu",
           currency: "PEN",
@@ -700,6 +696,14 @@ export default function Checkout() {
       background={true}
     >
       <ProcessingOverlay isProcessing={processing} stage={processingStage} />
+
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ ...errorModal, isOpen: false })}
+        message={errorModal.message}
+        title="Error en el pago"
+      />
+
       <div className="max-w-7xl mx-auto px-6 py-8 my-24 relative z-10">
         {isVerifyingStock ? (
           <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4">
@@ -1075,7 +1079,7 @@ export default function Checkout() {
                 )}
 
                 {/* Información de Culqi para pruebas */}
-                {(metodoPago === "tarjeta" || metodoPago === "yape") && (
+                {/* {(metodoPago === "tarjeta" || metodoPago === "yape") && (
                   <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-xl">🧪</span>
@@ -1146,7 +1150,7 @@ export default function Checkout() {
                       </div>
                     )}
                   </div>
-                )}
+                )} */}
 
                 {/* Formulario de tarjeta nueva (No requerido para Culqi Checkout v4) */}
               </div>

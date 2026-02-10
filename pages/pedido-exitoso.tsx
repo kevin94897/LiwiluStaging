@@ -38,8 +38,6 @@ export default function PedidoExitoso() {
           // If less than 10 minutes old, use it
           if (elapsed < 10 * 60 * 1000) {
             orderId = orderData.orderId.toString();
-            console.log("✅ OrderId recuperado desde localStorage:", orderId);
-
             // Update URL to include the orderId
             window.history.replaceState(
               null,
@@ -65,7 +63,6 @@ export default function PedidoExitoso() {
 
     // 🛡️ Guard to prevent duplicate execution
     if (initializationStarted.current) {
-      console.log("🛑 [PedidoExitoso] Inicialización ya en proceso, ignorando duplicado");
       return;
     }
     initializationStarted.current = true;
@@ -80,9 +77,8 @@ export default function PedidoExitoso() {
           // Limpiar estado de checkout después de compra exitosa
           localStorage.removeItem("liwilu_checkout_state");
           localStorage.removeItem("liwilu_successful_order"); // Clear recovery data
-          console.log(
-            "✅ Estado de checkout limpiado después de compra exitosa",
-          );
+          localStorage.removeItem("liwilu_checkout_state");
+          localStorage.removeItem("liwilu_successful_order"); // Clear recovery data
 
           // 🛒 VERIFICACIÓN DE PAGO Y ENVÍO DE CORREO
           try {
@@ -97,14 +93,9 @@ export default function PedidoExitoso() {
                 const alreadySent = localStorage.getItem(mailSentKey);
 
                 if (!alreadySent) {
-                  console.log(
-                    "📧 Disparando correo de confirmación de pago para orden:",
-                    orderId,
-                  );
                   await sendOrderPaidEmail(orderId);
                   localStorage.setItem(mailSentKey, "true");
                 } else {
-                  console.log("📧 Correo ya enviado previamente (según localStorage)");
                 }
               }
             }

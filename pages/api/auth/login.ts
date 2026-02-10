@@ -47,7 +47,6 @@ export const loginUser = async (
     // 🛒 Intentar refrescar el carrito para el usuario autenticado
     try {
       // Al no existir mergeCart, simplemente pedimos el carrito o dejamos que el componente cargue los datos
-      console.log("🛒 Login exitoso, el carrito debería sincronizarse automáticamente");
     } catch (cartError) {
       console.warn("⚠️ No se pudo sincronizar el carrito:", cartError);
     }

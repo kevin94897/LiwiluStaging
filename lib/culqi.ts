@@ -28,7 +28,10 @@ export const configureCulqi = () => {
     }
 
     window.Culqi.publicKey = CULQI_PUBLIC_KEY;
+<<<<<<< HEAD
     logger.log('✅ Culqi configurado con clave pública');
+=======
+>>>>>>> prod/main
     return true;
 };
 
@@ -36,7 +39,10 @@ export const configureCulqi = () => {
  * Abre el modal de Culqi con los parámetros especificados
  */
 export const openCulqi = (options: CulqiOptions) => {
+<<<<<<< HEAD
     logger.log('%c🚀 [CULQI-V6] INICIANDO...', 'background: #111; color: #00ff00; font-size: 14px; font-weight: bold; padding: 4px;');
+=======
+>>>>>>> prod/main
 
     if (typeof window === 'undefined' || !window.Culqi) {
         logger.error('❌ [CULQI-V6] Culqi no está cargado en el navegador');
@@ -66,7 +72,10 @@ export const openCulqi = (options: CulqiOptions) => {
             amount: amountCents,
         };
 
+<<<<<<< HEAD
         logger.log('📦 [CULQI-V6] Culqi.settings:', settings);
+=======
+>>>>>>> prod/main
         window.Culqi.settings(settings);
 
         // 4. OPTIONS: Configuración del modal
@@ -75,17 +84,26 @@ export const openCulqi = (options: CulqiOptions) => {
             modal: true,
             installments: false,
             onClose: () => {
+<<<<<<< HEAD
                 logger.log('🚪 [CULQI] onClose callback ejecutado');
+=======
+>>>>>>> prod/main
                 if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('culqi-modal-closed'));
                 }
             }
         };
+<<<<<<< HEAD
         logger.log('📦 [CULQI-V6] Culqi.options:', culqiOptions);
         window.Culqi.options(culqiOptions);
 
         // 5. APERTURA
         logger.log('🏁 [CULQI-V6] Ejecutando Culqi.open()...');
+=======
+        window.Culqi.options(culqiOptions);
+
+        // 5. APERTURA
+>>>>>>> prod/main
         window.Culqi.open();
 
         // 6. POLLING para detectar cierre del modal (fallback si onClose no funciona)
@@ -99,12 +117,18 @@ export const openCulqi = (options: CulqiOptions) => {
             const isModalVisible = modalElement && window.getComputedStyle(modalElement).display !== 'none';
 
             if (!isModalVisible || pollCount >= maxPolls) {
+<<<<<<< HEAD
                 logger.log('🔍 [CULQI] Modal cerrado detectado por polling');
+=======
+>>>>>>> prod/main
                 clearInterval(pollInterval);
 
                 // Solo disparar evento si el modal se cerró sin procesar pago
                 if (!window.Culqi.token && !window.Culqi.order) {
+<<<<<<< HEAD
                     logger.log('🚪 [CULQI] Disparando evento culqi-modal-closed');
+=======
+>>>>>>> prod/main
                     window.dispatchEvent(new CustomEvent('culqi-modal-closed'));
                 }
             }

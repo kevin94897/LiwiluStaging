@@ -224,7 +224,6 @@ export default function Tienda({
         }
       } catch (error) {
         // Silently fail if user is not authenticated
-        console.log("Could not load favorites:", error);
       }
     }
 
@@ -258,7 +257,6 @@ export default function Tienda({
           return Array.from(newFavorites);
         });
       } catch (error) {
-        console.log("Error checking favorites:", error);
       }
     }
 

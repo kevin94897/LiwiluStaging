@@ -198,7 +198,7 @@ export default function MisDatos() {
         }
 
         setErrors(newErrors);
-        console.log("Errores de validación:", newErrors);
+        setErrors(newErrors);
 
         // Scroll al primer error
         const firstError = document.querySelector(".border-red-500");

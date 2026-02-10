@@ -58,7 +58,6 @@ let isRefreshing = false; // 🆕 Prevenir múltiples renovaciones simultáneas
 export const refreshAccessToken = async (): Promise<boolean> => {
     // 🆕 Prevenir múltiples renovaciones simultáneas
     if (isRefreshing) {
-        console.log('⏳ Ya hay una renovación en progreso...');
         return false;
     }
 
@@ -70,8 +69,6 @@ export const refreshAccessToken = async (): Promise<boolean> => {
             console.warn('⚠️ No hay refreshToken disponible');
             return false;
         }
-
-        console.log('🔄 Renovando accessToken...');
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
             method: 'POST',
@@ -86,7 +83,6 @@ export const refreshAccessToken = async (): Promise<boolean> => {
 
             // Si el refresh token expiró, cerrar sesión
             if (response.status === 401 || response.status === 403) {
-                console.log('🔒 RefreshToken expirado, cerrando sesión...');
                 clearSession();
                 window.location.href = '/';
             }
@@ -100,7 +96,6 @@ export const refreshAccessToken = async (): Promise<boolean> => {
             localStorage.setItem('accessToken', result.data.accessToken);
             localStorage.setItem('refreshToken', result.data.refreshToken);
 
-            console.log('✅ AccessToken renovado exitosamente');
             return true;
         }
 
@@ -145,9 +140,7 @@ export const scheduleTokenRefresh = () => {
     const refreshTime = Math.max(timeUntilExpiration - BUFFER_TIME, 5000); // Mínimo 5 segundos
 
     refreshTokenTimeout = setTimeout(async () => {
-        console.log('⏰ Ejecutando renovación programada...');
         const success = await refreshAccessToken();
-
         if (success) {
             // Si la renovación fue exitosa, programar la próxima
             scheduleTokenRefresh();
@@ -166,9 +159,6 @@ export const scheduleTokenRefresh = () => {
             }, 5000);
         }
     }, refreshTime);
-
-    const minutesUntilRefresh = Math.floor(refreshTime / 60000);
-    console.log(`⏰ Próxima renovación en ${minutesUntilRefresh} minutos (${refreshTime / 1000}s)`);
 };
 
 /**
@@ -178,7 +168,6 @@ export const stopTokenRefresh = () => {
     if (refreshTokenTimeout) {
         clearTimeout(refreshTokenTimeout);
         refreshTokenTimeout = null;
-        console.log('⏹️ Renovación automática de tokens detenida');
     }
 };
 
@@ -186,7 +175,6 @@ export const stopTokenRefresh = () => {
  * Inicia el sistema de renovación automática de tokens
  */
 export const startTokenRefresh = () => {
-    console.log('🚀 Iniciando sistema de renovación automática de tokens');
     scheduleTokenRefresh();
 };
 
@@ -199,7 +187,6 @@ export const clearSession = () => {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     localStorage.removeItem('liwilu_session_id'); // 🆕 Asegurar que se elimine el session_id de invitado
-    console.log('🧹 Sesión limpiada completamente');
 };
 
 /**
@@ -226,20 +213,16 @@ export const initializeAuth = () => {
     const refreshToken = localStorage.getItem('refreshToken');
 
     if (accessToken && refreshToken) {
-        console.log('🔐 Sesión activa detectada');
-
         // 🆕 Verificar si el token ya expiró
         const timeUntilExpiration = getTokenExpirationTime(accessToken);
 
         if (timeUntilExpiration && timeUntilExpiration > 0) {
             const minutesRemaining = Math.floor(timeUntilExpiration / 60000);
-            console.log(`⏱️ Token válido por ${minutesRemaining} minutos más`);
 
             // 🆕 Solo iniciar renovación automática si quedan más de 2 minutos
             if (minutesRemaining > 2) {
                 startTokenRefresh();
             } else {
-                console.log('⚠️ Token próximo a expirar, renovando inmediatamente...');
                 refreshAccessToken().then(success => {
                     if (success) {
                         startTokenRefresh();
@@ -249,11 +232,10 @@ export const initializeAuth = () => {
                 });
             }
         } else {
-            console.log('⚠️ Token expirado o inválido');
             // 🆕 NO limpiar sesión aquí, dejar que ProtectedRoute lo maneje
         }
     } else {
-        console.log('🔓 No hay sesión activa');
+
     }
 };
 
@@ -269,8 +251,6 @@ export const revokeRefreshToken = async (): Promise<boolean> => {
             return false;
         }
 
-        console.log('🔒 Deshabilitando refreshToken en el servidor...');
-
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
             method: 'POST',
             headers: {
@@ -281,7 +261,6 @@ export const revokeRefreshToken = async (): Promise<boolean> => {
         });
 
         if (response.ok) {
-            console.log('✅ RefreshToken deshabilitado en el servidor');
             return true;
         }
 

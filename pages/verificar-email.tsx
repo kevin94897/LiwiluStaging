@@ -27,7 +27,6 @@ export default function VerificarEmail() {
             }
 
             try {
-                console.log("🔄 Confirmando cambio de email con token:", token);
 
                 const response = await fetch(
                     `${process.env.NEXT_PUBLIC_API_URL}/auth/confirm-email-change?token=${token}`,

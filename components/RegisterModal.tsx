@@ -128,12 +128,9 @@ export default function RegisterModal({
         acceptTerms: formData.acceptTerms,
         receiveOffers: formData.receiveOffers,
       });
-
-      console.log("Registro exitoso", response);
       showToast("Cuenta creada con éxito. ¡Bienvenido!");
       onClose();
     } catch (error: unknown) {
-      console.log("Error en registro", error);
 
       if (error instanceof Error) {
         console.error("Error en registro:", error.message);
@@ -154,12 +151,10 @@ export default function RegisterModal({
   };
 
   const handleGoogleSignup = () => {
-    console.log("Signup with Google");
     // TODO: Implementar OAuth con Google
   };
 
   const handleFacebookSignup = () => {
-    console.log("Signup with Facebook");
     // TODO: Implementar OAuth con Facebook
   };
 

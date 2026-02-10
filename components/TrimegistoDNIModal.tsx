@@ -289,13 +289,11 @@ export function TrimegistoRegisterModal({
       }
 
       setErrors(newErrors);
-      console.log("Errores de validación:", newErrors);
       return;
     }
 
     // Si es válido
     setErrors({});
-    console.log("Registro exitoso:", formData);
     onSuccess();
     onClose();
   };

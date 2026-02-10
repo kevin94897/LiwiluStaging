@@ -296,7 +296,6 @@ export default function Carrito() {
               zoneId: matchingZone.zoneId,
               zoneName: matchingZone.zoneName,
             });
-            console.log("Delivery price synced to API:", matchingZone.zoneName);
           } catch (error: any) {
             // Silenciar error "Carrito no encontrado" para evitar overlay en desarrollo
             // Esto ocurre si el frontend tiene items pero el backend perdió la sesión
@@ -731,9 +730,6 @@ export default function Carrito() {
         pickupTab === "lima" ? warehouseDistricts : warehouseProvinces;
       const location = locationList.find((l) => l.desDistrito === distrito);
       if (location) {
-        console.log(
-          `📍 Buscando almacenes para: ${distrito} (${location.codUbigeoAlm})`,
-        );
         const response = await getWarehouseMap(location.codUbigeoAlm);
         if (response.success) {
           setMapWarehouses(response.data);
@@ -757,7 +753,6 @@ export default function Carrito() {
 
   const handleSelectStore = async (store: SavePickupStoreRequest) => {
     setSelectedStoreData(store);
-    console.log("🏪 Pickup store selected (local):", store.desAlmacen);
   };
 
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1089,7 +1084,7 @@ export default function Carrito() {
 
         await saveGuestPersonalData(payload);
 
-        console.log("Datos de invitado guardados:", guestData);
+        // console.log("Datos de invitado guardados:", guestData);
 
         // Guardar en localStorage
         localStorage.setItem("liwilu_guestData", JSON.stringify(guestData));

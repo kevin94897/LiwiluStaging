@@ -53,7 +53,6 @@ export default function Footer() {
 
     // Si es válido
     setErrors({});
-    console.log("Newsletter suscripción:", newsletterData);
 
     try {
       const response = await apiPost("/general/newsletter", newsletterData, {
@@ -186,7 +185,7 @@ export default function Footer() {
         <div className="md:col-span-1">
           {/* Columna 3: Suscripción y redes */}
           <div className="space-y-4">
-            <Link href="/libro-reclamaciones">
+            <Link href="https://libro-de-reclamaciones.liwilu.com.pe/" target="_blank">
               <Image
                 src="/images/liwilu_libro_reclamaciones.png"
                 alt="Libro de reclamaciones"
@@ -207,8 +206,8 @@ export default function Footer() {
                     onChange={handleChange}
                     placeholder="Dirección de correo electrónico"
                     className={`px-4 py-2 rounded-l-sm text-primary-dark text-sm w-full focus:outline-none focus:ring-2 transition ${errors.email
-                        ? "ring-2 ring-red-400"
-                        : "focus:ring-white/50"
+                      ? "ring-2 ring-red-400"
+                      : "focus:ring-white/50"
                       }`}
                     disabled={isSubmitting}
                   />
