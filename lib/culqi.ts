@@ -8,7 +8,7 @@ declare global {
     }
 }
 
-export const CULQI_PUBLIC_KEY = 'pk_test_VEN0u2ywGdZ9Yvuy';
+export const CULQI_PUBLIC_KEY = process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY || "";
 
 export interface CulqiOptions {
     title: string;
