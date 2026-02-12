@@ -925,24 +925,41 @@ export async function createOrder(data: {
 /**
  * Get full order details by ID
  */
-export async function getOrderDetail(orderId: string): Promise<{ success: boolean; data: any; message?: string }> {
-    try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiGet(`/orders/detail/${orderId}`, {
-            skipAuth: !accessToken
-        });
+/**
+ * Get order detail with payment info
+ */
+export async function getOrderDetail(orderId: string): Promise<{
+  success: boolean;
+  data?: {
+    pendingOrderId: number;
+    culqiOrderId: string;
+    paymentMethod: 'qr' | 'pagoefectivo';
+    amount: number;
+    currency: string;
+    expirationDate: string;
+    qr?: string; // URL del QR
+    paymentCode?: string; // CIP
+    status: string;
+  };
+  message?: string;
+}> {
+  try {
+    const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    
+    const response = await apiGet(`/orders/detail/${orderId}`, {
+      skipAuth: !accessToken
+    });
 
-        const result = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-            throw new Error(result.message || `Error fetching order details: ${response.statusText}`);
-        }
-
-        return result;
-    } catch (error) {
-        logger.error('Error in getOrderDetail:', error);
-        throw error;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error fetching order details: ${response.statusText}`);
     }
+
+    return await response.json();
+  } catch (error) {
+    logger.error('Error in getOrderDetail:', error);
+    throw error;
+  }
 }
 
 /**
@@ -1090,6 +1107,86 @@ export async function mergeGuestCart(
         return data;
     } catch (error: any) {
         logger.error('❌ [mergeGuestCart] Error merging cart:', error);
+        throw error;
+    }
+}
+
+/**
+ * Create async order (QR/PagoEfectivo)
+ */
+export async function createAsyncOrder(
+    pendingOrderId: number | string,
+    paymentMethod: 'qr' | 'pagoefectivo',
+    email: string
+): Promise<{
+    success: boolean;
+    data?: {
+        culqiOrderId?: string;
+        [key: string]: any;
+    };
+    message?: string;
+    pendingOrderId?: number;
+}> {
+    try {
+        const response = await apiPost(
+            `/payments/orders/${pendingOrderId}/create-async-order`,
+            {
+                email,
+                paymentMethod
+            },
+            {
+                skipAuth: true
+            }
+        );
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error creating async order: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        logger.log('📦 [cart.ts] Response raw from createAsyncOrder:', JSON.stringify(data, null, 2));
+        return data;
+    } catch (error) {
+        logger.error('Error in createAsyncOrder:', error);
+        throw error;
+    }
+}
+
+/**
+ * Check async payment status
+ */
+export async function checkAsyncPaymentStatus(
+    pendingOrderId: number | string
+): Promise<{
+    success: boolean;
+    data?: {
+        status: 'waiting' | 'paid' | 'expired' | 'failed';
+        pendingOrderId: number;
+        culqiOrderId?: string;
+        orderId?: number; // Real order ID if paid
+        total?: number;
+        createdAt?: string;
+        [key: string]: any;
+    };
+    message?: string;
+}> {
+    try {
+        const response = await apiGet(
+            `/payments/pending-orders/${pendingOrderId}/async-status`,
+            {
+                skipAuth: true
+            }
+        );
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error checking payment status: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        logger.error('Error in checkAsyncPaymentStatus:', error);
         throw error;
     }
 }
