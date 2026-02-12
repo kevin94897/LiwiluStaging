@@ -39,7 +39,7 @@ export const authenticatedFetch = async (
 
     // Determinar qué headers usar
     if (accessToken) {
-        logger.log('📡 Request with Authorization header');
+        // logger.log('📡 Request with Authorization header');
         baseHeaders['Authorization'] = `Bearer ${accessToken}`;
     } else if (sessionId) {
         // Solo enviamos X-Session-Id si NO hay un accessToken, 
