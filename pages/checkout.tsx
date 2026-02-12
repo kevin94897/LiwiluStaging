@@ -14,6 +14,8 @@ import {
   openCulqiForTokenization,
   openCulqiForAsyncOrder,
   configureCulqi,
+  configureCulqi3DS,
+  init3DSAuthentication,
   closeCulqi,
   resetCulqi,
   detectAsyncPaymentMethod,
@@ -73,9 +75,12 @@ export default function Checkout() {
   >(null);
   const [culqiOrderId, setCulqiOrderId] = useState<string | null>(null);
 
-  // Control de duplicados
+  // Control de duplicados y estado persistente para callbacks
   const processingToken = useRef<string | null>(null);
   const isProcessingRef = useRef(false);
+  const pendingOrderIdRef = useRef<number | null>(null);
+  const orderTotalRef = useRef<number>(0);
+  const deviceFingerprintRef = useRef<string | null>(null);
 
   // ============================================
   // VALIDACIÓN Y ERRORES
@@ -98,6 +103,11 @@ export default function Checkout() {
   const envio = totals.shipping;
   const total = subtotal + envio;
 
+  // Sincronizar total con Ref para callbacks asíncronos
+  useEffect(() => {
+    orderTotalRef.current = total;
+  }, [total]);
+
   // ============================================
   // EFECTOS DE INICIALIZACIÓN
   // ============================================
@@ -112,18 +122,124 @@ export default function Checkout() {
       const configured = configureCulqi();
       setCulqiReady(configured);
     }
-  }, []);
 
-  useEffect(() => {
-    if (items.length === 0 && !isSuccess) {
-      router.push("/productos");
-    }
-  }, [items, router, isSuccess]);
+    // Configurar listener para evento de cierre de 3DS (opcional, si Culqi emite uno)
+    return () => {
+      // Cleanup si necesario
+    };
+  }, []);
 
   const handleCulqiLoad = () => {
     logger.log("📦 Script de Culqi cargado");
+
+    // Debug availability
+    if (typeof window !== "undefined") {
+      logger.log("🔍 [handleCulqiLoad] window.Culqi:", !!window.Culqi);
+      logger.log("🔍 [handleCulqiLoad] window.Culqi3DS:", !!window.Culqi3DS);
+    }
+
+    // Configurar Culqi Checkout
     const configured = configureCulqi();
+
+    // Configurar Culqi 3DS
+    configureCulqi3DS();
+
     setCulqiReady(configured);
+
+    // ═══════════════════════════════════════════════════════════
+    // CONFIGURAR CALLBACK PARA 3DS
+    // ═══════════════════════════════════════════════════════════
+    if (typeof window !== "undefined") {
+      // @ts-ignore
+      window.culqi3DS = async () => {
+        logger.log("🔐 [3DS CALLBACK] Respuesta recibida de Culqi3DS");
+        logger.log("📦 [3DS STATE] window.Culqi3DS:", {
+          hasToken: !!window.Culqi3DS?.token,
+          hasError: !!window.Culqi3DS?.error,
+          token: window.Culqi3DS?.token,
+          error: window.Culqi3DS?.error,
+        });
+
+        if (window.Culqi3DS?.token) {
+          const result = window.Culqi3DS.token;
+          logger.log("🔐 [3DS] Autenticación completada con éxito:", result);
+
+          // Reintentar pago con datos 3DS
+          await handlePaymentWith3DS(result);
+        } else if (window.Culqi3DS?.error) {
+          logger.error(
+            "❌ [3DS] Error en autenticación:",
+            window.Culqi3DS.error,
+          );
+          showToast(
+            window.Culqi3DS.error.user_message || "Error en autenticación 3DS",
+            "error",
+          );
+          setProcessing(false);
+          isProcessingRef.current = false;
+        } else {
+          logger.warn("⚠️ [3DS] Callback sin token ni error");
+        }
+      };
+
+      // Listener para cierre del modal 3DS
+      const handle3DSClosed = () => {
+        logger.log("🚪 [3DS] Modal cerrado detectado");
+        setProcessing(false);
+        isProcessingRef.current = false;
+      };
+
+      window.addEventListener("culqi-3ds-closed", handle3DSClosed);
+
+      // ═══════════════════════════════════════════════════════════
+      // LISTENER DE EMERGENCIA PARA postMessage (Bypass de bloqueo de origen)
+      // ═══════════════════════════════════════════════════════════
+      /**
+       * Algunos navegadores bloquean el mensaje de Cardinal (3DS)
+       * por ser cross-origin. Este listener captura el mensaje
+       * manualmente si el SDK de Culqi no lo procesa.
+       */
+      const handleEmergency3DSMessage = async (event: MessageEvent) => {
+        // Orígenes conocidos de 3DS/Cardinal
+        const cardinalOrigins = [
+          "https://centinelapistag.cardinalcommerce.com",
+          "https://0merchantacsstag.cardinalcommerce.com",
+          "https://cas.client.cardinaltrusted.com",
+          "https://1merchantacsstag.cardinalcommerce.com",
+        ];
+
+        // Logs de diagnóstico para ver qué llega exactamente
+        if (
+          event.data &&
+          (event.data.parameters3DS ||
+            event.data.error ||
+            event.data.action?.includes("3ds"))
+        ) {
+          logger.log("🔍 [3DS EVT] Mensaje interceptado:", {
+            origin: event.origin,
+            hasParams: !!event.data.parameters3DS,
+            processing: isProcessingRef.current,
+          });
+        }
+
+        // Si el mensaje viene de Cardinal y contiene parámetros de 3DS
+        if (
+          (cardinalOrigins.some((origin) => event.origin.includes(origin)) ||
+            event.origin === window.location.origin) &&
+          event.data &&
+          event.data.parameters3DS
+        ) {
+          if (isProcessingRef.current) {
+            logger.log("🚀 [3DS EMERGENCY] Forzando procesamiento de pago...");
+            await handlePaymentWith3DS(event.data.parameters3DS);
+          }
+        }
+      };
+
+      window.addEventListener("message", handleEmergency3DSMessage, false);
+
+      // Nota: El cleanup se hace en el useEffect principal si fuera necesario.
+    }
   };
 
   // ============================================
@@ -193,17 +309,75 @@ export default function Checkout() {
   /**
    * Manejo de TOKEN (tarjetas)
    */
+
+  // Función para reintentar pago con 3DS (Definida fuera para acceso global en componente)
+  const handlePaymentWith3DS = async (auth3DS: any) => {
+    try {
+      logger.log("[3DS] Reintentando pago con parametros de autenticacion...");
+
+      const email = await getEmailForPayment();
+      // Usar processingToken.current o buscar el token reciente
+      const token =
+        processingToken.current || (window.Culqi && window.Culqi.token?.id);
+
+      const orderId = currentPendingOrderId || pendingOrderIdRef.current;
+
+      if (!email || !token || !orderId) {
+        logger.error("[3DS] Faltan datos:", {
+          email,
+          token,
+          pendingOrder: orderId,
+        });
+        throw new Error("Datos incompletos para reintento 3DS");
+      }
+
+      const payResponse = await payOrder(orderId.toString(), {
+        token: token,
+        email: email,
+        authentication3DS: {
+          eci: auth3DS.eci,
+          xid: auth3DS.xid,
+          cavv: auth3DS.cavv,
+          protocolVersion: auth3DS.protocolVersion,
+          directoryServerTransactionId: auth3DS.directoryServerTransactionId,
+        },
+        deviceFingerprint: deviceFingerprintRef.current || undefined,
+      });
+
+      logger.log("[3DS] Respuesta de reintento:", payResponse);
+
+      if (
+        payResponse.success &&
+        payResponse.data?.paymentStatus === "COMPLETED"
+      ) {
+        const confirmedOrderId = payResponse.data.orderId;
+        logger.log("[3DS] Pago confirmado para orden #" + confirmedOrderId);
+        await handlePaymentSuccess(confirmedOrderId);
+      } else {
+        const msg = payResponse.message || "Error al confirmar pago 3DS";
+        throw new Error(msg);
+      }
+    } catch (error: any) {
+      logger.error("[3DS] Error final:", error);
+      showToast(error.message || "Error al procesar pago 3DS", "error");
+      setProcessing(false);
+    } finally {
+      isProcessingRef.current = false;
+      processingToken.current = null;
+    }
+  };
+
+  /**
+   * Manejo de TOKEN (tarjetas) - VERSIÓN CORREGIDA
+   *
+   * Esta función se ejecuta cuando Culqi devuelve un token después de que
+   * el usuario ingresa los datos de su tarjeta.
+   */
   const handleCulqiToken = async (token: CulqiTokenResponse) => {
     logger.log("✅ [handleCulqiToken] Token recibido:", token.id);
 
-    // Validación: NO debe ser un token de método asíncrono
-    if (token.id.startsWith("ype_")) {
-      logger.warn("⚠️ Token de Yape detectado, debería ser ORDER no TOKEN");
-      closeCulqi();
-      showToast("Por favor, selecciona el método de pago nuevamente", "error");
-      setProcessing(false);
-      return;
-    }
+    // Validación: Permitir tokens de tarjeta y yape (ype_)
+    logger.log("✅ [handleCulqiToken] Procesando token:", token.id);
 
     // Prevenir duplicados
     if (processingToken.current === token.id) {
@@ -215,6 +389,7 @@ export default function Checkout() {
     isProcessingRef.current = true;
     closeCulqi();
 
+    let payResponse: any;
     try {
       if (!currentPendingOrderId) {
         throw new Error("No se ha generado un ID de orden para el pago");
@@ -231,18 +406,125 @@ export default function Checkout() {
         );
       }
 
-      // Procesar Pago
-      logger.log(
-        `💳 Procesando pago con tarjeta para orden ${currentPendingOrderId}...`,
-      );
-      const payResponse = await payOrder(currentPendingOrderId.toString(), {
+      // ═══════════════════════════════════════════════════════════
+      // GENERAR DEVICE FINGERPRINT PARA 3DS (CON VALIDACIÓN)
+      // ═══════════════════════════════════════════════════════════
+      let deviceFingerprint: string | undefined;
+
+      try {
+        if (
+          typeof window !== "undefined" &&
+          window.Culqi3DS &&
+          typeof window.Culqi3DS.generateDevice === "function"
+        ) {
+          const fingerprint = window.Culqi3DS.generateDevice();
+
+          // Validar que sea un string válido no vacío
+          if (
+            fingerprint &&
+            typeof fingerprint === "string" &&
+            fingerprint.trim().length > 0
+          ) {
+            deviceFingerprint = fingerprint;
+            deviceFingerprintRef.current = fingerprint; // Persistir para reintento 3DS
+            logger.log(
+              "📱 Device fingerprint generado y persistido:",
+              deviceFingerprint,
+            );
+          } else {
+            logger.warn("⚠️ Device fingerprint inválido o vacío, se omitirá");
+          }
+        } else {
+          logger.warn("⚠️ Culqi3DS.generateDevice no disponible");
+        }
+      } catch (error) {
+        logger.warn("⚠️ Error generando device fingerprint:", error);
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // CONSTRUIR PAYLOAD DE PAGO
+      // ═══════════════════════════════════════════════════════════
+      const payPayload: {
+        token: string;
+        email: string;
+        deviceFingerprint?: string;
+      } = {
         token: token.id,
         email: email,
+      };
+
+      // Solo agregar deviceFingerprint si es un string válido
+      if (
+        deviceFingerprint &&
+        typeof deviceFingerprint === "string" &&
+        deviceFingerprint.trim().length > 0
+      ) {
+        payPayload.deviceFingerprint = deviceFingerprint;
+        logger.log("📱 Enviando deviceFingerprint al backend");
+      } else {
+        logger.log(
+          "ℹ️ Enviando pago sin deviceFingerprint (3DS no requerido o no disponible)",
+        );
+      }
+
+      logger.log("💳 Payload de pago:", {
+        email: payPayload.email,
+        token: `${payPayload.token.substring(0, 10)}...`,
+        hasFingerprint: !!payPayload.deviceFingerprint,
       });
+
+      // ═══════════════════════════════════════════════════════════
+      // PROCESAR PAGO
+      // ═══════════════════════════════════════════════════════════
+      logger.log(
+        "💳 Procesando pago con tarjeta para orden " +
+          currentPendingOrderId +
+          "...",
+      );
+
+      payResponse = await payOrder(
+        currentPendingOrderId.toString(),
+        payPayload,
+      );
 
       logger.log("📦 Payment response:", payResponse);
 
-      // Validar éxito
+      // ═══════════════════════════════════════════════════════════
+      // MANEJAR 3DS SI ES REQUERIDO
+      // ═══════════════════════════════════════════════════════════
+      if (payResponse.requires3DS) {
+        logger.log("🔐 [3DS] Se requiere autenticación 3D Secure");
+        logger.log("🔍 [3DS] Verificando disponibilidad:", {
+          hasCulqi3DS: !!window.Culqi3DS,
+          publicKey: window.Culqi3DS?.publicKey,
+          hasOptions: !!window.Culqi3DS?.options,
+        });
+
+        try {
+          logger.log("🔐 [3DS] Iniciando autenticación para token:", token.id);
+
+          // Usar la función helper que ya incluye validaciones y configuración robusta
+          init3DSAuthentication({
+            token: token.id,
+            amount: orderTotalRef.current || total,
+            email: email,
+          });
+
+          logger.log(
+            "✅ [3DS] Autenticación iniciada, esperando respuesta del banco...",
+          );
+          return; // Detener flujo y esperar callback window.culqi3DS
+        } catch (error: any) {
+          logger.error("❌ [3DS] Error al iniciar autenticación:", error);
+          throw new Error(
+            "No se pudo iniciar la autenticación 3D Secure. Intenta nuevamente.",
+          );
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // VALIDAR ÉXITO DEL PAGO
+      // ═══════════════════════════════════════════════════════════
       if (
         payResponse.success &&
         payResponse.data?.paymentStatus === "COMPLETED" &&
@@ -250,7 +532,7 @@ export default function Checkout() {
         payResponse.data?.orderId
       ) {
         const confirmedOrderId = payResponse.data.orderId;
-        logger.log(`✅ Pago confirmado para orden #${confirmedOrderId}`);
+        logger.log("✅ Pago confirmado para orden #" + confirmedOrderId);
         await handlePaymentSuccess(confirmedOrderId);
       } else {
         const errorMsg =
@@ -262,8 +544,12 @@ export default function Checkout() {
       showToast(error.message || "Error al completar la compra", "error");
       setProcessing(false);
     } finally {
-      isProcessingRef.current = false;
-      processingToken.current = null;
+      // SOLO resetear si NO entramos en flujo 3DS
+      // Si entramos en 3DS, el reset lo hará handlePaymentWith3DS o el listener de cierre
+      if (!payResponse?.requires3DS) {
+        isProcessingRef.current = false;
+        processingToken.current = null;
+      }
     }
   };
 
@@ -524,6 +810,7 @@ export default function Checkout() {
 
       logger.log("✅ Orden pendiente creada:", pendingOrderId);
       setCurrentPendingOrderId(pendingOrderId);
+      pendingOrderIdRef.current = pendingOrderId;
 
       // 2️⃣ DECIDIR FLUJO SEGÚN MÉTODO DE PAGO
       if (metodoPago === "card") {
@@ -895,7 +1182,7 @@ export default function Checkout() {
               </p>
 
               <div className="space-y-3">
-                {/* Tarjeta */}
+                {/* Tarjeta y Yape (Código) */}
                 <button
                   onClick={() => setMetodoPago("card")}
                   className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
@@ -905,11 +1192,18 @@ export default function Checkout() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <FaCreditCard className="text-2xl text-gray-600" />
+                    <div className="flex -space-x-2">
+                      <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs overflow-hidden">
+                        <FaCreditCard className="text-gray-600" />
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-purple-100 border border-white flex items-center justify-center text-[10px] font-bold text-purple-600 overflow-hidden">
+                        Yape
+                      </div>
+                    </div>
                     <div className="text-left">
-                      <p className="font-medium">Tarjeta de crédito/débito</p>
+                      <p className="font-medium">Tarjeta o Yape con Código</p>
                       <p className="text-xs text-gray-500">
-                        Visa, Mastercard, American Express
+                        Visa, Mastercard, Amex, Yape (Código aprobación)
                       </p>
                     </div>
                   </div>
@@ -930,7 +1224,8 @@ export default function Checkout() {
                   )}
                 </button>
 
-                {/* Pagos Asíncronos */}
+                {/* Pagos Asíncronos (DESACTIVADO TEMPORALMENTE) */}
+                {/* 
                 <button
                   onClick={() => setMetodoPago("async")}
                   className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
@@ -943,10 +1238,10 @@ export default function Checkout() {
                     <FaQrcode className="text-2xl text-purple-600" />
                     <div className="text-left">
                       <p className="font-medium">
-                        Yape, Billetera, PagoEfectivo
+                        PagoEfectivo / QR
                       </p>
                       <p className="text-xs text-gray-500">
-                        QR, CIP y otros métodos
+                        Generar código CIP o QR
                       </p>
                     </div>
                   </div>
@@ -966,6 +1261,7 @@ export default function Checkout() {
                     </div>
                   )}
                 </button>
+                */}
               </div>
 
               {/* Error de método de pago */}
@@ -1073,10 +1369,19 @@ export default function Checkout() {
       </div>
 
       <Script
+        src="https://3ds.culqi.com"
+        strategy="afterInteractive"
+        onLoad={() => {
+          logger.log("📦 Script de Culqi 3DS cargado");
+          configureCulqi3DS();
+        }}
+        onError={() => logger.error("❌ Error al cargar Culqi 3DS")}
+      />
+      <Script
         src="https://checkout.culqi.com/js/v4"
         strategy="afterInteractive"
         onLoad={handleCulqiLoad}
-        onError={() => logger.error("❌ Error al cargar Culqi")}
+        onError={() => logger.error("❌ Error al cargar Culqi Checkout")}
       />
     </Layout>
   );

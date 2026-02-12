@@ -859,6 +859,7 @@ export async function savePickupStore(data: SavePickupStoreRequest): Promise<Sav
 export interface PayOrderResponse {
     success: boolean;
     message?: string;
+    requires3DS?: boolean;
     data?: {
         orderId: number;
         orderNumber: string;
@@ -879,10 +880,24 @@ export interface PayOrderResponse {
 export async function payOrder(orderId: string | number, data: {
     token: string;
     email: string;
+    deviceFingerprint?: string; // ✅ OPCIONAL
+    authentication3DS?: {
+        eci: string;
+        xid: string;
+        cavv: string;
+        protocolVersion: string;
+        directoryServerTransactionId: string;
+    };
 }): Promise<PayOrderResponse> {
     try {
+        // Validar que deviceFingerprint sea string si existe
+        if (data.deviceFingerprint !== undefined && typeof data.deviceFingerprint !== 'string') {
+            logger.error('❌ deviceFingerprint debe ser string, recibido:', typeof data.deviceFingerprint);
+            throw new Error('deviceFingerprint debe ser un string');
+        }
+
         const response = await apiPost(`/payments/orders/${orderId}/pay`, data, {
-            skipAuth: true // Payment might be for guest or handled by session headers
+            skipAuth: true
         });
 
         if (!response.ok) {

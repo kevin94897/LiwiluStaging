@@ -143,8 +143,43 @@ export interface CulqiOptions {
  */
 declare global {
     interface Window {
-        Culqi: CulqiGlobal;
+        Culqi: any; // Cambiar a any para flexibilidad o mantener CulqiGlobal si coincide
         culqi: () => void;
+        Culqi3DS: {
+            publicKey: string;
+            options: {
+                showModal: boolean;
+                showIcon: boolean;
+                closeModalAction: () => void;
+                style?: {
+                    logo?: string;
+                };
+            };
+            initAuthentication: (token: string) => void;
+            settings: {
+                charge: {
+                    totalAmount: number;
+                    returnUrl: string;
+                };
+                card: {
+                    email: string;
+                };
+            };
+            generateDevice: () => string;
+            token?: {
+                eci: string;
+                xid: string;
+                cavv: string;
+                protocolVersion: string;
+                directoryServerTransactionId: string;
+            };
+            error?: {
+                merchant_message: string;
+                user_message: string;
+                code: string;
+            };
+        };
+        culqi3DS?: () => void;
     }
 }
 

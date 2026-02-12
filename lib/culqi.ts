@@ -4,7 +4,18 @@ import { CulqiOptions } from './types/culqi.types';
 
 
 
+
 export const CULQI_PUBLIC_KEY = process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY || "";
+
+
+// Interfaces para 3DS
+export interface Culqi3DSResult {
+    eci?: string;
+    xid?: string;
+    cavv?: string;
+    protocolVersion?: string;
+    directoryServerTransactionId?: string;
+}
 
 export interface CulqiTokenOptions {
     title: string;
@@ -68,14 +79,14 @@ export const openCulqiForTokenization = (options: CulqiTokenOptions): void => {
         logger.log('📦 [CULQI-TOKEN] Settings:', settings);
         window.Culqi.settings(settings);
 
-        // 3. Options del modal - SOLO tarjetas
+        // 3. Options del modal - SOLO tarjetas y Yape
         const culqiOptions: CulqiOptions = {
             lang: 'auto',
             modal: true,
             installments: false,
             paymentMethods: {
                 tarjeta: true,
-                yape: false,
+                yape: true, // Habilitar Yape con código
                 billetera: false,
                 bancaMovil: false,
                 agente: false,
@@ -220,6 +231,100 @@ const setupModalCloseDetection = (): void => {
             }
         }
     }, 500);
+};
+
+/**
+ * Configura Culqi 3DS
+ */
+/**
+ * Configura Culqi 3DS con opciones completas
+ */
+export const configureCulqi3DS = (): void => {
+    if (typeof window !== 'undefined') {
+        if (window.Culqi3DS) {
+            // Configurar clave pública
+            window.Culqi3DS.publicKey = CULQI_PUBLIC_KEY;
+            
+            // Configurar opciones del modal 3DS
+            window.Culqi3DS.options = {
+                showModal: true,
+                showIcon: true,
+                closeModalAction: () => {
+                    logger.log("🚪 [3DS] Modal cerrado por el usuario");
+                    // Limpiar estado
+                    if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('culqi-3ds-closed'));
+                    }
+                },
+                style: {
+                    logo: '', // Tu logo (opcional)
+                }
+            };
+            
+            logger.log("✅ [lib/culqi.ts] Culqi 3DS configurado correctamente con opciones");
+        } else {
+            logger.warn("⚠️ [lib/culqi.ts] window.Culqi3DS no está definido todavía");
+        }
+    }
+};
+
+export interface Culqi3DSInitOptions {
+    token: string;
+    amount: number;
+    email: string;
+}
+
+/**
+ * Inicia la autenticación 3DS con configuración completa de cargo y tarjeta
+ */
+export const init3DSAuthentication = (options: Culqi3DSInitOptions): void => {
+    if (typeof window !== 'undefined' && window.Culqi3DS) {
+        logger.log("🔐 [lib/culqi.ts] Preparando settings de 3DS para token:", options.token);
+        
+        // 1. Configurar Settings (Paso 1 de la documentación de Culqi 3DS)
+        // Convertimos monto a centavos si es necesario? 
+        // La documentación dice "totalAmount: 300" para un cargo de 3.00, así que son centavos.
+        const amountCents = Math.round(options.amount * 100);
+        
+        window.Culqi3DS.settings = {
+            charge: {
+                totalAmount: amountCents,
+                returnUrl: window.location.href // O una URL específica de retorno
+            },
+            card: {
+                email: options.email
+            }
+        };
+        
+        // 2. Asegurar que la configuración de opciones esté presente
+        if (!window.Culqi3DS.publicKey) {
+            window.Culqi3DS.publicKey = CULQI_PUBLIC_KEY;
+        }
+        
+        if (!window.Culqi3DS.options) {
+            window.Culqi3DS.options = {
+                showModal: true,
+                showIcon: true,
+                closeModalAction: () => {
+                    logger.log("🚪 [3DS] Modal cerrado");
+                    window.dispatchEvent(new CustomEvent('culqi-3ds-closed'));
+                }
+            };
+        }
+        
+        // 3. Iniciar autenticación
+        try {
+            logger.log("🏁 [lib/culqi.ts] Ejecutando window.Culqi3DS.initAuthentication...");
+            window.Culqi3DS.initAuthentication(options.token);
+            logger.log("✅ [lib/culqi.ts] Autenticación 3DS iniciada exitosamente");
+        } catch (error) {
+            logger.error("❌ [lib/culqi.ts] Error al iniciar 3DS:", error);
+            throw error;
+        }
+    } else {
+        logger.error("❌ [lib/culqi.ts] Culqi3DS no está disponible");
+        throw new Error("Culqi3DS no está inicializado");
+    }
 };
 
 /**
