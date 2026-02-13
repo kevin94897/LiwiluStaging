@@ -913,6 +913,33 @@ export async function payOrder(orderId: string | number, data: {
 }
 
 /**
+ * Crea una orden en Culqi desde el backend para pagos asíncronos
+ */
+export async function createCulqiOrder(pendingOrderId: string | number, email: string): Promise<any> {
+    try {
+        logger.log(`🔄 Creando orden Culqi para orden pendiente #${pendingOrderId}...`);
+        
+        const response = await apiPost(`/payments/orders/${pendingOrderId}/create-culqi-order`, {
+            email
+        }, {
+            skipAuth: true
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error creating Culqi order: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        logger.log('✅ Orden Culqi creada exitosamente:', data);
+        return data;
+    } catch (error) {
+        logger.error('Error in createCulqiOrder:', error);
+        throw error;
+    }
+}
+
+/**
  * Create order with invoice data
  */
 export async function createOrder(data: {

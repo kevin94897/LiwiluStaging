@@ -32,6 +32,195 @@ export interface CulqiOrderOptions {
     orderId: string; // Culqi order ID obtenido del backend
 }
 
+
+// ═══════════════════════════════════════════════════════════
+// VARIABLE GLOBAL PARA RASTREAR EL MÉTODO SELECCIONADO
+// ═══════════════════════════════════════════════════════════
+let selectedPaymentMethod: 'qr' | 'pagoefectivo' | null = null;
+
+/**
+ * Obtiene el método de pago seleccionado (capturado del modal)
+ */
+export const getSelectedPaymentMethod = (): 'qr' | 'pagoefectivo' | null => {
+  return selectedPaymentMethod;
+};
+
+/**
+ * Resetea el método de pago seleccionado
+ */
+export const resetSelectedPaymentMethod = (): void => {
+  selectedPaymentMethod = null;
+  logger.log('🔄 [culqi.ts] Método de pago reseteado');
+};
+
+// ═══════════════════════════════════════════════════════════
+// INTERCEPTOR DE CLICKS EN EL MODAL DE CULQI
+// ═══════════════════════════════════════════════════════════
+/**
+ * Configura interceptores para detectar el método seleccionado en el modal
+ */
+export const setupPaymentMethodInterceptor = (): void => {
+  if (typeof window === 'undefined') return;
+
+  logger.log('🎧 [culqi.ts] Configurando interceptor de método de pago...');
+
+  // Esperar a que el modal de Culqi se renderice
+  const checkModal = setInterval(() => {
+    // Buscar el contenedor del modal de Culqi
+    const culqiModal = document.querySelector(
+      '.culqi-container, #culqi-container, [class*="culqi-modal"], iframe[src*="culqi"]'
+    );
+    
+    if (culqiModal) {
+      logger.log('✅ [culqi.ts] Modal de Culqi detectado, configurando interceptores de clicks...');
+      clearInterval(checkModal);
+
+      // Agregar listeners a todos los clicks dentro del modal
+      culqiModal.addEventListener('click', (event) => {
+        const target = event.target as HTMLElement;
+        
+        // Buscar el botón clickeado o su contenedor padre
+        const button = target.closest('button, [role="button"], .payment-method, .payment-option, [class*="payment"]');
+        
+        if (button) {
+          const buttonText = button.textContent?.toLowerCase().trim() || '';
+          const buttonClass = button.className?.toLowerCase() || '';
+          const buttonId = button.id?.toLowerCase() || '';
+          const dataAttributes = Array.from(button.attributes)
+            .filter(attr => attr.name.startsWith('data-'))
+            .map(attr => `${attr.name}:${attr.value}`)
+            .join(' ')
+            .toLowerCase();
+          
+          logger.log('🖱️ [culqi.ts] Click detectado en modal:', {
+            text: buttonText,
+            class: buttonClass,
+            id: buttonId,
+            data: dataAttributes
+          });
+
+          // Combinar todos los indicadores
+          const combined = `${buttonText} ${buttonClass} ${buttonId} ${dataAttributes}`;
+
+          // ═══════════════════════════════════════════════════════════
+          // DETECCIÓN POR PALABRAS CLAVE
+          // ═══════════════════════════════════════════════════════════
+          
+          // Métodos QR
+          if (
+            combined.includes('yape') ||
+            combined.includes('plin') ||
+            combined.includes('billetera') ||
+            combined.includes('wallet') ||
+            (combined.includes('qr') && !combined.includes('pagoefectivo'))
+          ) {
+            selectedPaymentMethod = 'qr';
+            logger.log('✅ [culqi.ts] Método capturado: QR (Yape/Billetera)');
+            return;
+          }
+
+          // Métodos CIP
+          if (
+            combined.includes('pagoefectivo') ||
+            combined.includes('pago efectivo') ||
+            combined.includes('agente') ||
+            combined.includes('banca') ||
+            combined.includes('móvil') ||
+            combined.includes('movil') ||
+            combined.includes('cuotéalo') ||
+            combined.includes('cuotealo') ||
+            combined.includes('cip') ||
+            combined.includes('efectivo')
+          ) {
+            selectedPaymentMethod = 'pagoefectivo';
+            logger.log('✅ [culqi.ts] Método capturado: CIP (PagoEfectivo/Agente/Banca)');
+            return;
+          }
+        }
+      }, true); // useCapture = true para capturar antes que otros handlers
+    }
+  }, 100); // Revisar cada 100ms
+
+  // Timeout de seguridad: dejar de buscar después de 5 segundos
+  setTimeout(() => {
+    clearInterval(checkModal);
+    logger.log('⏱️ [culqi.ts] Timeout del interceptor alcanzado');
+  }, 5000);
+};
+
+// ═══════════════════════════════════════════════════════════
+// LISTENER DE MENSAJES DE CULQI (FALLBACK)
+// ═══════════════════════════════════════════════════════════
+/**
+ * Configura listener de mensajes postMessage desde el iframe de Culqi
+ */
+export const setupPaymentMethodMessageListener = (): void => {
+  if (typeof window === 'undefined') return;
+
+  logger.log('🎧 [culqi.ts] Configurando listener de mensajes postMessage...');
+
+  const handleCulqiMessage = (event: MessageEvent) => {
+    // Solo procesar mensajes de Culqi
+    if (!event.origin.includes('culqi.com') && !event.origin.includes('checkout.culqi')) {
+      return;
+    }
+
+    logger.log('📨 [culqi.ts] Mensaje recibido de Culqi:', {
+      origin: event.origin,
+      data: event.data
+    });
+
+    // Intentar detectar el método del mensaje
+    if (event.data && typeof event.data === 'object') {
+      const data = event.data;
+
+      // Buscar en diferentes posibles campos
+      const methodField = 
+        data.paymentMethod || 
+        data.payment_method || 
+        data.method || 
+        data.type ||
+        data.selectedMethod;
+
+      if (methodField) {
+        const methodLower = String(methodField).toLowerCase();
+        logger.log('📍 [culqi.ts] Campo de método encontrado:', methodLower);
+
+        if (methodLower.includes('yape') || methodLower.includes('billetera') || methodLower === 'qr') {
+          selectedPaymentMethod = 'qr';
+          logger.log('✅ [culqi.ts] Método capturado por mensaje: QR');
+        } else if (
+          methodLower.includes('pagoefectivo') ||
+          methodLower.includes('agente') ||
+          methodLower.includes('banca') ||
+          methodLower.includes('cuotealo') ||
+          methodLower === 'cip'
+        ) {
+          selectedPaymentMethod = 'pagoefectivo';
+          logger.log('✅ [culqi.ts] Método capturado por mensaje: CIP');
+        }
+      }
+
+      // También buscar en action
+      if (data.action) {
+        const actionLower = String(data.action).toLowerCase();
+        if (actionLower.includes('yape') || actionLower.includes('qr')) {
+          selectedPaymentMethod = 'qr';
+          logger.log('✅ [culqi.ts] Método capturado por action: QR');
+        } else if (actionLower.includes('pagoefectivo') || actionLower.includes('cip')) {
+          selectedPaymentMethod = 'pagoefectivo';
+          logger.log('✅ [culqi.ts] Método capturado por action: CIP');
+        }
+      }
+    }
+  };
+
+  // Agregar listener (solo una vez)
+  window.removeEventListener('message', handleCulqiMessage);
+  window.addEventListener('message', handleCulqiMessage);
+  logger.log('✅ [culqi.ts] Listener de mensajes configurado');
+};
+
 /**
  * Configura Culqi con la clave pública
  */
@@ -86,17 +275,17 @@ export const openCulqiForTokenization = (options: CulqiTokenOptions): void => {
             installments: false,
             paymentMethods: {
                 tarjeta: true,
-                yape: true, // Habilitar Yape con código
+                yape: true, 
                 billetera: false,
                 bancaMovil: false,
                 agente: false,
-                cuotealo: false,
+                // cuotealo: false,
             },
             style: {
                 logo: '', // Tu logo si lo tienes
                 maincolor: '#0ec1c1', // Color primario de tu marca
                 buttontext: 'Pagar',
-                maintext: 'Ingresa los datos de tu tarjeta',
+                maintext: 'Liwilu - Finalizar Compra',
                 desctext: safeDescription,
             },
             onClose: () => {
@@ -141,6 +330,11 @@ export const openCulqiForAsyncOrder = (options: CulqiOrderOptions): void => {
     }
 
     try {
+        // ✅ RESETEAR Y CONFIGURAR INTERCEPTORES
+        resetSelectedPaymentMethod();
+        setupPaymentMethodInterceptor();
+        setupPaymentMethodMessageListener();
+
         const amountCents = Math.round(options.amount * 100);
         const safeDescription = options.description
             .replace(/[^a-zA-Z0-9 ]/g, "")
@@ -167,8 +361,8 @@ export const openCulqiForAsyncOrder = (options: CulqiOrderOptions): void => {
             lang: 'auto',
             modal: true,
             paymentMethods: {
-                tarjeta: false, // Desactivar tarjetas en modo orden
-                yape: true,
+                tarjeta: false, // Deshabilitado - solo métodos asíncronos
+                yape: false,
                 billetera: true,
                 bancaMovil: true,
                 agente: true,
@@ -177,7 +371,7 @@ export const openCulqiForAsyncOrder = (options: CulqiOrderOptions): void => {
             style: {
                 logo: '',
                 maincolor: '#0ec1c1',
-                buttontext: 'Continuar',
+                buttontext: 'Pagar ahora',
                 maintext: 'Selecciona tu método de pago',
                 desctext: safeDescription,
             },
@@ -242,10 +436,23 @@ const setupModalCloseDetection = (): void => {
 export const configureCulqi3DS = (): void => {
     if (typeof window !== 'undefined') {
         if (window.Culqi3DS) {
-            // Configurar clave pública
-            window.Culqi3DS.publicKey = CULQI_PUBLIC_KEY;
+            // 1. Configurar clave pública PRIMERO usando el método correcto
+            try {
+                if (typeof window.Culqi3DS.setKeys === 'function') {
+                    window.Culqi3DS.setKeys(CULQI_PUBLIC_KEY);
+                    logger.log("🔑 [lib/culqi.ts] Culqi3DS.setKeys() ejecutado con éxito");
+                } else {
+                    // Fallback a asignación directa
+                    window.Culqi3DS.publicKey = CULQI_PUBLIC_KEY;
+                    logger.log("🔑 [lib/culqi.ts] Culqi3DS.publicKey asignado directamente");
+                }
+            } catch (error) {
+                logger.warn("⚠️ [lib/culqi.ts] Error configurando publicKey:", error);
+                // Intentar asignación directa como fallback
+                window.Culqi3DS.publicKey = CULQI_PUBLIC_KEY;
+            }
             
-            // Configurar opciones del modal 3DS
+            // 2. Configurar opciones del modal 3DS
             window.Culqi3DS.options = {
                 showModal: true,
                 showIcon: true,
@@ -261,7 +468,10 @@ export const configureCulqi3DS = (): void => {
                 }
             };
             
-            logger.log("✅ [lib/culqi.ts] Culqi 3DS configurado correctamente con opciones");
+            logger.log("✅ [lib/culqi.ts] Culqi 3DS configurado correctamente", {
+                hasPublicKey: !!window.Culqi3DS.publicKey,
+                hasOptions: !!window.Culqi3DS.options
+            });
         } else {
             logger.warn("⚠️ [lib/culqi.ts] window.Culqi3DS no está definido todavía");
         }
@@ -281,26 +491,39 @@ export const init3DSAuthentication = (options: Culqi3DSInitOptions): void => {
     if (typeof window !== 'undefined' && window.Culqi3DS) {
         logger.log("🔐 [lib/culqi.ts] Preparando settings de 3DS para token:", options.token);
         
-        // 1. Configurar Settings (Paso 1 de la documentación de Culqi 3DS)
-        // Convertimos monto a centavos si es necesario? 
-        // La documentación dice "totalAmount: 300" para un cargo de 3.00, así que son centavos.
+        // 1. Configurar la clave pública usando el método correcto
+        try {
+            if (typeof window.Culqi3DS.setKeys === 'function') {
+                window.Culqi3DS.setKeys(CULQI_PUBLIC_KEY);
+                logger.log("🔑 [lib/culqi.ts] Public key configurada con setKeys()");
+            } else {
+                // Fallback a asignación directa
+                window.Culqi3DS.publicKey = CULQI_PUBLIC_KEY;
+                logger.log("🔑 [lib/culqi.ts] Public key configurada directamente");
+            }
+        } catch (error) {
+            logger.warn("⚠️ [lib/culqi.ts] Error configurando publicKey:", error);
+        }
+        
+        // 2. Configurar Settings (Paso 1 de la documentación de Culqi 3DS)
         const amountCents = Math.round(options.amount * 100);
         
         window.Culqi3DS.settings = {
             charge: {
                 totalAmount: amountCents,
-                returnUrl: window.location.href // O una URL específica de retorno
+                returnUrl: window.location.href
             },
             card: {
                 email: options.email
             }
         };
         
-        // 2. Asegurar que la configuración de opciones esté presente
-        if (!window.Culqi3DS.publicKey) {
-            window.Culqi3DS.publicKey = CULQI_PUBLIC_KEY;
-        }
+        logger.log("⚙️ [lib/culqi.ts] Settings configurados:", {
+            amount: amountCents,
+            email: options.email
+        });
         
+        // 3. Configurar opciones del modal
         if (!window.Culqi3DS.options) {
             window.Culqi3DS.options = {
                 showModal: true,
@@ -310,9 +533,18 @@ export const init3DSAuthentication = (options: Culqi3DSInitOptions): void => {
                     window.dispatchEvent(new CustomEvent('culqi-3ds-closed'));
                 }
             };
+            logger.log("🎨 [lib/culqi.ts] Opciones del modal configuradas");
         }
         
-        // 3. Iniciar autenticación
+        // 4. Verificar configuración antes de iniciar
+        // 4. Verificar configuración antes de iniciar
+        logger.log("🔍 [lib/culqi.ts] Iniciando autenticación (publicKey asignada préviamente)", {
+            publicKeyConfigured: true, 
+            hasSettings: !!window.Culqi3DS.settings,
+            hasOptions: !!window.Culqi3DS.options
+        });
+        
+        // 5. Iniciar autenticación
         try {
             logger.log("🏁 [lib/culqi.ts] Ejecutando window.Culqi3DS.initAuthentication...");
             window.Culqi3DS.initAuthentication(options.token);
@@ -367,43 +599,125 @@ export const resetCulqi = (): void => {
 /**
  * Detecta el tipo de pago asíncrono desde la respuesta de Culqi Order
  */
+/**
+ * Detecta el tipo de pago asíncrono desde la respuesta de Culqi Order
+ * PRIORIDAD: payment_method_type > presencia de códigos
+ */
+/**
+ * Detecta el tipo de pago asíncrono desde la respuesta de Culqi Order
+ * MEJORADO: Detecta PagoEfectivo por URL del QR
+ */
 export const detectAsyncPaymentMethod = (
   order: any
 ): "qr" | "pagoefectivo" | null => {
-  logger.log("🔍 [culqi.ts] Detectando método de pago asíncrono:", JSON.stringify(order, null, 2));
-
-  // QR (Yape, Billetera Móvil)
-  if (
-    order.qr_string ||
-    order.qr ||
-    order.payment_method_type === "yape" ||
-    order.payment_method_type === "billetera"
-  ) {
-    logger.log("✅ [culqi.ts] Método detectado: QR (Yape/Billetera)", {
-        qr_string: !!order.qr_string,
-        qr: !!order.qr,
-        payment_method_type: order.payment_method_type
-    });
-    return "qr";
+  logger.log("🔍 [culqi.ts] Detectando método de pago asíncrono:");
+  
+  // ═══════════════════════════════════════════════════════════
+  // PRIORIDAD 0: Método capturado del modal (MÁS CONFIABLE)
+  // ═══════════════════════════════════════════════════════════
+  if (selectedPaymentMethod) {
+    logger.log(`✅ [culqi.ts] Usando método capturado del modal: ${selectedPaymentMethod}`);
+    return selectedPaymentMethod;
   }
 
-  // PagoEfectivo/Agente (CIP)
-  if (
-    order.payment_code ||
-    order.cip_code ||
-    order.cip ||
-    order.payment_method_type === "pagoefectivo" ||
-    order.payment_method_type === "agente"
-  ) {
-    logger.log("✅ [culqi.ts] Método detectado: PagoEfectivo/Agente", {
-        payment_code: !!order.payment_code,
-        cip_code: !!order.cip_code,
-        cip: !!order.cip,
-        payment_method_type: order.payment_method_type
-    });
+  logger.log("📦 [culqi.ts] No hay método capturado, usando detección por orden...");
+  
+  // ═══════════════════════════════════════════════════════════
+  // LOG DETALLADO PARA DEBUGGING
+  // ═══════════════════════════════════════════════════════════
+  logger.log("📦 [culqi.ts] Campos relevantes:", {
+    payment_method_type: order.payment_method_type,
+    state: order.state,
+    hasQR: !!(order.qr_string || order.qr),
+    hasCIP: !!(order.payment_code || order.cip_code || order.cip),
+    qr_url: order.qr || order.qr_string,
+    payment_code: order.payment_code || order.cip_code || order.cip,
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // PRIORIDAD 1: payment_method_type (si está disponible)
+  // ═══════════════════════════════════════════════════════════
+  if (order.payment_method_type) {
+    logger.log(`📍 payment_method_type detectado: ${order.payment_method_type}`);
+    
+    // Métodos QR
+    if (
+      order.payment_method_type === "yape" ||
+      order.payment_method_type === "billetera"
+    ) {
+      logger.log("✅ [culqi.ts] Método: QR (yape/billetera)");
+      return "qr";
+    }
+
+    // Métodos CIP
+    if (
+      order.payment_method_type === "pagoefectivo" ||
+      order.payment_method_type === "agente" ||
+      order.payment_method_type === "bancaMovil" ||
+      order.payment_method_type === "cuotealo"
+    ) {
+      logger.log("✅ [culqi.ts] Método: CIP (pagoefectivo/agente/banca/cuotealo)");
+      return "pagoefectivo";
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // PRIORIDAD 2: Análisis de URL del QR
+  // ═══════════════════════════════════════════════════════════
+  const qrUrl = order.qr || order.qr_string;
+  const cipCode = order.payment_code || order.cip_code || order.cip;
+
+  if (qrUrl) {
+    const qrLower = qrUrl.toLowerCase();
+    
+    logger.log("🔍 [culqi.ts] Analizando URL del QR:", qrUrl.substring(0, 60) + "...");
+    
+    // ✅ PagoEfectivo: URL contiene 'niubiz' o 'pagoefectivo'
+    if (qrLower.includes('niubiz') || qrLower.includes('pagoefectivo')) {
+      logger.log("✅ [culqi.ts] Método: CIP (PagoEfectivo detectado por URL)");
+      return "pagoefectivo";
+    }
+    
+    // ✅ Yape: URL contiene 'yape'
+    if (qrLower.includes('yape')) {
+      logger.log("✅ [culqi.ts] Método: QR (Yape detectado por URL)");
+      return "qr";
+    }
+    
+    // ✅ Otras billeteras digitales
+    if (qrLower.includes('plin') || qrLower.includes('tunki') || qrLower.includes('billetera')) {
+      logger.log("✅ [culqi.ts] Método: QR (Billetera digital detectada por URL)");
+      return "qr";
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // PRIORIDAD 3: Análisis por códigos disponibles
+  // ═══════════════════════════════════════════════════════════
+  const hasQR = !!qrUrl;
+  const hasCIP = !!cipCode;
+
+  logger.log("📦 [culqi.ts] Códigos disponibles:", { hasQR, hasCIP });
+
+  // Si ambos están presentes (sin detección por URL), asumir PagoEfectivo
+  if (hasQR && hasCIP) {
+    logger.log("✅ [culqi.ts] Método: CIP (ambos códigos presentes)");
     return "pagoefectivo";
   }
 
-  logger.warn("⚠️ [culqi.ts] No se pudo detectar método de pago asíncrono", order);
+  // Solo QR
+  if (hasQR && !hasCIP) {
+    logger.log("✅ [culqi.ts] Método: QR (solo QR disponible)");
+    return "qr";
+  }
+
+  // Solo CIP
+  if (hasCIP && !hasQR) {
+    logger.log("✅ [culqi.ts] Método: CIP (solo CIP disponible)");
+    return "pagoefectivo";
+  }
+
+  // No se pudo detectar
+  logger.error("❌ [culqi.ts] No se pudo detectar método de pago");
   return null;
 };

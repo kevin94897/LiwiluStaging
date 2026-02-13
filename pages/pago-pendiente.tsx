@@ -39,39 +39,96 @@ export default function PagoPendiente() {
       setLoading(true);
       setError(null);
 
-      if (!orderId) return;
-
-      // Obtener datos de la orden del localStorage
-      const storageData = localStorage.getItem("liwilu_last_culqi_order");
-
-      if (!storageData) {
-        throw new Error("No se encontraron datos de la orden");
+      if (!orderId) {
+        throw new Error("No se encontró el ID de la orden");
       }
 
-      const parsedData = JSON.parse(storageData);
+      const storageData = localStorage.getItem("liwilu_last_culqi_order");
 
-      logger.log("📦 Order data from localStorage:", parsedData);
+      if (storageData) {
+        try {
+          const parsedData = JSON.parse(storageData);
+          logger.log("📦 Datos cargados desde localStorage:", parsedData);
 
-      // Transformar los datos al formato esperado
-      const orderData = {
-        pendingOrderId: parsedData.pendingOrderId,
-        culqiOrderId: parsedData.orderId,
-        paymentMethod: parsedData.paymentMethod,
-        amount: 0, // No necesitamos el amount aquí
-        currency: "PEN",
-        expirationDate: "", // No necesitamos esto aquí
-        qr: parsedData.qr,
-        paymentCode: parsedData.paymentCode,
-        status: "waiting",
-      };
+          if (parsedData.pendingOrderId === parseInt(orderId)) {
+            // ═══════════════════════════════════════════════════════════
+            // DETERMINAR MÉTODO CORRECTO BASADO EN paymentMethodType
+            // ═══════════════════════════════════════════════════════════
+            let effectiveMethod = parsedData.paymentMethod;
 
-      setOrderData(orderData);
+            // Si el método en la URL no coincide con el detectado, usar el detectado
+            if (method && method !== parsedData.paymentMethod) {
+              logger.warn(
+                `⚠️ Método en URL (${method}) no coincide con detectado (${parsedData.paymentMethod})`,
+              );
+              effectiveMethod = parsedData.paymentMethod;
+            }
 
-      // Iniciar polling para verificar pago
+            // Si no hay método en URL, usar el detectado
+            if (!method) {
+              effectiveMethod = parsedData.paymentMethod;
+            }
+
+            logger.log(`📍 Método efectivo: ${effectiveMethod}`);
+            logger.log(
+              `📍 PaymentMethodType original: ${parsedData.paymentMethodType}`,
+            );
+
+            setOrderData({
+              pendingOrderId: parsedData.pendingOrderId,
+              culqiOrderId: parsedData.orderId,
+              paymentMethod: effectiveMethod,
+              paymentMethodType: parsedData.paymentMethodType,
+              amount: parsedData.amount,
+              currency: parsedData.currency || "PEN",
+              expirationDate: parsedData.expirationDate,
+              qr: parsedData.qr,
+              paymentCode: parsedData.paymentCode,
+              status: "waiting",
+            });
+
+            startPaymentPolling();
+            setLoading(false);
+            return;
+          }
+        } catch (parseError) {
+          logger.warn("⚠️ Error al parsear localStorage:", parseError);
+        }
+      }
+
+      // Fallback a API...
+      logger.log("🔄 Cargando datos desde API...");
+      const response = await getOrderDetail(orderId);
+
+      if (!response.success || !response.data) {
+        throw new Error(
+          response.message || "No se encontraron datos de la orden",
+        );
+      }
+
+      logger.log("📦 Datos cargados desde API:", response.data);
+      setOrderData(response.data);
+
+      localStorage.setItem(
+        "liwilu_last_culqi_order",
+        JSON.stringify({
+          orderId: response.data.culqiOrderId,
+          paymentMethod: response.data.paymentMethod,
+          paymentMethodType: response.data.paymentMethodType,
+          pendingOrderId: response.data.pendingOrderId,
+          amount: response.data.amount,
+          currency: response.data.currency,
+          expirationDate: response.data.expirationDate,
+          qr: response.data.qr,
+          paymentCode: response.data.paymentCode,
+          timestamp: Date.now(),
+        }),
+      );
+
       startPaymentPolling();
     } catch (err: any) {
       logger.error("❌ Error cargando orden:", err);
-      setError(err.message);
+      setError(err.message || "Error al cargar los datos del pago");
     } finally {
       setLoading(false);
     }
@@ -267,14 +324,46 @@ export default function PagoPendiente() {
           </p>
         </div>
 
+        {/* Selector de Vista (si ambos están disponibles) */}
+        {orderData?.qr && orderData?.paymentCode && (
+          <div className="flex justify-center mb-8 bg-gray-100 p-1 rounded-lg w-fit mx-auto">
+            <button
+              onClick={() => {
+                router.push(
+                  `/pago-pendiente?order=${orderId}&method=pagoefectivo`,
+                );
+              }}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+                method === "pagoefectivo"
+                  ? "bg-white text-primary shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Código CIP
+            </button>
+            <button
+              onClick={() => {
+                router.push(`/pago-pendiente?order=${orderId}&method=qr`);
+              }}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+                method === "qr"
+                  ? "bg-white text-primary shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Código QR
+            </button>
+          </div>
+        )}
+
         {/* QR para Yape/Billetera */}
-        {method === "qr" && orderData?.qr && (
+        {(method === "qr" || (!method && orderData?.qr)) && orderData?.qr && (
           <div className="bg-white rounded-xl shadow-lg p-8 mb-6 animate-fade-in">
             <h2 className="text-xl font-semibold mb-4 text-center">
               Escanea el código QR
             </h2>
             <p className="text-gray-600 mb-6 text-center">
-              Abre tu app de Yape o Billetera Móvil y escanea el código
+              Abre tu app de Yape, Plin o Billetera Móvil y escanea el código
             </p>
 
             {/* Mostrar QR */}
@@ -317,65 +406,81 @@ export default function PagoPendiente() {
                 </div>
               </div>
             </div>
+
+            {/* Fallback link to CIP if available but hidden */}
+            {orderData.paymentCode && method === "qr" && !orderData.qr && (
+              <button
+                onClick={() =>
+                  router.push(
+                    `/pago-pendiente?order=${orderData.pendingOrderId}&method=pagoefectivo`,
+                  )
+                }
+                className="w-full mt-4 text-primary underline text-sm"
+              >
+                ¿Problemas con el QR? Ver código de pago (CIP)
+              </button>
+            )}
           </div>
         )}
 
         {/* CIP para PagoEfectivo */}
-        {method === "pagoefectivo" && orderData?.paymentCode && (
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-6 animate-fade-in">
-            <h2 className="text-xl font-semibold mb-4 text-center">
-              Código de pago (CIP)
-            </h2>
-            <p className="text-gray-600 mb-6 text-center">
-              Presenta este código en cualquier agente autorizado o banco
-            </p>
-
-            {/* Mostrar CIP */}
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-8 mb-6 text-center">
-              <p className="text-sm text-gray-600 mb-2 uppercase tracking-wide">
-                Código CIP:
+        {(method === "pagoefectivo" ||
+          (!method && !orderData?.qr && orderData?.paymentCode)) &&
+          orderData?.paymentCode && (
+            <div className="bg-white rounded-xl shadow-lg p-8 mb-6 animate-fade-in">
+              <h2 className="text-xl font-semibold mb-4 text-center">
+                Código de pago (CIP)
+              </h2>
+              <p className="text-gray-600 mb-6 text-center">
+                Presenta este código en cualquier agente autorizado o banco
               </p>
-              <p className="text-5xl font-bold text-purple-600 tracking-wider mb-2">
-                {orderData.paymentCode}
-              </p>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(orderData.paymentCode);
-                  showToast("Código copiado al portapapeles", "success");
-                }}
-                className="text-sm text-purple-600 hover:text-purple-700 font-medium"
-              >
-                📋 Copiar código
-              </button>
-            </div>
 
-            <div className="space-y-3 text-sm text-gray-600">
-              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                <span className="text-green-500 text-lg">✓</span>
-                <p>Paga en cualquier agente o banco afiliado</p>
-              </div>
-              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                <span className="text-green-500 text-lg">✓</span>
-                <p>Monto a pagar: S/ {orderData.amount?.toFixed(2)}</p>
-              </div>
-              <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg">
-                <span className="text-orange-500 text-lg">⏰</span>
-                <p>
-                  Este código expira el{" "}
-                  {new Date(orderData.expirationDate).toLocaleDateString(
-                    "es-PE",
-                    {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    },
-                  )}
+              {/* Mostrar CIP */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-8 mb-6 text-center">
+                <p className="text-sm text-gray-600 mb-2 uppercase tracking-wide">
+                  Código CIP:
                 </p>
+                <p className="text-5xl font-bold text-purple-600 tracking-wider mb-2">
+                  {orderData.paymentCode}
+                </p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(orderData.paymentCode);
+                    showToast("Código copiado al portapapeles", "success");
+                  }}
+                  className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                >
+                  📋 Copiar código
+                </button>
+              </div>
+
+              <div className="space-y-3 text-sm text-gray-600">
+                <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <span className="text-green-500 text-lg">✓</span>
+                  <p>Paga en cualquier agente o banco afiliado</p>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <span className="text-green-500 text-lg">✓</span>
+                  <p>Monto a pagar: S/ {orderData.amount?.toFixed(2)}</p>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg">
+                  <span className="text-orange-500 text-lg">⏰</span>
+                  <p>
+                    Este código expira el{" "}
+                    {new Date(orderData.expirationDate).toLocaleDateString(
+                      "es-PE",
+                      {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      },
+                    )}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Instrucciones */}
         <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 mb-6 animate-fade-in">

@@ -306,7 +306,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
                   />
                 </motion.div>
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold mb-4 text-primary-light uppercase">
-                  NUEVOS MODELOS
+                  NUEVAS PROMOCIONES
                 </h2>
                 <p className="text-xl md:text-3xl text-white md:mt-4 font-medium">
                   Calidad que nos distingue
