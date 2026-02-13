@@ -82,6 +82,10 @@ export default function Checkout() {
   const pendingOrderIdRef = useRef<number | null>(null);
   const orderTotalRef = useRef<number>(0);
   const deviceFingerprintRef = useRef<string | null>(null);
+  const pendingEmailRef = useRef<string | null>(null);
+
+  // Persistence constant
+  const STORAGE_KEY_3DS = "liwilu_3ds_context";
 
   // ============================================
   // VALIDACIÓN Y ERRORES
@@ -156,103 +160,84 @@ export default function Checkout() {
     }
 
     setCulqiReady(configured);
-
-    // ═══════════════════════════════════════════════════════════
-    // CONFIGURAR CALLBACK PARA 3DS
-    // ═══════════════════════════════════════════════════════════
-    if (typeof window !== "undefined") {
-      // @ts-ignore
-      window.culqi3DS = async () => {
-        logger.log("🔐 [3DS CALLBACK] Respuesta recibida de Culqi3DS");
-        logger.log("📦 [3DS STATE] window.Culqi3DS:", {
-          hasToken: !!window.Culqi3DS?.token,
-          hasError: !!window.Culqi3DS?.error,
-          token: window.Culqi3DS?.token,
-          error: window.Culqi3DS?.error,
-        });
-
-        if (window.Culqi3DS?.token) {
-          const result = window.Culqi3DS.token;
-          logger.log("🔐 [3DS] Autenticación completada con éxito:", result);
-
-          // Reintentar pago con datos 3DS
-          await handlePaymentWith3DS(result);
-        } else if (window.Culqi3DS?.error) {
-          logger.error(
-            "❌ [3DS] Error en autenticación:",
-            window.Culqi3DS.error,
-          );
-          showToast(
-            window.Culqi3DS.error.user_message || "Error en autenticación 3DS",
-            "error",
-          );
-          setProcessing(false);
-          isProcessingRef.current = false;
-        } else {
-          logger.warn("⚠️ [3DS] Callback sin token ni error");
-        }
-      };
-
-      // Listener para cierre del modal 3DS
-      const handle3DSClosed = () => {
-        logger.log("🚪 [3DS] Modal cerrado detectado");
-        setProcessing(false);
-        isProcessingRef.current = false;
-      };
-
-      window.addEventListener("culqi-3ds-closed", handle3DSClosed);
-
-      // ═══════════════════════════════════════════════════════════
-      // LISTENER DE EMERGENCIA PARA postMessage (Bypass de bloqueo de origen)
-      // ═══════════════════════════════════════════════════════════
-      /**
-       * Algunos navegadores bloquean el mensaje de Cardinal (3DS)
-       * por ser cross-origin. Este listener captura el mensaje
-       * manualmente si el SDK de Culqi no lo procesa.
-       */
-      const handleEmergency3DSMessage = async (event: MessageEvent) => {
-        // Orígenes conocidos de 3DS/Cardinal y Culqi
-        const allowedOrigins = [
-          "https://checkout.culqi.com",
-          "https://centinelapistag.cardinalcommerce.com",
-          "https://0merchantacsstag.cardinalcommerce.com",
-          "https://cas.client.cardinaltrusted.com",
-          "https://1merchantacsstag.cardinalcommerce.com",
-        ];
-
-        // Logs de diagnóstico para ver qué llega exactamente
-        if (
-          event.data &&
-          (event.data.parameters3DS ||
-            event.data.error ||
-            event.data.action?.includes("3ds"))
-        ) {
-          logger.log("🔍 [3DS EVT] Mensaje interceptado:", {
-            origin: event.origin,
-            hasParams: !!event.data.parameters3DS,
-            processing: isProcessingRef.current,
-          });
-        }
-
-        // Si el mensaje viene de un origen permitido y contiene parámetros de 3DS
-        if (
-          (allowedOrigins.some((origin) => event.origin.includes(origin)) ||
-            event.origin === window.location.origin) &&
-          event.data &&
-          event.data.parameters3DS
-        ) {
-          if (isProcessingRef.current) {
-            logger.log("🚀 [3DS EMERGENCY] Forzando procesamiento de pago...");
-            await handlePaymentWith3DS(event.data.parameters3DS);
-          }
-        }
-      };
-
-      window.addEventListener("message", handleEmergency3DSMessage, false);
-
-      // Nota: El cleanup se hace en el useEffect principal si fuera necesario.
-    }
   };
+
+  /**
+   * ═══════════════════════════════════════════════════════════
+   * CONFIGURAR CALLBACKS Y LISTENERS PARA 3DS
+   * ═══════════════════════════════════════════════════════════
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // CALLBACK GLOBAL PARA CULQI 3DS
+    // @ts-ignore
+    window.culqi3DS = async () => {
+      logger.log("🔐 [3DS CALLBACK] Respuesta recibida de Culqi3DS");
+
+      const token = window.Culqi3DS?.token;
+      const error = window.Culqi3DS?.error;
+
+      if (token) {
+        logger.log("🔐 [3DS] Autenticación completada con éxito:", token);
+        // Evitar procesar si ya estamos en fase de éxito o limpiando
+        if (isProcessingRef.current) {
+          await handlePaymentWith3DS(token);
+        }
+      } else if (error) {
+        logger.error("❌ [3DS] Error en autenticación:", error);
+        handleCulqiError(error);
+      } else {
+        logger.warn("⚠️ [3DS] Callback ejecutado sin datos");
+      }
+    };
+
+    // LISTENER PARA CIERRE DEL MODAL 3DS
+    const handle3DSClosed = () => {
+      logger.log("🚪 [3DS] Modal cerrado detectado");
+      setProcessing(false);
+      isProcessingRef.current = false;
+      // Reiniciar etapa si no se completó el pago
+      setProcessingStage("creating-order");
+    };
+
+    // LISTENER DE EMERGENCIA PARA postMessage
+    const handleEmergency3DSMessage = async (event: MessageEvent) => {
+      const allowedOrigins = [
+        "https://checkout.culqi.com",
+        "https://centinelapistag.cardinalcommerce.com",
+        "https://0merchantacsstag.cardinalcommerce.com",
+        "https://cas.client.cardinaltrusted.com",
+        "https://1merchantacsstag.cardinalcommerce.com",
+      ];
+
+      // Verificar origen y contenido
+      const isAllowedOrigin = allowedOrigins.some((origin) => event.origin.includes(origin)) ||
+        event.origin === window.location.origin;
+
+      if (isAllowedOrigin && event.data && event.data.parameters3DS) {
+        if (isProcessingRef.current) {
+          logger.log("🚀 [3DS EMERGENCY] Forzando procesamiento detectado vía postMessage");
+          await handlePaymentWith3DS(event.data.parameters3DS);
+        }
+      }
+
+      // Manejo de errores transmitidos vía postMessage
+      if (isAllowedOrigin && event.data && event.data.error) {
+        logger.error("❌ [3DS EMERGENCY] Error detectado vía postMessage:", event.data.error);
+        handleCulqiError(event.data.error);
+      }
+    };
+
+    window.addEventListener("culqi-3ds-closed", handle3DSClosed);
+    window.addEventListener("message", handleEmergency3DSMessage);
+
+    return () => {
+      logger.log("🧹 [3DS] Limpiando listeners de autenticación");
+      window.removeEventListener("culqi-3ds-closed", handle3DSClosed);
+      window.removeEventListener("message", handleEmergency3DSMessage);
+    };
+  }, []);
 
   // ============================================
   // MANEJO DE RESPUESTAS DE CULQI
@@ -322,38 +307,56 @@ export default function Checkout() {
    * Manejo de TOKEN (tarjetas)
    */
 
-  // Función para reintentar pago con 3DS (Definida fuera para acceso global en componente)
   const handlePaymentWith3DS = async (auth3DS: any) => {
     try {
-      logger.log("[3DS] Reintentando pago con parametros de autenticacion...");
+      logger.log("[3DS] Iniciando validación y reintento de pago:", auth3DS);
 
-      const email = await getEmailForPayment();
-      // Usar processingToken.current o buscar el token reciente
+      // 1. Validar estado de la autenticación
+      // authenticationStatus puede ser: 'Successful', 'Failed', 'Attempted', 'Unavailable', 'Error'
+      const status = auth3DS?.authenticationStatus || auth3DS?.status;
+      if (status === 'Failed') {
+        logger.error("❌ [3DS] Autenticación fallida según el banco");
+        throw new Error("La autenticación 3D Secure falló. Por favor, intenta con otra tarjeta o contacta a tu banco.");
+      }
+
+      const recovered = recover3DSContext();
+
+      const email =
+        (await getEmailForPayment()) || recovered.email || pendingEmailRef.current;
       const token =
-        processingToken.current || (window.Culqi && window.Culqi.token?.id);
-
-      const orderId = currentPendingOrderId || pendingOrderIdRef.current;
+        processingToken.current ||
+        (window.Culqi && window.Culqi.token?.id) ||
+        recovered.token;
+      const orderId =
+        currentPendingOrderId ||
+        pendingOrderIdRef.current ||
+        recovered.pendingOrderId;
 
       if (!email || !token || !orderId) {
-        logger.error("[3DS] Faltan datos:", {
-          email,
-          token,
-          pendingOrder: orderId,
+        logger.error("[3DS] Faltan datos críticos para el reintento:", {
+          email: !!email,
+          token: !!token,
+          pendingOrder: !!orderId,
         });
-        throw new Error("Datos incompletos para reintento 3DS");
+        throw new Error(
+          "No pudimos recuperar los datos de tu sesión de pago. Por favor, intenta de nuevo.",
+        );
       }
+
+      logger.log("[3DS] Reintentando pago para orden:", orderId);
 
       const payResponse = await payOrder(orderId.toString(), {
         token: token,
         email: email,
         authentication3DS: {
-          eci: auth3DS.eci,
-          xid: auth3DS.xid,
-          cavv: auth3DS.cavv,
-          protocolVersion: auth3DS.protocolVersion,
-          directoryServerTransactionId: auth3DS.directoryServerTransactionId,
+          eci: auth3DS?.eci,
+          xid: auth3DS?.xid,
+          cavv: auth3DS?.cavv,
+          protocolVersion: auth3DS?.protocolVersion,
+          directoryServerTransactionId: auth3DS?.directoryServerTransactionId || auth3DS?.dsTransactionId,
         },
-        deviceFingerprint: deviceFingerprintRef.current || undefined,
+        deviceFingerprint:
+          deviceFingerprintRef.current || recovered.deviceFingerprint || undefined,
       });
 
       logger.log("[3DS] Respuesta de reintento:", payResponse);
@@ -364,13 +367,14 @@ export default function Checkout() {
       ) {
         const confirmedOrderId = payResponse.data.orderId;
         logger.log("[3DS] Pago confirmado para orden #" + confirmedOrderId);
+        clear3DSContext();
         await handlePaymentSuccess(confirmedOrderId);
       } else {
-        const msg = payResponse.message || "Error al confirmar pago 3DS";
+        const msg = payResponse.message || "Tu tarjeta fue rechazada después de la autenticación.";
         throw new Error(msg);
       }
     } catch (error: any) {
-      logger.error("[3DS] Error final:", error);
+      logger.error("[3DS] Error en flujo final:", error);
       handleCulqiError(error);
     } finally {
       isProcessingRef.current = false;
@@ -409,13 +413,21 @@ export default function Checkout() {
       setProcessing(true);
       setProcessingStage("processing-payment");
 
-      // Obtener email
+      // Obtener email y persistirlo
       const email = await getEmailForPayment();
       if (!email) {
         throw new Error(
           "No se encontró el correo electrónico para procesar el pago",
         );
       }
+
+      // PERSISTIR CONTEXTO 3DS PREVENTIVAMENTE
+      pendingEmailRef.current = email;
+      save3DSContext({
+        email,
+        token: token.id,
+        pendingOrderId: currentPendingOrderId,
+      });
 
       // GENERAR DEVICE FINGERPRINT PARA 3DS (CON VALIDACIÓN)
       // ═══════════════════════════════════════════════════════════
@@ -563,8 +575,8 @@ export default function Checkout() {
       // ═══════════════════════════════════════════════════════════
       logger.log(
         "💳 Procesando pago con tarjeta para orden " +
-          currentPendingOrderId +
-          "...",
+        currentPendingOrderId +
+        "...",
       );
 
       payResponse = await payOrder(
@@ -831,6 +843,57 @@ export default function Checkout() {
     }
 
     return null;
+  };
+
+  // ═══════════════════════════════════════════════════════════
+  // MANEJO DE PERSISTENCIA 3DS
+  // ═══════════════════════════════════════════════════════════
+
+  const save3DSContext = (data: {
+    email: string;
+    token: string;
+    pendingOrderId: number;
+  }) => {
+    try {
+      const context = {
+        ...data,
+        deviceFingerprint: deviceFingerprintRef.current,
+        timestamp: Date.now(),
+      };
+      sessionStorage.setItem(STORAGE_KEY_3DS, JSON.stringify(context));
+      logger.log("💾 [3DS] Contexto guardado en sessionStorage");
+    } catch (e) {
+      logger.error("❌ [3DS] Error guardando contexto:", e);
+    }
+  };
+
+  const recover3DSContext = () => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY_3DS);
+      if (raw) {
+        const data = JSON.parse(raw);
+        // Validar antigüedad (máximo 30 min)
+        if (Date.now() - data.timestamp < 30 * 60 * 1000) {
+          logger.log("🔄 [3DS] Contexto recuperado de sessionStorage");
+          return data;
+        }
+        logger.warn("⚠️ [3DS] Contexto en sessionStorage es demasiado antiguo");
+      }
+    } catch (e) {
+      logger.error("❌ [3DS] Error recuperando contexto:", e);
+    }
+    return {
+      email: null,
+      token: null,
+      pendingOrderId: null,
+      deviceFingerprint: null,
+    };
+  };
+
+  const clear3DSContext = () => {
+    sessionStorage.removeItem(STORAGE_KEY_3DS);
+    pendingEmailRef.current = null;
+    logger.log("🧹 [3DS] Contexto limpiado");
   };
 
   const handlePaymentSuccess = async (orderId: number) => {
@@ -1137,21 +1200,19 @@ export default function Checkout() {
               <div className="flex gap-4 mb-6">
                 <button
                   onClick={() => setTipoComprobante("boleta")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                    tipoComprobante === "boleta"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "boleta"
+                    ? "border-primary bg-primary text-white"
+                    : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                 >
                   Boleta
                 </button>
                 <button
                   onClick={() => setTipoComprobante("factura")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                    tipoComprobante === "factura"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "factura"
+                    ? "border-primary bg-primary text-white"
+                    : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                 >
                   Factura
                 </button>
@@ -1199,7 +1260,7 @@ export default function Checkout() {
                         }
                         maxLength={
                           tipoDocumentoBoleta === "DNI" ||
-                          tipoDocumentoBoleta === "Pasaporte"
+                            tipoDocumentoBoleta === "Pasaporte"
                             ? 8
                             : 12
                         }
@@ -1336,11 +1397,10 @@ export default function Checkout() {
                 {/* Tarjeta y Yape (Código) */}
                 <button
                   onClick={() => setMetodoPago("card")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                    metodoPago === "card"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "card"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex -space-x-2">
@@ -1377,11 +1437,10 @@ export default function Checkout() {
 
                 <button
                   onClick={() => setMetodoPago("async")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                    metodoPago === "async"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "async"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <FaQrcode className="text-2xl text-purple-600" />

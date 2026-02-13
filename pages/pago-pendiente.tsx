@@ -326,18 +326,17 @@ export default function PagoPendiente() {
 
         {/* Selector de Vista (si ambos están disponibles) */}
         {orderData?.qr && orderData?.paymentCode && (
-          <div className="flex justify-center mb-8 bg-gray-100 p-1 rounded-lg w-fit mx-auto">
+          <div className="flex justify-center mb-8 bg-gray-100 p-1 rounded-sm w-fit mx-auto">
             <button
               onClick={() => {
                 router.push(
                   `/pago-pendiente?order=${orderId}&method=pagoefectivo`,
                 );
               }}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
-                method === "pagoefectivo"
-                  ? "bg-white text-primary shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
+              className={`px-6 py-2 rounded-sm text-sm font-medium transition-all ${method === "pagoefectivo"
+                ? "bg-white text-primary shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+                }`}
             >
               Código CIP
             </button>
@@ -345,11 +344,10 @@ export default function PagoPendiente() {
               onClick={() => {
                 router.push(`/pago-pendiente?order=${orderId}&method=qr`);
               }}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
-                method === "qr"
-                  ? "bg-white text-primary shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${method === "qr"
+                ? "bg-white text-primary shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+                }`}
             >
               Código QR
             </button>
@@ -436,11 +434,11 @@ export default function PagoPendiente() {
               </p>
 
               {/* Mostrar CIP */}
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-8 mb-6 text-center">
+              <div className="bg-primary/5 border-2 border-primary/20 rounded-xl p-8 mb-6 text-center">
                 <p className="text-sm text-gray-600 mb-2 uppercase tracking-wide">
                   Código CIP:
                 </p>
-                <p className="text-5xl font-bold text-purple-600 tracking-wider mb-2">
+                <p className="text-3xl md:text-5xl font-bold text-primary tracking-wider mb-2">
                   {orderData.paymentCode}
                 </p>
                 <button
@@ -448,22 +446,22 @@ export default function PagoPendiente() {
                     navigator.clipboard.writeText(orderData.paymentCode);
                     showToast("Código copiado al portapapeles", "success");
                   }}
-                  className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                  className="text-sm text-primary hover:text-primary/80 font-medium"
                 >
-                  📋 Copiar código
+                  Copiar código
                 </button>
               </div>
 
               <div className="space-y-3 text-sm text-gray-600">
-                <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
                   <span className="text-green-500 text-lg">✓</span>
                   <p>Paga en cualquier agente o banco afiliado</p>
                 </div>
-                <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
                   <span className="text-green-500 text-lg">✓</span>
                   <p>Monto a pagar: S/ {orderData.amount?.toFixed(2)}</p>
                 </div>
-                <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-md">
                   <span className="text-orange-500 text-lg">⏰</span>
                   <p>
                     Este código expira el{" "}
@@ -549,12 +547,12 @@ export default function PagoPendiente() {
               </span>
             )}
           </Button>
-          <button
+          {/* <button
             onClick={() => router.push("/ayuda")}
             className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-sm font-semibold hover:border-primary hover:text-primary transition-colors"
           >
             ¿Necesitas ayuda?
-          </button>
+          </button> */}
         </div>
 
         {/* Footer - Indicador de verificación automática */}

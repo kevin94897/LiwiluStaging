@@ -113,7 +113,7 @@ export default function CartSummary({
               id="acceptTerms"
               checked={acceptTerms}
               onChange={(e) => onAcceptTermsChange(e.target.checked)}
-              className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
+              className="mt-1 w-4 h-4 min-w-4 min-h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
             />
             <label
               htmlFor="acceptTerms"
@@ -144,7 +144,7 @@ export default function CartSummary({
               id="acceptNewsletter"
               checked={acceptNewsletter}
               onChange={(e) => onAcceptNewsletterChange(e.target.checked)}
-              className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
+              className="mt-1 w-4 h-4 min-w-4 min-h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
             />
             <label
               htmlFor="acceptNewsletter"
