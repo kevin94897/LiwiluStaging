@@ -976,6 +976,7 @@ export async function getOrderDetail(orderId: string): Promise<{
     pendingOrderId: number;
     culqiOrderId: string;
     paymentMethod: 'qr' | 'pagoefectivo';
+    paymentMethodType?: string; // Added for async payments
     amount: number;
     currency: string;
     expirationDate: string;
