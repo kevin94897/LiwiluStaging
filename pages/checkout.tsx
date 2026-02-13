@@ -19,9 +19,10 @@ import {
   closeCulqi,
   resetCulqi,
   detectAsyncPaymentMethod,
+  CULQI_PUBLIC_KEY,
 } from "@/lib/culqi";
 import { showToast } from "@/lib/notifications";
-import { createOrder, payOrder, createAsyncOrder } from "@/lib/cart";
+import { createOrder, payOrder, createCulqiOrder } from "@/lib/cart";
 import { useAuth } from "@/hooks/useAuth";
 import { consultaRUC } from "@/lib/general";
 import Select from "@/components/ui/Select";
@@ -91,6 +92,8 @@ export default function Checkout() {
   const [errorModal, setErrorModal] = useState<{
     isOpen: boolean;
     message: string;
+    actionLabel?: string;
+    onAction?: () => void;
   }>({
     isOpen: false,
     message: "",
@@ -141,8 +144,16 @@ export default function Checkout() {
     // Configurar Culqi Checkout
     const configured = configureCulqi();
 
-    // Configurar Culqi 3DS
+    // Configurar Culqi 3DS INMEDIATAMENTE para que publicKey esté disponible
     configureCulqi3DS();
+
+    // Verificar que Culqi3DS quedó configurado correctamente
+    if (window.Culqi3DS) {
+      logger.log("✅ [handleCulqiLoad] Culqi3DS configurado:", {
+        hasPublicKey: !!window.Culqi3DS.publicKey,
+        publicKeyPreview: window.Culqi3DS.publicKey?.substring(0, 15) + "...",
+      });
+    }
 
     setCulqiReady(configured);
 
@@ -200,8 +211,9 @@ export default function Checkout() {
        * manualmente si el SDK de Culqi no lo procesa.
        */
       const handleEmergency3DSMessage = async (event: MessageEvent) => {
-        // Orígenes conocidos de 3DS/Cardinal
-        const cardinalOrigins = [
+        // Orígenes conocidos de 3DS/Cardinal y Culqi
+        const allowedOrigins = [
+          "https://checkout.culqi.com",
           "https://centinelapistag.cardinalcommerce.com",
           "https://0merchantacsstag.cardinalcommerce.com",
           "https://cas.client.cardinaltrusted.com",
@@ -222,9 +234,9 @@ export default function Checkout() {
           });
         }
 
-        // Si el mensaje viene de Cardinal y contiene parámetros de 3DS
+        // Si el mensaje viene de un origen permitido y contiene parámetros de 3DS
         if (
-          (cardinalOrigins.some((origin) => event.origin.includes(origin)) ||
+          (allowedOrigins.some((origin) => event.origin.includes(origin)) ||
             event.origin === window.location.origin) &&
           event.data &&
           event.data.parameters3DS
@@ -359,8 +371,7 @@ export default function Checkout() {
       }
     } catch (error: any) {
       logger.error("[3DS] Error final:", error);
-      showToast(error.message || "Error al procesar pago 3DS", "error");
-      setProcessing(false);
+      handleCulqiError(error);
     } finally {
       isProcessingRef.current = false;
       processingToken.current = null;
@@ -406,39 +417,113 @@ export default function Checkout() {
         );
       }
 
-      // ═══════════════════════════════════════════════════════════
       // GENERAR DEVICE FINGERPRINT PARA 3DS (CON VALIDACIÓN)
       // ═══════════════════════════════════════════════════════════
       let deviceFingerprint: string | undefined;
 
       try {
+        // Verificar disponibilidad de Culqi3DS
+        logger.log("🔍 [Fingerprint] Verificando Culqi3DS:", {
+          exists: !!window.Culqi3DS,
+          hasPublicKey: !!window.Culqi3DS?.publicKey,
+          publicKeyPreview:
+            window.Culqi3DS?.publicKey?.substring(0, 15) + "...",
+          hasGenerateDevice:
+            typeof window.Culqi3DS?.generateDevice === "function",
+        });
+
         if (
           typeof window !== "undefined" &&
           window.Culqi3DS &&
           typeof window.Culqi3DS.generateDevice === "function"
         ) {
-          const fingerprint = window.Culqi3DS.generateDevice();
+          // Si publicKey no está configurada, intentar configurarla ahora
+          if (!window.Culqi3DS.publicKey) {
+            logger.warn(
+              "⚠️ [Fingerprint] Culqi3DS no tiene publicKey, intentando configurar...",
+            );
+            try {
+              // Intentar asignación directa
+              window.Culqi3DS.publicKey = CULQI_PUBLIC_KEY;
+              logger.log("✅ [Fingerprint] PublicKey asignada:", {
+                success: !!window.Culqi3DS.publicKey,
+                preview: window.Culqi3DS.publicKey?.substring(0, 15) + "...",
+              });
+            } catch (err) {
+              logger.error("❌ [Fingerprint] Error asignando publicKey:", err);
+            }
+          }
 
-          // Validar que sea un string válido no vacío
-          if (
-            fingerprint &&
-            typeof fingerprint === "string" &&
-            fingerprint.trim().length > 0
-          ) {
-            deviceFingerprint = fingerprint;
-            deviceFingerprintRef.current = fingerprint; // Persistir para reintento 3DS
-            logger.log(
-              "📱 Device fingerprint generado y persistido:",
-              deviceFingerprint,
+          // Si aún no tiene publicKey, intentar continuar (el objeto puede ser un Proxy que no permite lectura)
+          if (!window.Culqi3DS.publicKey) {
+            logger.warn(
+              "⚠️ [Fingerprint] No se pudo leer publicKey después de asignación (posible Proxy), continuando...",
             );
           } else {
-            logger.warn("⚠️ Device fingerprint inválido o vacío, se omitirá");
+            logger.log("✅ [Fingerprint] PublicKey verificada correctamente");
+          }
+          logger.log("🔄 [Fingerprint] Llamando generateDevice()...");
+
+          // IMPORTANTE: generateDevice() devuelve una Promise
+          const fingerprintPromise = window.Culqi3DS.generateDevice();
+
+          logger.log("📱 [Fingerprint] Tipo de retorno:", {
+            type: typeof fingerprintPromise,
+            isPromise: fingerprintPromise instanceof Promise,
+          });
+
+          // Await la Promise para obtener el valor real
+          const fingerprint = await fingerprintPromise;
+
+          logger.log("📱 [Fingerprint] Resultado después de await:", {
+            value: fingerprint,
+            type: typeof fingerprint,
+            isString: typeof fingerprint === "string",
+            isNumber: typeof fingerprint === "number",
+            isObject: typeof fingerprint === "object",
+          });
+
+          // Convertir a string si es necesario y validar
+          let fingerprintStr: string | undefined;
+
+          if (fingerprint !== null && fingerprint !== undefined) {
+            // Convertir a string si no lo es
+            fingerprintStr =
+              typeof fingerprint === "string"
+                ? fingerprint
+                : String(fingerprint);
+
+            logger.log("🔄 [Fingerprint] Convertido a string:", {
+              value: fingerprintStr,
+              length: fingerprintStr.length,
+            });
+
+            // Validar que no esté vacío
+            if (fingerprintStr && fingerprintStr.trim().length > 0) {
+              deviceFingerprint = fingerprintStr;
+              deviceFingerprintRef.current = fingerprintStr;
+              logger.log(
+                "✅ [Fingerprint] Device fingerprint generado y persistido:",
+                fingerprintStr.substring(0, 20) + "...",
+              );
+            } else {
+              logger.warn(
+                "⚠️ [Fingerprint] Device fingerprint vacío después de conversión",
+              );
+            }
+          } else {
+            logger.warn(
+              "⚠️ [Fingerprint] generateDevice() devolvió null o undefined",
+            );
           }
         } else {
-          logger.warn("⚠️ Culqi3DS.generateDevice no disponible");
+          logger.warn("⚠️ [Fingerprint] Culqi3DS.generateDevice no disponible");
         }
       } catch (error) {
-        logger.warn("⚠️ Error generando device fingerprint:", error);
+        logger.error(
+          "❌ [Fingerprint] Error generando device fingerprint:",
+          error,
+        );
       }
 
       // ═══════════════════════════════════════════════════════════
@@ -541,8 +626,7 @@ export default function Checkout() {
       }
     } catch (error: any) {
       logger.error("❌ Error en pago con tarjeta:", error);
-      showToast(error.message || "Error al completar la compra", "error");
-      setProcessing(false);
+      handleCulqiError(error);
     } finally {
       // SOLO resetear si NO entramos en flujo 3DS
       // Si entramos en 3DS, el reset lo hará handlePaymentWith3DS o el listener de cierre
@@ -556,9 +640,37 @@ export default function Checkout() {
   /**
    * Manejo de ORDER (pagos asíncronos)
    */
+  /**
+   * Manejo de ORDER (pagos asíncronos) - VERSIÓN CORREGIDA
+   */
   const handleCulqiOrder = async (order: CulqiOrderResponse) => {
     logger.log("✅ [handleCulqiOrder] Order recibida:", order.id);
+
+    // 🔍 LOG COMPLETO DE LA ESTRUCTURA
+    logger.log(
+      "🔍 [ESTRUCTURA COMPLETA] Toda la orden:",
+      JSON.stringify(order, null, 2),
+    );
+
+    // Log de campos específicos que podrían contener el método
+    logger.log("🔍 [CAMPOS CLAVE]:", {
+      payment_method_type: order.payment_method_type,
+      payment_method: (order as any).payment_method,
+      method: (order as any).method,
+      type: order.object,
+      state: order.state,
+      qr_string: order.qr_string,
+      qr: order.qr,
+      payment_code: order.payment_code,
+      cip_code: order.cip_code,
+      cip: order.cip,
+    });
+    logger.log("✅ [handleCulqiOrder] Order recibida:", order.id);
     logger.log("📦 [handleCulqiOrder] Order completa:", order);
+    logger.log(
+      "📍 [handleCulqiOrder] payment_method_type:",
+      order.payment_method_type,
+    );
 
     isProcessingRef.current = true;
     closeCulqi();
@@ -573,26 +685,82 @@ export default function Checkout() {
 
       if (!asyncPaymentMethod) {
         logger.error("❌ No se pudo detectar método de pago asíncrono");
-        logger.log("📦 Order data para análisis:", order);
+        logger.error("📦 Datos de orden:", {
+          payment_method_type: order.payment_method_type,
+          hasQR: !!(order.qr_string || order.qr),
+          hasCIP: !!(order.payment_code || order.cip_code || order.cip),
+        });
         throw new Error("No se pudo determinar el método de pago");
       }
 
       logger.log(`✅ Método detectado: ${asyncPaymentMethod}`);
-
-      // Guardar info para debugging
-      localStorage.setItem(
-        "liwilu_last_culqi_order",
-        JSON.stringify({
-          orderId: order.id,
-          paymentMethod: asyncPaymentMethod,
-          pendingOrderId: currentPendingOrderId,
-          timestamp: Date.now(),
-        }),
+      logger.log(
+        `📍 payment_method_type original: ${order.payment_method_type}`,
       );
 
-      // Redirigir a página de pago pendiente
+      // ═══════════════════════════════════════════════════════════
+      // EXTRAER DATOS SEGÚN EL MÉTODO
+      // ═══════════════════════════════════════════════════════════
+      let qrData: string | null = null;
+      let cipCode: string | null = null;
+
+      // SIEMPRE extraer ambos datos si están disponibles
+      qrData = order.qr_string || order.qr || null;
+      cipCode = order.payment_code || order.cip_code || order.cip || null;
+
+      logger.log("📦 Datos extraídos:", {
+        hasQR: !!qrData,
+        hasCIP: !!cipCode,
+        qrPreview: qrData ? qrData.substring(0, 30) + "..." : null,
+        cipValue: cipCode,
+      });
+
+      // Validar que tengamos el código correcto según el método detectado
+      if (asyncPaymentMethod === "qr" && !qrData) {
+        logger.error("❌ Método detectado es QR pero no hay código QR");
+        throw new Error("No se generó el código QR. Intenta nuevamente.");
+      }
+
+      if (asyncPaymentMethod === "pagoefectivo" && !cipCode) {
+        logger.error("❌ Método detectado es CIP pero no hay código CIP");
+        throw new Error("No se generó el código CIP. Intenta nuevamente.");
+      }
+
+      if (qrData) logger.log("✅ QR extraído correctamente");
+      if (cipCode) logger.log("✅ CIP extraído correctamente:", cipCode);
+
+      // ═══════════════════════════════════════════════════════════
+      // GUARDAR DATOS COMPLETOS EN LOCALSTORAGE
+      // ═══════════════════════════════════════════════════════════
+      const orderData = {
+        orderId: order.id,
+        paymentMethod: asyncPaymentMethod, // "qr" o "pagoefectivo"
+        paymentMethodType: order.payment_method_type, // "yape", "billetera", "bancaMovil", "agente", etc.
+        pendingOrderId: currentPendingOrderId,
+        amount: order.amount / 100,
+        currency: order.currency_code || "PEN",
+        expirationDate: order.expiration_date
+          ? new Date(order.expiration_date * 1000).toISOString()
+          : null,
+        qr: qrData, // Puede ser null
+        paymentCode: cipCode, // Puede ser null
+        timestamp: Date.now(),
+        clientDetails: order.client_details,
+      };
+
+      logger.log("💾 Guardando datos en localStorage:", orderData);
+      localStorage.setItem(
+        "liwilu_last_culqi_order",
+        JSON.stringify(orderData),
+      );
+
+      // ═══════════════════════════════════════════════════════════
+      // REDIRIGIR A PÁGINA DE PAGO PENDIENTE
+      // ═══════════════════════════════════════════════════════════
       const redirectUrl = `/pago-pendiente?order=${currentPendingOrderId}&method=${asyncPaymentMethod}`;
       logger.log(`🔄 Redirigiendo a: ${redirectUrl}`);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       router.push(redirectUrl);
     } catch (error: any) {
@@ -611,11 +779,37 @@ export default function Checkout() {
    */
   const handleCulqiError = (error: any) => {
     logger.log("❌ [handleCulqiError] Error de Culqi:", error);
+
+    let message =
+      error.user_message ||
+      error.message ||
+      "Ocurrió un error al procesar el pago. Por favor, intenta con otra tarjeta o método de pago.";
+    let actionLabel: string | undefined;
+    let onAction: (() => void) | undefined;
+
+    // Detectar error de pago duplicado / en proceso
+    if (
+      message.includes("Este pedido ya está siendo procesado") ||
+      message.includes("AWAITING_PAYMENT")
+    ) {
+      message =
+        "Este pedido ya está siendo procesado. Si ya realizaste el pago, puedes verificar su estado.";
+      actionLabel = "Ver estado del pedido";
+      onAction = () => {
+        const orderId = currentPendingOrderId || pendingOrderIdRef.current;
+        if (orderId) {
+          router.push(`/pago-pendiente?order=${orderId}&method=card`);
+        } else {
+          router.push("/perfil");
+        }
+      };
+    }
+
     setErrorModal({
       isOpen: true,
-      message:
-        error.user_message ||
-        "Ocurrió un error al procesar el pago. Por favor, intenta con otra tarjeta o método de pago.",
+      message,
+      actionLabel,
+      onAction,
     });
     setProcessing(false);
     isProcessingRef.current = false;
@@ -838,80 +1032,35 @@ export default function Checkout() {
           throw new Error("Se requiere un email para crear la orden de Culqi");
         }
 
-        // 2a. CREAR ORDEN EN CULQI (Backend ya genera QR/CIP)
-        logger.log("🔄 [checkout.tsx] Llamando a createAsyncOrder...", {
+        const culqiOrderResponse = await createCulqiOrder(
           pendingOrderId,
-          method: "qr",
-          email,
-        });
-
-        const culqiOrderResponse = await createAsyncOrder(
-          pendingOrderId,
-          "qr", // Método (tu backend lo detecta)
           email,
         );
 
         logger.log(
-          "📦 [checkout.tsx] Respuesta de createAsyncOrder:",
-          JSON.stringify(culqiOrderResponse, null, 2),
+          "✅ [checkout.tsx] Orden Culqi generada:",
+          culqiOrderResponse,
         );
-
-        if (!culqiOrderResponse.success) {
-          throw new Error(
-            culqiOrderResponse.message || "No se pudo crear la orden de Culqi",
-          );
-        }
-
-        // 2b. VALIDAR RESPUESTA
-        if (!culqiOrderResponse.data?.culqiOrderId) {
-          logger.error(
-            "❌ [checkout.tsx] No se recibió culqiOrderId:",
-            culqiOrderResponse,
-          );
-          throw new Error("No se recibió el ID de orden de Culqi");
-        }
-
-        // 2c. DETECTAR MÉTODO Y GUARDAR DATOS
-        let detectedMethod: "qr" | "pagoefectivo" = "qr";
 
         if (
-          culqiOrderResponse.data.qr ||
-          culqiOrderResponse.data.paymentMethod === "qr"
+          culqiOrderResponse.success &&
+          culqiOrderResponse.data?.culqiOrderId
         ) {
-          detectedMethod = "qr";
-        } else if (culqiOrderResponse.data.paymentCode) {
-          detectedMethod = "pagoefectivo";
+          const culqiOrderId = culqiOrderResponse.data.culqiOrderId;
+          setCulqiOrderId(culqiOrderId);
+
+          openCulqiForAsyncOrder({
+            title: "Liwilu",
+            currency: culqiOrderResponse.data.currency || "PEN",
+            description: `Pedido ${pendingOrderId} - Liwilu Shop`,
+            amount: culqiOrderResponse.data.amount || total,
+            orderId: culqiOrderId,
+          });
+
+          setProcessing(false);
+        } else {
+          throw new Error("No se pudo generar el ID de orden de Culqi");
         }
-
-        const culqiOrderId = culqiOrderResponse.data.culqiOrderId;
-        logger.log(
-          "✅ [checkout.tsx] Orden creada con método:",
-          detectedMethod,
-        );
-
-        const storageData = {
-          orderId: culqiOrderId,
-          paymentMethod: detectedMethod,
-          pendingOrderId: pendingOrderId,
-          qr: culqiOrderResponse.data.qr,
-          paymentCode: culqiOrderResponse.data.paymentCode,
-          timestamp: Date.now(),
-        };
-        logger.log("💾 [checkout.tsx] Guardando en localStorage:", storageData);
-
-        localStorage.setItem(
-          "liwilu_last_culqi_order",
-          JSON.stringify(storageData),
-        );
-
-        // 2d. REDIRIGIR A PÁGINA DE PAGO PENDIENTE
-        // El backend ya generó el QR/CIP, no necesitamos modal
-        setProcessing(false);
-
-        const redirectUrl = `/pago-pendiente?order=${pendingOrderId}&method=${detectedMethod}`;
-        logger.log(`🔄 [checkout.tsx] Redirigiendo a: ${redirectUrl}`);
-
-        router.push(redirectUrl);
       }
     } catch (error: any) {
       logger.error("❌ Error en handleProcesarPago:", error);
@@ -945,6 +1094,8 @@ export default function Checkout() {
         onClose={() => setErrorModal({ ...errorModal, isOpen: false })}
         message={errorModal.message}
         title="Error en el pago"
+        actionLabel={errorModal.actionLabel}
+        onAction={errorModal.onAction}
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8 my-24 relative z-10">
@@ -1224,8 +1375,6 @@ export default function Checkout() {
                   )}
                 </button>
 
-                {/* Pagos Asíncronos (DESACTIVADO TEMPORALMENTE) */}
-                {/* 
                 <button
                   onClick={() => setMetodoPago("async")}
                   className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
@@ -1237,9 +1386,7 @@ export default function Checkout() {
                   <div className="flex items-center gap-3">
                     <FaQrcode className="text-2xl text-purple-600" />
                     <div className="text-left">
-                      <p className="font-medium">
-                        PagoEfectivo / QR
-                      </p>
+                      <p className="font-medium">PagoEfectivo / QR</p>
                       <p className="text-xs text-gray-500">
                         Generar código CIP o QR
                       </p>
@@ -1261,7 +1408,6 @@ export default function Checkout() {
                     </div>
                   )}
                 </button>
-                */}
               </div>
 
               {/* Error de método de pago */}

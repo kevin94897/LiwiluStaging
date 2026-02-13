@@ -147,6 +147,7 @@ declare global {
         culqi: () => void;
         Culqi3DS: {
             publicKey: string;
+            setKeys?: (publicKey: string) => void; // Método para configurar la clave pública
             options: {
                 showModal: boolean;
                 showIcon: boolean;
@@ -165,7 +166,7 @@ declare global {
                     email: string;
                 };
             };
-            generateDevice: () => string;
+            generateDevice: () => Promise<string>;
             token?: {
                 eci: string;
                 xid: string;
