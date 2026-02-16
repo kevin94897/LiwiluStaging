@@ -217,14 +217,9 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
 
                   {/* Botón */}
                   <motion.div variants={fadeInUp}>
-                    <Button
-                      asChild
-                      variant="primary"
-                      size="lg"
-                      className="md:!px-12"
-                    >
-                      <button>Ir a tienda</button>
-                    </Button>
+                    <Link href="/tienda" className="md:!px-12 bg-primary text-white py-2 md:py-4 px-6 rounded-full font-medium hover:bg-primary-light/80 transition-colors duration-300 md:text-lg text-base">
+                      Ir a tienda
+                    </Link>
                   </motion.div>
                 </div>
               </motion.div>

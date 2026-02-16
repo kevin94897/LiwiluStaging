@@ -620,6 +620,15 @@ export async function saveGuestPersonalData(data: any): Promise<{ success: boole
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+
+            // Especial handling for 404 - Carrito no encontrado
+            if (response.status === 404 || errorData.message?.toLowerCase().includes('carrito no encontrado')) {
+                const error = new Error('CARRITO_NO_ENCONTRADO');
+                (error as any).statusCode = 404;
+                (error as any).apiMessage = errorData.message;
+                throw error;
+            }
+
             throw new Error(errorData.message || `Error saving guest data: ${response.statusText}`);
         }
 
@@ -915,7 +924,7 @@ export async function payOrder(orderId: string | number, data: {
 /**
  * Crea una orden en Culqi desde el backend para pagos asíncronos
  */
-export async function createCulqiOrder(pendingOrderId: string | number, email: string): Promise<any> {
+export async function createCulqiOrder(pendingOrderId: string | number, email: string): Promise<CheckAsyncPaymentStatusResponse> {
     try {
         logger.log(`🔄 Creando orden Culqi para orden pendiente #${pendingOrderId}...`);
 
@@ -933,8 +942,24 @@ export async function createCulqiOrder(pendingOrderId: string | number, email: s
         const data = await response.json();
         logger.log('✅ Orden Culqi creada exitosamente:', data);
         return data;
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Error in createCulqiOrder:', error);
+
+        // Soportar recuperación en caso de conflicto 409 (la orden ya existe para este pendingOrderId)
+        if (error.message?.includes('409') || error.message?.toLowerCase().includes('ya existe')) {
+            logger.warn('⚠️ Conflicto 409: La orden ya existe en Culqi. Intentando recuperar...');
+            try {
+                // Importación dinámica o asumiendo que checkAsyncPaymentStatus está disponible en el mismo archivo
+                const statusResp = await checkAsyncPaymentStatus(pendingOrderId);
+                if (statusResp.success && statusResp.data?.culqiOrderId) {
+                    logger.log('✅ Orden recuperada exitosamente:', statusResp.data.culqiOrderId);
+                    return statusResp; // Retornamos el mismo formato que se espera
+                }
+            } catch (recoveryError) {
+                logger.error('❌ Error fatal al intentar recuperar orden Culqi:', recoveryError);
+            }
+        }
+
         throw error;
     }
 }
@@ -1197,11 +1222,9 @@ export async function createAsyncOrder(
 }
 
 /**
- * Check async payment status
+ * Check async payment status response interface
  */
-export async function checkAsyncPaymentStatus(
-    pendingOrderId: number | string
-): Promise<{
+export interface CheckAsyncPaymentStatusResponse {
     success: boolean;
     data?: {
         status: 'waiting' | 'paid' | 'expired' | 'failed';
@@ -1209,11 +1232,24 @@ export async function checkAsyncPaymentStatus(
         culqiOrderId?: string;
         orderId?: number; // Real order ID if paid
         total?: number;
+        currency?: string;
         createdAt?: string;
+        expirationDate?: string; // Fecha de expiración en formato ISO
+        paymentMethod?: 'qr' | 'pagoefectivo';
+        paymentMethodType?: string;
+        qr?: string;
+        paymentCode?: string;
         [key: string]: any;
     };
     message?: string;
-}> {
+}
+
+/**
+ * Check async payment status
+ */
+export async function checkAsyncPaymentStatus(
+    pendingOrderId: number | string
+): Promise<CheckAsyncPaymentStatusResponse> {
     try {
         const response = await apiGet(
             `/payments/pending-orders/${pendingOrderId}/async-status`,

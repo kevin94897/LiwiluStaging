@@ -1102,6 +1102,15 @@ export default function Carrito() {
         showToast("¡Datos guardados! Continúa con tu compra.", "success");
       } catch (error: any) {
         logger.error("Error saving guest data:", error);
+
+        if (error.message === 'CARRITO_NO_ENCONTRADO') {
+          await clearCart();
+          showToast("Tu sesión de carrito ha expirado. Por favor, intenta agregar tus productos nuevamente.", "error");
+          // Pequeño delay antes de recargar para que se vea el toast
+          setTimeout(() => window.location.reload(), 2000);
+          return;
+        }
+
         showToast(error.message || "Error al guardar datos", "error");
       }
     };
@@ -1382,6 +1391,13 @@ export default function Carrito() {
       return true;
     } catch (error: any) {
       logger.error("Error syncing checkout data:", error);
+
+      if (error.message === 'CARRITO_NO_ENCONTRADO') {
+        await clearCart();
+        showToast("Tu sesión de carrito ha expirado. Por favor, intenta agregar tus productos nuevamente.", "error");
+        setTimeout(() => window.location.reload(), 2000);
+        return false;
+      }
 
       // Parse API validation errors for logged-in users
       if (isLoggedIn && error.response) {

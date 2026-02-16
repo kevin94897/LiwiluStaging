@@ -176,8 +176,8 @@ export default function Contacto() {
               value={formData.celular}
               onChange={handleCelularChange}
               className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${errors.celular
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-white/70 focus:border-white"
+                ? "border-red-500 focus:border-red-500"
+                : "border-white/70 focus:border-white"
                 }`}
               placeholder="Numero de celular (9 dígitos)"
               maxLength={9}
@@ -197,8 +197,8 @@ export default function Contacto() {
               value={formData.documento}
               onChange={handleDocumentoChange}
               className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${errors.documento
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-white/70 focus:border-white"
+                ? "border-red-500 focus:border-red-500"
+                : "border-white/70 focus:border-white"
                 }`}
               placeholder="DNI / CE / RUC"
               maxLength={11}
@@ -220,8 +220,8 @@ export default function Contacto() {
                 checked={formData.aceptaPrivacidad}
                 onChange={handleChange}
                 className={`mt-1 accent-white ${errors.aceptaPrivacidad
-                    ? "outline outline-2 outline-red-300"
-                    : ""
+                  ? "outline outline-2 outline-red-300"
+                  : ""
                   }`}
               />
               <label
@@ -230,7 +230,7 @@ export default function Contacto() {
               >
                 He leído y acepto las{" "}
                 <a
-                  href="/privacidad"
+                  href="/politicas/politica-de-privacidad"
                   className="underline text-white hover:text-white/80"
                 >
                   políticas de privacidad

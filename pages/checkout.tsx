@@ -13,6 +13,7 @@ import Script from "next/script";
 import {
   openCulqiForTokenization,
   openCulqiForAsyncOrder,
+  getSelectedPaymentMethod, // Added this import
   configureCulqi,
   configureCulqi3DS,
   init3DSAuthentication,
@@ -22,7 +23,7 @@ import {
   CULQI_PUBLIC_KEY,
 } from "@/lib/culqi";
 import { showToast } from "@/lib/notifications";
-import { createOrder, payOrder, createCulqiOrder, getPendingOrderAttempt, getAsyncPaymentStatus } from "@/lib/cart";
+import { createOrder, payOrder, createCulqiOrder, getPendingOrderAttempt, checkAsyncPaymentStatus } from "@/lib/cart";
 import { useLocations } from "@/hooks/useLocations";
 import { useAuth } from "@/hooks/useAuth";
 import { consultaRUC } from "@/lib/general";
@@ -733,11 +734,24 @@ export default function Checkout() {
       }
     } catch (error: any) {
       logger.error("❌ Error en pago con tarjeta:", error);
-      handleCulqiError(error);
+
+      // ✅ MANEJO ESPECÍFICO DE CONFLICTO AWAITING_PAYMENT
+      const errorMsg = error.message || "";
+      if (errorMsg.includes("AWAITING_PAYMENT") || errorMsg.includes("ya está siendo procesado")) {
+        logger.warn("⚠️ Detectado conflicto con orden en estado AWAITING_PAYMENT");
+
+        // Informar al usuario sobre el conflicto de estados
+        handleCulqiError({
+          message: "Esta orden tiene un pago pendiente por procesar. Si acabas de usar Yape QR o PagoEfectivo, por favor espera unos minutos. Si deseas usar otro método, intenta nuevamente en un momento."
+        });
+      } else {
+        handleCulqiError(error);
+      }
     } finally {
       // SOLO resetear si NO entramos en flujo 3DS
       // Si entramos en 3DS, el reset lo hará handlePaymentWith3DS o el listener de cierre
       if (!payResponse?.requires3DS) {
+        setProcessing(false);
         isProcessingRef.current = false;
         processingToken.current = null;
       }
@@ -905,7 +919,9 @@ export default function Checkout() {
       onAction = () => {
         const orderId = currentPendingOrderId || pendingOrderIdRef.current;
         if (orderId) {
-          router.push(`/pago-pendiente?order=${orderId}&method=card`);
+          // Detectar el método capturado o usar 'card' como fallback
+          const capturedMethod = getSelectedPaymentMethod() || "card";
+          router.push(`/pago-pendiente?order=${orderId}&method=${capturedMethod}`);
         } else {
           router.push("/perfil");
         }
@@ -1109,6 +1125,22 @@ export default function Checkout() {
     }
   };
 
+  /**
+   * Verifica si una orden está expirada
+   * @param expirationDate - Fecha de expiración en formato ISO
+   * @returns true si la orden está expirada
+   */
+  const isOrderExpired = (expirationDate: string | null | undefined): boolean => {
+    if (!expirationDate) return false;
+    try {
+      const expDate = new Date(expirationDate);
+      const now = new Date();
+      return expDate <= now;
+    } catch {
+      return false;
+    }
+  };
+
   // ============================================
   // PROCESAMIENTO DE PAGO
   // ============================================
@@ -1124,8 +1156,9 @@ export default function Checkout() {
 
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
-    setProcessing(true);
-    setProcessingStage("creating-order");
+
+    // NOTA: Movido setProcessing(true) más adelante para cumplir con el requerimiento
+    // de no mostrar el overlay antes del modal de Culqi.
 
     try {
       // Verificar Culqi
@@ -1141,175 +1174,200 @@ export default function Checkout() {
           "La pasarela de pago no está lista. Por favor, recarga la página.",
           "error",
         );
+        isProcessingRef.current = false;
         return;
       }
 
       const email = await getEmailForPayment();
       if (!email) throw new Error("No se pudo obtener el email del usuario");
-      pendingEmailRef.current = email; // Guardar para callbacks de Culqi
+      pendingEmailRef.current = email;
 
-      // 1️⃣ CREAR ORDEN PENDIENTE EN BACKEND
-      logger.log("📝 Creando orden pendiente en backend...");
-      // Construcción del payload extendido
-      let invoicePayload: any = {
-        invoiceType: tipoComprobante === "boleta" ? "BOLETA" : "FACTURA",
-        invoiceData: {}
-      };
+      let pendingOrderId: number | null = null;
+      let shouldCreateNewOrder = false;
 
-      if (tipoComprobante === "boleta") {
-        invoicePayload.invoiceData = {
-          tipoDocumento: datosBoleta.tipoDocumento,
-          numeroDocumento: datosBoleta.numeroDocumento,
-          nombres: datosBoleta.nombres,
-          apellidos: datosBoleta.apellidos,
-          direccion: datosBoleta.direccion,
-          departamento: datosBoleta.departamento,
-          provincia: datosBoleta.provincia,
-          distrito: datosBoleta.distrito
-        };
+      // 0️⃣ VERIFICAR ÓRDENES PENDIENTES (Solo para ASYNC)
+      if (metodoPago === "async") {
+        logger.log("🔍 Buscando orden pendiente previa (AWAITING_PAYMENT)...");
+        try {
+          const pendingAttemptResp = await getPendingOrderAttempt("AWAITING_PAYMENT");
+
+          if (pendingAttemptResp.success && pendingAttemptResp.data?.pendingOrderId) {
+            const existingOrderId = pendingAttemptResp.data.pendingOrderId;
+            logger.log("✅ Orden pendiente encontrada:", existingOrderId);
+
+            // Verificar estado real de la orden encontrada
+            try {
+              const statusResp = await checkAsyncPaymentStatus(existingOrderId);
+              const status = statusResp.data?.status;
+              logger.log("📊 Estado de orden pendiente:", status);
+
+              if (status === 'paid' && statusResp.data?.orderId) {
+                logger.log("✅ La orden ya fue pagada, redirigiendo...");
+                await handlePaymentSuccess(statusResp.data.orderId);
+                return;
+              }
+
+              if (status === 'expired' || status === 'failed') {
+                logger.warn("⏰ Orden expirada o fallida, se creará nueva");
+                shouldCreateNewOrder = true;
+              } else if (status === 'waiting') {
+                if (isOrderExpired(statusResp.data?.expirationDate)) {
+                  logger.warn("⏰ Orden expirada por tiempo, se creará nueva");
+                  shouldCreateNewOrder = true;
+                } else {
+                  pendingOrderId = existingOrderId;
+                  logger.log("✅ Reutilizando orden válida:", pendingOrderId);
+                }
+              }
+            } catch (statusError) {
+              logger.error("❌ Error al verificar estado:", statusError);
+              shouldCreateNewOrder = true;
+            }
+          } else {
+            shouldCreateNewOrder = true;
+          }
+        } catch (e) {
+          logger.warn("⚠️ Error al buscar orden pendiente previa:", e);
+          shouldCreateNewOrder = true;
+        }
       } else {
-        invoicePayload.invoiceData = {
-          ruc: datosFactura.ruc,
-          razonSocial: datosFactura.razonSocial,
-          direccionFiscal: datosFactura.direccionFiscal,
-          departamento: datosFactura.departamento,
-          provincia: datosFactura.provincia,
-          distrito: datosFactura.distrito
+        // Para 'card', siempre crear nueva
+        shouldCreateNewOrder = true;
+      }
+
+      // 1️⃣ CREAR ORDEN SI ES NECESARIO
+      if (shouldCreateNewOrder || !pendingOrderId) {
+        logger.log("📝 Creando nueva orden pendiente...");
+
+        let invoicePayload: any = {
+          invoiceType: tipoComprobante === "boleta" ? "BOLETA" : "FACTURA",
+          invoiceData: tipoComprobante === "boleta" ? {
+            tipoDocumento: datosBoleta.tipoDocumento,
+            numeroDocumento: datosBoleta.numeroDocumento,
+            nombres: datosBoleta.nombres,
+            apellidos: datosBoleta.apellidos,
+            direccion: datosBoleta.direccion,
+            departamento: datosBoleta.departamento,
+            provincia: datosBoleta.provincia,
+            distrito: datosBoleta.distrito
+          } : {
+            ruc: datosFactura.ruc,
+            razonSocial: datosFactura.razonSocial,
+            direccionFiscal: datosFactura.direccionFiscal,
+            departamento: datosFactura.departamento,
+            provincia: datosFactura.provincia,
+            distrito: datosFactura.distrito
+          }
         };
+
+        const orderResponse = await createOrder(invoicePayload);
+        if (!orderResponse.success || !orderResponse.data?.pendingOrderId) {
+          throw new Error(orderResponse.message || "Error al crear la orden");
+        }
+        pendingOrderId = orderResponse.data.pendingOrderId;
+        logger.log("✅ Nueva orden creada:", pendingOrderId);
       }
 
-      logger.log("📝 Creando orden con payload:", invoicePayload);
-
-      const orderResponse = await createOrder(invoicePayload);
-      logger.log("📦 Respuesta de createOrder:", orderResponse);
-
-      if (!orderResponse.success || !orderResponse.data?.pendingOrderId) {
-        throw new Error(orderResponse.message || "Error al crear la orden");
-      }
-
-      const pendingOrderId = orderResponse.data.pendingOrderId;
       setCurrentPendingOrderId(pendingOrderId);
       pendingOrderIdRef.current = pendingOrderId;
-      orderTotalRef.current = totals.total; // Guardamos el total para validación
+      orderTotalRef.current = totals.total;
 
-      // 2️⃣ DECIDIR FLUJO SEGÚN MÉTODO DE PAGO
+      // 2️⃣ ABRIR MODAL O PROCESAR ASYNC
       if (metodoPago === "card") {
-        // ═══════════════════════════════════════
-        // FLUJO TARJETA
-        // ═══════════════════════════════════════
-        logger.log("💳 Iniciando pago con tarjeta...");
-        setProcessingStage("processing-payment");
-        const amountInCents = Math.round(totals.total * 100);
-
-        // Guardar contexto preventivamente antes de abrir Culqi
-        save3DSContext({
-          email,
-          token: "", // Aún no tenemos token
-          pendingOrderId,
-        });
+        logger.log("💳 Iniciando tokenización con Culqi...");
+        save3DSContext({ email, token: "", pendingOrderId: pendingOrderId! });
 
         openCulqiForTokenization({
           title: "Liwilu",
           currency: "PEN",
-          description: `Pedido ${pendingOrderId} - Liwilu Shop`,
-          amount: amountInCents,
+          description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
+          amount: totals.total,
         });
 
-        // No cerramos el processing overlay aquí, esperamos al callback de Culqi
-        // o a que el usuario cierre el modal (manejado por listener)
+        // No mostramos overlay aquí, se mostrará en handleCulqiToken (etapa completing)
       } else if (metodoPago === "async") {
-        // ═══════════════════════════════════════
-        // FLUJO ASÍNCRONO - QR/PAGOEFECTIVO
-        // ═══════════════════════════════════════
         logger.log("📱 [checkout.tsx] Iniciando pago asíncrono...");
-        setProcessingStage("completing");
-
-        let effectivePendingOrderId = pendingOrderId;
+        // setProcessing(true); // Podríamos mostrarlo aquí brevemente si getAsyncPaymentStatus es lento
+        // setProcessingStage("completing");
 
         try {
-          // Step 1: Check for existing pending orders
-          const pendingAttemptResp = await getPendingOrderAttempt("AWAITING_PAYMENT");
-          if (
-            pendingAttemptResp.success &&
-            pendingAttemptResp.data?.pendingOrderId
-          ) {
-            logger.log(
-              "🔄 Usando orden pendiente encontrada:",
-              pendingAttemptResp.data.pendingOrderId,
-            );
-            effectivePendingOrderId = pendingAttemptResp.data.pendingOrderId;
-            setCurrentPendingOrderId(effectivePendingOrderId);
-            pendingOrderIdRef.current = effectivePendingOrderId;
+          // Obtener estado actual y culqiOrderId
+          const asyncStatusResp = await checkAsyncPaymentStatus(pendingOrderId!);
+
+          if (asyncStatusResp.success && asyncStatusResp.data) {
+            const { status, culqiOrderId } = asyncStatusResp.data;
+
+            // Ya pagada (doble verificación por seguridad)
+            if (status === 'paid' && asyncStatusResp.data.orderId) {
+              await handlePaymentSuccess(asyncStatusResp.data.orderId);
+              return;
+            }
+
+            // Reutilizar Culqi Order existente
+            if (culqiOrderId && (status === 'waiting' || !status)) {
+              if (isOrderExpired(asyncStatusResp.data.expirationDate)) {
+                logger.warn("⏰ Culqi Order expirado, se creará uno nuevo");
+                throw new Error('EXPIRED_CULQI_ORDER');
+              }
+
+              logger.log("✅ Usando Culqi Order existente:", culqiOrderId);
+              setCulqiOrderId(culqiOrderId);
+              openCulqiForAsyncOrder({
+                title: "Liwilu",
+                currency: (asyncStatusResp.data.currency as "PEN" | "USD") || "PEN",
+                description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
+                amount: asyncStatusResp.data.total || totals.total,
+                orderId: culqiOrderId,
+              });
+              isProcessingRef.current = false;
+              return;
+            }
           }
-        } catch (e) {
-          logger.warn(
-            "⚠️ No se pudo recuperar orden previa, usando la recién creada",
-            e,
-          );
-        }
 
-        // Step 2: Get Culqi Order ID
-        const culqiOrderResponse = await getAsyncPaymentStatus(
-          effectivePendingOrderId,
-        );
+          // Crear nuevo Culqi Order
+          logger.log("🔄 Creando nuevo Culqi Order...");
+          const createCulqiResp = await createCulqiOrder(pendingOrderId!, email);
 
-        logger.log(
-          "✅ [checkout.tsx] Respuesta de estado asíncrono:",
-          culqiOrderResponse,
-        );
-
-        if (
-          culqiOrderResponse.success &&
-          culqiOrderResponse.data?.culqiOrderId
-        ) {
-          const culqiOrderId = culqiOrderResponse.data.culqiOrderId;
-          setCulqiOrderId(culqiOrderId);
-
-          openCulqiForAsyncOrder({
-            title: "Liwilu",
-            currency: culqiOrderResponse.data.currency || "PEN",
-            description: `Pedido ${effectivePendingOrderId} - Liwilu Shop`,
-            amount:
-              culqiOrderResponse.data.total ||
-              culqiOrderResponse.data.amount ||
-              Math.round(totals.total * 100),
-            orderId: culqiOrderId,
-          });
-
-          setProcessing(false);
-        } else {
-          // Fallback a creación manual si es necesario (según flujo previo)
-          logger.log("🔄 Intentando generar orden Culqi manualmente...");
-          const manualCulqiOrder = await createCulqiOrder(
-            effectivePendingOrderId,
-            email,
-          );
-
-          if (manualCulqiOrder.success && manualCulqiOrder.data?.culqiOrderId) {
-            const culqiOrderId = manualCulqiOrder.data.culqiOrderId;
-            setCulqiOrderId(culqiOrderId);
-
+          if (createCulqiResp.success && createCulqiResp.data?.culqiOrderId) {
+            const newCulqiOrderId = createCulqiResp.data.culqiOrderId;
+            logger.log("✅ Culqi Order creado:", newCulqiOrderId);
+            setCulqiOrderId(newCulqiOrderId);
             openCulqiForAsyncOrder({
               title: "Liwilu",
-              currency: manualCulqiOrder.data.currency || "PEN",
-              description: `Pedido ${effectivePendingOrderId} - Liwilu Shop`,
-              amount:
-                manualCulqiOrder.data.amount || Math.round(totals.total * 100),
-              orderId: culqiOrderId,
+              currency: (createCulqiResp.data.currency as "PEN" | "USD") || "PEN",
+              description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
+              amount: createCulqiResp.data.amount || totals.total,
+              orderId: newCulqiOrderId,
             });
-
-            setProcessing(false);
           } else {
-            throw new Error("No se pudo obtener el ID de orden de Culqi");
+            throw new Error(createCulqiResp.message || "No se pudo crear la orden en Culqi");
           }
+        } catch (asyncError: any) {
+          if (asyncError.message === 'EXPIRED_CULQI_ORDER' || asyncError.message?.includes('409')) {
+            // Reintentar creación forzada o recuperación en caso de conflicto
+            const retryResp = await createCulqiOrder(pendingOrderId!, email);
+            if (retryResp.success && retryResp.data?.culqiOrderId) {
+              setCulqiOrderId(retryResp.data.culqiOrderId);
+              openCulqiForAsyncOrder({
+                title: "Liwilu",
+                currency: (retryResp.data.currency as "PEN" | "USD") || "PEN",
+                description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
+                amount: retryResp.data.amount || Math.round(totals.total * 100),
+                orderId: retryResp.data.culqiOrderId,
+              });
+            } else {
+              throw asyncError;
+            }
+          } else {
+            throw asyncError;
+          }
+        } finally {
+          isProcessingRef.current = false;
         }
       }
     } catch (error: any) {
       logger.error("❌ Error en handleProcesarPago:", error);
-      showToast(
-        error.message || "Ocurrió un error al procesar tu solicitud",
-        "error",
-      );
+      showToast(error.message || "Ocurrió un error al procesar tu solicitud", "error");
       setProcessing(false);
       isProcessingRef.current = false;
     }

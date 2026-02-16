@@ -480,7 +480,7 @@ export const configureCulqi3DS = (): void => {
 
 export interface Culqi3DSInitOptions {
     token: string;
-    amount: number;
+    amount: number; // Monto en CÉNTIMOS (ej: 1000 para 10.00)
     email: string;
 }
 
