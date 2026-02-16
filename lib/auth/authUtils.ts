@@ -41,7 +41,7 @@ export const mapApiUserToUser = (userData: any): User | null => {
         if (upperType === 'DNI') return 'DNI';
         if (upperType === 'RUC') return 'RUC';
         if (upperType === 'CE' || upperType === 'CARNET_EXTRANJERIA' || upperType === 'CARNET DE EXTRANJERIA') return 'CE';
-        if (upperType === 'PASAPORTE') return 'Pasaporte';
+        if (upperType === 'PASAPORTE') return 'PASAPORTE';
         return type;
     };
 

@@ -1019,7 +1019,7 @@ export default function Carrito() {
       name === "telefonoOpcional"
     ) {
       // Allow letters for Pasaporte
-      if (name === "numeroDocumento" && guestData.tipoDocumento === "Pasaporte") {
+      if (name === "numeroDocumento" && guestData.tipoDocumento === "PASAPORTE") {
         value = value.replace(/[^a-zA-Z0-9]/g, "");
       } else {
         value = value.replace(/\D/g, "");
@@ -1030,7 +1030,7 @@ export default function Carrito() {
         maxLength =
           guestData.tipoDocumento === "RUC"
             ? 11
-            : guestData.tipoDocumento === "DNI" || guestData.tipoDocumento === "Pasaporte"
+            : guestData.tipoDocumento === "DNI" || guestData.tipoDocumento === "PASAPORTE"
               ? 8
               : 12; // CE
       } else if (name === "celular" || name === "telefonoOpcional") {

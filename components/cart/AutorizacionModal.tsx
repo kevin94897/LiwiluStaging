@@ -92,7 +92,7 @@ export default function AutorizacionModal({
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     let value = e.target.value;
-    if (formData.documentType === "Pasaporte") {
+    if (formData.documentType === "PASAPORTE") {
       value = value.replace(/[^a-zA-Z0-9]/g, "");
     } else {
       value = value.replace(/\D/g, "");
@@ -101,7 +101,7 @@ export default function AutorizacionModal({
     const maxLength =
       formData.documentType === "RUC"
         ? 11
-        : formData.documentType === "DNI" || formData.documentType === "Pasaporte"
+        : formData.documentType === "DNI" || formData.documentType === "PASAPORTE"
           ? 8
           : 12;
 
@@ -254,7 +254,7 @@ export default function AutorizacionModal({
                   <option value="DNI">DNI</option>
                   {/* <option value="RUC">RUC</option> */}
                   <option value="CE">Carnet de Extranjería</option>
-                  <option value="Pasaporte">Pasaporte</option>
+                  <option value="PASAPORTE">Pasaporte</option>
                 </Select>
               </div>
 
@@ -272,7 +272,7 @@ export default function AutorizacionModal({
                     placeholder={
                       formData.documentType === "RUC"
                         ? "20100000001"
-                        : formData.documentType === "Pasaporte"
+                        : formData.documentType === "PASAPORTE"
                           ? "A1234567"
                           : "12345678"
                     }
@@ -280,12 +280,12 @@ export default function AutorizacionModal({
                       formData.documentType === "RUC"
                         ? 11
                         : formData.documentType === "DNI" ||
-                          formData.documentType === "Pasaporte"
+                          formData.documentType === "PASAPORTE"
                           ? 8
                           : 12
                     }
                     inputMode={
-                      formData.documentType === "Pasaporte" ? "text" : "numeric"
+                      formData.documentType === "PASAPORTE" ? "text" : "numeric"
                     }
                     className="pr-12"
                     error={errors.documentNumber}

@@ -394,7 +394,21 @@ export default function PagoPendiente() {
                 <div className="text-sm text-blue-800">
                   <p className="font-medium mb-1">Información importante</p>
                   <ul className="space-y-1 text-xs">
-                    <li>• El QR expira en 24 horas</li>
+                    <li>
+                      • El {method === "qr" ? "QR" : "código"} expira el{" "}
+                      {orderData.expirationDate ? (
+                        new Date(orderData.expirationDate).toLocaleString('es-PE', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })
+                      ) : (
+                        "en 24 horas"
+                      )}
+                    </li>
                     <li>
                       • Una vez realizado el pago, serás redirigido
                       automáticamente
@@ -438,7 +452,7 @@ export default function PagoPendiente() {
                 <p className="text-sm text-gray-600 mb-2 uppercase tracking-wide">
                   Código CIP:
                 </p>
-                <p className="text-3xl md:text-5xl font-bold text-primary tracking-wider mb-2">
+                <p className="text-3xl md:text-5xl font-bold text-primary tracking-wider mb-4">
                   {orderData.paymentCode}
                 </p>
                 <button
@@ -446,8 +460,9 @@ export default function PagoPendiente() {
                     navigator.clipboard.writeText(orderData.paymentCode);
                     showToast("Código copiado al portapapeles", "success");
                   }}
-                  className="text-sm text-primary hover:text-primary/80 font-medium"
+                  className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-2 w-full justify-center"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" width="24px" height="24px" viewBox="0 0 24 24"><path d="M9 2h7v4h4v10h-3v1h4V4.6L17.4 1H8v5h1zm8 0h.31L20 4.69V5h-3zM5 19h7v1H5zm-2 4h13V10.6L12.4 7H3zm9-15h.31L15 10.69V11h-3zM4 8h7v4h4v10H4zm1 5h9v1H5zm4 3h5v1H5v-1z" /><path fill="none" d="M0 0h24v24H0z" /></svg>
                   Copiar código
                 </button>
               </div>
@@ -465,13 +480,15 @@ export default function PagoPendiente() {
                   <span className="text-orange-500 text-lg">⏰</span>
                   <p>
                     Este código expira el{" "}
-                    {new Date(orderData.expirationDate).toLocaleDateString(
+                    {new Date(orderData.expirationDate).toLocaleString(
                       "es-PE",
                       {
-                        weekday: "long",
+                        day: "2-digit",
+                        month: "2-digit",
                         year: "numeric",
-                        month: "long",
-                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
                       },
                     )}
                   </p>

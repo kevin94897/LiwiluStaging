@@ -36,7 +36,7 @@ export const autorizacionSchema = z.object({
                 path: ["documentNumber"],
             });
         }
-    } else if (data.documentType === 'Pasaporte') {
+    } else if (data.documentType === 'PASAPORTE') {
         if (!PASSPORT_REGEX.test(data.documentNumber)) {
 
             ctx.addIssue({

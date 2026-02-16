@@ -68,7 +68,7 @@ export default function GuestDataSummary({
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
 
-    if (formData.documentType === "Pasaporte") {
+    if (formData.documentType === "PASAPORTE") {
       value = value.replace(/[^a-zA-Z0-9]/g, "");
     } else {
       value = value.replace(/\D/g, "");
@@ -77,7 +77,7 @@ export default function GuestDataSummary({
     const maxLength =
       formData.documentType === "RUC"
         ? 11
-        : formData.documentType === "DNI" || formData.documentType === "Pasaporte"
+        : formData.documentType === "DNI" || formData.documentType === "PASAPORTE"
           ? 8
           : 12; // CE max 12
 
@@ -271,7 +271,7 @@ export default function GuestDataSummary({
               <option value="DNI">DNI</option>
               {/* <option value="RUC">RUC</option> */}
               <option value="CE">Carnet de Extranjería</option>
-              <option value="Pasaporte">Pasaporte</option>
+              <option value="PASAPORTE">Pasaporte</option>
             </Select>
             <Input
               label="Número de documento *"
@@ -286,19 +286,20 @@ export default function GuestDataSummary({
               placeholder={
                 formData.documentType === "RUC"
                   ? "20100000001"
-                  : formData.documentType === "Pasaporte"
+                  : formData.documentType === "PASAPORTE"
                     ? "A1234567"
                     : "74218601"
               }
               maxLength={
                 formData.documentType === "RUC"
                   ? 11
-                  : formData.documentType === "DNI" || formData.documentType === "Pasaporte"
+                  : formData.documentType === "DNI" ||
+                    formData.documentType === "PASAPORTE"
                     ? 8
                     : 12
               }
               inputMode={
-                formData.documentType === "Pasaporte" ? "text" : "numeric"
+                formData.documentType === "PASAPORTE" ? "text" : "numeric"
               }
             />
           </div>

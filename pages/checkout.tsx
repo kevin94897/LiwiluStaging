@@ -1412,7 +1412,7 @@ export default function Checkout() {
                       >
                         <option value="DNI">DNI</option>
                         <option value="CE">Carnet de Extranjería</option>
-                        <option value="Pasaporte">Pasaporte</option>
+                        <option value="PASAPORTE">Pasaporte</option>
                       </Select>
                     </div>
                     <div>
@@ -1422,7 +1422,7 @@ export default function Checkout() {
                         value={datosBoleta.numeroDocumento}
                         onChange={(e) => {
                           let value = e.target.value;
-                          if (datosBoleta.tipoDocumento === "Pasaporte") {
+                          if (datosBoleta.tipoDocumento === "PASAPORTE") {
                             value = value.replace(/[^a-zA-Z0-9]/g, "");
                           } else {
                             value = value.replace(/\D/g, "");
@@ -1430,18 +1430,18 @@ export default function Checkout() {
                           setDatosBoleta({ ...datosBoleta, numeroDocumento: value });
                         }}
                         placeholder={
-                          datosBoleta.tipoDocumento === "Pasaporte"
+                          datosBoleta.tipoDocumento === "PASAPORTE"
                             ? "A1234567"
                             : "12345678"
                         }
                         maxLength={
                           datosBoleta.tipoDocumento === "DNI" ||
-                            datosBoleta.tipoDocumento === "Pasaporte"
+                            datosBoleta.tipoDocumento === "PASAPORTE"
                             ? 8
                             : 12
                         }
                         inputMode={
-                          datosBoleta.tipoDocumento === "Pasaporte"
+                          datosBoleta.tipoDocumento === "PASAPORTE"
                             ? "text"
                             : "numeric"
                         }

@@ -169,7 +169,7 @@ export default function GuestDataForm({
               <option value="DNI">DNI</option>
               {/* <option value="RUC">RUC</option> */}
               <option value="CE">Carnet de Extranjería</option>
-              <option value="Pasaporte">Pasaporte</option>
+              <option value="PASAPORTE">Pasaporte</option>
             </Select>
           </div>
 
@@ -184,7 +184,7 @@ export default function GuestDataForm({
                 placeholder={
                   guestData.tipoDocumento === "RUC"
                     ? "20100000001"
-                    : guestData.tipoDocumento === "Pasaporte"
+                    : guestData.tipoDocumento === "PASAPORTE"
                       ? "A1234567"
                       : "74218601"
                 }
@@ -192,13 +192,13 @@ export default function GuestDataForm({
                   guestData.tipoDocumento === "RUC"
                     ? 11
                     : guestData.tipoDocumento === "DNI" ||
-                      guestData.tipoDocumento === "Pasaporte"
+                      guestData.tipoDocumento === "PASAPORTE"
                       ? 8
                       : 12
                 }
                 error={guestErrors.numeroDocumento}
                 inputMode={
-                  guestData.tipoDocumento === "Pasaporte" ? "text" : "numeric"
+                  guestData.tipoDocumento === "PASAPORTE" ? "text" : "numeric"
                 }
                 className="pr-12"
               />

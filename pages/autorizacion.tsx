@@ -124,7 +124,7 @@ export default function AutorizarRetiroPage() {
                 <option value="DNI">DNI</option>
                 {/* <option value="RUC">RUC</option> */}
                 <option value="CE">Carnet de Extranjería</option>
-                <option value="Pasaporte">Pasaporte</option>
+                <option value="PASAPORTE">Pasaporte</option>
               </Select>
             </div>
 

@@ -16,7 +16,7 @@ export const carritoRegisterSchema = z.object({
         .or(z.literal("")),
 
 
-    tipoDocumento: z.enum(['DNI', 'CE', 'Pasaporte', 'RUC'], {
+    tipoDocumento: z.enum(['DNI', 'CE', 'PASAPORTE', 'RUC'], {
         message: "Seleccione un tipo de documento"
     }),
 
@@ -84,7 +84,7 @@ export const carritoRegisterSchema = z.object({
                 path: ["numeroDocumento"],
             });
         }
-    } else if (data.tipoDocumento === 'Pasaporte') {
+    } else if (data.tipoDocumento === 'PASAPORTE') {
         if (!PASSPORT_REGEX.test(data.numeroDocumento)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,

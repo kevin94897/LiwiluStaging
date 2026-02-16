@@ -101,7 +101,7 @@ export default function MisDatos() {
     let value = e.target.value;
 
     // Solo restringir a números si NO es pasaporte
-    if (formData.tipoDocumento !== "Pasaporte") {
+    if (formData.tipoDocumento !== "PASAPORTE") {
       value = value.replace(/\D/g, "");
     } else {
       // Para pasaporte, permitir letras y números, restringir otros símbolos si se desea,
@@ -116,7 +116,7 @@ export default function MisDatos() {
         ? 11
         : formData.tipoDocumento === "DNI"
           ? 8
-          : formData.tipoDocumento === "Pasaporte"
+          : formData.tipoDocumento === "PASAPORTE"
             ? 8
             : 12; // CE up to 12
 
@@ -446,7 +446,7 @@ export default function MisDatos() {
                               <option value="DNI">DNI</option>
                               {/* <option value="RUC">RUC</option> */}
                               <option value="CE">Carnet de Extranjería</option>
-                              <option value="Pasaporte">Pasaporte</option>
+                              <option value="PASAPORTE">Pasaporte</option>
                             </Select>
                           </div>
 
@@ -461,7 +461,7 @@ export default function MisDatos() {
                               placeholder={
                                 formData.tipoDocumento === "RUC"
                                   ? "20100000001"
-                                  : formData.tipoDocumento === "Pasaporte"
+                                  : formData.tipoDocumento === "PASAPORTE"
                                     ? "A1234567" // Example placeholder
                                     : "74218601"
                               }
@@ -469,12 +469,12 @@ export default function MisDatos() {
                                 formData.tipoDocumento === "RUC"
                                   ? 11
                                   : formData.tipoDocumento === "DNI" ||
-                                    formData.tipoDocumento === "Pasaporte"
+                                    formData.tipoDocumento === "PASAPORTE"
                                     ? 8
                                     : 12
                               }
                               inputMode={
-                                formData.tipoDocumento === "Pasaporte"
+                                formData.tipoDocumento === "PASAPORTE"
                                   ? "text"
                                   : "numeric"
                               }

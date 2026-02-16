@@ -62,7 +62,7 @@ export const misDatosSchema = z.object({
                 path: ["numeroDocumento"],
             });
         }
-    } else if (data.tipoDocumento === 'Pasaporte') {
+    } else if (data.tipoDocumento === 'PASAPORTE') {
         if (!PASSPORT_REGEX.test(data.numeroDocumento)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
@@ -71,7 +71,7 @@ export const misDatosSchema = z.object({
             });
         }
     }
-    
+
     // Validate apellido is required for non-RUC document types
     if (data.tipoDocumento !== 'RUC') {
         if (!data.apellido || data.apellido.trim() === '') {
