@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PERU_LOCATIONS, DEPARTAMENTOS } from '@/lib/locations';
+import { PERU_LOCATIONS, DEPARTAMENTOS } from '@/lib/locationsComplete';
 
 export function useLocations(initialDept = '', initialProv = '', initialDist = '') {
     const [selectedDept, setSelectedDept] = useState(initialDept);

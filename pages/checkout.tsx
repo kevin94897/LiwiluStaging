@@ -22,7 +22,8 @@ import {
   CULQI_PUBLIC_KEY,
 } from "@/lib/culqi";
 import { showToast } from "@/lib/notifications";
-import { createOrder, payOrder, createCulqiOrder } from "@/lib/cart";
+import { createOrder, payOrder, createCulqiOrder, getPendingOrderAttempt, getAsyncPaymentStatus } from "@/lib/cart";
+import { useLocations } from "@/hooks/useLocations";
 import { useAuth } from "@/hooks/useAuth";
 import { consultaRUC } from "@/lib/general";
 import Select from "@/components/ui/Select";
@@ -47,20 +48,114 @@ export default function Checkout() {
   // ============================================
   // ESTADO DEL FORMULARIO
   // ============================================
-  const [tipoComprobante, setTipoComprobante] =
-    useState<TipoComprobante>("boleta");
+  const [tipoComprobante, setTipoComprobante] = useState<TipoComprobante>("boleta");
   const [metodoPago, setMetodoPago] = useState<MetodoPago>(null);
 
-  // Datos para Boleta
-  const [tipoDocumentoBoleta, setTipoDocumentoBoleta] = useState("DNI");
-  const [datosBoletaRUC, setDatosBoletaRUC] = useState("");
+  // Datos para Boleta - Expandido
+  const [datosBoleta, setDatosBoleta] = useState({
+    tipoDocumento: "DNI",
+    numeroDocumento: "",
+    nombres: "",
+    apellidos: "",
+    direccion: "",
+    departamento: "Lima",
+    provincia: "Lima",
+    distrito: "",
+  });
 
-  // Datos para Factura
+  // Datos para Factura - Expandido
   const [datosFactura, setDatosFactura] = useState({
     ruc: "",
     razonSocial: "",
     direccionFiscal: "",
+    departamento: "Lima",
+    provincia: "Lima",
+    distrito: "",
   });
+
+  // Hooks de ubicación para Boleta
+  const boletaLocations = useLocations(
+    datosBoleta.departamento,
+    datosBoleta.provincia,
+    datosBoleta.distrito
+  );
+
+  // Hooks de ubicación para Factura
+  const facturaLocations = useLocations(
+    datosFactura.departamento,
+    datosFactura.provincia,
+    datosFactura.distrito
+  );
+
+  // Pre-fill data logic
+  useEffect(() => {
+    // 1. Intentar cargar datos de envío (delivery) para pre-llenar dirección
+    const savedShippingAddress = localStorage.getItem("liwilu_direccionEnvio");
+    let shippingData: any = {};
+    if (savedShippingAddress) {
+      try {
+        shippingData = JSON.parse(savedShippingAddress);
+      } catch (e) {
+        console.error("Error parsing shipping address", e);
+      }
+    }
+
+    // 2. Pre-llenar Boleta
+    // Prioridad: Usuario Autenticado -> Guest Data -> Shipping Data
+    let initialBoleta = { ...datosBoleta };
+
+    // Nombre y Apellido
+    if (isAuthenticated && user) {
+      initialBoleta.nombres = user.firstName || "";
+      initialBoleta.apellidos = user.lastName || "";
+      // Si el usuario tiene documento, usarlo
+      if (user.documentType && user.documentNumber) {
+        initialBoleta.tipoDocumento = user.documentType;
+        initialBoleta.numeroDocumento = user.documentNumber;
+      }
+    } else {
+      const guestDataRaw = localStorage.getItem("liwilu_guestData");
+      if (guestDataRaw) {
+        try {
+          const guestData = JSON.parse(guestDataRaw);
+          initialBoleta.nombres = guestData.nombre || "";
+          initialBoleta.apellidos = guestData.apellido || "";
+          if (guestData.tipoDocumento && guestData.numeroDocumento) {
+            initialBoleta.tipoDocumento = guestData.tipoDocumento;
+            initialBoleta.numeroDocumento = guestData.numeroDocumento;
+          }
+        } catch (e) { console.error(e) }
+      }
+    }
+
+    // Dirección (usar la de envío si existe, sino la del usuario si tuviera (pero auth user no tiene address explicita en User))
+    // Usamos shippingData como fuente principal de dirección "por defecto"
+    if (shippingData.calle) {
+      initialBoleta.direccion = shippingData.calle + (shippingData.numeroDptoPiso ? ` ${shippingData.numeroDptoPiso}` : "");
+      // Ubicación
+      if (shippingData.departamento && shippingData.provincia && shippingData.distrito) {
+        initialBoleta.departamento = shippingData.departamento;
+        initialBoleta.provincia = shippingData.provincia;
+        initialBoleta.distrito = shippingData.distrito;
+
+        // Actualizar hooks de location
+        boletaLocations.setLocationValues(shippingData.departamento, shippingData.provincia, shippingData.distrito);
+      }
+    }
+
+    setDatosBoleta(initialBoleta);
+
+    // 3. Pre-llenar Factura (Ubicación)
+    if (shippingData.departamento && shippingData.provincia && shippingData.distrito) {
+      setDatosFactura(prev => ({
+        ...prev,
+        departamento: shippingData.departamento,
+        provincia: shippingData.provincia,
+        distrito: shippingData.distrito
+      }));
+      facturaLocations.setLocationValues(shippingData.departamento, shippingData.provincia, shippingData.distrito);
+    }
+  }, [isAuthenticated, user]);
 
   // ============================================
   // ESTADO DE PROCESAMIENTO
@@ -925,34 +1020,43 @@ export default function Checkout() {
     const newErrors: Record<string, string> = {};
 
     if (tipoComprobante === "boleta") {
-      if (!datosBoletaRUC) {
+      if (!datosBoleta.numeroDocumento) {
         newErrors.rucBoleta = "El número de documento es obligatorio";
       } else {
-        if (tipoDocumentoBoleta === "DNI" && !/^\d{8}$/.test(datosBoletaRUC)) {
-          newErrors.rucBoleta = "Ingresa un DNI válido (8 números)";
+        if (datosBoleta.tipoDocumento === "DNI" && datosBoleta.numeroDocumento.length !== 8) {
+          newErrors.rucBoleta = "El DNI debe tener 8 dígitos";
         } else if (
-          tipoDocumentoBoleta === "CE" &&
-          (datosBoletaRUC.length < 6 || datosBoletaRUC.length > 12)
+          datosBoleta.tipoDocumento === "CE" &&
+          (datosBoleta.numeroDocumento.length < 6 || datosBoleta.numeroDocumento.length > 12)
         ) {
           newErrors.rucBoleta = "El CE debe tener entre 6 y 12 caracteres";
         } else if (
-          tipoDocumentoBoleta === "Pasaporte" &&
-          !/^[a-zA-Z][0-9]{7}$/.test(datosBoletaRUC)
+          datosBoleta.tipoDocumento === "Pasaporte" &&
+          !/^[a-zA-Z][0-9]{7}$/.test(datosBoleta.numeroDocumento)
         ) {
           newErrors.rucBoleta = "El pasaporte debe tener 1 letra y 7 números";
         }
       }
+      if (!datosBoleta.nombres) newErrors.nombres = "El nombre es obligatorio";
+      if (!datosBoleta.apellidos) newErrors.apellidos = "El apellido es obligatorio";
+      if (!datosBoleta.direccion) newErrors.direccion = "La dirección es obligatoria";
+      if (!datosBoleta.distrito) newErrors.distrito = "El distrito es obligatorio";
+
     } else {
-      if (!datosFactura.ruc || !validateRUC(datosFactura.ruc)) {
-        newErrors.rucFactura =
-          "El RUC debe tener 11 números y empezar con 10, 15 o 20";
+      // Factura
+      if (!datosFactura.ruc || datosFactura.ruc.length !== 11) {
+        newErrors.rucFactura = "El RUC debe tener 11 dígitos";
+      } else if (!validateRUC(datosFactura.ruc)) {
+        newErrors.rucFactura = "RUC inválido";
       }
+
       if (!datosFactura.razonSocial) {
-        newErrors.razonSocial = "Ingresa la razón social";
+        newErrors.razonSocial = "La razón social es obligatoria";
       }
       if (!datosFactura.direccionFiscal) {
-        newErrors.direccionFiscal = "Ingresa la dirección fiscal";
+        newErrors.direccionFiscal = "La dirección fiscal es obligatoria";
       }
+      if (!datosFactura.distrito) newErrors.facturaDistrito = "El distrito es obligatorio";
     }
 
     if (!metodoPago) {
@@ -983,7 +1087,16 @@ export default function Checkout() {
           ...datosFactura,
           razonSocial: response.data.nombre_o_razon_social,
           direccionFiscal: response.data.direccion_completa,
+          departamento: response.data.departamento || datosFactura.departamento, // Usar data de RUC si existe, sino mantener la pre-llenada
+          provincia: response.data.provincia || datosFactura.provincia,
+          distrito: response.data.distrito || datosFactura.distrito,
         });
+
+        // Actualizar location hooks si la API de RUC devolvió ubicación
+        if (response.data.departamento && response.data.provincia && response.data.distrito) {
+          facturaLocations.setLocationValues(response.data.departamento, response.data.provincia, response.data.distrito);
+        }
+
         setRucConsulted(true);
         showToast("RUC consultado con éxito", "success");
       } else {
@@ -1009,6 +1122,11 @@ export default function Checkout() {
       return;
     }
 
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    setProcessing(true);
+    setProcessingStage("creating-order");
+
     try {
       // Verificar Culqi
       let isReady = culqiReady;
@@ -1026,48 +1144,53 @@ export default function Checkout() {
         return;
       }
 
-      setProcessing(true);
-      setProcessingStage("creating-order");
+      const email = await getEmailForPayment();
+      if (!email) throw new Error("No se pudo obtener el email del usuario");
+      pendingEmailRef.current = email; // Guardar para callbacks de Culqi
 
       // 1️⃣ CREAR ORDEN PENDIENTE EN BACKEND
       logger.log("📝 Creando orden pendiente en backend...");
-      const invoicePayload: any = {
-        invoiceType: tipoComprobante.toUpperCase(),
+      // Construcción del payload extendido
+      let invoicePayload: any = {
+        invoiceType: tipoComprobante === "boleta" ? "BOLETA" : "FACTURA",
+        invoiceData: {}
       };
 
-      if (tipoComprobante === "factura") {
+      if (tipoComprobante === "boleta") {
+        invoicePayload.invoiceData = {
+          tipoDocumento: datosBoleta.tipoDocumento,
+          numeroDocumento: datosBoleta.numeroDocumento,
+          nombres: datosBoleta.nombres,
+          apellidos: datosBoleta.apellidos,
+          direccion: datosBoleta.direccion,
+          departamento: datosBoleta.departamento,
+          provincia: datosBoleta.provincia,
+          distrito: datosBoleta.distrito
+        };
+      } else {
         invoicePayload.invoiceData = {
           ruc: datosFactura.ruc,
           razonSocial: datosFactura.razonSocial,
           direccionFiscal: datosFactura.direccionFiscal,
-        };
-      } else {
-        invoicePayload.invoiceData = {
-          tipoDocumento: tipoDocumentoBoleta.toUpperCase(),
-          numeroDocumento: datosBoletaRUC,
+          departamento: datosFactura.departamento,
+          provincia: datosFactura.provincia,
+          distrito: datosFactura.distrito
         };
       }
+
+      logger.log("📝 Creando orden con payload:", invoicePayload);
 
       const orderResponse = await createOrder(invoicePayload);
       logger.log("📦 Respuesta de createOrder:", orderResponse);
 
-      if (!orderResponse.success) {
+      if (!orderResponse.success || !orderResponse.data?.pendingOrderId) {
         throw new Error(orderResponse.message || "Error al crear la orden");
       }
 
-      const pendingOrderId =
-        orderResponse.data?.pendingOrderId ||
-        orderResponse.pendingOrderId ||
-        orderResponse.data?.orderId ||
-        orderResponse.orderId;
-
-      if (!pendingOrderId) {
-        throw new Error("No se recibió un ID de orden del servidor");
-      }
-
-      logger.log("✅ Orden pendiente creada:", pendingOrderId);
+      const pendingOrderId = orderResponse.data.pendingOrderId;
       setCurrentPendingOrderId(pendingOrderId);
       pendingOrderIdRef.current = pendingOrderId;
+      orderTotalRef.current = totals.total; // Guardamos el total para validación
 
       // 2️⃣ DECIDIR FLUJO SEGÚN MÉTODO DE PAGO
       if (metodoPago === "card") {
@@ -1075,33 +1198,63 @@ export default function Checkout() {
         // FLUJO TARJETA
         // ═══════════════════════════════════════
         logger.log("💳 Iniciando pago con tarjeta...");
-        setProcessing(false);
-        resetCulqi();
+        setProcessingStage("processing-payment");
+        const amountInCents = Math.round(totals.total * 100);
+
+        // Guardar contexto preventivamente antes de abrir Culqi
+        save3DSContext({
+          email,
+          token: "", // Aún no tenemos token
+          pendingOrderId,
+        });
 
         openCulqiForTokenization({
           title: "Liwilu",
           currency: "PEN",
           description: `Pedido ${pendingOrderId} - Liwilu Shop`,
-          amount: total,
+          amount: amountInCents,
         });
+
+        // No cerramos el processing overlay aquí, esperamos al callback de Culqi
+        // o a que el usuario cierre el modal (manejado por listener)
       } else if (metodoPago === "async") {
         // ═══════════════════════════════════════
         // FLUJO ASÍNCRONO - QR/PAGOEFECTIVO
         // ═══════════════════════════════════════
         logger.log("📱 [checkout.tsx] Iniciando pago asíncrono...");
+        setProcessingStage("completing");
 
-        const email = await getEmailForPayment();
-        if (!email) {
-          throw new Error("Se requiere un email para crear la orden de Culqi");
+        let effectivePendingOrderId = pendingOrderId;
+
+        try {
+          // Step 1: Check for existing pending orders
+          const pendingAttemptResp = await getPendingOrderAttempt("AWAITING_PAYMENT");
+          if (
+            pendingAttemptResp.success &&
+            pendingAttemptResp.data?.pendingOrderId
+          ) {
+            logger.log(
+              "🔄 Usando orden pendiente encontrada:",
+              pendingAttemptResp.data.pendingOrderId,
+            );
+            effectivePendingOrderId = pendingAttemptResp.data.pendingOrderId;
+            setCurrentPendingOrderId(effectivePendingOrderId);
+            pendingOrderIdRef.current = effectivePendingOrderId;
+          }
+        } catch (e) {
+          logger.warn(
+            "⚠️ No se pudo recuperar orden previa, usando la recién creada",
+            e,
+          );
         }
 
-        const culqiOrderResponse = await createCulqiOrder(
-          pendingOrderId,
-          email,
+        // Step 2: Get Culqi Order ID
+        const culqiOrderResponse = await getAsyncPaymentStatus(
+          effectivePendingOrderId,
         );
 
         logger.log(
-          "✅ [checkout.tsx] Orden Culqi generada:",
+          "✅ [checkout.tsx] Respuesta de estado asíncrono:",
           culqiOrderResponse,
         );
 
@@ -1115,14 +1268,40 @@ export default function Checkout() {
           openCulqiForAsyncOrder({
             title: "Liwilu",
             currency: culqiOrderResponse.data.currency || "PEN",
-            description: `Pedido ${pendingOrderId} - Liwilu Shop`,
-            amount: culqiOrderResponse.data.amount || total,
+            description: `Pedido ${effectivePendingOrderId} - Liwilu Shop`,
+            amount:
+              culqiOrderResponse.data.total ||
+              culqiOrderResponse.data.amount ||
+              Math.round(totals.total * 100),
             orderId: culqiOrderId,
           });
 
           setProcessing(false);
         } else {
-          throw new Error("No se pudo generar el ID de orden de Culqi");
+          // Fallback a creación manual si es necesario (según flujo previo)
+          logger.log("🔄 Intentando generar orden Culqi manualmente...");
+          const manualCulqiOrder = await createCulqiOrder(
+            effectivePendingOrderId,
+            email,
+          );
+
+          if (manualCulqiOrder.success && manualCulqiOrder.data?.culqiOrderId) {
+            const culqiOrderId = manualCulqiOrder.data.culqiOrderId;
+            setCulqiOrderId(culqiOrderId);
+
+            openCulqiForAsyncOrder({
+              title: "Liwilu",
+              currency: manualCulqiOrder.data.currency || "PEN",
+              description: `Pedido ${effectivePendingOrderId} - Liwilu Shop`,
+              amount:
+                manualCulqiOrder.data.amount || Math.round(totals.total * 100),
+              orderId: culqiOrderId,
+            });
+
+            setProcessing(false);
+          } else {
+            throw new Error("No se pudo obtener el ID de orden de Culqi");
+          }
         }
       }
     } catch (error: any) {
@@ -1225,13 +1404,10 @@ export default function Checkout() {
                     <div>
                       <Select
                         label="Tipo de documento"
-                        value={tipoDocumentoBoleta}
+                        value={datosBoleta.tipoDocumento}
                         onChange={(e) => {
-                          setTipoDocumentoBoleta(e.target.value);
-                          setDatosBoletaRUC("");
-                          const newErrors = { ...errors };
-                          delete newErrors.rucBoleta;
-                          setErrors(newErrors);
+                          setDatosBoleta({ ...datosBoleta, tipoDocumento: e.target.value });
+                          // Reset number on type change if needed, or keep it
                         }}
                       >
                         <option value="DNI">DNI</option>
@@ -1243,34 +1419,118 @@ export default function Checkout() {
                       <Input
                         label="Número de documento"
                         type="text"
-                        value={datosBoletaRUC}
+                        value={datosBoleta.numeroDocumento}
                         onChange={(e) => {
                           let value = e.target.value;
-                          if (tipoDocumentoBoleta === "Pasaporte") {
+                          if (datosBoleta.tipoDocumento === "Pasaporte") {
                             value = value.replace(/[^a-zA-Z0-9]/g, "");
                           } else {
                             value = value.replace(/\D/g, "");
                           }
-                          setDatosBoletaRUC(value);
+                          setDatosBoleta({ ...datosBoleta, numeroDocumento: value });
                         }}
                         placeholder={
-                          tipoDocumentoBoleta === "Pasaporte"
+                          datosBoleta.tipoDocumento === "Pasaporte"
                             ? "A1234567"
                             : "12345678"
                         }
                         maxLength={
-                          tipoDocumentoBoleta === "DNI" ||
-                            tipoDocumentoBoleta === "Pasaporte"
+                          datosBoleta.tipoDocumento === "DNI" ||
+                            datosBoleta.tipoDocumento === "Pasaporte"
                             ? 8
                             : 12
                         }
                         inputMode={
-                          tipoDocumentoBoleta === "Pasaporte"
+                          datosBoleta.tipoDocumento === "Pasaporte"
                             ? "text"
                             : "numeric"
                         }
                         error={errors.rucBoleta}
                       />
+                    </div>
+                  </div>
+
+                  {/* Nuevos campos Boleta */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Input
+                        label="Nombres"
+                        value={datosBoleta.nombres}
+                        onChange={(e) => setDatosBoleta({ ...datosBoleta, nombres: e.target.value })}
+                        error={errors.nombres}
+                      />
+                    </div>
+                    <div>
+                      <Input
+                        label="Apellidos"
+                        value={datosBoleta.apellidos}
+                        onChange={(e) => setDatosBoleta({ ...datosBoleta, apellidos: e.target.value })}
+                        error={errors.apellidos}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Input
+                      label="Dirección"
+                      value={datosBoleta.direccion}
+                      onChange={(e) => setDatosBoleta({ ...datosBoleta, direccion: e.target.value })}
+                      placeholder="Calle, Número, Dpto..."
+                      error={errors.direccion}
+                    />
+                  </div>
+
+                  {/* Selectores de Ubicación para Boleta */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Select
+                        label="Departamento"
+                        value={boletaLocations.selectedDept}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          boletaLocations.handleDeptChange(val);
+                          setDatosBoleta(prev => ({ ...prev, departamento: val, provincia: '', distrito: '' }));
+                        }}
+                      >
+                        <option value="">Departamento</option>
+                        {boletaLocations.departments.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div>
+                      <Select
+                        label="Provincia"
+                        value={boletaLocations.selectedProv}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          boletaLocations.handleProvChange(val);
+                          setDatosBoleta(prev => ({ ...prev, provincia: val, distrito: '' }));
+                        }}
+                        disabled={!boletaLocations.selectedDept}
+                      >
+                        <option value="">Provincia</option>
+                        {boletaLocations.provinces.map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div>
+                      <Select
+                        label="Distrito"
+                        value={boletaLocations.selectedDist}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          boletaLocations.handleDistChange(val);
+                          setDatosBoleta(prev => ({ ...prev, distrito: val }));
+                        }}
+                        disabled={!boletaLocations.selectedProv}
+                        error={errors.distrito}
+                      >
+                        <option value="">Distrito</option>
+                        {boletaLocations.districts.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </Select>
                     </div>
                   </div>
                 </div>
@@ -1292,8 +1552,6 @@ export default function Checkout() {
                             setDatosFactura({
                               ...datosFactura,
                               ruc: e.target.value.replace(/\D/g, ""),
-                              razonSocial: "",
-                              direccionFiscal: "",
                             });
                             setRucConsulted(false);
                           }}
@@ -1380,6 +1638,61 @@ export default function Checkout() {
                       )}
                     </div>
                   </div>
+
+                  {/* Selectores de Ubicación para Factura */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Select
+                        label="Departamento"
+                        value={facturaLocations.selectedDept}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          facturaLocations.handleDeptChange(val);
+                          setDatosFactura(prev => ({ ...prev, departamento: val, provincia: '', distrito: '' }));
+                        }}
+                      >
+                        <option value="">Departamento</option>
+                        {facturaLocations.departments.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div>
+                      <Select
+                        label="Provincia"
+                        value={facturaLocations.selectedProv}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          facturaLocations.handleProvChange(val);
+                          setDatosFactura(prev => ({ ...prev, provincia: val, distrito: '' }));
+                        }}
+                        disabled={!facturaLocations.selectedDept}
+                      >
+                        <option value="">Provincia</option>
+                        {facturaLocations.provinces.map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div>
+                      <Select
+                        label="Distrito"
+                        value={facturaLocations.selectedDist}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          facturaLocations.handleDistChange(val);
+                          setDatosFactura(prev => ({ ...prev, distrito: val }));
+                        }}
+                        disabled={!facturaLocations.selectedProv}
+                        error={errors.facturaDistrito}
+                      >
+                        <option value="">Distrito</option>
+                        {facturaLocations.districts.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1407,14 +1720,11 @@ export default function Checkout() {
                       <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs overflow-hidden">
                         <FaCreditCard className="text-gray-600" />
                       </div>
-                      <div className="w-8 h-8 rounded-full bg-purple-100 border border-white flex items-center justify-center text-[10px] font-bold text-purple-600 overflow-hidden">
-                        Yape
-                      </div>
                     </div>
                     <div className="text-left">
-                      <p className="font-medium">Tarjeta o Yape con Código</p>
+                      <p className="font-medium">Tarjeta de crédito / débito</p>
                       <p className="text-xs text-gray-500">
-                        Visa, Mastercard, Amex, Yape (Código aprobación)
+                        Visa, Mastercard o Amex
                       </p>
                     </div>
                   </div>
@@ -1445,9 +1755,9 @@ export default function Checkout() {
                   <div className="flex items-center gap-3">
                     <FaQrcode className="text-2xl text-purple-600" />
                     <div className="text-left">
-                      <p className="font-medium">PagoEfectivo / QR</p>
+                      <p className="font-medium">PagoEfectivo / QR / Yape</p>
                       <p className="text-xs text-gray-500">
-                        Generar código CIP o QR
+                        Generar código CIP, QR o código de aprobación
                       </p>
                     </div>
                   </div>
@@ -1588,6 +1898,6 @@ export default function Checkout() {
         onLoad={handleCulqiLoad}
         onError={() => logger.error("❌ Error al cargar Culqi Checkout")}
       />
-    </Layout>
+    </Layout >
   );
 }

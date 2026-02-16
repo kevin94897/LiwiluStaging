@@ -918,7 +918,7 @@ export async function payOrder(orderId: string | number, data: {
 export async function createCulqiOrder(pendingOrderId: string | number, email: string): Promise<any> {
     try {
         logger.log(`🔄 Creando orden Culqi para orden pendiente #${pendingOrderId}...`);
-        
+
         const response = await apiPost(`/payments/orders/${pendingOrderId}/create-culqi-order`, {
             email
         }, {
@@ -971,38 +971,38 @@ export async function createOrder(data: {
  * Get order detail with payment info
  */
 export async function getOrderDetail(orderId: string): Promise<{
-  success: boolean;
-  data?: {
-    pendingOrderId: number;
-    culqiOrderId: string;
-    paymentMethod: 'qr' | 'pagoefectivo';
-    paymentMethodType?: string; // Added for async payments
-    amount: number;
-    currency: string;
-    expirationDate: string;
-    qr?: string; // URL del QR
-    paymentCode?: string; // CIP
-    status: string;
-  };
-  message?: string;
+    success: boolean;
+    data?: {
+        pendingOrderId: number;
+        culqiOrderId: string;
+        paymentMethod: 'qr' | 'pagoefectivo';
+        paymentMethodType?: string; // Added for async payments
+        amount: number;
+        currency: string;
+        expirationDate: string;
+        qr?: string; // URL del QR
+        paymentCode?: string; // CIP
+        status: string;
+    };
+    message?: string;
 }> {
-  try {
-    const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    
-    const response = await apiGet(`/orders/detail/${orderId}`, {
-      skipAuth: !accessToken
-    });
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Error fetching order details: ${response.statusText}`);
+        const response = await apiGet(`/orders/detail/${orderId}`, {
+            skipAuth: !accessToken
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error fetching order details: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        logger.error('Error in getOrderDetail:', error);
+        throw error;
     }
-
-    return await response.json();
-  } catch (error) {
-    logger.error('Error in getOrderDetail:', error);
-    throw error;
-  }
 }
 
 /**
@@ -1232,4 +1232,34 @@ export async function checkAsyncPaymentStatus(
         logger.error('Error in checkAsyncPaymentStatus:', error);
         throw error;
     }
+}
+
+/**
+ * Retrieve a pending order attempt by status
+ * @param status - The status to filter by (e.g., 'AWAITING_PAYMENT')
+ */
+export async function getPendingOrderAttempt(status: string): Promise<{ success: boolean; data?: { pendingOrderId: number }; message?: string }> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiGet(`/orders/pending-attempts?status=${status}`, {
+            skipAuth: !accessToken
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error fetching pending order: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        logger.error('Error in getPendingOrderAttempt:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get asynchronous payment status and Culqi Order ID
+ */
+export async function getAsyncPaymentStatus(pendingOrderId: number | string): Promise<any> {
+    return checkAsyncPaymentStatus(pendingOrderId);
 }
