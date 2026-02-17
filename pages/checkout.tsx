@@ -25,6 +25,7 @@ import {
 import { showToast } from "@/lib/notifications";
 import { createOrder, payOrder, createCulqiOrder, getPendingOrderAttempt, checkAsyncPaymentStatus } from "@/lib/cart";
 import { useLocations } from "@/hooks/useLocations";
+import { PERU_LOCATIONS } from "@/lib/locationsComplete";
 import { useAuth } from "@/hooks/useAuth";
 import { consultaRUC } from "@/lib/general";
 import Select from "@/components/ui/Select";
@@ -40,6 +41,13 @@ import type {
 
 type TipoComprobante = "boleta" | "factura";
 type MetodoPago = "card" | "async" | null;
+
+// Helper para búsqueda case-insensitive
+const findMatchingLocation = (input: string, options: string[]): string | undefined => {
+  if (!input) return undefined;
+  const inputLower = input.toLowerCase();
+  return options.find(opt => opt.toLowerCase() === inputLower);
+};
 
 export default function Checkout() {
   const router = useRouter();
@@ -1099,18 +1107,47 @@ export default function Checkout() {
     try {
       const response = await consultaRUC(ruc);
       if (response.success && response.data) {
+        // Normalización de Ubicación (API devuelve UPPERCASE, App usa Title Case)
+        let normalizedDept = datosFactura.departamento;
+        let normalizedProv = datosFactura.provincia;
+        let normalizedDist = datosFactura.distrito;
+
+        if (response.data.departamento) {
+          const departments = Object.keys(PERU_LOCATIONS);
+          const matchDept = findMatchingLocation(response.data.departamento, departments);
+          if (matchDept) {
+            normalizedDept = matchDept;
+
+            if (response.data.provincia) {
+              const provinces = Object.keys(PERU_LOCATIONS[matchDept] || {});
+              const matchProv = findMatchingLocation(response.data.provincia, provinces);
+              if (matchProv) {
+                normalizedProv = matchProv;
+
+                if (response.data.distrito) {
+                  const districts = PERU_LOCATIONS[matchDept][matchProv] || [];
+                  const matchDist = findMatchingLocation(response.data.distrito, districts);
+                  if (matchDist) {
+                    normalizedDist = matchDist;
+                  }
+                }
+              }
+            }
+          }
+        }
+
         setDatosFactura({
           ...datosFactura,
           razonSocial: response.data.nombre_o_razon_social,
           direccionFiscal: response.data.direccion_completa,
-          departamento: response.data.departamento || datosFactura.departamento, // Usar data de RUC si existe, sino mantener la pre-llenada
-          provincia: response.data.provincia || datosFactura.provincia,
-          distrito: response.data.distrito || datosFactura.distrito,
+          departamento: normalizedDept,
+          provincia: normalizedProv,
+          distrito: normalizedDist,
         });
 
-        // Actualizar location hooks si la API de RUC devolvió ubicación
-        if (response.data.departamento && response.data.provincia && response.data.distrito) {
-          facturaLocations.setLocationValues(response.data.departamento, response.data.provincia, response.data.distrito);
+        // Actualizar location hooks con valores normalizados
+        if (normalizedDept && normalizedProv && normalizedDist) {
+          facturaLocations.setLocationValues(normalizedDept, normalizedProv, normalizedDist);
         }
 
         setRucConsulted(true);
