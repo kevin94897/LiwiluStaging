@@ -1007,6 +1007,9 @@ export async function getOrderDetail(orderId: string): Promise<{
         expirationDate: string;
         qr?: string; // URL del QR
         paymentCode?: string; // CIP
+        deliveryType: string;
+        orderNumber: string;
+        ingresado?: string;
         status: string;
     };
     message?: string;

@@ -189,4 +189,43 @@ export async function getPackageStatus(orderId: string): Promise<PackageStatusRe
         throw error;
     }
 }
+// Pickup Tracking Interfaces
+export interface PickupStatus {
+    IdPedido: number;
+    EstadoDespacho: string;
+    NombreEstadoDespacho: string;
+}
 
+export type PickupStatusResponse = PickupStatus[];
+
+/**
+ * Fetches the pickup status for a specific order.
+ * @param orderId - The order ID to track
+ */
+export async function getPickupStatus(orderId: string): Promise<PickupStatusResponse> {
+    try {
+        const response = await apiGet(`/orders/pickup/order-status/${orderId}`, {
+            skipAuth: true
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+
+            if (response.status === 404) {
+                const error: any = new Error(
+                    errorData.message ||
+                    `No se encontró información de retiro para el paquete ${orderId}.`
+                );
+                error.statusCode = 404;
+                throw error;
+            }
+
+            throw new Error(errorData.message || `Error fetching pickup status: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error: any) {
+        logger.error('Error in getPickupStatus:', error);
+        throw error;
+    }
+}

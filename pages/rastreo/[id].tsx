@@ -14,7 +14,8 @@ import {
   FaHome,
 } from "react-icons/fa";
 import Button from "@/components/ui/Button";
-import { getPackageStatus } from "@/lib/orders";
+import { getPackageStatus, getPickupStatus } from "@/lib/orders";
+import { getOrderDetail } from "@/lib/cart";
 
 // SAVAR API Response Interfaces
 interface SAVAREstado {
@@ -50,6 +51,7 @@ interface EstadoPedido {
 interface PedidoInfo {
   numero: string;
   fecha: string;
+  deliveryType?: string;
   producto: {
     nombre: string;
     talla: string;
@@ -141,19 +143,12 @@ function mapSAVARToUI(savarData: any): PedidoInfo {
 
   // Helper to find index in our FIXED_STEPS based on API status string and code
   const getStepIndexForStatus = (statusName: string, statusCode: string) => {
-    const s = statusName.toLowerCase();
+    const s = statusName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // quitar tildes
     const c = statusCode;
-
     if (s.includes("entregado")) return 4;
     if (s.includes("ruta") || s.includes("camino")) return 3;
-    if (
-      s.includes("planificado") ||
-      s.includes("preparado") ||
-      s.includes("despacho")
-    )
-      return 2;
-    if (c === "30" || s.includes("almacén") || s.includes("recepcion"))
-      return 1;
+    if (s.includes("planificado") || s.includes("preparado") || s.includes("despacho")) return 2;
+    if (["21", "30"].includes(c) || s.includes("almacen") || s.includes("recepcion") || s.includes("fulfillment")) return 1;
     return 0;
   };
 
@@ -214,14 +209,99 @@ function mapSAVARToUI(savarData: any): PedidoInfo {
         ? apiMatch.lstfotos
         : [],
     };
-  });
+  })
+    .filter((estado) => estado.completado);
+
 
   return {
     numero: savarData.vcodpaquete,
     fecha: formatDate(savarData.vfechadetalleestado),
+    deliveryType: "DELIVERY",
     producto: {
       nombre: `Envío ${savarData.vSubServicio || "Express"}`,
       talla: `Paquete #${savarData.vcodpaquete}`,
+      precio: 0,
+      imagen: "/images/productos/liwilu_producto_example.png",
+    },
+    estados: mappedEstados,
+  };
+}
+
+const PICKUP_STEPS = [
+  {
+    id: "confirmado",
+    titulo: "Pedido confirmado",
+    code: "CONFIRMADO",
+    descripcion: "Tu pedido ha sido recibido y está siendo procesado.",
+  },
+  {
+    id: "sin_armado",
+    titulo: "Pedido recibido",
+    code: "P",
+    descripcion: "Estamos preparando los productos de tu pedido.",
+  },
+  {
+    id: "armado",
+    titulo: "Armado / Listo para recoger",
+    code: "A",
+    descripcion: "Tu pedido ya está listo en el local seleccionado.",
+  },
+  {
+    id: "entregado",
+    titulo: "Entregado",
+    code: "E",
+    descripcion: "El pedido ha sido entregado exitosamente.",
+  },
+];
+
+function mapPickupToUI(pickupData: any, orderInfo: any): PedidoInfo {
+  const currentStatus = pickupData[0] || {};
+  const statusCode = currentStatus.EstadoDespacho;
+
+  // Determine current index based on code
+  let currentIndex = 0;
+  if (statusCode === "P") currentIndex = 1;
+  else if (statusCode === "A") currentIndex = 2;
+  else if (statusCode === "E") currentIndex = 3;
+  else if (statusCode === "B" || statusCode === "X") currentIndex = 3; // Show final state if canceled/expired?
+
+  const mappedEstados = PICKUP_STEPS.map((step, index) => {
+    const isCompleted = index <= currentIndex;
+    const isActive = index === currentIndex;
+
+    // Special case for Cancelled (B) or Expired (X)
+    let titulo = step.titulo;
+    let descripcion = step.descripcion;
+    let activo = isActive;
+
+    if (isActive && (statusCode === "B" || statusCode === "X")) {
+      titulo = statusCode === "B" ? "Anulado" : "Caducado";
+      descripcion =
+        statusCode === "B"
+          ? "Tu pedido ha sido anulado."
+          : "Tu pedido ha caducado.";
+    }
+
+    return {
+      id: step.id,
+      titulo: titulo,
+      vCodEstado: isActive ? statusCode : "",
+      descripcion: descripcion,
+      fecha: isActive ? formatDate(new Date().toISOString(), "date") : "",
+      hora: isActive ? formatDate(new Date().toISOString(), "time") : "",
+      completado: isCompleted,
+      activo: activo,
+      fotos: [],
+    };
+  });
+
+  return {
+    numero: orderInfo.orderNumber || orderInfo.id?.toString(),
+    fecha: formatDate(orderInfo.ingresado || new Date().toISOString()),
+    deliveryType: "RETIRO_TIENDA",
+    producto: {
+      nombre: `Retiro en Tienda`,
+      talla: `Pedido #${orderInfo.orderNumber || orderInfo.id}`,
       precio: 0,
       imagen: "/images/productos/liwilu_producto_example.png",
     },
@@ -249,31 +329,68 @@ export default function RastreoPedidoDetalle() {
     const numeroLimpio = num.replace("#", "");
 
     try {
-      const response = await getPackageStatus(numeroLimpio);
+      // 1. First consult order details to know the delivery type
+      const orderResponse = await getOrderDetail(numeroLimpio);
 
-      if (response && response.nIdePaquete) {
-        // Map SAVAR response to UI structure
-        const mappedData = mapSAVARToUI(response);
-        setPedidoEncontrado(mappedData);
+      if (orderResponse && orderResponse.success && orderResponse.data) {
+        const orderData = orderResponse.data;
+
+        // 2. Fetch tracking based on deliveryType
+        if (orderData.deliveryType === "RETIRO_TIENDA") {
+          // Store Pickup Tracking
+          try {
+            const pickupResponse = await getPickupStatus(numeroLimpio);
+            if (pickupResponse && pickupResponse.length > 0) {
+              const mappedData = mapPickupToUI(pickupResponse, orderData);
+              setPedidoEncontrado(mappedData);
+            } else {
+              setError(
+                "No se encontró información de retiro para este pedido.",
+              );
+            }
+          } catch (err: any) {
+            console.error("Error fetching pickup status:", err);
+            setError(
+              err.message || "Ocurrió un error al buscar el estado de retiro.",
+            );
+          }
+        } else {
+          // Delivery Tracking (SAVAR)
+          try {
+            const response = await getPackageStatus(numeroLimpio);
+
+            if (response && response.nIdePaquete) {
+              const mappedData = mapSAVARToUI(response);
+              setPedidoEncontrado(mappedData);
+            } else {
+              setError(
+                "No se encontró información de envío. Verifica el número e intenta nuevamente.",
+              );
+            }
+          } catch (err: any) {
+            console.error("Error fetching package status:", err);
+            if (err.isPackageNotFound || err.statusCode === 404) {
+              setError(
+                `No se encontró el paquete #${numeroLimpio}. Por favor verifica el número de seguimiento e intenta nuevamente.`,
+              );
+            } else {
+              setError(
+                err.message || "Ocurrió un error al buscar el estado de envío.",
+              );
+            }
+          }
+        }
       } else {
         setError(
           "No se encontró el pedido. Verifica el número e intenta nuevamente.",
         );
       }
     } catch (error: any) {
-      console.error("Error fetching package status:", error);
-
-      // Check if it's a 404 package not found error
-      if (error.isPackageNotFound || error.statusCode === 404) {
-        setError(
-          `No se encontró el paquete #${numeroLimpio}. Por favor verifica el número de seguimiento e intenta nuevamente.`,
-        );
-      } else {
-        setError(
-          error.message ||
-          "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
-        );
-      }
+      console.error("Error fetching order details:", error);
+      setError(
+        error.message ||
+        "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
+      );
     } finally {
       setBuscando(false);
     }
@@ -289,7 +406,10 @@ export default function RastreoPedidoDetalle() {
   }, [id]);
 
   const handleBuscarClick = () => {
-    buscarPedido(numeroPedido);
+    const num = numeroPedido.trim().replace("#", "");
+    if (num) {
+      router.push(`/rastreo/${num}`);
+    }
   };
 
   const getIconoEstado = (titulo: string) => {
@@ -476,11 +596,11 @@ export default function RastreoPedidoDetalle() {
                               >
                                 {estado.titulo}
                               </h3>
-                              {(estado as any).vCodEstado && (
+                              {/* {(estado as any).vCodEstado && (
                                 <span className="text-xs font-mono bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded border border-gray-200">
                                   {(estado as any).vCodEstado}
                                 </span>
-                              )}
+                              )} */}
                             </div>
                             <p
                               className={`text-sm transition-colors ${estado.completado || estado.activo
