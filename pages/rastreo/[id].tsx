@@ -101,11 +101,36 @@ function getDescriptionForStatus(statusName: string): string {
 }
 
 const FIXED_STEPS = [
-  { id: "confirmado", titulo: "Pedido confirmado", keywords: ["confirmado", "creado"], codes: [] as string[] },
-  { id: "recepcionado", titulo: "Recepcionado", keywords: ["almacén", "recepcion"], codes: ["30"] },
-  { id: "planificado", titulo: "Despacho/Planificado", keywords: ["planificado", "preparado"], codes: [] as string[] },
-  { id: "ruta", titulo: "En Ruta", keywords: ["ruta", "camino"], codes: [] as string[] },
-  { id: "entregado", titulo: "Entregado", keywords: ["entregado"], codes: [] as string[] },
+  {
+    id: "confirmado",
+    titulo: "Pedido confirmado",
+    keywords: ["confirmado", "creado"],
+    codes: [] as string[],
+  },
+  {
+    id: "recepcionado",
+    titulo: "Recepcionado",
+    keywords: ["almacén", "recepcion"],
+    codes: ["30"],
+  },
+  {
+    id: "planificado",
+    titulo: "Despacho/Planificado",
+    keywords: ["planificado", "preparado"],
+    codes: [] as string[],
+  },
+  {
+    id: "ruta",
+    titulo: "En Ruta",
+    keywords: ["ruta", "camino"],
+    codes: [] as string[],
+  },
+  {
+    id: "entregado",
+    titulo: "Entregado",
+    keywords: ["entregado"],
+    codes: [] as string[],
+  },
 ];
 
 function mapSAVARToUI(savarData: any): PedidoInfo {
@@ -121,8 +146,14 @@ function mapSAVARToUI(savarData: any): PedidoInfo {
 
     if (s.includes("entregado")) return 4;
     if (s.includes("ruta") || s.includes("camino")) return 3;
-    if (s.includes("planificado") || s.includes("preparado") || s.includes("despacho")) return 2;
-    if (c === "30" || s.includes("almacén") || s.includes("recepcion")) return 1;
+    if (
+      s.includes("planificado") ||
+      s.includes("preparado") ||
+      s.includes("despacho")
+    )
+      return 2;
+    if (c === "30" || s.includes("almacén") || s.includes("recepcion"))
+      return 1;
     return 0;
   };
 
@@ -136,16 +167,17 @@ function mapSAVARToUI(savarData: any): PedidoInfo {
 
   // 2. Map FIXED_STEPS to UI states
   const mappedEstados = FIXED_STEPS.map((step, index) => {
-    // Find specific API info for this step if available. 
+    // Find specific API info for this step if available.
     // Prioritize exact code matching if defined.
-    let apiMatch = step.codes.length > 0
-      ? estadosApi.find((e: any) => step.codes.includes(e.vCodEstado))
-      : null;
+    let apiMatch =
+      step.codes.length > 0
+        ? estadosApi.find((e: any) => step.codes.includes(e.vCodEstado))
+        : null;
 
     // Fallback to keyword matching if no code match found
     if (!apiMatch) {
       apiMatch = estadosApi.find((e: any) =>
-        step.keywords.some(k => e.vNombreEstado.toLowerCase().includes(k))
+        step.keywords.some((k) => e.vNombreEstado.toLowerCase().includes(k)),
       );
     }
 
@@ -167,9 +199,13 @@ function mapSAVARToUI(savarData: any): PedidoInfo {
       id: step.id,
       titulo: step.titulo,
       vCodEstado: apiMatch?.vCodEstado || "",
-      descripcion: apiMatch?.vMotivo || (isCompleted
-        ? (index === 0 ? "Tu pedido ha sido confirmado exitosamente" : getDescriptionForStatus(step.titulo))
-        : "Pendiente"),
+      descripcion:
+        apiMatch?.vMotivo ||
+        (isCompleted
+          ? index === 0
+            ? "Tu pedido ha sido confirmado exitosamente"
+            : getDescriptionForStatus(step.titulo)
+          : "Pendiente"),
       fecha,
       hora,
       completado: isCompleted,
@@ -232,7 +268,8 @@ export default function RastreoPedidoDetalle() {
         );
       } else {
         setError(
-          error.message || "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
+          error.message ||
+            "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
         );
       }
     } finally {
@@ -330,13 +367,13 @@ export default function RastreoPedidoDetalle() {
                 <div className="h-2 bg-gradient-to-r from-green-400 to-green-600"></div>
                 <div className="relative">
                   <div className="p-8">
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-6">
+                    <h2 className="text-2xl font-semibold text-gray-900">
                       Pedido en camino
                     </h2>
 
                     <div className="flex flex-col sm:flex-row gap-6 items-start">
                       {/* Información del producto */}
-                      <div className="flex-1 sm:max-w-[40%] w-full">
+                      {/* <div className="flex-1 sm:max-w-[40%] w-full">
                         <p className="text-sm text-gray-500 mb-1">
                           {pedidoEncontrado.producto.talla}
                         </p>
@@ -346,7 +383,7 @@ export default function RastreoPedidoDetalle() {
                         <p className="text-gray-600 mb-4">
                           {pedidoEncontrado.fecha}
                         </p>
-                      </div>
+                      </div> */}
 
                       <div className="flex items-center gap-4">
                         {/* Imagen del producto */}
@@ -384,14 +421,19 @@ export default function RastreoPedidoDetalle() {
                   </div>
                   <div className="p-8">
                     {pedidoEncontrado.estados.map((estado, index) => (
-                      <div key={estado.id} className="relative pb-10 last:pb-0">
+                      <div
+                        key={estado.id}
+                        className="relative pb-10 last:pb-0 animate-fade-in"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
                         {/* Línea vertical */}
                         {index !== pedidoEncontrado.estados.length - 1 && (
                           <div
-                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${estado.completado
-                              ? "border border-dashed border-primary"
-                              : "border border-dashed border-gray-300"
-                              }`}
+                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${
+                              estado.completado
+                                ? "border border-dashed border-primary"
+                                : "border border-dashed border-gray-300"
+                            }`}
                           ></div>
                         )}
 
@@ -412,12 +454,13 @@ export default function RastreoPedidoDetalle() {
 
                           {/* Icono */}
                           <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 ${estado.completado
-                              ? "bg-green-500 text-white shadow-lg shadow-green-200"
-                              : estado.activo
-                                ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
-                                : "bg-gray-300 text-gray-500"
-                              }`}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 transition-all duration-300 ${
+                              estado.completado
+                                ? "bg-green-500 text-white shadow-lg shadow-green-200"
+                                : estado.activo
+                                  ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
+                                  : "bg-gray-300 text-gray-500"
+                            }`}
                           >
                             {getIconoEstado(estado.titulo)}
                           </div>
@@ -426,10 +469,11 @@ export default function RastreoPedidoDetalle() {
                           <div className="flex-1 pt-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h3
-                                className={`text-xl font-semibold ${estado.completado || estado.activo
-                                  ? "text-gray-900"
-                                  : "text-gray-500"
-                                  }`}
+                                className={`text-xl font-semibold transition-colors ${
+                                  estado.completado || estado.activo
+                                    ? "text-primary-dark"
+                                    : "text-gray-400"
+                                }`}
                               >
                                 {estado.titulo}
                               </h3>
@@ -440,17 +484,18 @@ export default function RastreoPedidoDetalle() {
                               )}
                             </div>
                             <p
-                              className={`text-sm ${estado.completado || estado.activo
-                                ? "text-gray-700"
-                                : "text-gray-500"
-                                }`}
+                              className={`text-sm transition-colors ${
+                                estado.completado || estado.activo
+                                  ? "text-gray-700"
+                                  : "text-gray-400"
+                              }`}
                             >
                               {estado.descripcion}
                             </p>
 
                             {/* Badge de estado activo */}
                             {estado.activo && (
-                              <span className="inline-block mt-3 px-4 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                              <span className="inline-block mt-3 px-4 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full animate-pulse-subtle">
                                 Estado actual
                               </span>
                             )}
@@ -461,7 +506,7 @@ export default function RastreoPedidoDetalle() {
                                 {estado.fotos.map((foto, idx) => (
                                   <div
                                     key={idx}
-                                    className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 shadow-sm cursor-pointer hover:opacity-90 transition"
+                                    className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 shadow-sm cursor-pointer hover:opacity-90 hover:scale-105 transition-all"
                                     onClick={() => window.open(foto, "_blank")}
                                   >
                                     <Image
@@ -484,7 +529,7 @@ export default function RastreoPedidoDetalle() {
               </div>
 
               {/* Información adicional */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-sm p-6 border border-blue-200">
+              {/* <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-sm p-6 border border-blue-200">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0 shadow">
                     <svg
@@ -525,7 +570,7 @@ export default function RastreoPedidoDetalle() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div> */}
             </div>
           ) : (
             !error &&
@@ -560,17 +605,29 @@ export default function RastreoPedidoDetalle() {
 
       <style jsx global>{`
         @keyframes fade-in {
-          from {
+          0% {
             opacity: 0;
             transform: translateY(20px);
           }
-          to {
+          100% {
             opacity: 1;
             transform: translateY(0);
           }
         }
+        @keyframes pulse-subtle {
+          0%,
+          100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.8;
+          }
+        }
         .animate-fade-in {
-          animation: fade-in 0.5s ease-out;
+          animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .animate-pulse-subtle {
+          animation: pulse-subtle 2s ease-in-out infinite;
         }
       `}</style>
     </Layout>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import logger from '@/lib/logger';
+import logger from "@/lib/logger";
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import Image from "next/image";
@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import AccountSidebar from "@/components/AccountSidebar";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { getMyOrders, Order } from "@/lib/orders";
+import { FaCheckCircle, FaClock, FaTruck, FaBox, FaHome } from "react-icons/fa";
 
 export default function MisPedidos() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -141,15 +142,15 @@ export default function MisPedidos() {
                         const firstItem = order.items[0];
                         const formattedDate = order.paidAt
                           ? new Intl.DateTimeFormat("es-PE", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                          })
-                            .format(new Date(order.paidAt))
-                            .replace(",", "") + " pm"
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })
+                              .format(new Date(order.paidAt))
+                              .replace(",", "") + " pm"
                           : "-";
 
                         const isExpanded = expandedOrderId === order.id;
@@ -243,8 +244,9 @@ export default function MisPedidos() {
                                     ? "Ocultar detalles"
                                     : "Ver detalles"}{" "}
                                   <svg
-                                    className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""
-                                      }`}
+                                    className={`w-4 h-4 transition-transform ${
+                                      isExpanded ? "rotate-180" : ""
+                                    }`}
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -262,102 +264,175 @@ export default function MisPedidos() {
 
                             {/* Acordeón de detalles */}
                             {isExpanded && (
-                              <div className="p-6 border-t bg-white animate-in fade-in slide-in-from-top-2 duration-300">
+                              <div className="p-6 border-t bg-white animate-slide-in">
                                 <div className="space-y-6">
-                                  {/* Línea de tiempo de estados */}
+                                  {/* Línea de tiempo de estados - Simplified 5 steps */}
                                   <div className="relative">
                                     <h4 className="font-bold text-primary-dark mb-6 border-b pb-2">
                                       Seguimiento del pedido
                                     </h4>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
-                                      {/* Paso 1: Ingresado */}
-                                      <div className="flex flex-row md:flex-col items-start md:items-center gap-4 text-center">
+                                    <div className="space-y-4">
+                                      {/* Paso 1: Pedido confirmado (always shown) */}
+                                      <div
+                                        className="flex gap-4 items-start animate-fade-in"
+                                        style={{ animationDelay: "0ms" }}
+                                      >
                                         <div
-                                          className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${order.paidAt ? "bg-primary text-white" : "bg-gray-200 text-gray-500"}`}
+                                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                                            order.confirmado
+                                              ? "bg-primary text-white shadow-lg shadow-green-200"
+                                              : "bg-gray-200 text-gray-500"
+                                          }`}
                                         >
-                                          1
+                                          <FaCheckCircle className="text-lg" />
                                         </div>
-                                        <div>
-                                          <p className="font-semibold text-xs text-primary-dark">
-                                            Pedido ingresado
+                                        <div className="flex-1">
+                                          <p className="font-semibold text-sm text-primary-dark">
+                                            Pedido confirmado
                                           </p>
-                                          <p className="text-[10px] text-neutral-gray">
-                                            {formattedDate}
+                                          <p className="text-xs text-neutral-gray">
+                                            {order.confirmado || formattedDate}
                                           </p>
                                         </div>
                                       </div>
 
-                                      {/* Paso 2: Pendiente */}
-                                      <div className="flex flex-row md:flex-col items-start md:items-center gap-4 text-center">
+                                      {/* Paso 2: Recepcionado */}
+                                      <div
+                                        className="flex gap-4 items-start animate-fade-in"
+                                        style={{ animationDelay: "100ms" }}
+                                      >
                                         <div
-                                          className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${order.pendienteArreglo ? "bg-primary text-white" : "bg-gray-200 text-gray-500"}`}
+                                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                                            order.pendienteArreglo
+                                              ? "bg-primary text-white shadow-lg shadow-green-200"
+                                              : "bg-gray-200 text-gray-500"
+                                          }`}
                                         >
-                                          2
+                                          <FaBox className="text-lg" />
                                         </div>
-                                        <div>
-                                          <p className="font-semibold text-xs text-primary-dark">
-                                            Pendiente de armado
+                                        <div className="flex-1">
+                                          <p
+                                            className={`font-semibold text-sm ${
+                                              order.pendienteArreglo
+                                                ? "text-primary-dark"
+                                                : "text-gray-400"
+                                            }`}
+                                          >
+                                            Recepcionado
                                           </p>
-                                          <p className="text-[10px] text-neutral-gray">
+                                          <p className="text-xs text-neutral-gray">
                                             {order.pendienteArreglo || "-"}
                                           </p>
                                         </div>
                                       </div>
 
-                                      {/* Paso 3: Confirmado */}
-                                      <div className="flex flex-row md:flex-col items-start md:items-center gap-4 text-center">
+                                      {/* Paso 3: Despacho/Planificado */}
+                                      <div
+                                        className="flex gap-4 items-start animate-fade-in"
+                                        style={{ animationDelay: "200ms" }}
+                                      >
                                         <div
-                                          className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${order.confirmado ? "bg-primary text-white" : "bg-gray-200 text-gray-500"}`}
+                                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                                            order.enRuta
+                                              ? "bg-primary text-white shadow-lg shadow-green-200"
+                                              : "bg-gray-200 text-gray-500"
+                                          }`}
                                         >
-                                          3
+                                          <FaClock className="text-lg" />
                                         </div>
-                                        <div>
-                                          <p className="font-semibold text-xs text-primary-dark">
-                                            Pedido confirmado
+                                        <div className="flex-1">
+                                          <p
+                                            className={`font-semibold text-sm ${
+                                              order.enRuta
+                                                ? "text-primary-dark"
+                                                : "text-gray-400"
+                                            }`}
+                                          >
+                                            Despacho/Planificado
                                           </p>
-                                          <p className="text-[10px] text-neutral-gray">
-                                            {order.confirmado || "-"}
+                                          <p className="text-xs text-neutral-gray">
+                                            {order.enRuta
+                                              ? new Date(
+                                                  order.enRuta,
+                                                ).toLocaleDateString("es-PE", {
+                                                  day: "2-digit",
+                                                  month: "short",
+                                                })
+                                              : "-"}
                                           </p>
                                         </div>
                                       </div>
 
                                       {/* Paso 4: En Ruta */}
-                                      <div className="flex flex-row md:flex-col items-start md:items-center gap-4 text-center">
+                                      <div
+                                        className="flex gap-4 items-start animate-fade-in"
+                                        style={{ animationDelay: "300ms" }}
+                                      >
                                         <div
-                                          className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${order.enRuta ? "bg-primary text-white" : "bg-gray-200 text-gray-500"}`}
+                                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                                            order.enRuta
+                                              ? "bg-primary text-white shadow-lg shadow-green-200 animate-pulse"
+                                              : "bg-gray-200 text-gray-500"
+                                          }`}
                                         >
-                                          4
+                                          <FaTruck className="text-lg" />
                                         </div>
-                                        <div>
-                                          <p className="font-semibold text-xs text-primary-dark">
-                                            En ruta
+                                        <div className="flex-1">
+                                          <p
+                                            className={`font-semibold text-sm ${
+                                              order.enRuta
+                                                ? "text-primary-dark"
+                                                : "text-gray-400"
+                                            }`}
+                                          >
+                                            En Ruta
                                           </p>
-                                          <p className="text-[10px] text-neutral-gray">
+                                          <p className="text-xs text-neutral-gray">
                                             {order.enRuta || "-"}
                                           </p>
+                                          {order.enRuta && !order.entregado && (
+                                            <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full">
+                                              Estado actual
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
 
                                       {/* Paso 5: Entregado */}
-                                      <div className="flex flex-row md:flex-col items-start md:items-center gap-4 text-center">
+                                      <div
+                                        className="flex gap-4 items-start animate-fade-in"
+                                        style={{ animationDelay: "400ms" }}
+                                      >
                                         <div
-                                          className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${order.entregado ? "bg-primary text-white" : "bg-gray-200 text-gray-500"}`}
+                                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                                            order.entregado
+                                              ? "bg-primary text-white shadow-lg shadow-green-200"
+                                              : "bg-gray-200 text-gray-500"
+                                          }`}
                                         >
-                                          5
+                                          <FaHome className="text-lg" />
                                         </div>
-                                        <div>
-                                          <p className="font-semibold text-xs text-primary-dark">
+                                        <div className="flex-1">
+                                          <p
+                                            className={`font-semibold text-sm ${
+                                              order.entregado
+                                                ? "text-primary-dark"
+                                                : "text-gray-400"
+                                            }`}
+                                          >
                                             Entregado
                                           </p>
-                                          <p className="text-[10px] text-neutral-gray">
+                                          <p className="text-xs text-neutral-gray">
                                             {order.entregado || "-"}
                                           </p>
+                                          {order.entregado && (
+                                            <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full">
+                                              Completado
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
-
-                                      {/* Línea conectora (solo desktop) */}
-                                      <div className="absolute top-4 left-[10%] right-[10%] h-0.5 bg-gray-200 -z-0 hidden md:block"></div>
                                     </div>
                                   </div>
 
@@ -395,6 +470,34 @@ export default function MisPedidos() {
             </div>
           </div>
         </div>
+        <style jsx global>{`
+          @keyframes fade-in {
+            0% {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            100% {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          @keyframes slide-in {
+            0% {
+              opacity: 0;
+              transform: translateY(-10px);
+            }
+            100% {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          .animate-fade-in {
+            animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+          }
+          .animate-slide-in {
+            animation: slide-in 0.4s ease-out both;
+          }
+        `}</style>
       </Layout>
     </ProtectedRoute>
   );
