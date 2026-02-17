@@ -210,7 +210,9 @@ function mapSAVARToUI(savarData: any): PedidoInfo {
       hora,
       completado: isCompleted,
       activo: isActive,
-      fotos: apiMatch?.lstfotos || [],
+      fotos: Array.isArray(apiMatch?.lstfotos) && apiMatch.lstfotos.length > 0
+        ? apiMatch.lstfotos
+        : [],
     };
   });
 
@@ -269,7 +271,7 @@ export default function RastreoPedidoDetalle() {
       } else {
         setError(
           error.message ||
-            "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
+          "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
         );
       }
     } finally {
@@ -387,7 +389,7 @@ export default function RastreoPedidoDetalle() {
 
                       <div className="flex items-center gap-4">
                         {/* Imagen del producto */}
-                        <div className="relative w-32 h-32 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
+                        {/* <div className="relative w-32 h-32 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
                           <Image
                             src={pedidoEncontrado.producto.imagen}
                             alt={pedidoEncontrado.producto.nombre}
@@ -395,10 +397,10 @@ export default function RastreoPedidoDetalle() {
                             className="object-contain"
                             unoptimized
                           />
-                        </div>
+                        </div> */}
 
                         {/* Precio */}
-                        <div className="text-left sm:max-w-[40%] self-center">
+                        {/* <div className="text-left sm:max-w-[40%] self-center">
                           <h4 className="text-2xl font-semibold text-gray-900 mb-1">
                             {pedidoEncontrado.producto.nombre}
                           </h4>
@@ -415,7 +417,7 @@ export default function RastreoPedidoDetalle() {
                               </span>
                             )}
                           </div>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                   </div>
@@ -429,11 +431,10 @@ export default function RastreoPedidoDetalle() {
                         {/* Línea vertical */}
                         {index !== pedidoEncontrado.estados.length - 1 && (
                           <div
-                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${
-                              estado.completado
-                                ? "border border-dashed border-primary"
-                                : "border border-dashed border-gray-300"
-                            }`}
+                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${estado.completado
+                              ? "border border-dashed border-primary"
+                              : "border border-dashed border-gray-300"
+                              }`}
                           ></div>
                         )}
 
@@ -454,13 +455,12 @@ export default function RastreoPedidoDetalle() {
 
                           {/* Icono */}
                           <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 transition-all duration-300 ${
-                              estado.completado
-                                ? "bg-green-500 text-white shadow-lg shadow-green-200"
-                                : estado.activo
-                                  ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
-                                  : "bg-gray-300 text-gray-500"
-                            }`}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 transition-all duration-300 ${estado.completado
+                              ? "bg-green-500 text-white shadow-lg shadow-green-200"
+                              : estado.activo
+                                ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
+                                : "bg-gray-300 text-gray-500"
+                              }`}
                           >
                             {getIconoEstado(estado.titulo)}
                           </div>
@@ -469,11 +469,10 @@ export default function RastreoPedidoDetalle() {
                           <div className="flex-1 pt-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h3
-                                className={`text-xl font-semibold transition-colors ${
-                                  estado.completado || estado.activo
-                                    ? "text-primary-dark"
-                                    : "text-gray-400"
-                                }`}
+                                className={`text-xl font-semibold transition-colors ${estado.completado || estado.activo
+                                  ? "text-primary-dark"
+                                  : "text-gray-400"
+                                  }`}
                               >
                                 {estado.titulo}
                               </h3>
@@ -484,11 +483,10 @@ export default function RastreoPedidoDetalle() {
                               )}
                             </div>
                             <p
-                              className={`text-sm transition-colors ${
-                                estado.completado || estado.activo
-                                  ? "text-gray-700"
-                                  : "text-gray-400"
-                              }`}
+                              className={`text-sm transition-colors ${estado.completado || estado.activo
+                                ? "text-gray-700"
+                                : "text-gray-400"
+                                }`}
                             >
                               {estado.descripcion}
                             </p>
@@ -503,7 +501,7 @@ export default function RastreoPedidoDetalle() {
                             {/* Fotos del estado */}
                             {estado.fotos && estado.fotos.length > 0 && (
                               <div className="mt-4 flex flex-wrap gap-2">
-                                {estado.fotos.map((foto, idx) => (
+                                {/* {estado.fotos.map((foto, idx) => (
                                   <div
                                     key={idx}
                                     className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 shadow-sm cursor-pointer hover:opacity-90 hover:scale-105 transition-all"
@@ -517,7 +515,7 @@ export default function RastreoPedidoDetalle() {
                                       unoptimized
                                     />
                                   </div>
-                                ))}
+                                ))} */}
                               </div>
                             )}
                           </div>
