@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import logger from '@/lib/logger';
+import logger from "@/lib/logger";
 import Image from "next/image";
 import Link from "next/link";
 import { FaInstagram, FaFacebook, FaTiktok } from "react-icons/fa";
@@ -187,7 +187,10 @@ export default function Footer() {
         <div className="md:col-span-1">
           {/* Columna 3: Suscripción y redes */}
           <div className="space-y-4">
-            <Link href="/libro-reclamaciones">
+            <Link
+              target="_blank"
+              href="https://libro-de-reclamaciones.liwilu.com.pe/"
+            >
               <Image
                 src="/images/liwilu_libro_reclamaciones.png"
                 alt="Libro de reclamaciones"
@@ -207,10 +210,11 @@ export default function Footer() {
                     value={newsletterData.email}
                     onChange={handleChange}
                     placeholder="Dirección de correo electrónico"
-                    className={`px-4 py-2 rounded-l-sm text-primary-dark text-sm w-full focus:outline-none focus:ring-2 transition ${errors.email
-                      ? "ring-2 ring-red-400"
-                      : "focus:ring-white/50"
-                      }`}
+                    className={`px-4 py-2 rounded-l-sm text-primary-dark text-sm w-full focus:outline-none focus:ring-2 transition ${
+                      errors.email
+                        ? "ring-2 ring-red-400"
+                        : "focus:ring-white/50"
+                    }`}
                     disabled={isSubmitting}
                   />
                   <button
@@ -246,13 +250,22 @@ export default function Footer() {
 
             {/* Redes sociales */}
             <div className="flex items-center gap-4 mt-6">
-              <Link href="https://www.facebook.com/LiwiluPeru" className="hover:opacity-80">
+              <Link
+                href="https://www.facebook.com/LiwiluPeru"
+                className="hover:opacity-80"
+              >
                 <FaFacebook className="w-6 h-6 hover:text-blue-400 transition" />
               </Link>
-              <Link href="https://www.instagram.com/liwiluperu/" className="hover:opacity-80">
+              <Link
+                href="https://www.instagram.com/liwiluperu/"
+                className="hover:opacity-80"
+              >
                 <FaInstagram className="w-6 h-6 hover:text-pink-400 transition" />
               </Link>
-              <Link href="https://www.tiktok.com/@liwilu.peru?lang=es" className="hover:opacity-80">
+              <Link
+                href="https://www.tiktok.com/@liwilu.peru?lang=es"
+                className="hover:opacity-80"
+              >
                 <FaTiktok className="w-6 h-6 hover:text-gray-300 transition" />
               </Link>
             </div>
