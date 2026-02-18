@@ -34,10 +34,16 @@ export interface DeliveryInfo {
     carrierId: number;
     carrierName: string;
     carrierPrestashopId: number;
-    zoneId: number;
-    zoneName: string;
-    shippingCost: number;
-    idAlmacenSAVAR: string;
+    // Pickup fields
+    idAlmacenERP?: number;
+    desAlmacen?: string;
+    direccionAlmacen?: string;
+    atencion?: string;
+    // Delivery fields
+    zoneId?: number;
+    zoneName?: string;
+    shippingCost?: number;
+    idAlmacenSAVAR?: string;
 }
 
 export interface InvoiceData {

@@ -6,8 +6,203 @@ import Image from "next/image";
 import Button from "@/components/ui/Button";
 import AccountSidebar from "@/components/AccountSidebar";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { getMyOrders, Order } from "@/lib/orders";
+import {
+  getMyOrders,
+  getPackageStatus,
+  getPickupStatus,
+  Order,
+} from "@/lib/orders";
 import { FaCheckCircle, FaClock, FaTruck, FaBox, FaHome } from "react-icons/fa";
+
+// ─── Tracking helpers (mirrors rastreo/[id].tsx) ────────────────────────────
+
+function formatTrackingDate(
+  isoDate: string,
+  type: "date" | "time" = "date",
+): string {
+  const d = new Date(isoDate);
+  if (type === "time")
+    return d.toLocaleTimeString("es-PE", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  return d.toLocaleDateString("es-PE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+const FIXED_STEPS = [
+  {
+    id: "confirmado",
+    titulo: "Pedido confirmado",
+    keywords: ["confirmado", "creado"],
+    codes: [] as string[],
+  },
+  {
+    id: "recepcionado",
+    titulo: "Recepcionado",
+    keywords: ["almacén", "recepcion"],
+    codes: ["30"],
+  },
+  {
+    id: "planificado",
+    titulo: "Despacho/Planificado",
+    keywords: ["planificado", "preparado", "despacho"],
+    codes: [] as string[],
+  },
+  {
+    id: "ruta",
+    titulo: "En Ruta",
+    keywords: ["ruta", "camino"],
+    codes: [] as string[],
+  },
+  {
+    id: "entregado",
+    titulo: "Entregado",
+    keywords: ["entregado"],
+    codes: [] as string[],
+  },
+];
+
+const PICKUP_STEPS = [
+  {
+    id: "confirmado",
+    titulo: "Pedido confirmado",
+    code: "CONFIRMADO",
+    descripcion: "Tu pedido ha sido recibido y está siendo procesado.",
+  },
+  {
+    id: "sin_armado",
+    titulo: "Pedido recibido",
+    code: "P",
+    descripcion: "Estamos preparando los productos de tu pedido.",
+  },
+  {
+    id: "armado",
+    titulo: "Armado / Listo para recoger",
+    code: "A",
+    descripcion: "Tu pedido ya está listo en el local seleccionado.",
+  },
+  {
+    id: "entregado",
+    titulo: "Entregado",
+    code: "E",
+    descripcion: "El pedido ha sido entregado exitosamente.",
+  },
+];
+
+function getStepIndexForStatus(statusName: string, statusCode: string): number {
+  const s = statusName
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (s.includes("entregado")) return 4;
+  if (s.includes("ruta") || s.includes("camino")) return 3;
+  if (
+    s.includes("planificado") ||
+    s.includes("preparado") ||
+    s.includes("despacho")
+  )
+    return 2;
+  if (
+    ["21", "30"].includes(statusCode) ||
+    s.includes("almacen") ||
+    s.includes("recepcion") ||
+    s.includes("fulfillment")
+  )
+    return 1;
+  return 0;
+}
+
+interface TrackingStep {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  fecha: string;
+  hora: string;
+  completado: boolean;
+  activo: boolean;
+}
+
+function mapSAVARToSteps(savarData: any): TrackingStep[] {
+  const estadosApi = savarData.Estados || [];
+  let currentStepIndex = 0;
+  estadosApi.forEach((e: any) => {
+    const idx = getStepIndexForStatus(e.vNombreEstado, e.vCodEstado);
+    if (idx > currentStepIndex) currentStepIndex = idx;
+  });
+  return FIXED_STEPS.map((step, index) => {
+    let apiMatch =
+      step.codes.length > 0
+        ? estadosApi.find((e: any) => step.codes.includes(e.vCodEstado))
+        : estadosApi.find((e: any) =>
+            step.keywords.some((k) =>
+              e.vNombreEstado.toLowerCase().includes(k),
+            ),
+          );
+    let fecha = apiMatch
+      ? formatTrackingDate(apiMatch.dFechaEstado, "date")
+      : "";
+    let hora = apiMatch
+      ? formatTrackingDate(apiMatch.dFechaEstado, "time")
+      : "";
+    if (index === 0 && !apiMatch && estadosApi.length > 0) {
+      fecha = formatTrackingDate(estadosApi[0].dFechaEstado, "date");
+      hora = formatTrackingDate(estadosApi[0].dFechaEstado, "time");
+    }
+    const isCompleted = index <= currentStepIndex;
+    const isActive = index === currentStepIndex;
+    return {
+      id: step.id,
+      titulo: step.titulo,
+      descripcion:
+        apiMatch?.vMotivo ||
+        (isCompleted
+          ? index === 0
+            ? "Tu pedido ha sido confirmado exitosamente"
+            : "Estado actualizado"
+          : "Pendiente"),
+      fecha,
+      hora,
+      completado: isCompleted,
+      activo: isActive,
+    };
+  });
+}
+
+function mapPickupToSteps(pickupData: any[]): TrackingStep[] {
+  const current = pickupData[0] || {};
+  const code = current.EstadoDespacho;
+  let currentIndex = 0;
+  if (code === "P") currentIndex = 1;
+  else if (code === "A") currentIndex = 2;
+  else if (code === "E" || code === "B" || code === "X") currentIndex = 3;
+  return PICKUP_STEPS.map((step, index) => {
+    const isCompleted = index <= currentIndex;
+    const isActive = index === currentIndex;
+    let titulo = step.titulo;
+    if (isActive && code === "B") titulo = "Anulado";
+    if (isActive && code === "X") titulo = "Caducado";
+    return {
+      id: step.id,
+      titulo,
+      descripcion: step.descripcion,
+      fecha: isActive
+        ? formatTrackingDate(new Date().toISOString(), "date")
+        : "",
+      hora: isActive
+        ? formatTrackingDate(new Date().toISOString(), "time")
+        : "",
+      completado: isCompleted,
+      activo: isActive,
+    };
+  });
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function MisPedidos() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -15,8 +210,50 @@ export default function MisPedidos() {
   const [error, setError] = useState<string | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
 
-  const toggleOrderDetails = (orderId: number) => {
-    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+  // Per-order tracking state
+  const [trackingSteps, setTrackingSteps] = useState<
+    Record<number, TrackingStep[]>
+  >({});
+  const [trackingLoading, setTrackingLoading] = useState<
+    Record<number, boolean>
+  >({});
+  const [trackingError, setTrackingError] = useState<Record<number, string>>(
+    {},
+  );
+
+  const toggleOrderDetails = async (orderId: number, order: Order) => {
+    if (expandedOrderId === orderId) {
+      setExpandedOrderId(null);
+      return;
+    }
+    setExpandedOrderId(orderId);
+    // Only fetch if not already loaded
+    if (trackingSteps[orderId]) return;
+    setTrackingLoading((prev) => ({ ...prev, [orderId]: true }));
+    setTrackingError((prev) => ({ ...prev, [orderId]: "" }));
+    try {
+      const idStr = String(orderId);
+      if (order.deliveryType === "RETIRO_TIENDA") {
+        const data = await getPickupStatus(idStr);
+        setTrackingSteps((prev) => ({
+          ...prev,
+          [orderId]: mapPickupToSteps(data),
+        }));
+      } else {
+        const data = await getPackageStatus(idStr);
+        setTrackingSteps((prev) => ({
+          ...prev,
+          [orderId]: mapSAVARToSteps(data),
+        }));
+      }
+    } catch (err: any) {
+      setTrackingError((prev) => ({
+        ...prev,
+        [orderId]: err.message || "No se pudo obtener el estado del pedido",
+      }));
+    } finally {
+      setTrackingLoading((prev) => ({ ...prev, [orderId]: false }));
+    }
   };
 
   useEffect(() => {
@@ -237,7 +474,9 @@ export default function MisPedidos() {
                                 </div>
 
                                 <button
-                                  onClick={() => toggleOrderDetails(order.id)}
+                                  onClick={() =>
+                                    toggleOrderDetails(order.id, order)
+                                  }
                                   className="text-primary hover:text-primary-dark font-semibold text-sm flex items-center gap-2 transition-all"
                                 >
                                   {isExpanded
@@ -266,185 +505,135 @@ export default function MisPedidos() {
                             {isExpanded && (
                               <div className="p-6 border-t bg-white animate-slide-in">
                                 <div className="space-y-6">
-                                  {/* Línea de tiempo de estados - Simplified 5 steps */}
+                                  {/* Línea de tiempo de estados */}
                                   <div className="relative">
-                                    <h4 className="font-bold text-primary-dark mb-6 border-b pb-2">
+                                    <h4 className="font-bold text-primary-dark mb-4 border-b pb-2">
                                       Seguimiento del pedido
                                     </h4>
 
-                                    <div className="space-y-4">
-                                      {/* Paso 1: Pedido confirmado (always shown) */}
-                                      <div
-                                        className="flex gap-4 items-start animate-fade-in"
-                                        style={{ animationDelay: "0ms" }}
-                                      >
-                                        <div
-                                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                                            order.confirmado
-                                              ? "bg-primary text-white shadow-lg shadow-green-200"
-                                              : "bg-gray-200 text-gray-500"
-                                          }`}
-                                        >
-                                          <FaCheckCircle className="text-lg" />
-                                        </div>
-                                        <div className="flex-1">
-                                          <p className="font-semibold text-sm text-primary-dark">
-                                            Pedido confirmado
+                                    {/* Info de la tienda para Pickups */}
+                                    {order.deliveryType === "RETIRO_TIENDA" &&
+                                      order.deliveryInfo?.desAlmacen && (
+                                        <div className="bg-green-50 border border-primary rounded-sm p-3 mb-4 text-xs text-primary">
+                                          <p className="font-semibold mb-0.5">
+                                            📍 {order.deliveryInfo.desAlmacen}
                                           </p>
-                                          <p className="text-xs text-neutral-gray">
-                                            {order.confirmado || formattedDate}
-                                          </p>
-                                        </div>
-                                      </div>
-
-                                      {/* Paso 2: Recepcionado */}
-                                      <div
-                                        className="flex gap-4 items-start animate-fade-in"
-                                        style={{ animationDelay: "100ms" }}
-                                      >
-                                        <div
-                                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                                            order.pendienteArreglo
-                                              ? "bg-primary text-white shadow-lg shadow-green-200"
-                                              : "bg-gray-200 text-gray-500"
-                                          }`}
-                                        >
-                                          <FaBox className="text-lg" />
-                                        </div>
-                                        <div className="flex-1">
-                                          <p
-                                            className={`font-semibold text-sm ${
-                                              order.pendienteArreglo
-                                                ? "text-primary-dark"
-                                                : "text-gray-400"
-                                            }`}
-                                          >
-                                            Recepcionado
-                                          </p>
-                                          <p className="text-xs text-neutral-gray">
-                                            {order.pendienteArreglo || "-"}
-                                          </p>
-                                        </div>
-                                      </div>
-
-                                      {/* Paso 3: Despacho/Planificado */}
-                                      <div
-                                        className="flex gap-4 items-start animate-fade-in"
-                                        style={{ animationDelay: "200ms" }}
-                                      >
-                                        <div
-                                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                                            order.enRuta
-                                              ? "bg-primary text-white shadow-lg shadow-green-200"
-                                              : "bg-gray-200 text-gray-500"
-                                          }`}
-                                        >
-                                          <FaClock className="text-lg" />
-                                        </div>
-                                        <div className="flex-1">
-                                          <p
-                                            className={`font-semibold text-sm ${
-                                              order.enRuta
-                                                ? "text-primary-dark"
-                                                : "text-gray-400"
-                                            }`}
-                                          >
-                                            Despacho/Planificado
-                                          </p>
-                                          <p className="text-xs text-neutral-gray">
-                                            {order.enRuta
-                                              ? new Date(
-                                                  order.enRuta,
-                                                ).toLocaleDateString("es-PE", {
-                                                  day: "2-digit",
-                                                  month: "short",
-                                                })
-                                              : "-"}
-                                          </p>
-                                        </div>
-                                      </div>
-
-                                      {/* Paso 4: En Ruta */}
-                                      <div
-                                        className="flex gap-4 items-start animate-fade-in"
-                                        style={{ animationDelay: "300ms" }}
-                                      >
-                                        <div
-                                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                                            order.enRuta
-                                              ? "bg-primary text-white shadow-lg shadow-green-200 animate-pulse"
-                                              : "bg-gray-200 text-gray-500"
-                                          }`}
-                                        >
-                                          <FaTruck className="text-lg" />
-                                        </div>
-                                        <div className="flex-1">
-                                          <p
-                                            className={`font-semibold text-sm ${
-                                              order.enRuta
-                                                ? "text-primary-dark"
-                                                : "text-gray-400"
-                                            }`}
-                                          >
-                                            En Ruta
-                                          </p>
-                                          <p className="text-xs text-neutral-gray">
-                                            {order.enRuta || "-"}
-                                          </p>
-                                          {order.enRuta && !order.entregado && (
-                                            <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full">
-                                              Estado actual
-                                            </span>
+                                          {order.deliveryInfo
+                                            .direccionAlmacen && (
+                                            <p className="text-primary">
+                                              {
+                                                order.deliveryInfo
+                                                  .direccionAlmacen
+                                              }
+                                            </p>
+                                          )}
+                                          {order.deliveryInfo.atencion && (
+                                            <p className="text-primary mt-0.5">
+                                              🕐 {order.deliveryInfo.atencion}
+                                            </p>
                                           )}
                                         </div>
-                                      </div>
+                                      )}
 
-                                      {/* Paso 5: Entregado */}
-                                      <div
-                                        className="flex gap-4 items-start animate-fade-in"
-                                        style={{ animationDelay: "400ms" }}
-                                      >
-                                        <div
-                                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                                            order.entregado
-                                              ? "bg-primary text-white shadow-lg shadow-green-200"
-                                              : "bg-gray-200 text-gray-500"
-                                          }`}
+                                    {/* Timeline Dynamic Loading */}
+                                    {trackingLoading[order.id] ? (
+                                      <div className="py-8 text-center">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                                        <p className="text-xs text-gray-400">
+                                          Consultando estado real...
+                                        </p>
+                                      </div>
+                                    ) : trackingError[order.id] ? (
+                                      <div className="py-4 text-center bg-red-50 rounded-lg border border-red-100">
+                                        <p className="text-xs text-red-500">
+                                          {trackingError[order.id]}
+                                        </p>
+                                        <button
+                                          onClick={() =>
+                                            toggleOrderDetails(order.id, order)
+                                          }
+                                          className="text-primary text-[10px] font-bold mt-1 underline"
                                         >
-                                          <FaHome className="text-lg" />
-                                        </div>
-                                        <div className="flex-1">
-                                          <p
-                                            className={`font-semibold text-sm ${
-                                              order.entregado
-                                                ? "text-primary-dark"
-                                                : "text-gray-400"
-                                            }`}
-                                          >
-                                            Entregado
-                                          </p>
-                                          <p className="text-xs text-neutral-gray">
-                                            {order.entregado || "-"}
-                                          </p>
-                                          {order.entregado && (
-                                            <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full">
-                                              Completado
-                                            </span>
-                                          )}
-                                        </div>
+                                          Reintentar
+                                        </button>
                                       </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex justify-end pt-4 border-t">
-                                    <Link
-                                      className="w-full md:w-auto bg-primary text-white py-2 px-4 rounded-full text-xs"
-                                      href={`/rastreo/${order.id}`}
-                                    >
-                                      Seguir pedido
-                                    </Link>
+                                    ) : (
+                                      <div className="space-y-4">
+                                        {(trackingSteps[order.id] || []).map(
+                                          (step, i) => (
+                                            <div
+                                              key={step.id}
+                                              className="flex gap-4 items-start animate-fade-in"
+                                              style={{
+                                                animationDelay: `${i * 100}ms`,
+                                              }}
+                                            >
+                                              <div
+                                                className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                                                  step.completado
+                                                    ? step.activo
+                                                      ? "bg-primary text-white shadow-lg shadow-green-200 animate-pulse"
+                                                      : "bg-primary text-white shadow-lg shadow-green-200"
+                                                    : "bg-gray-200 text-gray-400"
+                                                }`}
+                                              >
+                                                {step.id === "confirmado" && (
+                                                  <FaCheckCircle className="text-base" />
+                                                )}
+                                                {(step.id === "recepcionado" ||
+                                                  step.id === "sin_armado") && (
+                                                  <FaBox className="text-base" />
+                                                )}
+                                                {(step.id === "planificado" ||
+                                                  step.id === "armado") && (
+                                                  <FaClock className="text-base" />
+                                                )}
+                                                {step.id === "ruta" && (
+                                                  <FaTruck className="text-base" />
+                                                )}
+                                                {step.id === "entregado" && (
+                                                  <FaHome className="text-base" />
+                                                )}
+                                              </div>
+                                              <div className="flex-1">
+                                                <p
+                                                  className={`font-semibold text-sm ${step.completado ? "text-primary-dark" : "text-gray-400"}`}
+                                                >
+                                                  {step.titulo}
+                                                </p>
+                                                <p className="text-[10px] md:text-xs text-neutral-gray">
+                                                  {step.fecha
+                                                    ? `${step.fecha} ${step.hora}`
+                                                    : "Pendiente"}
+                                                </p>
+                                                {step.activo && (
+                                                  <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full">
+                                                    Estado actual
+                                                  </span>
+                                                )}
+                                                {step.id === "entregado" &&
+                                                  step.completado && (
+                                                    <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full">
+                                                      Completado
+                                                    </span>
+                                                  )}
+                                              </div>
+                                            </div>
+                                          ),
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
+
+                                {/* <div className="flex justify-end pt-4 border-t">
+                                  <Link
+                                    className="w-full md:w-auto bg-primary text-white py-2 px-4 rounded-full text-xs"
+                                    href={`/rastreo/${order.id}`}
+                                  >
+                                    Seguir pedido
+                                  </Link>
+                                </div> */}
                               </div>
                             )}
                           </div>
