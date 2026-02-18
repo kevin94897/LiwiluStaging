@@ -14,8 +14,11 @@ import {
   FaHome,
 } from "react-icons/fa";
 import Button from "@/components/ui/Button";
-import { getPackageStatus, getPickupStatus } from "@/lib/orders";
-import { getOrderDetail } from "@/lib/cart";
+import {
+  getPackageStatus,
+  getPickupStatus,
+  getDeliveryType,
+} from "@/lib/orders";
 
 // SAVAR API Response Interfaces
 interface SAVAREstado {
@@ -143,12 +146,26 @@ function mapSAVARToUI(savarData: any): PedidoInfo {
 
   // Helper to find index in our FIXED_STEPS based on API status string and code
   const getStepIndexForStatus = (statusName: string, statusCode: string) => {
-    const s = statusName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // quitar tildes
+    const s = statusName
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, ""); // quitar tildes
     const c = statusCode;
     if (s.includes("entregado")) return 4;
     if (s.includes("ruta") || s.includes("camino")) return 3;
-    if (s.includes("planificado") || s.includes("preparado") || s.includes("despacho")) return 2;
-    if (["21", "30"].includes(c) || s.includes("almacen") || s.includes("recepcion") || s.includes("fulfillment")) return 1;
+    if (
+      s.includes("planificado") ||
+      s.includes("preparado") ||
+      s.includes("despacho")
+    )
+      return 2;
+    if (
+      ["21", "30"].includes(c) ||
+      s.includes("almacen") ||
+      s.includes("recepcion") ||
+      s.includes("fulfillment")
+    )
+      return 1;
     return 0;
   };
 
@@ -205,13 +222,12 @@ function mapSAVARToUI(savarData: any): PedidoInfo {
       hora,
       completado: isCompleted,
       activo: isActive,
-      fotos: Array.isArray(apiMatch?.lstfotos) && apiMatch.lstfotos.length > 0
-        ? apiMatch.lstfotos
-        : [],
+      fotos:
+        Array.isArray(apiMatch?.lstfotos) && apiMatch.lstfotos.length > 0
+          ? apiMatch.lstfotos
+          : [],
     };
-  })
-    .filter((estado) => estado.completado);
-
+  });
 
   return {
     numero: savarData.vcodpaquete,
@@ -329,19 +345,26 @@ export default function RastreoPedidoDetalle() {
     const numeroLimpio = num.replace("#", "");
 
     try {
-      // 1. First consult order details to know the delivery type
-      const orderResponse = await getOrderDetail(numeroLimpio);
+      // 1. Check delivery type via dedicated lightweight endpoint
+      const deliveryTypeResponse = await getDeliveryType(numeroLimpio);
 
-      if (orderResponse && orderResponse.success && orderResponse.data) {
-        const orderData = orderResponse.data;
+      if (
+        deliveryTypeResponse &&
+        deliveryTypeResponse.success &&
+        deliveryTypeResponse.data
+      ) {
+        const { deliveryType } = deliveryTypeResponse.data;
 
         // 2. Fetch tracking based on deliveryType
-        if (orderData.deliveryType === "RETIRO_TIENDA") {
+        if (deliveryType === "RETIRO_TIENDA") {
           // Store Pickup Tracking
           try {
             const pickupResponse = await getPickupStatus(numeroLimpio);
             if (pickupResponse && pickupResponse.length > 0) {
-              const mappedData = mapPickupToUI(pickupResponse, orderData);
+              const mappedData = mapPickupToUI(pickupResponse, {
+                orderNumber: numeroLimpio,
+                id: numeroLimpio,
+              });
               setPedidoEncontrado(mappedData);
             } else {
               setError(
@@ -389,7 +412,7 @@ export default function RastreoPedidoDetalle() {
       console.error("Error fetching order details:", error);
       setError(
         error.message ||
-        "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
+          "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
       );
     } finally {
       setBuscando(false);
@@ -551,10 +574,11 @@ export default function RastreoPedidoDetalle() {
                         {/* Línea vertical */}
                         {index !== pedidoEncontrado.estados.length - 1 && (
                           <div
-                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${estado.completado
-                              ? "border border-dashed border-primary"
-                              : "border border-dashed border-gray-300"
-                              }`}
+                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${
+                              estado.completado
+                                ? "border border-dashed border-primary"
+                                : "border border-dashed border-gray-300"
+                            }`}
                           ></div>
                         )}
 
@@ -575,12 +599,13 @@ export default function RastreoPedidoDetalle() {
 
                           {/* Icono */}
                           <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 transition-all duration-300 ${estado.completado
-                              ? "bg-green-500 text-white shadow-lg shadow-green-200"
-                              : estado.activo
-                                ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
-                                : "bg-gray-300 text-gray-500"
-                              }`}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 transition-all duration-300 ${
+                              estado.completado
+                                ? "bg-green-500 text-white shadow-lg shadow-green-200"
+                                : estado.activo
+                                  ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
+                                  : "bg-gray-300 text-gray-500"
+                            }`}
                           >
                             {getIconoEstado(estado.titulo)}
                           </div>
@@ -589,10 +614,11 @@ export default function RastreoPedidoDetalle() {
                           <div className="flex-1 pt-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h3
-                                className={`text-xl font-semibold transition-colors ${estado.completado || estado.activo
-                                  ? "text-primary-dark"
-                                  : "text-gray-400"
-                                  }`}
+                                className={`text-xl font-semibold transition-colors ${
+                                  estado.completado || estado.activo
+                                    ? "text-primary-dark"
+                                    : "text-gray-400"
+                                }`}
                               >
                                 {estado.titulo}
                               </h3>
@@ -603,10 +629,11 @@ export default function RastreoPedidoDetalle() {
                               )} */}
                             </div>
                             <p
-                              className={`text-sm transition-colors ${estado.completado || estado.activo
-                                ? "text-gray-700"
-                                : "text-gray-400"
-                                }`}
+                              className={`text-sm transition-colors ${
+                                estado.completado || estado.activo
+                                  ? "text-gray-700"
+                                  : "text-gray-400"
+                              }`}
                             >
                               {estado.descripcion}
                             </p>

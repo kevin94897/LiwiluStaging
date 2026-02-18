@@ -229,3 +229,44 @@ export async function getPickupStatus(orderId: string): Promise<PickupStatusResp
         throw error;
     }
 }
+// Delivery Type Interface
+export interface DeliveryTypeResponse {
+    success: boolean;
+    data: {
+        orderId: number;
+        deliveryType: string; // "RETIRO_TIENDA" | "DELIVERY"
+    };
+}
+
+/**
+ * Fetches the delivery type for a specific order.
+ * Used to determine whether to show SAVAR or pickup tracking.
+ * @param orderId - The order ID to check
+ */
+export async function getDeliveryType(orderId: string): Promise<DeliveryTypeResponse> {
+    try {
+        const response = await apiGet(`/orders/delivery-type/${orderId}`, {
+            skipAuth: true // Public tracking page, no auth required
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+
+            if (response.status === 404) {
+                const error: any = new Error(
+                    errorData.message ||
+                    `No se encontró el pedido #${orderId}. Verifica el número e intenta nuevamente.`
+                );
+                error.statusCode = 404;
+                throw error;
+            }
+
+            throw new Error(errorData.message || `Error fetching delivery type: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error: any) {
+        logger.error('Error in getDeliveryType:', error);
+        throw error;
+    }
+}
