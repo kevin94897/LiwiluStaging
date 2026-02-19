@@ -130,8 +130,8 @@ export default function Home({
 
   return (
     <Layout
-      title="Liwilu - Compra por MAYOR"
-      description="Liwilu - Tienda por mayor"
+      title="Liwilu - Tu compra, nuestro compromiso"
+      description="Uniformes, útiles y más"
     >
       <HeroSlider latestProducts={latestProducts} />
 

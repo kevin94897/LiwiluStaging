@@ -14,10 +14,10 @@ export default function Layout({ title, description, children, background }: Lay
 	return (
 		<>
 			<Head>
-				<title>{title || 'Liwilu - Compra por MAYOR'}</title>
+				<title>{title || 'Liwilu - Tu compra, nuestro compromiso'}</title>
 				<meta
 					name="description"
-					content={description || 'Liwilu - Tienda por mayor'}
+					content={description || 'Uniformes, útiles y más'}
 				/>
 			</Head>
 
