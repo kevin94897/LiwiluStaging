@@ -336,6 +336,35 @@ export default function RastreoPedidoDetalle() {
   const [buscando, setBuscando] = useState(false);
   const [error, setError] = useState("");
 
+  // Construye un estado "Pedido confirmado" por defecto cuando el pedido existe pero no tiene tracking aún
+  const buildDefaultConfirmadoState = (
+    numeroLimpio: string,
+    deliveryType: string,
+  ): PedidoInfo => ({
+    numero: numeroLimpio,
+    fecha: formatDate(new Date().toISOString()),
+    deliveryType,
+    producto: {
+      nombre: "Pedido en preparación",
+      talla: `Pedido #${numeroLimpio}`,
+      precio: 0,
+      imagen: "/images/productos/liwilu_producto_example.png",
+    },
+    estados: [
+      {
+        id: "confirmado",
+        titulo: "Pedido confirmado",
+        descripcion:
+          "Tu pedido ha sido confirmado y está siendo procesado. Pronto recibirás información de seguimiento.",
+        fecha: formatDate(new Date().toISOString(), "date"),
+        hora: formatDate(new Date().toISOString(), "time"),
+        completado: true,
+        activo: true,
+        fotos: [],
+      },
+    ],
+  });
+
   const buscarPedido = async (num: string) => {
     if (!num.trim()) return;
 
@@ -367,14 +396,16 @@ export default function RastreoPedidoDetalle() {
               });
               setPedidoEncontrado(mappedData);
             } else {
-              setError(
-                "No se encontró información de retiro para este pedido.",
+              // El pedido existe pero aún no tiene datos de retiro → mostrar "Pedido confirmado"
+              setPedidoEncontrado(
+                buildDefaultConfirmadoState(numeroLimpio, deliveryType),
               );
             }
           } catch (err: any) {
             console.error("Error fetching pickup status:", err);
-            setError(
-              err.message || "Ocurrió un error al buscar el estado de retiro.",
+            // El pedido existe, el error es del sistema de tracking → mostrar "Pedido confirmado"
+            setPedidoEncontrado(
+              buildDefaultConfirmadoState(numeroLimpio, deliveryType),
             );
           }
         } else {
@@ -386,21 +417,17 @@ export default function RastreoPedidoDetalle() {
               const mappedData = mapSAVARToUI(response);
               setPedidoEncontrado(mappedData);
             } else {
-              setError(
-                "No se encontró información de envío. Verifica el número e intenta nuevamente.",
+              // El pedido existe pero aún no tiene tracking SAVAR → mostrar "Pedido confirmado"
+              setPedidoEncontrado(
+                buildDefaultConfirmadoState(numeroLimpio, deliveryType),
               );
             }
           } catch (err: any) {
             console.error("Error fetching package status:", err);
-            if (err.isPackageNotFound || err.statusCode === 404) {
-              setError(
-                `No se encontró el paquete #${numeroLimpio}. Por favor verifica el número de seguimiento e intenta nuevamente.`,
-              );
-            } else {
-              setError(
-                err.message || "Ocurrió un error al buscar el estado de envío.",
-              );
-            }
+            // El pedido existe, el error es del sistema de tracking (incluyendo 404 de SAVAR) → mostrar "Pedido confirmado"
+            setPedidoEncontrado(
+              buildDefaultConfirmadoState(numeroLimpio, deliveryType),
+            );
           }
         }
       } else {
@@ -412,7 +439,7 @@ export default function RastreoPedidoDetalle() {
       console.error("Error fetching order details:", error);
       setError(
         error.message ||
-          "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
+        "Ocurrió un error al buscar el pedido. Por favor intenta nuevamente más tarde.",
       );
     } finally {
       setBuscando(false);
@@ -574,11 +601,10 @@ export default function RastreoPedidoDetalle() {
                         {/* Línea vertical */}
                         {index !== pedidoEncontrado.estados.length - 1 && (
                           <div
-                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${
-                              estado.completado
-                                ? "border border-dashed border-primary"
-                                : "border border-dashed border-gray-300"
-                            }`}
+                            className={`absolute md:left-44 left-6 top-12 w-0.5 h-full -ml-px ${estado.completado
+                              ? "border border-dashed border-primary"
+                              : "border border-dashed border-gray-300"
+                              }`}
                           ></div>
                         )}
 
@@ -599,13 +625,12 @@ export default function RastreoPedidoDetalle() {
 
                           {/* Icono */}
                           <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 transition-all duration-300 ${
-                              estado.completado
-                                ? "bg-green-500 text-white shadow-lg shadow-green-200"
-                                : estado.activo
-                                  ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
-                                  : "bg-gray-300 text-gray-500"
-                            }`}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl z-10 transition-all duration-300 ${estado.completado
+                              ? "bg-green-500 text-white shadow-lg shadow-green-200"
+                              : estado.activo
+                                ? "bg-green-500 text-white shadow-lg shadow-green-200 animate-pulse"
+                                : "bg-gray-300 text-gray-500"
+                              }`}
                           >
                             {getIconoEstado(estado.titulo)}
                           </div>
@@ -614,11 +639,10 @@ export default function RastreoPedidoDetalle() {
                           <div className="flex-1 pt-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h3
-                                className={`text-xl font-semibold transition-colors ${
-                                  estado.completado || estado.activo
-                                    ? "text-primary-dark"
-                                    : "text-gray-400"
-                                }`}
+                                className={`text-xl font-semibold transition-colors ${estado.completado || estado.activo
+                                  ? "text-primary-dark"
+                                  : "text-gray-400"
+                                  }`}
                               >
                                 {estado.titulo}
                               </h3>
@@ -629,11 +653,10 @@ export default function RastreoPedidoDetalle() {
                               )} */}
                             </div>
                             <p
-                              className={`text-sm transition-colors ${
-                                estado.completado || estado.activo
-                                  ? "text-gray-700"
-                                  : "text-gray-400"
-                              }`}
+                              className={`text-sm transition-colors ${estado.completado || estado.activo
+                                ? "text-gray-700"
+                                : "text-gray-400"
+                                }`}
                             >
                               {estado.descripcion}
                             </p>
