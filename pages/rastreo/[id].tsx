@@ -540,7 +540,8 @@ export default function RastreoPedidoDetalle() {
                 <div className="relative">
                   <div className="p-8">
                     <h2 className="text-2xl font-semibold text-gray-900">
-                      Pedido en camino
+                      {pedidoEncontrado.estados.find((e) => e.activo)?.titulo ||
+                        "Estado del pedido"}
                     </h2>
 
                     <div className="flex flex-col sm:flex-row gap-6 items-start">
