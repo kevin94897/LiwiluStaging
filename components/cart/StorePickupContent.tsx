@@ -95,14 +95,20 @@ export default function StorePickupContent({
               Seleccionar {pickupTab === "lima" ? "distrito" : "provincia"}
             </option>
             {pickupTab === "lima"
-              ? warehouseDistricts.map((district) => (
-                <option
-                  key={district.codUbigeoAlm}
-                  value={district.desDistrito}
-                >
-                  {district.desDistrito}
-                </option>
-              ))
+              ? warehouseDistricts
+                .filter(
+                  (district) =>
+                    district.desDistrito.toLowerCase() !== "la victoria" &&
+                    district.desDistrito.toLowerCase() !== "lince"
+                )
+                .map((district) => (
+                  <option
+                    key={district.codUbigeoAlm}
+                    value={district.desDistrito}
+                  >
+                    {district.desDistrito}
+                  </option>
+                ))
               : warehouseProvinces.map((province) => (
                 <option
                   key={province.codUbigeoAlm}
