@@ -31,6 +31,7 @@ interface CartItemProps {
   infoTiendaSeleccionada: WarehouseMapItem | undefined;
   isValidatingStock: boolean;
   isValidatingSavar: boolean;
+  hasDeliveryDistrict: boolean;
   onRemove: (productId: string) => void;
   onUpdateQuantity: (productId: string, quantity: number) => void;
 }
@@ -45,6 +46,7 @@ export default function CartItem({
   infoTiendaSeleccionada,
   isValidatingStock,
   isValidatingSavar,
+  hasDeliveryDistrict,
   onRemove,
   onUpdateQuantity,
 }: CartItemProps) {
@@ -76,6 +78,7 @@ export default function CartItem({
     if (metodoEnvio === "retiro" && isValidatingStock) return "loading";
 
     if (metodoEnvio === "delivery") {
+      if (!hasDeliveryDistrict) return "neutral";
       if (savarStockResults.length === 0) return "neutral";
       const savarResult = savarStockResults.find(
         (r) => r.reference === item.product.reference,
@@ -102,10 +105,11 @@ export default function CartItem({
 
   return (
     <div
-      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${itemStockStatus === "available"
+      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${
+        itemStockStatus === "available"
           ? "border-2 border-primary"
           : "border-2 border-transparent"
-        }`}
+      }`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
       {/* Overlay Loader */}

@@ -12,6 +12,7 @@ interface DeliveryMethodSelectorProps {
   metodoEnvio: "delivery" | "retiro" | null;
   isGuest: boolean;
   envio: number;
+  currentDeliveryDistrict?: string;
   onSelectCarrier: (carrier: CartCarrier) => void;
   children?: React.ReactNode;
 }
@@ -24,6 +25,7 @@ export default function DeliveryMethodSelector({
   direccionEnvio,
   metodoEnvio,
   envio,
+  currentDeliveryDistrict,
   onSelectCarrier,
   children,
 }: DeliveryMethodSelectorProps) {
@@ -34,13 +36,14 @@ export default function DeliveryMethodSelector({
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase();
 
+  const distToValidate = currentDeliveryDistrict || direccionEnvio.distrito;
+
   // Validar si el distrito seleccionado está en la zona de cobertura
   const isDistrictValid =
-    !direccionEnvio.distrito ||
+    !distToValidate ||
     deliveryZones.length === 0 ||
     deliveryZones.some(
-      (z) =>
-        normalizeText(z.zoneName) === normalizeText(direccionEnvio.distrito),
+      (z) => normalizeText(z.zoneName) === normalizeText(distToValidate),
     );
 
   return (
@@ -65,41 +68,48 @@ export default function DeliveryMethodSelector({
               <button
                 key={carrier.id}
                 onClick={() => onSelectCarrier(carrier)}
-                className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${isSelected
+                className={`flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 transform hover:scale-105 ${
+                  isSelected
                     ? "border-primary bg-primary/5"
                     : "border-gray-200 hover:border-primary/50"
-                  }`}
+                }`}
               >
                 {isRetiro ? (
                   <FaStore
-                    className={`text-2xl ${isSelected ? "text-primary" : "text-gray-400"
-                      }`}
+                    className={`text-2xl ${
+                      isSelected ? "text-primary" : "text-gray-400"
+                    }`}
                   />
                 ) : (
                   <FaTruck
-                    className={`text-2xl ${isSelected ? "text-primary" : "text-gray-400"
-                      }`}
+                    className={`text-2xl ${
+                      isSelected ? "text-primary" : "text-gray-400"
+                    }`}
                   />
                 )}
                 <div className="text-left">
                   <p className="font-semibold">{carrier.name}</p>
                   <p className="text-xs text-gray-500">
-                    {selectedCarrier?.id === carrier.id && deliveryZones.length > 0
+                    {selectedCarrier?.id === carrier.id &&
+                    deliveryZones.length > 0 &&
+                    distToValidate
                       ? (() => {
-                        const zone = deliveryZones.find(
-                          (z) =>
-                            normalizeText(z.zoneName) ===
-                            normalizeText(direccionEnvio.distrito),
-                        );
-                        return zone
-                          ? formatPrice(zone.price)
-                          : carrier.shippingCost === 0
-                            ? "Gratis"
+                          const zone = deliveryZones.find(
+                            (z) =>
+                              normalizeText(z.zoneName) ===
+                              normalizeText(distToValidate),
+                          );
+                          return zone
+                            ? formatPrice(zone.price)
                             : carrier.delay || "Disponible";
-                      })()
-                      : carrier.shippingCost === 0
-                        ? "Gratis"
-                        : carrier.delay || "Disponible"}
+                        })()
+                      : isRetiro
+                        ? carrier.shippingCost === 0
+                          ? "Gratis"
+                          : "Disponible"
+                        : !distToValidate
+                          ? ""
+                          : "Disponible"}
                   </p>
                 </div>
               </button>
@@ -120,16 +130,18 @@ export default function DeliveryMethodSelector({
               {selectedCarrier?.delay ||
                 "El envío se realizará en el transcurso de unos días hábiles."}
             </p>
-            {isDistrictValid ? (
-              <p className="text-sm font-semibold text-primary mt-2">
-                Costo: {envio === 0 ? "Gratis" : formatPrice(envio.toString())}
-              </p>
-            ) : (
-              <p className="text-red-500 text-sm font-medium mt-2 flex items-center gap-1">
-                <PiWarningCircleFill className="flex-shrink-0" /> Delivery no
-                disponible, solo distritos de Lima Metropolitana
-              </p>
-            )}
+            {distToValidate ? (
+              isDistrictValid ? (
+                <p className="text-sm font-semibold text-primary mt-2">
+                  {envio === 0 ? "" : "Costo: " + formatPrice(envio.toString())}
+                </p>
+              ) : (
+                <p className="text-red-500 text-sm font-medium mt-2 flex items-center gap-1">
+                  <PiWarningCircleFill className="flex-shrink-0" /> Delivery no
+                  disponible, solo distritos de Lima Metropolitana
+                </p>
+              )
+            ) : null}
           </div>
 
           {children}

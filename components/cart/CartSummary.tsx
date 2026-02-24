@@ -12,6 +12,7 @@ interface CartSummaryProps {
   totalSavings: number;
   selectedCarrier: CartCarrier | null;
   metodoEnvio: "delivery" | "retiro" | null;
+  hasDeliveryDistrict?: boolean;
   acceptTerms: boolean;
   onAcceptTermsChange: (checked: boolean) => void;
   acceptNewsletter: boolean;
@@ -30,6 +31,7 @@ export default function CartSummary({
   totalSavings,
   selectedCarrier,
   metodoEnvio,
+  hasDeliveryDistrict,
   acceptTerms,
   onAcceptTermsChange,
   acceptNewsletter,
@@ -84,19 +86,24 @@ export default function CartSummary({
           <div className="flex justify-between text-gray-600">
             <span>Envío ({selectedCarrier?.name || "Pendiente"})</span>
             <span className="font-semibold">
-              {envio === 0 ? (
-                <span className="text-primary">Gratis ✓</span>
+              {!metodoEnvio ||
+              (metodoEnvio === "delivery" && !hasDeliveryDistrict) ? (
+                <span className="text-gray-400 font-normal text-sm">-</span>
+              ) : envio === 0 ? (
+                <span className="text-primary"></span>
               ) : (
                 formatPrice(envio.toString())
               )}
             </span>
           </div>
 
-          {metodoEnvio === "delivery" && selectedCarrier?.isFree && (
-            <p className="text-xs text-primary font-medium">
-              ¡Este método de envío es gratuito!
-            </p>
-          )}
+          {metodoEnvio === "delivery" &&
+            selectedCarrier?.isFree &&
+            hasDeliveryDistrict && (
+              <p className="text-xs text-primary font-medium">
+                ¡Este método de envío es gratuito!
+              </p>
+            )}
         </div>
 
         {/* Total */}

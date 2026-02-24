@@ -686,10 +686,7 @@ export default function Carrito() {
   // Sync mapWarehouses with shipping district when in delivery mode
   useEffect(() => {
     const syncWarehouses = async () => {
-      const currentDist =
-        isLoggedIn || mainAddressId
-          ? direccionEnvio.distrito
-          : guestData.distrito;
+      const currentDist = direccionEnvio.distrito;
       if (!currentDist || warehouseDistricts.length === 0) return;
 
       const district = warehouseDistricts.find(
@@ -1019,7 +1016,10 @@ export default function Carrito() {
       name === "telefonoOpcional"
     ) {
       // Allow letters for Pasaporte
-      if (name === "numeroDocumento" && guestData.tipoDocumento === "PASAPORTE") {
+      if (
+        name === "numeroDocumento" &&
+        guestData.tipoDocumento === "PASAPORTE"
+      ) {
         value = value.replace(/[^a-zA-Z0-9]/g, "");
       } else {
         value = value.replace(/\D/g, "");
@@ -1030,7 +1030,8 @@ export default function Carrito() {
         maxLength =
           guestData.tipoDocumento === "RUC"
             ? 11
-            : guestData.tipoDocumento === "DNI" || guestData.tipoDocumento === "PASAPORTE"
+            : guestData.tipoDocumento === "DNI" ||
+                guestData.tipoDocumento === "PASAPORTE"
               ? 8
               : 12; // CE
       } else if (name === "celular" || name === "telefonoOpcional") {
@@ -1103,9 +1104,12 @@ export default function Carrito() {
       } catch (error: any) {
         logger.error("Error saving guest data:", error);
 
-        if (error.message === 'CARRITO_NO_ENCONTRADO') {
+        if (error.message === "CARRITO_NO_ENCONTRADO") {
           await clearCart();
-          showToast("Tu sesión de carrito ha expirado. Por favor, intenta agregar tus productos nuevamente.", "error");
+          showToast(
+            "Tu sesión de carrito ha expirado. Por favor, intenta agregar tus productos nuevamente.",
+            "error",
+          );
           // Pequeño delay antes de recargar para que se vea el toast
           setTimeout(() => window.location.reload(), 2000);
           return;
@@ -1392,9 +1396,12 @@ export default function Carrito() {
     } catch (error: any) {
       logger.error("Error syncing checkout data:", error);
 
-      if (error.message === 'CARRITO_NO_ENCONTRADO') {
+      if (error.message === "CARRITO_NO_ENCONTRADO") {
         await clearCart();
-        showToast("Tu sesión de carrito ha expirado. Por favor, intenta agregar tus productos nuevamente.", "error");
+        showToast(
+          "Tu sesión de carrito ha expirado. Por favor, intenta agregar tus productos nuevamente.",
+          "error",
+        );
         setTimeout(() => window.location.reload(), 2000);
         return false;
       }
@@ -1566,7 +1573,7 @@ export default function Carrito() {
               missingInfo.length > 0
                 ? `Falta información: ${missingInfo.join(", ")}`
                 : summary.message ||
-                "Por favor completa toda la información requerida";
+                  "Por favor completa toda la información requerida";
 
             showToast(errorMsg, "error");
             // We stay in the cart as per latest requirement
@@ -1608,7 +1615,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-            "Por favor completa toda la información requerida",
+              "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
@@ -1630,7 +1637,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-            "Por favor completa toda la información requerida",
+              "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
@@ -1919,6 +1926,8 @@ export default function Carrito() {
     setSaveAddressToProfile(false);
   };
 
+  const currentDeliveryDistrict = direccionEnvio.distrito;
+
   return (
     <Layout
       title="Carrito - Liwilu"
@@ -2146,8 +2155,9 @@ export default function Carrito() {
                           checked={registroData.acceptTerms}
                           onChange={handleRegistroChange}
                           disabled={isLoginLoading}
-                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${registroErrors.acceptTerms ? "border-error" : ""
-                            }`}
+                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
+                            registroErrors.acceptTerms ? "border-error" : ""
+                          }`}
                         />
                         <span className="text-sm text-gray-700">
                           Acepto los{" "}
@@ -2182,8 +2192,9 @@ export default function Carrito() {
                           checked={registroData.receiveOffers}
                           onChange={handleRegistroChange}
                           disabled={isLoginLoading}
-                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${registroErrors.receiveOffers ? "border-error" : ""
-                            }`}
+                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
+                            registroErrors.receiveOffers ? "border-error" : ""
+                          }`}
                         />
                         <span className="text-sm text-gray-700">
                           Quiero recibir ofertas y beneficios exclusivos
@@ -2311,6 +2322,7 @@ export default function Carrito() {
               metodoEnvio={metodoEnvio as any}
               isGuest={isGuest}
               envio={envio}
+              currentDeliveryDistrict={currentDeliveryDistrict}
               onSelectCarrier={(carrier) => {
                 setSelectedCarrier(carrier);
                 updateCarrier(carrier.id);
@@ -2428,6 +2440,7 @@ export default function Carrito() {
                         infoTiendaSeleccionada={infoTiendaSeleccionada}
                         isValidatingStock={isValidatingStock}
                         isValidatingSavar={isValidatingSavar}
+                        hasDeliveryDistrict={!!currentDeliveryDistrict}
                         onRemove={removeFromCart}
                         onUpdateQuantity={handleUpdateQuantity}
                       />
@@ -2472,6 +2485,7 @@ export default function Carrito() {
             totalSavings={totalSavings}
             selectedCarrier={selectedCarrier}
             metodoEnvio={metodoEnvio as any}
+            hasDeliveryDistrict={!!currentDeliveryDistrict}
             acceptTerms={acceptTerms}
             onAcceptTermsChange={setAcceptTerms}
             acceptNewsletter={acceptNewsletter}
