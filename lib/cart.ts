@@ -18,6 +18,8 @@ export interface CartProduct {
     discountPrice?: number | null; // Changed to optional
     quantity: number;
     priceImpact?: number; // Added
+    promoDiscount?: number; // Discount applied by a promo/coupon
+    promoCodes?: string[]; // Codes that generated the promo discount
     coverImage: string;
     subtotal: number;
     codArticle: string | null;
@@ -54,6 +56,8 @@ export interface CartTotals {
     subtotal: number;
     shipping: number;
     total: number;
+    discount?: number;      // Total coupon/rule discount
+    promoDiscount?: number; // Discount from applied promotions
 }
 
 /**
@@ -76,6 +80,17 @@ export interface WarehouseMapItem {
 }
 
 /**
+ * Applied Promotion Summary (from /cart response)
+ */
+export interface AppliedPromotion {
+    code: string;
+    name: string;
+    description: string;
+    prestashopId: number;
+    totalSavings: number;
+}
+
+/**
  * Cart Data Interface
  */
 export interface CartData {
@@ -83,11 +98,14 @@ export interface CartData {
     sessionId?: string;
     products: CartProduct[];
     carrier?: any; // Changed from CartCarrier | null to any
-    totals: { // Changed to inline interface
+    totals: {
         total: number;
         shipping: number;
         subtotal: number;
+        discount?: number;
+        promoDiscount?: number;
     };
+    appliedPromotions?: AppliedPromotion[];
     expiresAt?: string; // Changed from string | null to optional string
     timeRemaining?: string; // Added
 }
@@ -1301,4 +1319,147 @@ export async function getPendingOrderAttempt(status: string): Promise<{ success:
  */
 export async function getAsyncPaymentStatus(pendingOrderId: number | string): Promise<any> {
     return checkAsyncPaymentStatus(pendingOrderId);
+}
+
+// ─────────────────────────────────────────────
+// CUPONES Y SUGERENCIAS DE PROMOCIONES
+// ─────────────────────────────────────────────
+
+export interface ApplyCouponResponse {
+    success: boolean;
+    message?: string;
+    data?: {
+        code?: string;
+        discount?: number;
+        [key: string]: any;
+    };
+}
+
+export interface MatchingGroup {
+    groupIndex: number;
+    required: number;
+    inCart: number;
+    matched: boolean;
+}
+
+export interface EligibleProduct {
+    productId: number;
+    prestashopId: number;
+    name: string;
+    price: number;
+    coverImage: string;
+}
+
+export interface RequiredProduct {
+    productId: number;
+    prestashopId: number;
+    name: string;
+    price: number;
+    priceWithDiscount?: number;
+    coverImage: string;
+    inCart: boolean;
+    isReductionProduct: boolean;
+}
+
+export interface PromoSuggestion {
+    prestashopId: number;
+    code: string;
+    name: string;
+    description: 'COMBO_2' | 'QTY_DISCOUNT' | 'COMBO_PLAN' | 'MIN_PURCHASE' | string;
+    alreadyApplied: boolean;
+    status: 'requires_products' | 'requires_minimum' | 'requires_combo2' | 'ready' | string;
+    message: string;
+    reductionPercent?: number;
+    reductionAmount?: number;
+    // COMBO_2
+    combosAvailable?: number;
+    matchingGroups?: MatchingGroup[];
+    missingProductIds?: number[];
+    // QTY_DISCOUNT
+    inCart?: number;
+    required?: number;
+    discountedUnits?: number;
+    eligibleProducts?: EligibleProduct[];
+    // COMBO_PLAN
+    requiresCombo2?: boolean;
+    reductionProductId?: number;
+    requiredProducts?: RequiredProduct[];
+    // MIN_PURCHASE
+    minimumAmount?: number;
+    currentSubtotal?: number;
+    missingAmount?: number;
+}
+
+export interface PromoSuggestionsResponse {
+    success: boolean;
+    appliedPromotions: AppliedPromotion[];
+    suggestions: PromoSuggestion[];
+}
+
+/**
+ * Apply a coupon to the cart
+ * @param code - Coupon code to apply
+ */
+export async function applyCoupon(code: string): Promise<ApplyCouponResponse> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiPost('/cart/apply-coupon', { code }, {
+            skipAuth: !accessToken
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error applying coupon: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        logger.error('Error in applyCoupon:', error);
+        throw error;
+    }
+}
+
+/**
+ * Remove an applied coupon from the cart
+ * @param code - Coupon code to remove
+ */
+export async function removeCoupon(code: string): Promise<{ success: boolean; message?: string }> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiDelete(`/cart/coupon/${encodeURIComponent(code)}`, {
+            skipAuth: !accessToken
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error removing coupon: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        logger.error('Error in removeCoupon:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get promotion suggestions for the current cart
+ */
+export async function getPromoSuggestions(): Promise<PromoSuggestionsResponse> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiGet('/cart/promo-suggestions', {
+            skipAuth: !accessToken
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error fetching promo suggestions: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        logger.error('Error in getPromoSuggestions:', error);
+        throw error;
+    }
 }

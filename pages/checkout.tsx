@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { getProductImageUrl, formatPrice, getProductName } from "@/lib/utils";
-import { FaCreditCard, FaQrcode } from "react-icons/fa";
+import { FaCreditCard, FaQrcode, FaTag } from "react-icons/fa";
 import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "@/components/ui/Button";
 import Script from "next/script";
@@ -1475,7 +1475,9 @@ export default function Checkout() {
                 currency:
                   (asyncStatusResp.data.currency as "PEN" | "USD") || "PEN",
                 description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
-                amount: asyncStatusResp.data.total || totals.total,
+                amount: asyncStatusResp.data.total
+                  ? asyncStatusResp.data.total
+                  : totals.total,
                 orderId: culqiOrderId,
               });
               isProcessingRef.current = false;
@@ -1499,7 +1501,9 @@ export default function Checkout() {
               currency:
                 (createCulqiResp.data.currency as "PEN" | "USD") || "PEN",
               description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
-              amount: createCulqiResp.data.amount || totals.total,
+              amount: createCulqiResp.data.amount
+                ? createCulqiResp.data.amount
+                : totals.total,
               orderId: newCulqiOrderId,
             });
           } else {
@@ -1520,7 +1524,9 @@ export default function Checkout() {
                 title: "Liwilu",
                 currency: (retryResp.data.currency as "PEN" | "USD") || "PEN",
                 description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
-                amount: retryResp.data.amount || Math.round(totals.total * 100),
+                amount: retryResp.data.amount
+                  ? retryResp.data.amount
+                  : totals.total,
                 orderId: retryResp.data.culqiOrderId,
               });
             } else {
@@ -2037,7 +2043,6 @@ export default function Checkout() {
               </p>
 
               <div className="space-y-3">
-                {/* Tarjeta y Yape (Código) */}
                 <button
                   onClick={() => setMetodoPago("card")}
                   className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
@@ -2111,7 +2116,6 @@ export default function Checkout() {
                 </button>
               </div>
 
-              {/* Error de método de pago */}
               {errors.metodoPago && (
                 <p className="text-red-500 text-sm mt-3">{errors.metodoPago}</p>
               )}
@@ -2120,15 +2124,11 @@ export default function Checkout() {
             {/* Botón de pago */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4">
               <div className="order-2 sm:order-1">
-                <Button onClick={handleProcesarPago} disabled={processing}>
-                  {processing ? (
-                    <span className="flex items-center justify-center gap-3">
-                      <div className="animate-spin rounded-full h-4 w-4 border border-white/20 border-b-white"></div>
-                      Procesando...
-                    </span>
-                  ) : (
-                    "Confirmar Pago"
-                  )}
+                <Button
+                  onClick={handleProcesarPago}
+                  disabled={processing || isProcessingRef.current}
+                >
+                  Confirmar Pago
                 </Button>
               </div>
             </div>
@@ -2194,19 +2194,48 @@ export default function Checkout() {
                 <div className="flex justify-between text-gray-500 text-sm">
                   <span>Subtotal</span>
                   <span className="font-medium text-gray-900">
-                    {formatPrice(subtotal.toString())}
+                    {formatPrice(totals.subtotal.toString())}
                   </span>
                 </div>
+
+                {/* Descuentos por promociones/cupones */}
+                {totals.promoDiscount !== undefined &&
+                  totals.promoDiscount > 0 && (
+                    <div className="flex justify-between text-primary font-medium text-sm">
+                      <span className="flex items-center gap-1.5">
+                        <FaTag size={12} />
+                        Promociones / Cupones
+                      </span>
+                      <span>
+                        -{formatPrice(totals.promoDiscount.toString())}
+                      </span>
+                    </div>
+                  )}
+
+                {/* Otros descuentos globales/reglas */}
+                {totals.discount !== undefined && totals.discount > 0 && (
+                  <div className="flex justify-between text-primary font-medium text-sm">
+                    <span className="flex items-center gap-1.5">
+                      Descuento Adicional
+                    </span>
+                    <span>-{formatPrice(totals.discount.toString())}</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between text-gray-500 text-sm">
                   <span>Envío</span>
                   <span className="font-medium text-gray-900">
-                    {formatPrice(envio.toString())}
+                    {totals.shipping === 0 ? (
+                      <span className="text-primary font-medium">Gratis</span>
+                    ) : (
+                      formatPrice(totals.shipping.toString())
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between text-lg font-semibold pt-4 border-t border-gray-100">
                   <span className="text-gray-900">Total</span>
                   <span className="text-primary">
-                    {formatPrice(total.toString())}
+                    {formatPrice(totals.total.toString())}
                   </span>
                 </div>
               </div>

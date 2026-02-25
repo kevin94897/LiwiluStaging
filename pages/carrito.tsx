@@ -76,7 +76,13 @@ import {
   SavePickupStoreRequest,
   getCheckoutSummary,
   mergeGuestCart,
+  applyCoupon,
+  removeCoupon,
+  getPromoSuggestions,
+  PromoSuggestion,
+  AppliedPromotion,
 } from "@/lib/cart";
+import PromoSuggestions from "@/components/cart/PromoSuggestions";
 import logger from "@/lib/logger";
 
 // Distritos disponibles
@@ -91,11 +97,21 @@ export default function Carrito() {
     clearCart,
     getCartTotal,
     updateCarrier,
+    syncCart,
     selectedCarrier: contextCarrier,
     totals,
     cartExpired,
   } = useCart();
   const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [promoSuggestions, setPromoSuggestions] = useState<PromoSuggestion[]>(
+    [],
+  );
+  const [appliedPromotions, setAppliedPromotions] = useState<
+    AppliedPromotion[]
+  >([]);
   const [metodoEnvio, setMetodoEnvio] = useState<"delivery" | "retiro">(
     "delivery",
   );
@@ -239,6 +255,11 @@ export default function Carrito() {
     }
   }, [isAuthenticated, authLoading]);
 
+  // Sync coupon discount from cart totals whenever they update (after syncCart)
+  useEffect(() => {
+    setCouponDiscount(totals.promoDiscount ?? 0);
+  }, [totals.promoDiscount]);
+
   // Fetch delivery zones for the selected carrier
   useEffect(() => {
     const fetchZones = async () => {
@@ -298,6 +319,9 @@ export default function Carrito() {
               zoneName: matchingZone.zoneName,
             });
             logger.log("Delivery price synced to API:", matchingZone.zoneName);
+
+            // Sync cart so frontend receives the updated shipping/totals from backend
+            await syncCart();
           } catch (error: any) {
             // Silenciar error "Carrito no encontrado" para evitar overlay en desarrollo
             // Esto ocurre si el frontend tiene items pero el backend perdió la sesión
@@ -516,7 +540,61 @@ export default function Carrito() {
     showToast("Autorización guardada correctamente");
   };
 
-  // Fetch carriers
+  // ── Coupon handlers ──────────────────────────────────────────────────
+  const fetchPromoSuggestions = async () => {
+    try {
+      const res = await getPromoSuggestions();
+      if (res.success) {
+        setPromoSuggestions(res.suggestions);
+        setAppliedPromotions(res.appliedPromotions);
+      }
+    } catch (err) {
+      logger.warn("Could not load promo suggestions:", err);
+    }
+  };
+
+  const handleApplyCoupon = async (overrideCode?: string) => {
+    const code = (typeof overrideCode === "string" ? overrideCode : couponCode)
+      .trim()
+      .toUpperCase();
+    if (!code) return;
+    setIsApplyingCoupon(true);
+    try {
+      const res = await applyCoupon(code);
+      if (res.success) {
+        setAppliedCoupon(code);
+        setCouponCode("");
+        showToast("¡Cupón aplicado con éxito!", "success");
+        // Refresh cart: updates items, totals (discount, promoDiscount), product prices
+        await syncCart();
+      } else {
+        showToast(res.message || "Cupón inválido", "error");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Error al aplicar el cupón", "error");
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = async (code: string) => {
+    try {
+      await removeCoupon(code);
+      setAppliedCoupon(null);
+      setCouponDiscount(0);
+      showToast("Cupón eliminado", "success");
+      await syncCart();
+    } catch (err: any) {
+      showToast(err.message || "Error al eliminar el cupón", "error");
+    }
+  };
+
+  // Keep promo suggestions in sync when cart contents change (qty updates, removals)
+  useEffect(() => {
+    fetchPromoSuggestions();
+  }, [items]);
+
+  // Fetch carriers + promo suggestions on mount
   useEffect(() => {
     const fetchCarriers = async () => {
       setLoadingCarriers(true);
@@ -545,6 +623,7 @@ export default function Carrito() {
     };
 
     fetchCarriers();
+    fetchPromoSuggestions();
   }, []);
 
   // Fetch warehouse locations (districts and provinces)
@@ -2461,6 +2540,16 @@ export default function Carrito() {
               </button>
             </div>
 
+            {/* === SUGERENCIAS DE PROMOCIONES === */}
+            {(promoSuggestions.length > 0 || appliedPromotions.length > 0) && (
+              <PromoSuggestions
+                suggestions={promoSuggestions}
+                appliedPromotions={appliedPromotions}
+                onApplyPromo={(code) => handleApplyCoupon(code)}
+                isApplyingCoupon={isApplyingCoupon}
+              />
+            )}
+
             <AuthorizedPersonInfo
               metodoEnvio={metodoEnvio as any}
               autorizacionData={autorizacionData}
@@ -2479,10 +2568,11 @@ export default function Carrito() {
           <CartSummary
             couponCode={couponCode}
             onCouponCodeChange={setCouponCode}
-            subtotal={regularSubtotal}
-            total={total}
-            envio={envio}
-            totalSavings={totalSavings}
+            onApplyCoupon={handleApplyCoupon}
+            onRemoveCoupon={handleRemoveCoupon}
+            isApplyingCoupon={isApplyingCoupon}
+            totals={totals}
+            appliedPromotions={appliedPromotions}
             selectedCarrier={selectedCarrier}
             metodoEnvio={metodoEnvio as any}
             hasDeliveryDistrict={!!currentDeliveryDistrict}

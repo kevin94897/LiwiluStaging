@@ -33,7 +33,13 @@ interface CartContextType {
   syncCart: () => Promise<void>;
   updateCarrier: (carrierId: number) => Promise<void>;
   selectedCarrier: CartCarrier | null;
-  totals: { subtotal: number; shipping: number; total: number };
+  totals: {
+    subtotal: number;
+    shipping: number;
+    total: number;
+    discount?: number;
+    promoDiscount?: number;
+  };
   isLoading: boolean;
   cartExpired: boolean;
   cartId: string | null;
@@ -43,7 +49,13 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [totals, setTotals] = useState({ subtotal: 0, shipping: 0, total: 0 });
+  const [totals, setTotals] = useState<{
+    subtotal: number;
+    shipping: number;
+    total: number;
+    discount?: number;
+    promoDiscount?: number;
+  }>({ subtotal: 0, shipping: 0, total: 0 });
   const [selectedCarrier, setSelectedCarrier] = useState<CartCarrier | null>(
     null,
   );
@@ -105,16 +117,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Construct defaultVariation for compatibility with utils.ts pricing logic
     const defaultVariation = cartProduct.idVariation
       ? {
-        prestashopCombinationId: cartProduct.prestashopCombinationId || 0,
-        name: cartProduct.name,
-        reference: cartProduct.variationReference || "",
-        price:
-          cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0, // Treated as Sale Price by utils
-        priceWithTax:
-          cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0,
-        priceImpact: cartProduct.priceImpact || 0, // Treated as Regular Price by utils (when > 0)
-        queryString: "",
-      }
+          prestashopCombinationId: cartProduct.prestashopCombinationId || 0,
+          name: cartProduct.name,
+          reference: cartProduct.variationReference || "",
+          price:
+            cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0, // Treated as Sale Price by utils
+          priceWithTax:
+            cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0,
+          priceImpact: cartProduct.priceImpact || 0, // Treated as Regular Price by utils (when > 0)
+          queryString: "",
+        }
       : null;
 
     // Ensure price is the final effective price (Sale Price)
@@ -124,8 +136,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       (cartProduct.discountPrice && cartProduct.discountPrice > 0
         ? cartProduct.priceWithTax - cartProduct.discountPrice // If simple with discount, context priceWithTax likely includes it?
         : // Logic check: usually cartProduct.priceWithTax IS the final price in cart API.
-        // But if we follow utils: simple price = sale.
-        cartProduct.priceWithTax) ||
+          // But if we follow utils: simple price = sale.
+          cartProduct.priceWithTax) ||
       0;
 
     // RE-EVALUATION:
@@ -300,15 +312,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         if (response.success) {
           updateSessionId(response.data.sessionId);
-
-          const backendItems: CartItem[] = response.data.products.map((p) => ({
-            product: convertCartProductToProduct(p),
-            quantity: p.quantity,
-          }));
-
-          setItems(backendItems);
-          setTotals(response.data.totals);
-          setSelectedCarrier(response.data.carrier);
+          await syncCart();
         }
       } else {
         // Use standard product endpoint
@@ -324,15 +328,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         if (response.success) {
           updateSessionId(response.data.sessionId);
-
-          const backendItems: CartItem[] = response.data.products.map((p) => ({
-            product: convertCartProductToProduct(p),
-            quantity: p.quantity,
-          }));
-
-          setItems(backendItems);
-          setTotals(response.data.totals);
-          setSelectedCarrier(response.data.carrier);
+          await syncCart();
         }
       }
     } catch (error: any) {
@@ -372,15 +368,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         if (response.success) {
           updateSessionId(response.data.sessionId);
-
-          const backendItems: CartItem[] = response.data.products.map((p) => ({
-            product: convertCartProductToProduct(p),
-            quantity: p.quantity,
-          }));
-
-          setItems(backendItems);
-          setTotals(response.data.totals);
-          setSelectedCarrier(response.data.carrier);
+          await syncCart();
         }
       } else {
         // Use standard product endpoint
@@ -395,15 +383,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         if (response.success) {
           updateSessionId(response.data.sessionId);
-
-          const backendItems: CartItem[] = response.data.products.map((p) => ({
-            product: convertCartProductToProduct(p),
-            quantity: p.quantity,
-          }));
-
-          setItems(backendItems);
-          setTotals(response.data.totals);
-          setSelectedCarrier(response.data.carrier);
+          await syncCart();
         }
       }
     } catch (error: any) {

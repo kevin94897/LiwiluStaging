@@ -1,15 +1,26 @@
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
-import { CartCarrier } from "@/lib/cart";
+import { CartCarrier, AppliedPromotion } from "@/lib/cart";
+import { FaTimes, FaTag, FaSpinner } from "react-icons/fa";
 
 interface CartSummaryProps {
   couponCode: string;
   onCouponCodeChange: (code: string) => void;
-  subtotal: number;
-  total: number;
-  envio: number;
-  totalSavings: number;
+  onApplyCoupon: () => void;
+  onRemoveCoupon: (code: string) => void;
+  isApplyingCoupon: boolean;
+
+  // New props from API
+  totals: {
+    subtotal: number;
+    promoDiscount?: number;
+    discount?: number;
+    shipping: number;
+    total: number;
+  };
+  appliedPromotions: AppliedPromotion[];
+
   selectedCarrier: CartCarrier | null;
   metodoEnvio: "delivery" | "retiro" | null;
   hasDeliveryDistrict?: boolean;
@@ -25,10 +36,11 @@ interface CartSummaryProps {
 export default function CartSummary({
   couponCode,
   onCouponCodeChange,
-  subtotal,
-  total,
-  envio,
-  totalSavings,
+  onApplyCoupon,
+  onRemoveCoupon,
+  isApplyingCoupon,
+  totals,
+  appliedPromotions,
   selectedCarrier,
   metodoEnvio,
   hasDeliveryDistrict,
@@ -50,13 +62,27 @@ export default function CartSummary({
           <input
             type="text"
             value={couponCode}
-            onChange={(e) => onCouponCodeChange(e.target.value)}
+            onChange={(e) => onCouponCodeChange(e.target.value.toUpperCase())}
+            onKeyDown={(e) =>
+              e.key === "Enter" &&
+              !isApplyingCoupon &&
+              couponCode.trim() &&
+              onApplyCoupon()
+            }
             placeholder="Ingresa tu cupón"
-            className="w-full px-4 py-2 border border-gray-300 rounded-full md:rounded-r-none md:rounded-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            className="w-full px-4 py-2 border border-gray-300 rounded-full md:rounded-r-none md:rounded-sm focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase"
           />
 
-          <button className="w-full sm:w-auto bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-2 md:rounded-l-none rounded-full md:rounded-sm border border-primary transition-colors">
-            Aplicar
+          <button
+            onClick={onApplyCoupon}
+            disabled={isApplyingCoupon || !couponCode.trim()}
+            className="w-full sm:w-auto bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-2 md:rounded-l-none rounded-full md:rounded-sm border border-primary transition-colors flex items-center justify-center gap-2"
+          >
+            {isApplyingCoupon ? (
+              <FaSpinner size={14} className="animate-spin" />
+            ) : (
+              "Aplicar"
+            )}
           </button>
         </div>
       </div>
@@ -70,29 +96,95 @@ export default function CartSummary({
           <div className="flex justify-between text-gray-600">
             <span>Subtotal</span>
             <span className="font-semibold">
-              {formatPrice(subtotal.toString())}
+              {formatPrice(totals.subtotal.toString())}
             </span>
           </div>
 
-          {totalSavings > 0 && (
-            <div className="flex justify-between text-primary animate-pulse">
-              <span>Ahorro total</span>
+          {/* Descuentos por promociones/cupones */}
+          {/* {totals.promoDiscount !== undefined && totals.promoDiscount > 0 && (
+            <div className="flex justify-between text-primary font-medium">
+              <span className="flex items-center gap-1.5">
+                <FaTag size={12} />
+                Descuento promoción
+              </span>
               <span className="font-semibold">
-                -{formatPrice(totalSavings.toString())}
+                -{formatPrice(totals.promoDiscount.toString())}
+              </span>
+            </div>
+          )} */}
+
+          {/* Otros descuentos globales/reglas */}
+          {totals.discount !== undefined && totals.discount > 0 && (
+            <div className="flex justify-between text-primary font-medium">
+              <span className="flex items-center gap-1.5">
+                <FaTag size={12} />
+                Descuentos extras
+              </span>
+              <span className="font-semibold">
+                -{formatPrice(totals.discount.toString())}
               </span>
             </div>
           )}
 
-          <div className="flex justify-between text-gray-600">
+          {/* Lista de promociones aplicadas (si hay) */}
+          {appliedPromotions && appliedPromotions.length > 0 && (
+            <div className="space-y-2 mt-3 pt-3 border-t border-gray-100">
+              <p className="text-xs font-semibold text-gray-400 uppercase">
+                Promociones Aplicadas
+              </p>
+              {appliedPromotions.map((promo) => (
+                <div
+                  key={promo.prestashopId}
+                  className="flex flex-col bg-primary/5 rounded border border-primary/20 p-2"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-1.5 flex-1 pr-2">
+                      <FaTag size={12} className="text-primary mt-1 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-primary break-all leading-tight">
+                          {promo.code}
+                        </p>
+                        <p
+                          className="text-xs text-gray-600 mt-0.5 line-clamp-2"
+                          title={promo.name}
+                        >
+                          {promo.name}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      {promo.totalSavings > 0 && (
+                        <span className="text-sm font-bold text-primary">
+                          -{formatPrice(promo.totalSavings.toString())}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => onRemoveCoupon(promo.code)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                        title="Eliminar promoción"
+                      >
+                        <FaTimes size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Costo de Envío */}
+          <div className="flex justify-between text-gray-600 mt-4">
             <span>Envío ({selectedCarrier?.name || "Pendiente"})</span>
             <span className="font-semibold">
               {!metodoEnvio ||
               (metodoEnvio === "delivery" && !hasDeliveryDistrict) ? (
-                <span className="text-gray-400 font-normal text-sm">-</span>
-              ) : envio === 0 ? (
-                <span className="text-primary"></span>
+                <span className="text-gray-400 font-normal text-sm">
+                  Pendiente
+                </span>
+              ) : totals.shipping === 0 ? (
+                <span className="text-primary">Gratis</span>
               ) : (
-                formatPrice(envio.toString())
+                formatPrice(totals.shipping.toString())
               )}
             </span>
           </div>
@@ -106,10 +198,12 @@ export default function CartSummary({
             )}
         </div>
 
-        {/* Total */}
-        <div className="flex justify-between text-2xl font-semibold mb-6">
+        {/* Total Final */}
+        <div className="flex justify-between items-center text-2xl font-semibold mb-6">
           <span>Total</span>
-          <span className="text-primary">{formatPrice(total.toString())}</span>
+          <span className="text-primary tracking-tight">
+            {formatPrice(totals.total.toString())}
+          </span>
         </div>
 
         {/* Términos */}
