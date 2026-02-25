@@ -1145,9 +1145,11 @@ export default function Checkout() {
         newErrors.facturaDistrito = "El distrito es obligatorio";
     }
 
+    /* Comentado temporalmente
     if (!metodoPago) {
       newErrors.metodoPago = "Selecciona un método de pago";
     }
+    */
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -2027,17 +2029,24 @@ export default function Checkout() {
               )}
             </div>
 
-            {/* MÉTODO DE PAGO */}
+            {/* MÉTODO DE PAGO - COMENTADO TEMPORALMENTE */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
               <h2 className="text-xl font-semibold mb-2 text-gray-900">
                 Método de pago
               </h2>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
+                <PiWarningCircleFill className="text-amber-500 text-xl flex-shrink-0" />
+                <p className="text-amber-800 text-sm font-medium">
+                  Los pagos en línea se encuentran temporalmente inhabilitados.
+                </p>
+              </div>
+
+              {/* 
               <p className="text-gray-500 mb-8">
                 Elige la opción más conveniente
               </p>
 
               <div className="space-y-3">
-                {/* Tarjeta y Yape (Código) */}
                 <button
                   onClick={() => setMetodoPago("card")}
                   className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
@@ -2111,24 +2120,17 @@ export default function Checkout() {
                 </button>
               </div>
 
-              {/* Error de método de pago */}
               {errors.metodoPago && (
                 <p className="text-red-500 text-sm mt-3">{errors.metodoPago}</p>
               )}
+              */}
             </div>
 
-            {/* Botón de pago */}
+            {/* Botón de pago - DESHABILITADO TEMPORALMENTE */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4">
               <div className="order-2 sm:order-1">
-                <Button onClick={handleProcesarPago} disabled={processing}>
-                  {processing ? (
-                    <span className="flex items-center justify-center gap-3">
-                      <div className="animate-spin rounded-full h-4 w-4 border border-white/20 border-b-white"></div>
-                      Procesando...
-                    </span>
-                  ) : (
-                    "Confirmar Pago"
-                  )}
+                <Button onClick={handleProcesarPago} disabled={true}>
+                  Confirmar Pago
                 </Button>
               </div>
             </div>
