@@ -1,5 +1,5 @@
 import { useState } from "react";
-import logger from '@/lib/logger';
+import logger from "@/lib/logger";
 import { FaPencil, FaPlus } from "react-icons/fa6";
 import { formatPrice } from "@/lib/utils";
 import { PiWarningCircleFill } from "react-icons/pi";
@@ -84,10 +84,11 @@ export default function DeliveryAddressForm({
               setActiveTab("saved");
               setShowPreview(false); // Reset preview when switching tabs
             }}
-            className={`px-4 py-2 font-medium text-sm transition-colors ${activeTab === "saved"
-              ? "text-primary border-b-2 border-primary"
-              : "text-gray-500 hover:text-gray-700"
-              }`}
+            className={`px-4 py-2 font-medium text-sm transition-colors ${
+              activeTab === "saved"
+                ? "text-primary border-b-2 border-primary"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
           >
             Mis direcciones
           </button>
@@ -153,10 +154,11 @@ export default function DeliveryAddressForm({
                 userLocations.setLocationValues("Lima", "Lima", "");
               }
             }}
-            className={`px-4 py-2 font-medium text-sm transition-colors ${activeTab === "new"
-              ? "text-primary border-b-2 border-primary"
-              : "text-gray-500 hover:text-gray-700"
-              }`}
+            className={`px-4 py-2 font-medium text-sm transition-colors ${
+              activeTab === "new"
+                ? "text-primary border-b-2 border-primary"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
           >
             Nueva dirección
           </button>
@@ -268,8 +270,9 @@ export default function DeliveryAddressForm({
                   })
                 }
                 placeholder="Calle y número"
-                className={`w-full px-3 py-2 border rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary ${addressErrors.calle ? "border-red-500" : "border-gray-300"
-                  }`}
+                className={`w-full px-3 py-2 border rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary ${
+                  addressErrors.calle ? "border-red-500" : "border-gray-300"
+                }`}
               />
               {addressErrors.calle && (
                 <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -290,15 +293,17 @@ export default function DeliveryAddressForm({
                   });
                   userLocations.handleDeptChange(val);
                 }}
-              // Removed manual border classes as Select handles them, but might need adjustments if style differs.
-              // Select default has w-full and border-2.
+                // Removed manual border classes as Select handles them, but might need adjustments if style differs.
+                // Select default has w-full and border-2.
               >
                 <option value="">Departamento</option>
-                {userLocations.departments.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
+                {userLocations.departments
+                  .filter((d) => d === "Lima" || d === "Callao")
+                  .map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
               </Select>
 
               <Select
@@ -314,11 +319,13 @@ export default function DeliveryAddressForm({
                 }}
               >
                 <option value="">Provincia</option>
-                {userLocations.provinces.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
+                {userLocations.provinces
+                  .filter((p) => p === "Lima" || p === "Callao")
+                  .map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
               </Select>
             </div>
 
@@ -338,15 +345,15 @@ export default function DeliveryAddressForm({
               <option value="">Distrito</option>
               {deliveryZones && deliveryZones.length > 0
                 ? deliveryZones.map((z) => (
-                  <option key={z.zoneId} value={z.zoneName}>
-                    {z.zoneName}
-                  </option>
-                ))
+                    <option key={z.zoneId} value={z.zoneName}>
+                      {z.zoneName}
+                    </option>
+                  ))
                 : userLocations.districts.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
             </Select>
 
             <Input
@@ -382,7 +389,6 @@ export default function DeliveryAddressForm({
                 <PiWarningCircleFill size={16} /> {addressErrors.referencia}
               </p>
             )}
-
 
             {isLoggedIn && (
               <div className="flex items-center gap-2 mb-4 p-2 bg-primary/5 rounded-sm border border-primary/10">
@@ -468,8 +474,9 @@ export default function DeliveryAddressForm({
                   })
                 }
                 placeholder="Calle y número"
-                className={`w-full px-3 py-2 border rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary ${addressErrors.calle ? "border-red-500" : "border-gray-300"
-                  }`}
+                className={`w-full px-3 py-2 border rounded-sm text-sm focus:border-primary focus:ring-1 focus:ring-primary ${
+                  addressErrors.calle ? "border-red-500" : "border-gray-300"
+                }`}
               />
               {addressErrors.calle && (
                 <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -492,11 +499,13 @@ export default function DeliveryAddressForm({
                 }}
               >
                 <option value="">Departamento</option>
-                {userLocations.departments.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
+                {userLocations.departments
+                  .filter((d) => d === "Lima" || d === "Callao")
+                  .map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
               </Select>
 
               <Select
@@ -512,11 +521,13 @@ export default function DeliveryAddressForm({
                 }}
               >
                 <option value="">Provincia</option>
-                {userLocations.provinces.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
+                {userLocations.provinces
+                  .filter((p) => p === "Lima" || p === "Callao")
+                  .map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
               </Select>
             </div>
 
@@ -536,15 +547,15 @@ export default function DeliveryAddressForm({
               <option value="">Distrito</option>
               {deliveryZones && deliveryZones.length > 0
                 ? deliveryZones.map((z) => (
-                  <option key={z.zoneId} value={z.zoneName}>
-                    {z.zoneName}
-                  </option>
-                ))
+                    <option key={z.zoneId} value={z.zoneName}>
+                      {z.zoneName}
+                    </option>
+                  ))
                 : userLocations.districts.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
             </Select>
 
             <Input

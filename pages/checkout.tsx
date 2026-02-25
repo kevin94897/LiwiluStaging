@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { getProductImageUrl, formatPrice, getProductName } from "@/lib/utils";
 import { FaCreditCard, FaQrcode } from "react-icons/fa";
+import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "@/components/ui/Button";
 import Script from "next/script";
 import {
@@ -23,11 +24,17 @@ import {
   CULQI_PUBLIC_KEY,
 } from "@/lib/culqi";
 import { showToast } from "@/lib/notifications";
-import { createOrder, payOrder, createCulqiOrder, getPendingOrderAttempt, checkAsyncPaymentStatus } from "@/lib/cart";
+import {
+  createOrder,
+  payOrder,
+  createCulqiOrder,
+  getPendingOrderAttempt,
+  checkAsyncPaymentStatus,
+} from "@/lib/cart";
 import { useLocations } from "@/hooks/useLocations";
 import { PERU_LOCATIONS } from "@/lib/locationsComplete";
 import { useAuth } from "@/hooks/useAuth";
-import { consultaRUC } from "@/lib/general";
+import { consultaRUC, consultaDNI } from "@/lib/general";
 import Select from "@/components/ui/Select";
 import Input from "@/components/ui/Input";
 import ProcessingOverlay from "@/components/checkout/ProcessingOverlay";
@@ -43,10 +50,13 @@ type TipoComprobante = "boleta" | "factura";
 type MetodoPago = "card" | "async" | null;
 
 // Helper para búsqueda case-insensitive
-const findMatchingLocation = (input: string, options: string[]): string | undefined => {
+const findMatchingLocation = (
+  input: string,
+  options: string[],
+): string | undefined => {
   if (!input) return undefined;
   const inputLower = input.toLowerCase();
-  return options.find(opt => opt.toLowerCase() === inputLower);
+  return options.find((opt) => opt.toLowerCase() === inputLower);
 };
 
 export default function Checkout() {
@@ -57,7 +67,8 @@ export default function Checkout() {
   // ============================================
   // ESTADO DEL FORMULARIO
   // ============================================
-  const [tipoComprobante, setTipoComprobante] = useState<TipoComprobante>("boleta");
+  const [tipoComprobante, setTipoComprobante] =
+    useState<TipoComprobante>("boleta");
   const [metodoPago, setMetodoPago] = useState<MetodoPago>(null);
 
   // Datos para Boleta - Expandido
@@ -86,14 +97,14 @@ export default function Checkout() {
   const boletaLocations = useLocations(
     datosBoleta.departamento,
     datosBoleta.provincia,
-    datosBoleta.distrito
+    datosBoleta.distrito,
   );
 
   // Hooks de ubicación para Factura
   const facturaLocations = useLocations(
     datosFactura.departamento,
     datosFactura.provincia,
-    datosFactura.distrito
+    datosFactura.distrito,
   );
 
   // Pre-fill data logic
@@ -133,36 +144,56 @@ export default function Checkout() {
             initialBoleta.tipoDocumento = guestData.tipoDocumento;
             initialBoleta.numeroDocumento = guestData.numeroDocumento;
           }
-        } catch (e) { console.error(e) }
+        } catch (e) {
+          console.error(e);
+        }
       }
     }
 
     // Dirección (usar la de envío si existe, sino la del usuario si tuviera (pero auth user no tiene address explicita en User))
     // Usamos shippingData como fuente principal de dirección "por defecto"
     if (shippingData.calle) {
-      initialBoleta.direccion = shippingData.calle + (shippingData.numeroDptoPiso ? ` ${shippingData.numeroDptoPiso}` : "");
+      initialBoleta.direccion =
+        shippingData.calle +
+        (shippingData.numeroDptoPiso ? ` ${shippingData.numeroDptoPiso}` : "");
       // Ubicación
-      if (shippingData.departamento && shippingData.provincia && shippingData.distrito) {
+      if (
+        shippingData.departamento &&
+        shippingData.provincia &&
+        shippingData.distrito
+      ) {
         initialBoleta.departamento = shippingData.departamento;
         initialBoleta.provincia = shippingData.provincia;
         initialBoleta.distrito = shippingData.distrito;
 
         // Actualizar hooks de location
-        boletaLocations.setLocationValues(shippingData.departamento, shippingData.provincia, shippingData.distrito);
+        boletaLocations.setLocationValues(
+          shippingData.departamento,
+          shippingData.provincia,
+          shippingData.distrito,
+        );
       }
     }
 
     setDatosBoleta(initialBoleta);
 
     // 3. Pre-llenar Factura (Ubicación)
-    if (shippingData.departamento && shippingData.provincia && shippingData.distrito) {
-      setDatosFactura(prev => ({
+    if (
+      shippingData.departamento &&
+      shippingData.provincia &&
+      shippingData.distrito
+    ) {
+      setDatosFactura((prev) => ({
         ...prev,
         departamento: shippingData.departamento,
         provincia: shippingData.provincia,
-        distrito: shippingData.distrito
+        distrito: shippingData.distrito,
       }));
-      facturaLocations.setLocationValues(shippingData.departamento, shippingData.provincia, shippingData.distrito);
+      facturaLocations.setLocationValues(
+        shippingData.departamento,
+        shippingData.provincia,
+        shippingData.distrito,
+      );
     }
   }, [isAuthenticated, user]);
 
@@ -195,6 +226,7 @@ export default function Checkout() {
   // VALIDACIÓN Y ERRORES
   // ============================================
   const [isConsultingRuc, setIsConsultingRuc] = useState(false);
+  const [isConsultingDni, setIsConsultingDni] = useState(false);
   const [rucConsulted, setRucConsulted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorModal, setErrorModal] = useState<{
@@ -316,19 +348,25 @@ export default function Checkout() {
       ];
 
       // Verificar origen y contenido
-      const isAllowedOrigin = allowedOrigins.some((origin) => event.origin.includes(origin)) ||
+      const isAllowedOrigin =
+        allowedOrigins.some((origin) => event.origin.includes(origin)) ||
         event.origin === window.location.origin;
 
       if (isAllowedOrigin && event.data && event.data.parameters3DS) {
         if (isProcessingRef.current) {
-          logger.log("🚀 [3DS EMERGENCY] Forzando procesamiento detectado vía postMessage");
+          logger.log(
+            "🚀 [3DS EMERGENCY] Forzando procesamiento detectado vía postMessage",
+          );
           await handlePaymentWith3DS(event.data.parameters3DS);
         }
       }
 
       // Manejo de errores transmitidos vía postMessage
       if (isAllowedOrigin && event.data && event.data.error) {
-        logger.error("❌ [3DS EMERGENCY] Error detectado vía postMessage:", event.data.error);
+        logger.error(
+          "❌ [3DS EMERGENCY] Error detectado vía postMessage:",
+          event.data.error,
+        );
         handleCulqiError(event.data.error);
       }
     };
@@ -418,15 +456,19 @@ export default function Checkout() {
       // 1. Validar estado de la autenticación
       // authenticationStatus puede ser: 'Successful', 'Failed', 'Attempted', 'Unavailable', 'Error'
       const status = auth3DS?.authenticationStatus || auth3DS?.status;
-      if (status === 'Failed') {
+      if (status === "Failed") {
         logger.error("❌ [3DS] Autenticación fallida según el banco");
-        throw new Error("La autenticación 3D Secure falló. Por favor, intenta con otra tarjeta o contacta a tu banco.");
+        throw new Error(
+          "La autenticación 3D Secure falló. Por favor, intenta con otra tarjeta o contacta a tu banco.",
+        );
       }
 
       const recovered = recover3DSContext();
 
       const email =
-        (await getEmailForPayment()) || recovered.email || pendingEmailRef.current;
+        (await getEmailForPayment()) ||
+        recovered.email ||
+        pendingEmailRef.current;
       const token =
         processingToken.current ||
         (window.Culqi && window.Culqi.token?.id) ||
@@ -457,10 +499,13 @@ export default function Checkout() {
           xid: auth3DS?.xid,
           cavv: auth3DS?.cavv,
           protocolVersion: auth3DS?.protocolVersion,
-          directoryServerTransactionId: auth3DS?.directoryServerTransactionId || auth3DS?.dsTransactionId,
+          directoryServerTransactionId:
+            auth3DS?.directoryServerTransactionId || auth3DS?.dsTransactionId,
         },
         deviceFingerprint:
-          deviceFingerprintRef.current || recovered.deviceFingerprint || undefined,
+          deviceFingerprintRef.current ||
+          recovered.deviceFingerprint ||
+          undefined,
       });
 
       logger.log("[3DS] Respuesta de reintento:", payResponse);
@@ -474,7 +519,9 @@ export default function Checkout() {
         clear3DSContext();
         await handlePaymentSuccess(confirmedOrderId);
       } else {
-        const msg = payResponse.message || "Tu tarjeta fue rechazada después de la autenticación.";
+        const msg =
+          payResponse.message ||
+          "Tu tarjeta fue rechazada después de la autenticación.";
         throw new Error(msg);
       }
     } catch (error: any) {
@@ -679,8 +726,8 @@ export default function Checkout() {
       // ═══════════════════════════════════════════════════════════
       logger.log(
         "💳 Procesando pago con tarjeta para orden " +
-        currentPendingOrderId +
-        "...",
+          currentPendingOrderId +
+          "...",
       );
 
       payResponse = await payOrder(
@@ -745,12 +792,18 @@ export default function Checkout() {
 
       // ✅ MANEJO ESPECÍFICO DE CONFLICTO AWAITING_PAYMENT
       const errorMsg = error.message || "";
-      if (errorMsg.includes("AWAITING_PAYMENT") || errorMsg.includes("ya está siendo procesado")) {
-        logger.warn("⚠️ Detectado conflicto con orden en estado AWAITING_PAYMENT");
+      if (
+        errorMsg.includes("AWAITING_PAYMENT") ||
+        errorMsg.includes("ya está siendo procesado")
+      ) {
+        logger.warn(
+          "⚠️ Detectado conflicto con orden en estado AWAITING_PAYMENT",
+        );
 
         // Informar al usuario sobre el conflicto de estados
         handleCulqiError({
-          message: "Esta orden tiene un pago pendiente por procesar. Si acabas de usar Yape QR o PagoEfectivo, por favor espera unos minutos. Si deseas usar otro método, intenta nuevamente en un momento."
+          message:
+            "Esta orden tiene un pago pendiente por procesar. Si acabas de usar Yape QR o PagoEfectivo, por favor espera unos minutos. Si deseas usar otro método, intenta nuevamente en un momento.",
         });
       } else {
         handleCulqiError(error);
@@ -929,7 +982,9 @@ export default function Checkout() {
         if (orderId) {
           // Detectar el método capturado o usar 'card' como fallback
           const capturedMethod = getSelectedPaymentMethod() || "card";
-          router.push(`/pago-pendiente?order=${orderId}&method=${capturedMethod}`);
+          router.push(
+            `/pago-pendiente?order=${orderId}&method=${capturedMethod}`,
+          );
         } else {
           router.push("/perfil");
         }
@@ -1047,11 +1102,15 @@ export default function Checkout() {
       if (!datosBoleta.numeroDocumento) {
         newErrors.rucBoleta = "El número de documento es obligatorio";
       } else {
-        if (datosBoleta.tipoDocumento === "DNI" && datosBoleta.numeroDocumento.length !== 8) {
+        if (
+          datosBoleta.tipoDocumento === "DNI" &&
+          datosBoleta.numeroDocumento.length !== 8
+        ) {
           newErrors.rucBoleta = "El DNI debe tener 8 dígitos";
         } else if (
           datosBoleta.tipoDocumento === "CE" &&
-          (datosBoleta.numeroDocumento.length < 6 || datosBoleta.numeroDocumento.length > 12)
+          (datosBoleta.numeroDocumento.length < 6 ||
+            datosBoleta.numeroDocumento.length > 12)
         ) {
           newErrors.rucBoleta = "El CE debe tener entre 6 y 12 caracteres";
         } else if (
@@ -1062,10 +1121,12 @@ export default function Checkout() {
         }
       }
       if (!datosBoleta.nombres) newErrors.nombres = "El nombre es obligatorio";
-      if (!datosBoleta.apellidos) newErrors.apellidos = "El apellido es obligatorio";
-      if (!datosBoleta.direccion) newErrors.direccion = "La dirección es obligatoria";
-      if (!datosBoleta.distrito) newErrors.distrito = "El distrito es obligatorio";
-
+      if (!datosBoleta.apellidos)
+        newErrors.apellidos = "El apellido es obligatorio";
+      if (!datosBoleta.direccion)
+        newErrors.direccion = "La dirección es obligatoria";
+      if (!datosBoleta.distrito)
+        newErrors.distrito = "El distrito es obligatorio";
     } else {
       // Factura
       if (!datosFactura.ruc || datosFactura.ruc.length !== 11) {
@@ -1080,7 +1141,8 @@ export default function Checkout() {
       if (!datosFactura.direccionFiscal) {
         newErrors.direccionFiscal = "La dirección fiscal es obligatoria";
       }
-      if (!datosFactura.distrito) newErrors.facturaDistrito = "El distrito es obligatorio";
+      if (!datosFactura.distrito)
+        newErrors.facturaDistrito = "El distrito es obligatorio";
     }
 
     if (!metodoPago) {
@@ -1114,19 +1176,28 @@ export default function Checkout() {
 
         if (response.data.departamento) {
           const departments = Object.keys(PERU_LOCATIONS);
-          const matchDept = findMatchingLocation(response.data.departamento, departments);
+          const matchDept = findMatchingLocation(
+            response.data.departamento,
+            departments,
+          );
           if (matchDept) {
             normalizedDept = matchDept;
 
             if (response.data.provincia) {
               const provinces = Object.keys(PERU_LOCATIONS[matchDept] || {});
-              const matchProv = findMatchingLocation(response.data.provincia, provinces);
+              const matchProv = findMatchingLocation(
+                response.data.provincia,
+                provinces,
+              );
               if (matchProv) {
                 normalizedProv = matchProv;
 
                 if (response.data.distrito) {
                   const districts = PERU_LOCATIONS[matchDept][matchProv] || [];
-                  const matchDist = findMatchingLocation(response.data.distrito, districts);
+                  const matchDist = findMatchingLocation(
+                    response.data.distrito,
+                    districts,
+                  );
                   if (matchDist) {
                     normalizedDist = matchDist;
                   }
@@ -1147,7 +1218,11 @@ export default function Checkout() {
 
         // Actualizar location hooks con valores normalizados
         if (normalizedDept && normalizedProv && normalizedDist) {
-          facturaLocations.setLocationValues(normalizedDept, normalizedProv, normalizedDist);
+          facturaLocations.setLocationValues(
+            normalizedDept,
+            normalizedProv,
+            normalizedDist,
+          );
         }
 
         setRucConsulted(true);
@@ -1162,12 +1237,49 @@ export default function Checkout() {
     }
   };
 
+  const handleConsultaDNI = async () => {
+    const dni = datosBoleta.numeroDocumento;
+    if (dni.length !== 8) {
+      setErrors({
+        ...errors,
+        rucBoleta: "El DNI debe tener 8 dígitos",
+      });
+      return;
+    }
+
+    setIsConsultingDni(true);
+    setErrors({ ...errors, rucBoleta: "" });
+
+    try {
+      const response = await consultaDNI(dni);
+      if (response.success && response.data) {
+        setDatosBoleta({
+          ...datosBoleta,
+          nombres: response.data.nombres || "",
+          apellidos:
+            `${response.data.apellido_paterno || ""} ${response.data.apellido_materno || ""}`.trim(),
+        });
+
+        showToast("DNI consultado con éxito", "success");
+      } else {
+        showToast(response.message || "No se encontró el DNI", "error");
+      }
+    } catch (error: any) {
+      logger.error("Error consultando DNI:", error);
+      showToast(error.message || "Error al consultar DNI", "error");
+    } finally {
+      setIsConsultingDni(false);
+    }
+  };
+
   /**
    * Verifica si una orden está expirada
    * @param expirationDate - Fecha de expiración en formato ISO
    * @returns true si la orden está expirada
    */
-  const isOrderExpired = (expirationDate: string | null | undefined): boolean => {
+  const isOrderExpired = (
+    expirationDate: string | null | undefined,
+  ): boolean => {
     if (!expirationDate) return false;
     try {
       const expDate = new Date(expirationDate);
@@ -1226,9 +1338,13 @@ export default function Checkout() {
       if (metodoPago === "async") {
         logger.log("🔍 Buscando orden pendiente previa (AWAITING_PAYMENT)...");
         try {
-          const pendingAttemptResp = await getPendingOrderAttempt("AWAITING_PAYMENT");
+          const pendingAttemptResp =
+            await getPendingOrderAttempt("AWAITING_PAYMENT");
 
-          if (pendingAttemptResp.success && pendingAttemptResp.data?.pendingOrderId) {
+          if (
+            pendingAttemptResp.success &&
+            pendingAttemptResp.data?.pendingOrderId
+          ) {
             const existingOrderId = pendingAttemptResp.data.pendingOrderId;
             logger.log("✅ Orden pendiente encontrada:", existingOrderId);
 
@@ -1238,16 +1354,16 @@ export default function Checkout() {
               const status = statusResp.data?.status;
               logger.log("📊 Estado de orden pendiente:", status);
 
-              if (status === 'paid' && statusResp.data?.orderId) {
+              if (status === "paid" && statusResp.data?.orderId) {
                 logger.log("✅ La orden ya fue pagada, redirigiendo...");
                 await handlePaymentSuccess(statusResp.data.orderId);
                 return;
               }
 
-              if (status === 'expired' || status === 'failed') {
+              if (status === "expired" || status === "failed") {
                 logger.warn("⏰ Orden expirada o fallida, se creará nueva");
                 shouldCreateNewOrder = true;
-              } else if (status === 'waiting') {
+              } else if (status === "waiting") {
                 if (isOrderExpired(statusResp.data?.expirationDate)) {
                   logger.warn("⏰ Orden expirada por tiempo, se creará nueva");
                   shouldCreateNewOrder = true;
@@ -1278,23 +1394,26 @@ export default function Checkout() {
 
         let invoicePayload: any = {
           invoiceType: tipoComprobante === "boleta" ? "BOLETA" : "FACTURA",
-          invoiceData: tipoComprobante === "boleta" ? {
-            tipoDocumento: datosBoleta.tipoDocumento,
-            numeroDocumento: datosBoleta.numeroDocumento,
-            nombres: datosBoleta.nombres,
-            apellidos: datosBoleta.apellidos,
-            direccion: datosBoleta.direccion,
-            departamento: datosBoleta.departamento,
-            provincia: datosBoleta.provincia,
-            distrito: datosBoleta.distrito
-          } : {
-            ruc: datosFactura.ruc,
-            razonSocial: datosFactura.razonSocial,
-            direccionFiscal: datosFactura.direccionFiscal,
-            departamento: datosFactura.departamento,
-            provincia: datosFactura.provincia,
-            distrito: datosFactura.distrito
-          }
+          invoiceData:
+            tipoComprobante === "boleta"
+              ? {
+                  tipoDocumento: datosBoleta.tipoDocumento,
+                  numeroDocumento: datosBoleta.numeroDocumento,
+                  nombres: datosBoleta.nombres,
+                  apellidos: datosBoleta.apellidos,
+                  direccion: datosBoleta.direccion,
+                  departamento: datosBoleta.departamento,
+                  provincia: datosBoleta.provincia,
+                  distrito: datosBoleta.distrito,
+                }
+              : {
+                  ruc: datosFactura.ruc,
+                  razonSocial: datosFactura.razonSocial,
+                  direccionFiscal: datosFactura.direccionFiscal,
+                  departamento: datosFactura.departamento,
+                  provincia: datosFactura.provincia,
+                  distrito: datosFactura.distrito,
+                },
         };
 
         const orderResponse = await createOrder(invoicePayload);
@@ -1329,29 +1448,32 @@ export default function Checkout() {
 
         try {
           // Obtener estado actual y culqiOrderId
-          const asyncStatusResp = await checkAsyncPaymentStatus(pendingOrderId!);
+          const asyncStatusResp = await checkAsyncPaymentStatus(
+            pendingOrderId!,
+          );
 
           if (asyncStatusResp.success && asyncStatusResp.data) {
             const { status, culqiOrderId } = asyncStatusResp.data;
 
             // Ya pagada (doble verificación por seguridad)
-            if (status === 'paid' && asyncStatusResp.data.orderId) {
+            if (status === "paid" && asyncStatusResp.data.orderId) {
               await handlePaymentSuccess(asyncStatusResp.data.orderId);
               return;
             }
 
             // Reutilizar Culqi Order existente
-            if (culqiOrderId && (status === 'waiting' || !status)) {
+            if (culqiOrderId && (status === "waiting" || !status)) {
               if (isOrderExpired(asyncStatusResp.data.expirationDate)) {
                 logger.warn("⏰ Culqi Order expirado, se creará uno nuevo");
-                throw new Error('EXPIRED_CULQI_ORDER');
+                throw new Error("EXPIRED_CULQI_ORDER");
               }
 
               logger.log("✅ Usando Culqi Order existente:", culqiOrderId);
               setCulqiOrderId(culqiOrderId);
               openCulqiForAsyncOrder({
                 title: "Liwilu",
-                currency: (asyncStatusResp.data.currency as "PEN" | "USD") || "PEN",
+                currency:
+                  (asyncStatusResp.data.currency as "PEN" | "USD") || "PEN",
                 description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
                 amount: asyncStatusResp.data.total || totals.total,
                 orderId: culqiOrderId,
@@ -1363,7 +1485,10 @@ export default function Checkout() {
 
           // Crear nuevo Culqi Order
           logger.log("🔄 Creando nuevo Culqi Order...");
-          const createCulqiResp = await createCulqiOrder(pendingOrderId!, email);
+          const createCulqiResp = await createCulqiOrder(
+            pendingOrderId!,
+            email,
+          );
 
           if (createCulqiResp.success && createCulqiResp.data?.culqiOrderId) {
             const newCulqiOrderId = createCulqiResp.data.culqiOrderId;
@@ -1371,16 +1496,22 @@ export default function Checkout() {
             setCulqiOrderId(newCulqiOrderId);
             openCulqiForAsyncOrder({
               title: "Liwilu",
-              currency: (createCulqiResp.data.currency as "PEN" | "USD") || "PEN",
+              currency:
+                (createCulqiResp.data.currency as "PEN" | "USD") || "PEN",
               description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
               amount: createCulqiResp.data.amount || totals.total,
               orderId: newCulqiOrderId,
             });
           } else {
-            throw new Error(createCulqiResp.message || "No se pudo crear la orden en Culqi");
+            throw new Error(
+              createCulqiResp.message || "No se pudo crear la orden en Culqi",
+            );
           }
         } catch (asyncError: any) {
-          if (asyncError.message === 'EXPIRED_CULQI_ORDER' || asyncError.message?.includes('409')) {
+          if (
+            asyncError.message === "EXPIRED_CULQI_ORDER" ||
+            asyncError.message?.includes("409")
+          ) {
             // Reintentar creación forzada o recuperación en caso de conflicto
             const retryResp = await createCulqiOrder(pendingOrderId!, email);
             if (retryResp.success && retryResp.data?.culqiOrderId) {
@@ -1404,7 +1535,10 @@ export default function Checkout() {
       }
     } catch (error: any) {
       logger.error("❌ Error en handleProcesarPago:", error);
-      showToast(error.message || "Ocurrió un error al procesar tu solicitud", "error");
+      showToast(
+        error.message || "Ocurrió un error al procesar tu solicitud",
+        "error",
+      );
       setProcessing(false);
       isProcessingRef.current = false;
     }
@@ -1474,19 +1608,21 @@ export default function Checkout() {
               <div className="flex gap-4 mb-6">
                 <button
                   onClick={() => setTipoComprobante("boleta")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "boleta"
-                    ? "border-primary bg-primary text-white"
-                    : "border-gray-200 text-gray-700 hover:border-primary"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
+                    tipoComprobante === "boleta"
+                      ? "border-primary bg-primary text-white"
+                      : "border-gray-200 text-gray-700 hover:border-primary"
+                  }`}
                 >
                   Boleta
                 </button>
                 <button
                   onClick={() => setTipoComprobante("factura")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "factura"
-                    ? "border-primary bg-primary text-white"
-                    : "border-gray-200 text-gray-700 hover:border-primary"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
+                    tipoComprobante === "factura"
+                      ? "border-primary bg-primary text-white"
+                      : "border-gray-200 text-gray-700 hover:border-primary"
+                  }`}
                 >
                   Factura
                 </button>
@@ -1501,7 +1637,10 @@ export default function Checkout() {
                         label="Tipo de documento"
                         value={datosBoleta.tipoDocumento}
                         onChange={(e) => {
-                          setDatosBoleta({ ...datosBoleta, tipoDocumento: e.target.value });
+                          setDatosBoleta({
+                            ...datosBoleta,
+                            tipoDocumento: e.target.value,
+                          });
                           // Reset number on type change if needed, or keep it
                         }}
                       >
@@ -1511,37 +1650,82 @@ export default function Checkout() {
                       </Select>
                     </div>
                     <div>
-                      <Input
-                        label="Número de documento"
-                        type="text"
-                        value={datosBoleta.numeroDocumento}
-                        onChange={(e) => {
-                          let value = e.target.value;
-                          if (datosBoleta.tipoDocumento === "PASAPORTE") {
-                            value = value.replace(/[^a-zA-Z0-9]/g, "");
-                          } else {
-                            value = value.replace(/\D/g, "");
-                          }
-                          setDatosBoleta({ ...datosBoleta, numeroDocumento: value });
-                        }}
-                        placeholder={
-                          datosBoleta.tipoDocumento === "PASAPORTE"
-                            ? "A1234567"
-                            : "12345678"
-                        }
-                        maxLength={
-                          datosBoleta.tipoDocumento === "DNI" ||
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Número de documento
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={datosBoleta.numeroDocumento}
+                          onChange={(e) => {
+                            let value = e.target.value;
+                            if (datosBoleta.tipoDocumento === "PASAPORTE") {
+                              value = value.replace(/[^a-zA-Z0-9]/g, "");
+                            } else {
+                              value = value.replace(/\D/g, "");
+                            }
+                            setDatosBoleta({
+                              ...datosBoleta,
+                              numeroDocumento: value,
+                            });
+                          }}
+                          placeholder={
                             datosBoleta.tipoDocumento === "PASAPORTE"
-                            ? 8
-                            : 12
-                        }
-                        inputMode={
-                          datosBoleta.tipoDocumento === "PASAPORTE"
-                            ? "text"
-                            : "numeric"
-                        }
-                        error={errors.rucBoleta}
-                      />
+                              ? "A1234567"
+                              : "12345678"
+                          }
+                          maxLength={
+                            datosBoleta.tipoDocumento === "DNI" ||
+                            datosBoleta.tipoDocumento === "PASAPORTE"
+                              ? 8
+                              : 12
+                          }
+                          className={`
+                            w-full px-4 py-3 border-2 rounded-sm transition-all duration-200 outline-none
+                            ${
+                              errors.rucBoleta
+                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
+                                : "border-gray-200 focus:border-primary focus:ring-2 focus:ring-green-200 hover:border-green-400"
+                            }
+                            ${datosBoleta.tipoDocumento === "DNI" ? "pr-12" : ""}
+                          `.trim()}
+                        />
+                        {datosBoleta.tipoDocumento === "DNI" && (
+                          <button
+                            type="button"
+                            onClick={handleConsultaDNI}
+                            disabled={
+                              isConsultingDni ||
+                              datosBoleta.numeroDocumento.length !== 8
+                            }
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary-dark disabled:text-gray-300 p-2 transition-colors"
+                            title="Consultar DNI"
+                          >
+                            {isConsultingDni ? (
+                              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
+                              </svg>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                      {errors.rucBoleta && (
+                        <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-fade-in">
+                          <PiWarningCircleFill size={14} /> {errors.rucBoleta}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -1551,7 +1735,12 @@ export default function Checkout() {
                       <Input
                         label="Nombres"
                         value={datosBoleta.nombres}
-                        onChange={(e) => setDatosBoleta({ ...datosBoleta, nombres: e.target.value })}
+                        onChange={(e) =>
+                          setDatosBoleta({
+                            ...datosBoleta,
+                            nombres: e.target.value,
+                          })
+                        }
                         error={errors.nombres}
                       />
                     </div>
@@ -1559,7 +1748,12 @@ export default function Checkout() {
                       <Input
                         label="Apellidos"
                         value={datosBoleta.apellidos}
-                        onChange={(e) => setDatosBoleta({ ...datosBoleta, apellidos: e.target.value })}
+                        onChange={(e) =>
+                          setDatosBoleta({
+                            ...datosBoleta,
+                            apellidos: e.target.value,
+                          })
+                        }
                         error={errors.apellidos}
                       />
                     </div>
@@ -1568,7 +1762,12 @@ export default function Checkout() {
                     <Input
                       label="Dirección"
                       value={datosBoleta.direccion}
-                      onChange={(e) => setDatosBoleta({ ...datosBoleta, direccion: e.target.value })}
+                      onChange={(e) =>
+                        setDatosBoleta({
+                          ...datosBoleta,
+                          direccion: e.target.value,
+                        })
+                      }
                       placeholder="Calle, Número, Dpto..."
                       error={errors.direccion}
                     />
@@ -1583,12 +1782,19 @@ export default function Checkout() {
                         onChange={(e) => {
                           const val = e.target.value;
                           boletaLocations.handleDeptChange(val);
-                          setDatosBoleta(prev => ({ ...prev, departamento: val, provincia: '', distrito: '' }));
+                          setDatosBoleta((prev) => ({
+                            ...prev,
+                            departamento: val,
+                            provincia: "",
+                            distrito: "",
+                          }));
                         }}
                       >
                         <option value="">Departamento</option>
-                        {boletaLocations.departments.map(d => (
-                          <option key={d} value={d}>{d}</option>
+                        {boletaLocations.departments.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
                         ))}
                       </Select>
                     </div>
@@ -1599,13 +1805,19 @@ export default function Checkout() {
                         onChange={(e) => {
                           const val = e.target.value;
                           boletaLocations.handleProvChange(val);
-                          setDatosBoleta(prev => ({ ...prev, provincia: val, distrito: '' }));
+                          setDatosBoleta((prev) => ({
+                            ...prev,
+                            provincia: val,
+                            distrito: "",
+                          }));
                         }}
                         disabled={!boletaLocations.selectedDept}
                       >
                         <option value="">Provincia</option>
-                        {boletaLocations.provinces.map(p => (
-                          <option key={p} value={p}>{p}</option>
+                        {boletaLocations.provinces.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
                         ))}
                       </Select>
                     </div>
@@ -1616,14 +1828,19 @@ export default function Checkout() {
                         onChange={(e) => {
                           const val = e.target.value;
                           boletaLocations.handleDistChange(val);
-                          setDatosBoleta(prev => ({ ...prev, distrito: val }));
+                          setDatosBoleta((prev) => ({
+                            ...prev,
+                            distrito: val,
+                          }));
                         }}
                         disabled={!boletaLocations.selectedProv}
                         error={errors.distrito}
                       >
                         <option value="">Distrito</option>
-                        {boletaLocations.districts.map(d => (
-                          <option key={d} value={d}>{d}</option>
+                        {boletaLocations.districts.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
                         ))}
                       </Select>
                     </div>
@@ -1743,12 +1960,19 @@ export default function Checkout() {
                         onChange={(e) => {
                           const val = e.target.value;
                           facturaLocations.handleDeptChange(val);
-                          setDatosFactura(prev => ({ ...prev, departamento: val, provincia: '', distrito: '' }));
+                          setDatosFactura((prev) => ({
+                            ...prev,
+                            departamento: val,
+                            provincia: "",
+                            distrito: "",
+                          }));
                         }}
                       >
                         <option value="">Departamento</option>
-                        {facturaLocations.departments.map(d => (
-                          <option key={d} value={d}>{d}</option>
+                        {facturaLocations.departments.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
                         ))}
                       </Select>
                     </div>
@@ -1759,13 +1983,19 @@ export default function Checkout() {
                         onChange={(e) => {
                           const val = e.target.value;
                           facturaLocations.handleProvChange(val);
-                          setDatosFactura(prev => ({ ...prev, provincia: val, distrito: '' }));
+                          setDatosFactura((prev) => ({
+                            ...prev,
+                            provincia: val,
+                            distrito: "",
+                          }));
                         }}
                         disabled={!facturaLocations.selectedDept}
                       >
                         <option value="">Provincia</option>
-                        {facturaLocations.provinces.map(p => (
-                          <option key={p} value={p}>{p}</option>
+                        {facturaLocations.provinces.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
                         ))}
                       </Select>
                     </div>
@@ -1776,14 +2006,19 @@ export default function Checkout() {
                         onChange={(e) => {
                           const val = e.target.value;
                           facturaLocations.handleDistChange(val);
-                          setDatosFactura(prev => ({ ...prev, distrito: val }));
+                          setDatosFactura((prev) => ({
+                            ...prev,
+                            distrito: val,
+                          }));
                         }}
                         disabled={!facturaLocations.selectedProv}
                         error={errors.facturaDistrito}
                       >
                         <option value="">Distrito</option>
-                        {facturaLocations.districts.map(d => (
-                          <option key={d} value={d}>{d}</option>
+                        {facturaLocations.districts.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
                         ))}
                       </Select>
                     </div>
@@ -1805,10 +2040,11 @@ export default function Checkout() {
                 {/* Tarjeta y Yape (Código) */}
                 <button
                   onClick={() => setMetodoPago("card")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "card"
-                    ? "border-primary bg-primary/5"
-                    : "border-gray-200 hover:border-primary/50"
-                    }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
+                    metodoPago === "card"
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 hover:border-primary/50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex -space-x-2">
@@ -1842,10 +2078,11 @@ export default function Checkout() {
 
                 <button
                   onClick={() => setMetodoPago("async")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "async"
-                    ? "border-primary bg-primary/5"
-                    : "border-gray-200 hover:border-primary/50"
-                    }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
+                    metodoPago === "async"
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 hover:border-primary/50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <FaQrcode className="text-2xl text-purple-600" />
@@ -1993,6 +2230,6 @@ export default function Checkout() {
         onLoad={handleCulqiLoad}
         onError={() => logger.error("❌ Error al cargar Culqi Checkout")}
       />
-    </Layout >
+    </Layout>
   );
 }
