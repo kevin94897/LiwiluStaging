@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import logger from '@/lib/logger';
+import { useDocumentLookup } from "@/hooks/useDocumentLookup";
+import logger from "@/lib/logger";
 import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
@@ -27,6 +28,10 @@ export default function AutorizacionModal({
   onSave,
   initialData,
 }: AutorizacionModalProps) {
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof AutorizacionSchemaType, string>>
+  >({});
+
   const [formData, setFormData] = useState<AutorizacionSchemaType>({
     documentType: "DNI",
     documentNumber: "",
@@ -34,11 +39,28 @@ export default function AutorizacionModal({
   });
 
   const [isConsulted, setIsConsulted] = useState(false);
-  const [consulting, setConsulting] = useState(false);
 
-  const [errors, setErrors] = useState<
-    Partial<Record<keyof AutorizacionSchemaType, string>>
-  >({});
+  const { isLoading: consultingAuto } = useDocumentLookup({
+    type: formData.documentType,
+    number: formData.documentNumber,
+    enabled: isOpen,
+    onSuccess: (data) => {
+      if (formData.documentType === "DNI") {
+        setFormData((prev) => ({
+          ...prev,
+          fullName: `${data.nombres} ${data.apellido_paterno} ${data.apellido_materno}`,
+        }));
+      } else if (formData.documentType === "RUC") {
+        setFormData((prev) => ({
+          ...prev,
+          fullName: data.nombre_o_razon_social,
+        }));
+      }
+      setIsConsulted(true);
+    },
+  });
+
+  const consulting = consultingAuto;
 
   useEffect(() => {
     if (isOpen) {
@@ -101,7 +123,8 @@ export default function AutorizacionModal({
     const maxLength =
       formData.documentType === "RUC"
         ? 11
-        : formData.documentType === "DNI" || formData.documentType === "PASAPORTE"
+        : formData.documentType === "DNI" ||
+            formData.documentType === "PASAPORTE"
           ? 8
           : 12;
 
@@ -138,60 +161,7 @@ export default function AutorizacionModal({
   };
 
   const handleConsultation = async () => {
-    if (!formData.documentType || !formData.documentNumber) {
-      showToast("Selecciona un tipo y número de documento", "error");
-      return;
-    }
-
-    setConsulting(true);
-    setErrors({});
-
-    try {
-      if (formData.documentType === "DNI") {
-        if (formData.documentNumber.length !== 8) {
-          showToast("El DNI debe tener 8 dígitos", "error");
-          setConsulting(false);
-          return;
-        }
-
-        const res = await consultaDNI(formData.documentNumber);
-        if (res.success) {
-          setFormData((prev) => ({
-            ...prev,
-            fullName: res.data.nombre_completo,
-          }));
-          setIsConsulted(true);
-          showToast("Datos encontrados", "success");
-        } else {
-          showToast("No se encontraron datos para este DNI", "error");
-        }
-      } else if (formData.documentType === "RUC") {
-        if (formData.documentNumber.length !== 11) {
-          showToast("El RUC debe tener 11 números y empezar con 10, 15 o 20", "error");
-          setConsulting(false);
-          return;
-        }
-
-        const res = await consultaRUC(formData.documentNumber);
-        if (res.success) {
-          setFormData((prev) => ({
-            ...prev,
-            fullName: res.data.nombre_o_razon_social,
-          }));
-          setIsConsulted(true);
-          showToast("Datos de empresa encontrados", "success");
-        } else {
-          showToast("No se encontraron datos para este RUC", "error");
-        }
-      } else {
-        showToast("Consulta disponible solo para DNI y RUC", "error");
-      }
-    } catch (error) {
-      logger.error(error);
-      showToast("Error al consultar el documento", "error");
-    } finally {
-      setConsulting(false);
-    }
+    // Manual consultation fallback if needed
   };
 
   return (
@@ -280,7 +250,7 @@ export default function AutorizacionModal({
                       formData.documentType === "RUC"
                         ? 11
                         : formData.documentType === "DNI" ||
-                          formData.documentType === "PASAPORTE"
+                            formData.documentType === "PASAPORTE"
                           ? 8
                           : 12
                     }
@@ -292,20 +262,20 @@ export default function AutorizacionModal({
                   />
                   {(formData.documentType === "DNI" ||
                     formData.documentType === "RUC") && (
-                      <button
-                        type="button"
-                        onClick={handleConsultation}
-                        disabled={consulting || !formData.documentNumber}
-                        className="absolute right-3 top-[14px] text-gray-400 hover:text-primary transition disabled:opacity-50"
-                        title="Consultar Documento"
-                      >
-                        {consulting ? (
-                          <FaSpinner className="animate-spin text-lg" />
-                        ) : (
-                          <FaSearch className="text-lg" />
-                        )}
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={handleConsultation}
+                      disabled={consulting || !formData.documentNumber}
+                      className="absolute right-3 top-[14px] text-gray-400 hover:text-primary transition disabled:opacity-50"
+                      title="Consultar Documento"
+                    >
+                      {consulting ? (
+                        <FaSpinner className="animate-spin text-lg" />
+                      ) : (
+                        <FaSearch className="text-lg" />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 

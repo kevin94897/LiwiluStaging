@@ -41,6 +41,7 @@ import ProcessingOverlay from "@/components/checkout/ProcessingOverlay";
 import ErrorModal from "@/components/ui/ErrorModal";
 import logger from "@/lib/logger";
 import { validateRUC } from "@/lib/validations";
+import { useDocumentLookup } from "@/hooks/useDocumentLookup";
 import type {
   CulqiTokenResponse,
   CulqiOrderResponse,
@@ -225,9 +226,81 @@ export default function Checkout() {
   // ============================================
   // VALIDACIÓN Y ERRORES
   // ============================================
-  const [isConsultingRuc, setIsConsultingRuc] = useState(false);
-  const [isConsultingDni, setIsConsultingDni] = useState(false);
-  const [rucConsulted, setRucConsulted] = useState(false);
+  // Hooks for automated lookup
+  const { isLoading: isConsultingDni, isConsulted: boletaConsulted } =
+    useDocumentLookup({
+      type: datosBoleta.tipoDocumento,
+      number: datosBoleta.numeroDocumento,
+      enabled: tipoComprobante === "boleta",
+      onSuccess: (data) => {
+        if (datosBoleta.tipoDocumento === "DNI") {
+          setDatosBoleta((prev) => ({
+            ...prev,
+            nombres: data.nombres,
+            apellidos: `${data.apellido_paterno} ${data.apellido_materno}`,
+          }));
+        }
+      },
+    });
+
+  // Hook for Factura (RUC)
+  const { isLoading: isConsultingRuc, isConsulted: rucConsulted } =
+    useDocumentLookup({
+      type: "RUC",
+      number: datosFactura.ruc,
+      enabled: tipoComprobante === "factura",
+      onSuccess: (data) => {
+        // Normalización de Ubicación (API devuelve UPPERCASE, App usa Title Case)
+        let normalizedDept = datosFactura.departamento;
+        let normalizedProv = datosFactura.provincia;
+        let normalizedDist = datosFactura.distrito;
+
+        if (data.departamento) {
+          const departments = Object.keys(PERU_LOCATIONS);
+          const matchDept = findMatchingLocation(
+            data.departamento,
+            departments,
+          );
+          if (matchDept) {
+            normalizedDept = matchDept;
+            if (data.provincia) {
+              const provinces = Object.keys(PERU_LOCATIONS[matchDept] || {});
+              const matchProv = findMatchingLocation(data.provincia, provinces);
+              if (matchProv) {
+                normalizedProv = matchProv;
+                if (data.distrito) {
+                  const districts = PERU_LOCATIONS[matchDept][matchProv] || [];
+                  const matchDist = findMatchingLocation(
+                    data.distrito,
+                    districts,
+                  );
+                  if (matchDist) normalizedDist = matchDist;
+                }
+              }
+            }
+          }
+        }
+
+        setDatosFactura((prev) => ({
+          ...prev,
+          razonSocial: data.nombre_o_razon_social,
+          direccionFiscal: data.direccion_completa || prev.direccionFiscal,
+          departamento: normalizedDept,
+          provincia: normalizedProv,
+          distrito: normalizedDist,
+        }));
+
+        // Actualizar location hooks
+        if (normalizedDept && normalizedProv && normalizedDist) {
+          facturaLocations.setLocationValues(
+            normalizedDept,
+            normalizedProv,
+            normalizedDist,
+          );
+        }
+      },
+    });
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorModal, setErrorModal] = useState<{
     isOpen: boolean;
@@ -1153,124 +1226,7 @@ export default function Checkout() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleConsultaRUC = async () => {
-    const ruc = datosFactura.ruc;
-    if (!validateRUC(ruc)) {
-      setErrors({
-        ...errors,
-        rucFactura: "Ingresa un RUC válido",
-      });
-      return;
-    }
-
-    setIsConsultingRuc(true);
-    setErrors({ ...errors, rucFactura: "" });
-
-    try {
-      const response = await consultaRUC(ruc);
-      if (response.success && response.data) {
-        // Normalización de Ubicación (API devuelve UPPERCASE, App usa Title Case)
-        let normalizedDept = datosFactura.departamento;
-        let normalizedProv = datosFactura.provincia;
-        let normalizedDist = datosFactura.distrito;
-
-        if (response.data.departamento) {
-          const departments = Object.keys(PERU_LOCATIONS);
-          const matchDept = findMatchingLocation(
-            response.data.departamento,
-            departments,
-          );
-          if (matchDept) {
-            normalizedDept = matchDept;
-
-            if (response.data.provincia) {
-              const provinces = Object.keys(PERU_LOCATIONS[matchDept] || {});
-              const matchProv = findMatchingLocation(
-                response.data.provincia,
-                provinces,
-              );
-              if (matchProv) {
-                normalizedProv = matchProv;
-
-                if (response.data.distrito) {
-                  const districts = PERU_LOCATIONS[matchDept][matchProv] || [];
-                  const matchDist = findMatchingLocation(
-                    response.data.distrito,
-                    districts,
-                  );
-                  if (matchDist) {
-                    normalizedDist = matchDist;
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        setDatosFactura({
-          ...datosFactura,
-          razonSocial: response.data.nombre_o_razon_social,
-          direccionFiscal: response.data.direccion_completa,
-          departamento: normalizedDept,
-          provincia: normalizedProv,
-          distrito: normalizedDist,
-        });
-
-        // Actualizar location hooks con valores normalizados
-        if (normalizedDept && normalizedProv && normalizedDist) {
-          facturaLocations.setLocationValues(
-            normalizedDept,
-            normalizedProv,
-            normalizedDist,
-          );
-        }
-
-        setRucConsulted(true);
-        showToast("RUC consultado con éxito", "success");
-      } else {
-        showToast(response.message || "No se encontró información", "error");
-      }
-    } catch (error: any) {
-      showToast(error.message || "Error al consultar el RUC", "error");
-    } finally {
-      setIsConsultingRuc(false);
-    }
-  };
-
-  const handleConsultaDNI = async () => {
-    const dni = datosBoleta.numeroDocumento;
-    if (dni.length !== 8) {
-      setErrors({
-        ...errors,
-        rucBoleta: "El DNI debe tener 8 dígitos",
-      });
-      return;
-    }
-
-    setIsConsultingDni(true);
-    setErrors({ ...errors, rucBoleta: "" });
-
-    try {
-      const response = await consultaDNI(dni);
-      if (response.success && response.data) {
-        setDatosBoleta({
-          ...datosBoleta,
-          nombres: response.data.nombres || "",
-          apellidos:
-            `${response.data.apellido_paterno || ""} ${response.data.apellido_materno || ""}`.trim(),
-        });
-
-        showToast("DNI consultado con éxito", "success");
-      } else {
-        showToast(response.message || "No se encontró el DNI", "error");
-      }
-    } catch (error: any) {
-      logger.error("Error consultando DNI:", error);
-      showToast(error.message || "Error al consultar DNI", "error");
-    } finally {
-      setIsConsultingDni(false);
-    }
-  };
+  // handleConsultaRUC and handleConsultaDNI removed - replaced by useDocumentLookup hook
 
   /**
    * Verifica si una orden está expirada
@@ -1697,21 +1653,26 @@ export default function Checkout() {
                           `.trim()}
                         />
                         {datosBoleta.tipoDocumento === "DNI" && (
-                          <button
-                            type="button"
-                            onClick={handleConsultaDNI}
-                            disabled={
-                              isConsultingDni ||
-                              datosBoleta.numeroDocumento.length !== 8
-                            }
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary-dark disabled:text-gray-300 p-2 transition-colors"
-                            title="Consultar DNI"
-                          >
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 p-2">
                             {isConsultingDni ? (
                               <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                            ) : boletaConsulted ? (
+                              <svg
+                                className="w-5 h-5 text-green-500"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
                             ) : (
                               <svg
-                                className="w-5 h-5"
+                                className="w-5 h-5 text-gray-300"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -1724,7 +1685,7 @@ export default function Checkout() {
                                 />
                               </svg>
                             )}
-                          </button>
+                          </div>
                         )}
                       </div>
                       {errors.rucBoleta && (
@@ -1877,20 +1838,26 @@ export default function Checkout() {
                           maxLength={11}
                           className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition pr-12"
                         />
-                        <button
-                          type="button"
-                          onClick={handleConsultaRUC}
-                          disabled={
-                            isConsultingRuc || datosFactura.ruc.length !== 11
-                          }
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary-dark disabled:text-gray-300 p-2 transition-colors"
-                          title="Consultar RUC"
-                        >
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 p-2">
                           {isConsultingRuc ? (
                             <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                          ) : rucConsulted ? (
+                            <svg
+                              className="w-5 h-5 text-green-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
                           ) : (
                             <svg
-                              className="w-5 h-5"
+                              className="w-5 h-5 text-gray-300"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -1903,7 +1870,7 @@ export default function Checkout() {
                               />
                             </svg>
                           )}
-                        </button>
+                        </div>
                       </div>
                       {errors.rucFactura && (
                         <p className="text-red-500 text-xs mt-1">

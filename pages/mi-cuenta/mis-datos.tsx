@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import logger from '@/lib/logger';
+import { useDocumentLookup } from "@/hooks/useDocumentLookup";
+import logger from "@/lib/logger";
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import AccountSidebar from "@/components/AccountSidebar";
@@ -37,6 +38,27 @@ export default function MisDatos() {
   const [originalEmail, setOriginalEmail] = useState("");
   const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
   const [pendingEmailChange, setPendingEmailChange] = useState("");
+
+  const { isLoading: isConsultingDoc } = useDocumentLookup({
+    type: formData.tipoDocumento,
+    number: formData.numeroDocumento,
+    enabled: !isLoading, // Solo cuando ya cargó el usuario inicial
+    onSuccess: (data) => {
+      if (formData.tipoDocumento === "DNI") {
+        setFormData((prev) => ({
+          ...prev,
+          nombre: data.nombres,
+          apellido: `${data.apellido_paterno} ${data.apellido_materno}`,
+        }));
+      } else if (formData.tipoDocumento === "RUC") {
+        setFormData((prev) => ({
+          ...prev,
+          nombre: data.nombre_o_razon_social,
+          apellido: "No aplica",
+        }));
+      }
+    },
+  });
 
   // Cargar datos del usuario al montar el componente
   useEffect(() => {
@@ -148,7 +170,7 @@ export default function MisDatos() {
       if (response.ok && result.success) {
         showToast(
           result.message ||
-          "Se ha enviado un correo de verificación a tu nueva dirección. Por favor, revisa tu bandeja de entrada.",
+            "Se ha enviado un correo de verificación a tu nueva dirección. Por favor, revisa tu bandeja de entrada.",
           "success",
         );
         setPendingEmailChange("");
@@ -234,10 +256,10 @@ export default function MisDatos() {
         updateData,
         accessToken
           ? {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
           : {},
       );
 
@@ -432,7 +454,10 @@ export default function MisDatos() {
                                   ...prev,
                                   numeroDocumento: "",
                                   // Auto-fill apellido with "No aplica" for RUC to avoid empty submission
-                                  apellido: newDocType === "RUC" ? "No aplica" : prev.apellido,
+                                  apellido:
+                                    newDocType === "RUC"
+                                      ? "No aplica"
+                                      : prev.apellido,
                                 }));
                                 setErrors((prev) => ({
                                   ...prev,
@@ -469,7 +494,7 @@ export default function MisDatos() {
                                 formData.tipoDocumento === "RUC"
                                   ? 11
                                   : formData.tipoDocumento === "DNI" ||
-                                    formData.tipoDocumento === "PASAPORTE"
+                                      formData.tipoDocumento === "PASAPORTE"
                                     ? 8
                                     : 12
                               }

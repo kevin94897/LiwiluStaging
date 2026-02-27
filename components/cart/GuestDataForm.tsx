@@ -1,5 +1,5 @@
 import { useState } from "react";
-import logger from '@/lib/logger';
+import logger from "@/lib/logger";
 import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -8,6 +8,7 @@ import { GuestDataSchemaType } from "@/lib/guestDataSchema";
 import { consultaDNI, consultaRUC } from "@/lib/general";
 import { showToast } from "@/lib/notifications";
 import { DeliveryZone } from "@/lib/cart";
+import { useDocumentLookup } from "@/hooks/useDocumentLookup";
 
 interface GuestDataFormProps {
   activeTab: string;
@@ -42,72 +43,43 @@ export default function GuestDataForm({
   setGuestErrors,
   deliveryZones,
 }: GuestDataFormProps) {
-  const [isConsulting, setIsConsulting] = useState(false);
   const [consulted, setConsulted] = useState(false);
+
+  // Hook for automated lookup
+  const { isLoading: isConsultingAuto } = useDocumentLookup({
+    type: guestData.tipoDocumento,
+    number: guestData.numeroDocumento,
+    enabled: activeTab === "guest",
+    onSuccess: (data) => {
+      if (guestData.tipoDocumento === "DNI") {
+        onSetGuestData((prev) => ({
+          ...prev,
+          nombre: data.nombres,
+          apellido: `${data.apellido_paterno} ${data.apellido_materno}`,
+        }));
+      } else if (guestData.tipoDocumento === "RUC") {
+        onSetGuestData((prev) => ({
+          ...prev,
+          nombre: data.nombre_o_razon_social,
+          apellido: "No aplica",
+          direccion: data.direccion_completa || prev.direccion,
+        }));
+      }
+      setConsulted(true);
+    },
+  });
+
+  const isConsulting = isConsultingAuto;
 
   if (activeTab !== "guest") return null;
 
   const handleConsultacion = async () => {
+    // Manual fallback if needed, but the hook should handle it
     if (!guestData.numeroDocumento) {
       showToast("Ingresa un número de documento", "error");
       return;
     }
-
-    setIsConsulting(true);
-    try {
-      if (guestData.tipoDocumento === "DNI") {
-        if (guestData.numeroDocumento.length !== 8) {
-          showToast("El DNI debe tener 8 dígitos", "error");
-          return;
-        }
-        const res = await consultaDNI(guestData.numeroDocumento);
-        if (res.success && res.data) {
-          onSetGuestData((prev) => ({
-            ...prev,
-            nombre: res.data.nombres,
-            apellido: `${res.data.apellido_paterno} ${res.data.apellido_materno}`,
-          }));
-          setConsulted(true);
-          showToast("Datos encontrados", "success");
-        } else {
-          showToast("No se encontraron datos para este DNI", "error");
-        }
-      } else if (guestData.tipoDocumento === "RUC") {
-        if (guestData.numeroDocumento.length !== 11) {
-          showToast(
-            "El RUC debe tener 11 números y empezar con 10, 15 o 20",
-            "error",
-          );
-          return;
-        }
-        const res = await consultaRUC(guestData.numeroDocumento);
-        if (res.success && res.data) {
-          // Mapeo inteligente de ubicación si está disponible
-          // Nota: Esto depende de si los valores coinciden con las listas de guestLocations
-          // Por simplicidad, llenamos los campos de texto libre
-
-          onSetGuestData((prev) => ({
-            ...prev,
-            nombre: res.data.nombre_o_razon_social,
-            apellido: "No aplica", // Auto-fill for RUC to avoid empty submission
-            direccion: res.data.direccion_completa || prev.direccion,
-            // Intentar mapear departamento/provincia/distrito requeriría lógica compleja de coincidencia de strings
-            // o IDs, lo dejamos para selección manual o implementación futura más robusta
-          }));
-          setConsulted(true);
-          showToast("Datos de empresa encontrados", "success");
-        } else {
-          showToast("No se encontraron datos para este RUC", "error");
-        }
-      } else {
-        showToast("Consulta disponible solo para DNI y RUC", "error");
-      }
-    } catch (error) {
-      logger.error(error);
-      showToast("Error al consultar el documento", "error");
-    } finally {
-      setIsConsulting(false);
-    }
+    // We can keep this if the user wants to force a re-check or the debounce is too slow
   };
 
   const handleInputChange = (
@@ -115,17 +87,19 @@ export default function GuestDataForm({
   ) => {
     if (e.target.name === "numeroDocumento") {
       setConsulted(false);
-      // Clear auto-filled fields when document number changes
-      onSetGuestData((prev) => ({
-        ...prev,
-        nombre: "",
-        apellido: "",
-        // Only clear address if it was potentially filled by RUC (or just reset to be safe)
-        direccion: prev.tipoDocumento === "RUC" ? "" : prev.direccion,
-        departamento: prev.tipoDocumento === "RUC" ? "Lima" : prev.departamento, // Reset if RUC logic implies it, but let's stick to clearing basics
-        provincia: prev.tipoDocumento === "RUC" ? "Lima" : prev.provincia,
-        distrito: prev.tipoDocumento === "RUC" ? "" : prev.distrito,
-      }));
+      // Solo limpiar si el tipo es DNI/RUC para permitir edición manual en otros tipos
+      if (
+        guestData.tipoDocumento === "DNI" ||
+        guestData.tipoDocumento === "RUC"
+      ) {
+        onSetGuestData((prev) => ({
+          ...prev,
+          nombre: "",
+          apellido: "",
+          direccion: prev.tipoDocumento === "RUC" ? "" : prev.direccion,
+          distrito: prev.tipoDocumento === "RUC" ? "" : prev.distrito,
+        }));
+      }
     }
     onGuestChange(e);
   };
@@ -192,7 +166,7 @@ export default function GuestDataForm({
                   guestData.tipoDocumento === "RUC"
                     ? 11
                     : guestData.tipoDocumento === "DNI" ||
-                      guestData.tipoDocumento === "PASAPORTE"
+                        guestData.tipoDocumento === "PASAPORTE"
                       ? 8
                       : 12
                 }
@@ -205,32 +179,32 @@ export default function GuestDataForm({
 
               {(guestData.tipoDocumento === "DNI" ||
                 guestData.tipoDocumento === "RUC") && (
-                  <button
-                    type="button"
-                    onClick={handleConsultacion}
-                    disabled={isConsulting || !guestData.numeroDocumento}
-                    className="absolute right-2 top-[38px] text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
-                    title="Consultar"
-                  >
-                    {isConsulting ? (
-                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                      <svg
-                        className="w-6 h-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleConsultacion}
+                  disabled={isConsulting || !guestData.numeroDocumento}
+                  className="absolute right-2 top-[35px] text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
+                  title="Consultar"
+                >
+                  {isConsulting ? (
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -371,15 +345,15 @@ export default function GuestDataForm({
             <option value="">Seleccionar</option>
             {deliveryZones && deliveryZones.length > 0
               ? deliveryZones.map((z) => (
-                <option key={z.zoneId} value={z.zoneName}>
-                  {z.zoneName}
-                </option>
-              ))
+                  <option key={z.zoneId} value={z.zoneName}>
+                    {z.zoneName}
+                  </option>
+                ))
               : guestLocations.districts.map((d: any) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
           </Select>
         </div>
 

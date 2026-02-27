@@ -2,7 +2,8 @@
 "use client";
 
 import { useState } from "react";
-import logger from '@/lib/logger';
+import { useDocumentLookup } from "@/hooks/useDocumentLookup";
+import logger from "@/lib/logger";
 import Image from "next/image";
 import Button from "./ui/Button";
 import {
@@ -24,6 +25,21 @@ export default function Contacto() {
     Partial<Record<keyof ContactoSchemaType, string>>
   >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { isLoading: isConsultingDoc } = useDocumentLookup({
+    type: formData.documento.length === 11 ? "RUC" : "DNI",
+    number: formData.documento,
+    onSuccess: (data) => {
+      // En este formulario solo pedimos el documento, no autollenamos nombres por ahora
+      // pero el usuario podría quererlo en el futuro o al menos ver el toast de éxito
+      showToast(
+        formData.documento.length === 11
+          ? `RUC: ${data.nombre_o_razon_social}`
+          : `DNI: ${data.nombres}`,
+        "success",
+      );
+    },
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -175,10 +191,11 @@ export default function Contacto() {
               name="celular"
               value={formData.celular}
               onChange={handleCelularChange}
-              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${errors.celular
-                ? "border-red-500 focus:border-red-500"
-                : "border-white/70 focus:border-white"
-                }`}
+              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${
+                errors.celular
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-white/70 focus:border-white"
+              }`}
               placeholder="Numero de celular (9 dígitos)"
               maxLength={9}
             />
@@ -196,10 +213,11 @@ export default function Contacto() {
               name="documento"
               value={formData.documento}
               onChange={handleDocumentoChange}
-              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${errors.documento
-                ? "border-red-500 focus:border-red-500"
-                : "border-white/70 focus:border-white"
-                }`}
+              className={`w-full bg-transparent border-b focus:outline-none text-white placeholder-white/60 py-2 ${
+                errors.documento
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-white/70 focus:border-white"
+              }`}
               placeholder="DNI / CE / RUC"
               maxLength={11}
             />
@@ -219,10 +237,11 @@ export default function Contacto() {
                 name="aceptaPrivacidad"
                 checked={formData.aceptaPrivacidad}
                 onChange={handleChange}
-                className={`mt-1 accent-white ${errors.aceptaPrivacidad
-                  ? "outline outline-2 outline-red-300"
-                  : ""
-                  }`}
+                className={`mt-1 accent-white ${
+                  errors.aceptaPrivacidad
+                    ? "outline outline-2 outline-red-300"
+                    : ""
+                }`}
               />
               <label
                 htmlFor="privacidad"
