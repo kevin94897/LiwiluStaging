@@ -227,79 +227,82 @@ export default function Checkout() {
   // VALIDACIÓN Y ERRORES
   // ============================================
   // Hooks for automated lookup
-  const { isLoading: isConsultingDni, isConsulted: boletaConsulted } =
-    useDocumentLookup({
-      type: datosBoleta.tipoDocumento,
-      number: datosBoleta.numeroDocumento,
-      enabled: tipoComprobante === "boleta",
-      onSuccess: (data) => {
-        if (datosBoleta.tipoDocumento === "DNI") {
-          setDatosBoleta((prev) => ({
-            ...prev,
-            nombres: data.nombres,
-            apellidos: `${data.apellido_paterno} ${data.apellido_materno}`,
-          }));
-        }
-      },
-    });
+  const {
+    isLoading: isConsultingDni,
+    isConsulted: boletaConsulted,
+    resetConsulted: resetBoletaConsulted,
+  } = useDocumentLookup({
+    type: datosBoleta.tipoDocumento,
+    number: datosBoleta.numeroDocumento,
+    enabled: tipoComprobante === "boleta",
+    onSuccess: (data) => {
+      if (datosBoleta.tipoDocumento === "DNI") {
+        setDatosBoleta((prev) => ({
+          ...prev,
+          nombres: data.nombres,
+          apellidos: `${data.apellido_paterno} ${data.apellido_materno}`,
+        }));
+      }
+    },
+  });
 
   // Hook for Factura (RUC)
-  const { isLoading: isConsultingRuc, isConsulted: rucConsulted } =
-    useDocumentLookup({
-      type: "RUC",
-      number: datosFactura.ruc,
-      enabled: tipoComprobante === "factura",
-      onSuccess: (data) => {
-        // Normalización de Ubicación (API devuelve UPPERCASE, App usa Title Case)
-        let normalizedDept = datosFactura.departamento;
-        let normalizedProv = datosFactura.provincia;
-        let normalizedDist = datosFactura.distrito;
+  const {
+    isLoading: isConsultingRuc,
+    isConsulted: rucConsulted,
+    resetConsulted: resetRucConsulted,
+  } = useDocumentLookup({
+    type: "RUC",
+    number: datosFactura.ruc,
+    enabled: tipoComprobante === "factura",
+    onSuccess: (data) => {
+      // Normalización de Ubicación (API devuelve UPPERCASE, App usa Title Case)
+      let normalizedDept = datosFactura.departamento;
+      let normalizedProv = datosFactura.provincia;
+      let normalizedDist = datosFactura.distrito;
 
-        if (data.departamento) {
-          const departments = Object.keys(PERU_LOCATIONS);
-          const matchDept = findMatchingLocation(
-            data.departamento,
-            departments,
-          );
-          if (matchDept) {
-            normalizedDept = matchDept;
-            if (data.provincia) {
-              const provinces = Object.keys(PERU_LOCATIONS[matchDept] || {});
-              const matchProv = findMatchingLocation(data.provincia, provinces);
-              if (matchProv) {
-                normalizedProv = matchProv;
-                if (data.distrito) {
-                  const districts = PERU_LOCATIONS[matchDept][matchProv] || [];
-                  const matchDist = findMatchingLocation(
-                    data.distrito,
-                    districts,
-                  );
-                  if (matchDist) normalizedDist = matchDist;
-                }
+      if (data.departamento) {
+        const departments = Object.keys(PERU_LOCATIONS);
+        const matchDept = findMatchingLocation(data.departamento, departments);
+        if (matchDept) {
+          normalizedDept = matchDept;
+          if (data.provincia) {
+            const provinces = Object.keys(PERU_LOCATIONS[matchDept] || {});
+            const matchProv = findMatchingLocation(data.provincia, provinces);
+            if (matchProv) {
+              normalizedProv = matchProv;
+              if (data.distrito) {
+                const districts = PERU_LOCATIONS[matchDept][matchProv] || [];
+                const matchDist = findMatchingLocation(
+                  data.distrito,
+                  districts,
+                );
+                if (matchDist) normalizedDist = matchDist;
               }
             }
           }
         }
+      }
 
-        setDatosFactura((prev) => ({
-          ...prev,
-          razonSocial: data.nombre_o_razon_social,
-          direccionFiscal: data.direccion_completa || prev.direccionFiscal,
-          departamento: normalizedDept,
-          provincia: normalizedProv,
-          distrito: normalizedDist,
-        }));
+      setDatosFactura((prev) => ({
+        ...prev,
+        razonSocial: data.nombre_o_razon_social,
+        direccionFiscal: data.direccion_completa || prev.direccionFiscal,
+        departamento: normalizedDept,
+        provincia: normalizedProv,
+        distrito: normalizedDist,
+      }));
 
-        // Actualizar location hooks
-        if (normalizedDept && normalizedProv && normalizedDist) {
-          facturaLocations.setLocationValues(
-            normalizedDept,
-            normalizedProv,
-            normalizedDist,
-          );
-        }
-      },
-    });
+      // Actualizar location hooks
+      if (normalizedDept && normalizedProv && normalizedDist) {
+        facturaLocations.setLocationValues(
+          normalizedDept,
+          normalizedProv,
+          normalizedDist,
+        );
+      }
+    },
+  });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorModal, setErrorModal] = useState<{
@@ -1630,6 +1633,7 @@ export default function Checkout() {
                               ...datosBoleta,
                               numeroDocumento: value,
                             });
+                            resetBoletaConsulted();
                           }}
                           placeholder={
                             datosBoleta.tipoDocumento === "PASAPORTE"
@@ -1832,7 +1836,7 @@ export default function Checkout() {
                               ...datosFactura,
                               ruc: e.target.value.replace(/\D/g, ""),
                             });
-                            setRucConsulted(false);
+                            resetRucConsulted();
                           }}
                           placeholder="20123456789"
                           maxLength={11}

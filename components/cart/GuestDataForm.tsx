@@ -43,10 +43,12 @@ export default function GuestDataForm({
   setGuestErrors,
   deliveryZones,
 }: GuestDataFormProps) {
-  const [consulted, setConsulted] = useState(false);
-
   // Hook for automated lookup
-  const { isLoading: isConsultingAuto } = useDocumentLookup({
+  const {
+    isLoading: isConsultingAuto,
+    isConsulted: consulted,
+    resetConsulted,
+  } = useDocumentLookup({
     type: guestData.tipoDocumento,
     number: guestData.numeroDocumento,
     enabled: activeTab === "guest",
@@ -65,7 +67,6 @@ export default function GuestDataForm({
           direccion: data.direccion_completa || prev.direccion,
         }));
       }
-      setConsulted(true);
     },
   });
 
@@ -86,7 +87,7 @@ export default function GuestDataForm({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     if (e.target.name === "numeroDocumento") {
-      setConsulted(false);
+      resetConsulted();
       // Solo limpiar si el tipo es DNI/RUC para permitir edición manual en otros tipos
       if (
         guestData.tipoDocumento === "DNI" ||
@@ -136,7 +137,7 @@ export default function GuestDataForm({
                   numeroDocumento: undefined,
                   tipoDocumento: undefined,
                 }));
-                setConsulted(false);
+                resetConsulted();
               }}
               error={guestErrors.tipoDocumento}
             >

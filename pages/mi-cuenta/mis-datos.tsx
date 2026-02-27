@@ -39,7 +39,7 @@ export default function MisDatos() {
   const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
   const [pendingEmailChange, setPendingEmailChange] = useState("");
 
-  const { isLoading: isConsultingDoc } = useDocumentLookup({
+  const { isLoading: isConsultingDoc, resetConsulted } = useDocumentLookup({
     type: formData.tipoDocumento,
     number: formData.numeroDocumento,
     enabled: !isLoading, // Solo cuando ya cargó el usuario inicial
@@ -145,6 +145,7 @@ export default function MisDatos() {
     if (value.length <= maxLength) {
       setFormData((prev) => ({ ...prev, numeroDocumento: value }));
       setErrors((prev) => ({ ...prev, numeroDocumento: undefined }));
+      resetConsulted();
     }
   };
 

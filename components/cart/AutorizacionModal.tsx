@@ -38,9 +38,11 @@ export default function AutorizacionModal({
     fullName: "",
   });
 
-  const [isConsulted, setIsConsulted] = useState(false);
-
-  const { isLoading: consultingAuto } = useDocumentLookup({
+  const {
+    isLoading: consultingAuto,
+    isConsulted,
+    resetConsulted,
+  } = useDocumentLookup({
     type: formData.documentType,
     number: formData.documentNumber,
     enabled: isOpen,
@@ -56,7 +58,6 @@ export default function AutorizacionModal({
           fullName: data.nombre_o_razon_social,
         }));
       }
-      setIsConsulted(true);
     },
   });
 
@@ -72,7 +73,7 @@ export default function AutorizacionModal({
           documentNumber: "",
           fullName: "",
         });
-        setIsConsulted(false);
+        resetConsulted();
       }
       setErrors({});
       document.body.style.overflow = "hidden";
@@ -101,7 +102,7 @@ export default function AutorizacionModal({
   ) => {
     const { name, value } = e.target;
     if (name === "documentType") {
-      setIsConsulted(false);
+      resetConsulted();
       // Clear document number when type changes for consistency with other forms
       setFormData((prev) => ({ ...prev, documentNumber: "" }));
       setErrors((prev) => ({ ...prev, documentNumber: undefined }));
@@ -131,7 +132,7 @@ export default function AutorizacionModal({
     if (value.length <= maxLength) {
       setFormData((prev) => ({ ...prev, documentNumber: value }));
       setErrors((prev) => ({ ...prev, documentNumber: undefined }));
-      setIsConsulted(false);
+      resetConsulted();
     }
   };
 

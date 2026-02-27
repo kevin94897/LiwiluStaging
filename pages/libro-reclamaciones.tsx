@@ -77,7 +77,7 @@ export default function LibroReclamaciones() {
     Partial<Record<keyof ReclamacionesFormValues, string>>
   >({});
 
-  const { isLoading: isConsulting } = useDocumentLookup({
+  const { isLoading: isConsulting, resetConsulted } = useDocumentLookup({
     type: formData.tipoDocumento,
     number: formData.numeroDocumento,
     onSuccess: (data) => {
@@ -133,6 +133,7 @@ export default function LibroReclamaciones() {
             ? 8
             : 20;
       if (value.length > maxLength) value = value.slice(0, maxLength);
+      resetConsulted();
     }
 
     setFormData((prev) => ({
