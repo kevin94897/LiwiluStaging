@@ -77,6 +77,25 @@ export default function LibroReclamaciones() {
     Partial<Record<keyof ReclamacionesFormValues, string>>
   >({});
 
+  const [formData, setFormData] = useState<ReclamacionesFormValues>({
+    tipoDocumento: "DNI",
+    numeroDocumento: "",
+    nombres: "",
+    apellidos: "",
+    telefono: "",
+    email: "",
+    direccion: "",
+    departamento: "",
+    provincia: "",
+    distrito: "",
+    tipoReclamo: "reclamo",
+    tipoProducto: "producto",
+    descripcionProducto: "",
+    montoReclamado: "",
+    detalleReclamo: "",
+    pedidoDetalle: "",
+  });
+
   const { isLoading: isConsulting, resetConsulted } = useDocumentLookup({
     type: formData.tipoDocumento,
     number: formData.numeroDocumento,
@@ -96,25 +115,6 @@ export default function LibroReclamaciones() {
         }));
       }
     },
-  });
-
-  const [formData, setFormData] = useState<ReclamacionesFormValues>({
-    tipoDocumento: "DNI",
-    numeroDocumento: "",
-    nombres: "",
-    apellidos: "",
-    telefono: "",
-    email: "",
-    direccion: "",
-    departamento: "",
-    provincia: "",
-    distrito: "",
-    tipoReclamo: "reclamo",
-    tipoProducto: "producto",
-    descripcionProducto: "",
-    montoReclamado: "",
-    detalleReclamo: "",
-    pedidoDetalle: "",
   });
 
   const handleInputChange = (
