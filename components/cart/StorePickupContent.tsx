@@ -59,19 +59,21 @@ export default function StorePickupContent({
         <div className="flex border-b">
           <button
             onClick={() => onTabChange("lima")}
-            className={`flex-1 py-4 text-center font-semibold transition ${pickupTab === "lima"
-              ? "text-primary border-b-2 border-primary bg-primary/5"
-              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
+            className={`flex-1 py-4 text-center font-semibold transition ${
+              pickupTab === "lima"
+                ? "text-primary border-b-2 border-primary bg-primary/5"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+            }`}
           >
             Lima
           </button>
           <button
             onClick={() => onTabChange("provincia")}
-            className={`flex-1 py-4 text-center font-semibold transition ${pickupTab === "provincia"
-              ? "text-primary border-b-2 border-primary bg-primary/5"
-              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
+            className={`flex-1 py-4 text-center font-semibold transition ${
+              pickupTab === "provincia"
+                ? "text-primary border-b-2 border-primary bg-primary/5"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+            }`}
           >
             Provincia
           </button>
@@ -96,27 +98,36 @@ export default function StorePickupContent({
             </option>
             {pickupTab === "lima"
               ? warehouseDistricts
-                .filter(
-                  (district) =>
-                    district.desDistrito.toLowerCase() !== "la victoria" &&
-                    district.desDistrito.toLowerCase() !== "lince"
-                )
-                .map((district) => (
-                  <option
-                    key={district.codUbigeoAlm}
-                    value={district.desDistrito}
-                  >
-                    {district.desDistrito}
-                  </option>
-                ))
-              : warehouseProvinces.map((province) => (
-                <option
-                  key={province.codUbigeoAlm}
-                  value={province.desDistrito}
-                >
-                  {province.desDistrito}
-                </option>
-              ))}
+                  .filter(
+                    (district) =>
+                      district.desDistrito.toLowerCase() !== "la victoria" &&
+                      district.desDistrito.toLowerCase() !== "lince" &&
+                      district.desDistrito.toLowerCase() !== "comas" &&
+                      district.desDistrito.toLowerCase() !== "los olivos" &&
+                      district.desDistrito.toLowerCase() !== "chaclacayo" &&
+                      district.desDistrito.toLowerCase() !== "el agustino",
+                  )
+                  .map((district) => (
+                    <option
+                      key={district.codUbigeoAlm}
+                      value={district.desDistrito}
+                    >
+                      {district.desDistrito}
+                    </option>
+                  ))
+              : warehouseProvinces
+                  .filter(
+                    (province) =>
+                      province.desDistrito.toLowerCase() !== "huaral",
+                  )
+                  .map((province) => (
+                    <option
+                      key={province.codUbigeoAlm}
+                      value={province.desDistrito}
+                    >
+                      {province.desDistrito}
+                    </option>
+                  ))}
           </select>
         </div>
       </div>
@@ -124,8 +135,9 @@ export default function StorePickupContent({
       {mostrarMapa && distritoSeleccionado && (
         <div className="bg-white rounded-sm shadow-md p-6 animate-fade-in-up mt-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Puntos de retiro más cercanos</h2>
-
+            <h2 className="text-lg font-semibold">
+              Puntos de retiro más cercanos
+            </h2>
           </div>
           <p className="text-sm text-gray-700 mb-3">
             Selecciona la tienda para confirmar el retiro
@@ -140,13 +152,13 @@ export default function StorePickupContent({
                   (w) => w.idAlmacen.toString() === tiendaSeleccionada,
                 )
                   ? [
-                    mapWarehouses.find(
-                      (w) => w.idAlmacen.toString() === tiendaSeleccionada,
-                    )!.latitud,
-                    mapWarehouses.find(
-                      (w) => w.idAlmacen.toString() === tiendaSeleccionada,
-                    )!.longitud,
-                  ]
+                      mapWarehouses.find(
+                        (w) => w.idAlmacen.toString() === tiendaSeleccionada,
+                      )!.latitud,
+                      mapWarehouses.find(
+                        (w) => w.idAlmacen.toString() === tiendaSeleccionada,
+                      )!.longitud,
+                    ]
                   : undefined
               }
             />
@@ -191,12 +203,13 @@ export default function StorePickupContent({
                 return (
                   <div
                     key={tienda.idAlmacen}
-                    className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${isSelected
-                      ? isAvailable
-                        ? "border-primary bg-primary/5"
-                        : "border-red-500 bg-red-50"
-                      : "border-gray-200 hover:border-primary/50"
-                      }`}
+                    className={`p-4 rounded-sm border-2 transition-all cursor-pointer ${
+                      isSelected
+                        ? isAvailable
+                          ? "border-primary bg-primary/5"
+                          : "border-red-500 bg-red-50"
+                        : "border-gray-200 hover:border-primary/50"
+                    }`}
                     onClick={() => {
                       setTiendaSeleccionada(tienda.idAlmacen.toString());
                       if (onSelectStore && details) {
@@ -239,8 +252,9 @@ export default function StorePickupContent({
                       <div className="ml-4">
                         {isSelected && (
                           <div
-                            className={`w-6 h-6 rounded-full flex items-center justify-center ${isAvailable ? "bg-primary" : "bg-red-500"
-                              }`}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                              isAvailable ? "bg-primary" : "bg-red-500"
+                            }`}
                           >
                             <FaCheck className="text-white text-xs translate-x-[0.5px] translate-y-[0.5px]" />
                           </div>

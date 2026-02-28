@@ -76,11 +76,22 @@ export default function StoresModal({
           const filteredDistricts = distRes.data.filter(
             (d) =>
               !d.desDistrito.toLowerCase().includes("lince") &&
-              !d.desDistrito.toLowerCase().includes("la victoria"),
+              !d.desDistrito.toLowerCase().includes("la victoria") &&
+              !d.desDistrito.toLowerCase().includes("comas") &&
+              !d.desDistrito.toLowerCase().includes("los olivos") &&
+              !d.desDistrito.toLowerCase().includes("chaclacayo") &&
+              !d.desDistrito.toLowerCase().includes("el agustino"),
           );
           setDistricts(filteredDistricts);
         }
-        if (provRes.success) setProvinces(provRes.data);
+
+        if (provRes.success) {
+          const filteredDistricts = provRes.data.filter(
+            (d) => !d.desDistrito.toLowerCase().includes("huaral"),
+          );
+          setProvinces(filteredDistricts);
+        }
+        // if (provRes.success) setProvinces(provRes.data);
       } catch (error) {
         logger.error("Error loading locations:", error);
       } finally {
