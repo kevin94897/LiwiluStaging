@@ -1,66 +1,67 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import logger from "@/lib/logger";
-import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
-import { GuestDataSchemaType } from "@/lib/guestDataSchema";
-import { consultaDNI, consultaRUC } from "@/lib/general";
+import { GuestDataSchemaType, guestDataSchema } from "@/lib/guestDataSchema";
 import { showToast } from "@/lib/notifications";
 import { DeliveryZone } from "@/lib/cart";
 import { useDocumentLookup } from "@/hooks/useDocumentLookup";
 
 interface GuestDataFormProps {
   activeTab: string;
+  /** Initial data to pre-populate the form (e.g., when editing). */
   guestData: GuestDataSchemaType;
-  guestErrors: Partial<Record<keyof GuestDataSchemaType, string>>;
-  onGuestChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => void;
-  onGuestSubmit: (e: React.FormEvent) => void;
   guestLocations: any;
+  /** Called only when validation passes; receives the validated, complete data. */
+  onGuestSubmit: (validatedData: GuestDataSchemaType) => void;
   onSetActiveTab: (tab: "login" | "registro" | "guest") => void;
-  onSetGuestData: (
-    update: (prev: GuestDataSchemaType) => GuestDataSchemaType,
-  ) => void;
-  setGuestErrors: (
-    update: (
-      prev: Partial<Record<keyof GuestDataSchemaType, string>>,
-    ) => Partial<Record<keyof GuestDataSchemaType, string>>,
-  ) => void;
   deliveryZones?: DeliveryZone[];
+  /** Field-level errors returned by the API after a failed submit. */
+  serverErrors?: Partial<Record<string, string>>;
 }
 
 export default function GuestDataForm({
   activeTab,
   guestData,
-  guestErrors,
-  onGuestChange,
-  onGuestSubmit,
   guestLocations,
+  onGuestSubmit,
   onSetActiveTab,
-  onSetGuestData,
-  setGuestErrors,
   deliveryZones,
+  serverErrors,
 }: GuestDataFormProps) {
-  // Hook for automated lookup
-  const {
-    isLoading: isConsultingAuto,
-    isConsulted: consulted,
-    resetConsulted,
-  } = useDocumentLookup({
-    type: guestData.tipoDocumento,
-    number: guestData.numeroDocumento,
+  // ── Local state ─────────────────────────────────────────────────────────────
+  // All edits go to localData, NOT to the parent's guestData.
+  // The parent is only updated on a successful (validated) submit.
+  const [localData, setLocalData] = useState<GuestDataSchemaType>(() => ({
+    ...guestData,
+  }));
+  const [localErrors, setLocalErrors] = useState<
+    Partial<Record<keyof GuestDataSchemaType, string>>
+  >({});
+
+  // Merge server-side field errors into localErrors when the parent updates them.
+  // This surfaces API validation errors inline on each field after a failed submit.
+  useEffect(() => {
+    if (serverErrors && Object.keys(serverErrors).length > 0) {
+      setLocalErrors((prev) => ({ ...prev, ...(serverErrors as any) }));
+    }
+  }, [serverErrors]);
+
+  // ── Document auto-lookup hook ────────────────────────────────────────────────
+  const { isLoading: isConsulting, resetConsulted } = useDocumentLookup({
+    type: localData.tipoDocumento,
+    number: localData.numeroDocumento,
     enabled: activeTab === "guest",
     onSuccess: (data) => {
-      if (guestData.tipoDocumento === "DNI") {
-        onSetGuestData((prev) => ({
+      if (localData.tipoDocumento === "DNI") {
+        setLocalData((prev) => ({
           ...prev,
           nombre: data.nombres,
           apellido: `${data.apellido_paterno} ${data.apellido_materno}`,
         }));
-      } else if (guestData.tipoDocumento === "RUC") {
-        onSetGuestData((prev) => ({
+      } else if (localData.tipoDocumento === "RUC") {
+        setLocalData((prev) => ({
           ...prev,
           nombre: data.nombre_o_razon_social,
           apellido: "No aplica",
@@ -70,39 +71,91 @@ export default function GuestDataForm({
     },
   });
 
-  const isConsulting = isConsultingAuto;
-
   if (activeTab !== "guest") return null;
 
-  const handleConsultacion = async () => {
-    // Manual fallback if needed, but the hook should handle it
-    if (!guestData.numeroDocumento) {
-      showToast("Ingresa un número de documento", "error");
-      return;
-    }
-    // We can keep this if the user wants to force a re-check or the debounce is too slow
-  };
-
-  const handleInputChange = (
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+  const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
-    if (e.target.name === "numeroDocumento") {
-      resetConsulted();
-      // Solo limpiar si el tipo es DNI/RUC para permitir edición manual en otros tipos
+    let { name, value } = e.target;
+
+    // Sanitise & clamp numeric fields
+    if (
+      name === "numeroDocumento" ||
+      name === "celular" ||
+      name === "telefonoOpcional"
+    ) {
       if (
-        guestData.tipoDocumento === "DNI" ||
-        guestData.tipoDocumento === "RUC"
+        name === "numeroDocumento" &&
+        localData.tipoDocumento === "PASAPORTE"
       ) {
-        onSetGuestData((prev) => ({
+        value = value.replace(/[^a-zA-Z0-9]/g, "");
+      } else {
+        value = value.replace(/\D/g, "");
+      }
+
+      let maxLength = 20;
+      if (name === "numeroDocumento") {
+        maxLength =
+          localData.tipoDocumento === "RUC"
+            ? 11
+            : localData.tipoDocumento === "DNI" ||
+              localData.tipoDocumento === "PASAPORTE"
+              ? 8
+              : 12;
+      } else if (name === "celular" || name === "telefonoOpcional") {
+        maxLength = 9;
+      }
+      if (value.length > maxLength) value = value.slice(0, maxLength);
+    }
+
+    // When document number changes, reset auto-filled name/apellido
+    if (name === "numeroDocumento") {
+      resetConsulted();
+      if (
+        localData.tipoDocumento === "DNI" ||
+        localData.tipoDocumento === "RUC"
+      ) {
+        setLocalData((prev) => ({
           ...prev,
+          numeroDocumento: value,
           nombre: "",
           apellido: "",
           direccion: prev.tipoDocumento === "RUC" ? "" : prev.direccion,
           distrito: prev.tipoDocumento === "RUC" ? "" : prev.distrito,
         }));
+        setLocalErrors((prev) => ({ ...prev, [name]: undefined }));
+        return;
       }
     }
-    onGuestChange(e);
+
+    setLocalData((prev) => ({ ...prev, [name]: value }));
+    setLocalErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate locally — parent guestData is NOT touched until this passes
+    const result = guestDataSchema.safeParse(localData);
+
+    if (!result.success) {
+      const formatted = result.error.flatten().fieldErrors;
+      const newErrors: Partial<Record<keyof GuestDataSchemaType, string>> = {};
+      for (const key in formatted) {
+        const arr = formatted[key as keyof typeof formatted];
+        if (arr && arr.length > 0) {
+          newErrors[key as keyof GuestDataSchemaType] = arr[0];
+        }
+      }
+      setLocalErrors(newErrors);
+      logger.log("Errores de validación en formulario invitado:", newErrors);
+      return;
+    }
+
+    // All good — hand validated data to parent
+    setLocalErrors({});
+    onGuestSubmit(result.data);
   };
 
   return (
@@ -114,32 +167,31 @@ export default function GuestDataForm({
         Completa tus datos para continuar con tu compra
       </p>
 
-      <form onSubmit={onGuestSubmit} className="space-y-4">
-        {/* Documento Section First (Common Flow) */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Documento Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-1">
             <Select
               label="Tipo de documento"
               name="tipoDocumento"
-              value={guestData.tipoDocumento}
+              value={localData.tipoDocumento}
               onChange={(e) => {
-                const val = e.target.value as any;
-                onSetGuestData((prev) => ({
+                const val = e.target.value as GuestDataSchemaType["tipoDocumento"];
+                resetConsulted();
+                setLocalData((prev) => ({
                   ...prev,
                   tipoDocumento: val,
-                  numeroDocumento: "", // Limpiar número al cambiar tipo
+                  numeroDocumento: "",
                   nombre: "",
                   apellido: "",
                 }));
-                // Clear errors for numeroDocumento
-                setGuestErrors((prev) => ({
+                setLocalErrors((prev) => ({
                   ...prev,
-                  numeroDocumento: undefined,
                   tipoDocumento: undefined,
+                  numeroDocumento: undefined,
                 }));
-                resetConsulted();
               }}
-              error={guestErrors.tipoDocumento}
+              error={localErrors.tipoDocumento}
             >
               <option value="DNI">DNI</option>
               {/* <option value="RUC">RUC</option> */}
@@ -154,58 +206,62 @@ export default function GuestDataForm({
                 label="Número de Documento"
                 type="text"
                 name="numeroDocumento"
-                value={guestData.numeroDocumento}
-                onChange={handleInputChange}
+                value={localData.numeroDocumento}
+                onChange={handleChange}
                 placeholder={
-                  guestData.tipoDocumento === "RUC"
+                  localData.tipoDocumento === "RUC"
                     ? "20100000001"
-                    : guestData.tipoDocumento === "PASAPORTE"
+                    : localData.tipoDocumento === "PASAPORTE"
                       ? "A1234567"
                       : "74218601"
                 }
                 maxLength={
-                  guestData.tipoDocumento === "RUC"
+                  localData.tipoDocumento === "RUC"
                     ? 11
-                    : guestData.tipoDocumento === "DNI" ||
-                        guestData.tipoDocumento === "PASAPORTE"
+                    : localData.tipoDocumento === "DNI" ||
+                      localData.tipoDocumento === "PASAPORTE"
                       ? 8
                       : 12
                 }
-                error={guestErrors.numeroDocumento}
+                error={localErrors.numeroDocumento}
                 inputMode={
-                  guestData.tipoDocumento === "PASAPORTE" ? "text" : "numeric"
+                  localData.tipoDocumento === "PASAPORTE" ? "text" : "numeric"
                 }
                 className="pr-12"
               />
 
-              {(guestData.tipoDocumento === "DNI" ||
-                guestData.tipoDocumento === "RUC") && (
-                <button
-                  type="button"
-                  onClick={handleConsultacion}
-                  disabled={isConsulting || !guestData.numeroDocumento}
-                  className="absolute right-2 top-[35px] text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
-                  title="Consultar"
-                >
-                  {isConsulting ? (
-                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <svg
-                      className="w-6 h-6"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  )}
-                </button>
-              )}
+              {(localData.tipoDocumento === "DNI" ||
+                localData.tipoDocumento === "RUC") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!localData.numeroDocumento) {
+                        showToast("Ingresa un número de documento", "error");
+                      }
+                    }}
+                    disabled={isConsulting || !localData.numeroDocumento}
+                    className="absolute right-2 top-[35px] text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
+                    title="Consultar"
+                  >
+                    {isConsulting ? (
+                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                )}
             </div>
           </div>
         </div>
@@ -214,13 +270,13 @@ export default function GuestDataForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Input
-              label={`Nombre ${guestData.tipoDocumento === "RUC" ? "(Razón Social)" : ""}`}
+              label={`Nombre ${localData.tipoDocumento === "RUC" ? "(Razón Social)" : ""}`}
               type="text"
               name="nombre"
-              value={guestData.nombre}
-              onChange={handleInputChange}
+              value={localData.nombre}
+              onChange={handleChange}
               placeholder="Nombres"
-              error={guestErrors.nombre}
+              error={localErrors.nombre}
             />
           </div>
           <div>
@@ -228,15 +284,15 @@ export default function GuestDataForm({
               label="Apellido"
               type="text"
               name="apellido"
-              value={guestData.apellido}
-              onChange={handleInputChange}
+              value={localData.apellido}
+              onChange={handleChange}
               placeholder={
-                guestData.tipoDocumento === "RUC"
+                localData.tipoDocumento === "RUC"
                   ? "No requerido para RUC"
                   : "Apellidos"
               }
-              error={guestErrors.apellido}
-              disabled={guestData.tipoDocumento === "RUC"}
+              error={localErrors.apellido}
+              disabled={localData.tipoDocumento === "RUC"}
             />
           </div>
         </div>
@@ -247,10 +303,10 @@ export default function GuestDataForm({
             label="Correo electrónico"
             type="email"
             name="email"
-            value={guestData.email}
-            onChange={onGuestChange}
+            value={localData.email}
+            onChange={handleChange}
             placeholder="ejemplo@correo.com"
-            error={guestErrors.email}
+            error={localErrors.email}
           />
         </div>
 
@@ -261,10 +317,10 @@ export default function GuestDataForm({
               label="Celular"
               type="tel"
               name="celular"
-              value={guestData.celular}
-              onChange={handleInputChange}
+              value={localData.celular}
+              onChange={handleChange}
               placeholder="973 820 088"
-              error={guestErrors.celular}
+              error={localErrors.celular}
             />
           </div>
           <div>
@@ -272,8 +328,8 @@ export default function GuestDataForm({
               label="Teléfono opcional"
               type="tel"
               name="telefonoOpcional"
-              value={guestData.telefonoOpcional}
-              onChange={handleInputChange}
+              value={localData.telefonoOpcional}
+              onChange={handleChange}
               placeholder="973 820 088"
             />
           </div>
@@ -285,14 +341,18 @@ export default function GuestDataForm({
             <Select
               label="Departamento"
               name="departamento"
-              value={guestData.departamento}
+              value={localData.departamento}
               onChange={(e) => {
                 const val = e.target.value;
-                onSetGuestData((prev) => ({
+                setLocalData((prev) => ({
                   ...prev,
                   departamento: val,
                   provincia: "",
                   distrito: "",
+                }));
+                setLocalErrors((prev) => ({
+                  ...prev,
+                  departamento: undefined,
                 }));
                 guestLocations.handleDeptChange(val);
               }}
@@ -309,17 +369,18 @@ export default function GuestDataForm({
             <Select
               label="Provincia"
               name="provincia"
-              value={guestData.provincia}
+              value={localData.provincia}
               onChange={(e) => {
                 const val = e.target.value;
-                onSetGuestData((prev) => ({
+                setLocalData((prev) => ({
                   ...prev,
                   provincia: val,
                   distrito: "",
                 }));
+                setLocalErrors((prev) => ({ ...prev, provincia: undefined }));
                 guestLocations.handleProvChange(val);
               }}
-              error={guestErrors.provincia}
+              error={localErrors.provincia}
             >
               <option value="">Seleccionar</option>
               {guestLocations.provinces.map((p: any) => (
@@ -335,26 +396,28 @@ export default function GuestDataForm({
           <Select
             label="Distrito"
             name="distrito"
-            value={guestData.distrito}
+            value={localData.distrito}
             onChange={(e) => {
-              onGuestChange(e);
-              guestLocations.handleDistChange(e.target.value);
+              const val = e.target.value;
+              setLocalData((prev) => ({ ...prev, distrito: val }));
+              setLocalErrors((prev) => ({ ...prev, distrito: undefined }));
+              guestLocations.handleDistChange(val);
             }}
-            disabled={!guestData.provincia}
-            error={guestErrors.distrito}
+            disabled={!localData.provincia}
+            error={localErrors.distrito}
           >
             <option value="">Seleccionar</option>
             {deliveryZones && deliveryZones.length > 0
               ? deliveryZones.map((z) => (
-                  <option key={z.zoneId} value={z.zoneName}>
-                    {z.zoneName}
-                  </option>
-                ))
+                <option key={z.zoneId} value={z.zoneName}>
+                  {z.zoneName}
+                </option>
+              ))
               : guestLocations.districts.map((d: any) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
           </Select>
         </div>
 
@@ -363,10 +426,10 @@ export default function GuestDataForm({
             label="Dirección"
             type="text"
             name="direccion"
-            value={guestData.direccion}
-            onChange={onGuestChange}
+            value={localData.direccion}
+            onChange={handleChange}
             placeholder="Calle rosales 432"
-            error={guestErrors.direccion}
+            error={localErrors.direccion}
           />
         </div>
 
@@ -376,10 +439,10 @@ export default function GuestDataForm({
               label="Nro. de dpto. / Piso"
               type="text"
               name="numeroDpto"
-              value={guestData.numeroDpto}
-              onChange={onGuestChange}
+              value={localData.numeroDpto}
+              onChange={handleChange}
               placeholder="101"
-              error={guestErrors.numeroDpto}
+              error={localErrors.numeroDpto}
             />
           </div>
           <div>
@@ -387,10 +450,10 @@ export default function GuestDataForm({
               label="Referencia"
               type="text"
               name="referencia"
-              value={guestData.referencia}
-              onChange={onGuestChange}
+              value={localData.referencia}
+              onChange={handleChange}
               placeholder="Frente al parque"
-              error={guestErrors.referencia}
+              error={localErrors.referencia}
             />
           </div>
         </div>

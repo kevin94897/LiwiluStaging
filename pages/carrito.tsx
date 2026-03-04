@@ -200,6 +200,9 @@ export default function Carrito() {
   const [guestErrors, setGuestErrors] = useState<
     Partial<Record<keyof GuestDataSchemaType, string>>
   >({});
+  const [guestServerErrors, setGuestServerErrors] = useState<
+    Partial<Record<string, string>>
+  >({}); // Field-level errors returned by the API
   const [guestDataCompleted, setGuestDataCompleted] = useState(false);
 
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>(
@@ -1110,7 +1113,7 @@ export default function Carrito() {
           guestData.tipoDocumento === "RUC"
             ? 11
             : guestData.tipoDocumento === "DNI" ||
-                guestData.tipoDocumento === "PASAPORTE"
+              guestData.tipoDocumento === "PASAPORTE"
               ? 8
               : 12; // CE
       } else if (name === "celular" || name === "telefonoOpcional") {
@@ -1124,57 +1127,35 @@ export default function Carrito() {
     setGuestErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  const handleGuestSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validación con Zod
-    const result = guestDataSchema.safeParse(guestData);
-
-    if (!result.success) {
-      const formattedErrors = result.error.flatten().fieldErrors;
-      const newErrors: Partial<Record<keyof GuestDataSchemaType, string>> = {};
-
-      for (const key in formattedErrors) {
-        const errorArray = formattedErrors[key as keyof typeof formattedErrors];
-        if (errorArray && errorArray.length > 0) {
-          newErrors[key as keyof GuestDataSchemaType] = errorArray[0];
-        }
-      }
-
-      setGuestErrors(newErrors);
-      logger.log("Errores de validación:", newErrors);
-      return;
-    }
-
-    // Si es válido
-    setGuestErrors({});
-
-    // Save to API
+  // Receives pre-validated data from GuestDataForm (validation is done inside the form).
+  const handleGuestSubmit = (validatedData: GuestDataSchemaType) => {
     const saveToApi = async () => {
       try {
         const payload = {
-          nombre: guestData.nombre,
-          apellido: guestData.apellido,
-          tipoDocumento: guestData.tipoDocumento,
-          numeroDocumento: guestData.numeroDocumento,
-          celular: guestData.celular,
-          telefono: guestData.telefonoOpcional || "",
-          email: guestData.email,
-          departamento: guestData.departamento,
-          provincia: guestData.provincia,
-          distrito: guestData.distrito,
-          direccion: guestData.direccion,
-          numeroDptoPiso: guestData.numeroDpto || "",
-          referencia: guestData.referencia || "",
+          nombre: validatedData.nombre,
+          apellido: validatedData.apellido,
+          tipoDocumento: validatedData.tipoDocumento,
+          numeroDocumento: validatedData.numeroDocumento,
+          celular: validatedData.celular,
+          telefono: validatedData.telefonoOpcional || "",
+          email: validatedData.email,
+          departamento: validatedData.departamento,
+          provincia: validatedData.provincia,
+          distrito: validatedData.distrito,
+          direccion: validatedData.direccion,
+          numeroDptoPiso: validatedData.numeroDpto || "",
+          referencia: validatedData.referencia || "",
         };
 
         await saveGuestPersonalData(payload);
 
-        logger.log("Datos de invitado guardados:", guestData);
+        logger.log("Datos de invitado guardados:", validatedData);
 
-        // Guardar en localStorage
-        localStorage.setItem("liwilu_guestData", JSON.stringify(guestData));
+        // Persist validated data to state and localStorage
+        setGuestData(validatedData);
+        localStorage.setItem("liwilu_guestData", JSON.stringify(validatedData));
 
+        setGuestServerErrors({});
         setIsGuest(true);
         setGuestDataCompleted(true);
         setShowLoginModal(false);
@@ -1189,9 +1170,13 @@ export default function Carrito() {
             "Tu sesión de carrito ha expirado. Por favor, intenta agregar tus productos nuevamente.",
             "error",
           );
-          // Pequeño delay antes de recargar para que se vea el toast
           setTimeout(() => window.location.reload(), 2000);
           return;
+        }
+
+        // Surface field-level errors from the server back to the form
+        if (error.fieldErrors && typeof error.fieldErrors === "object") {
+          setGuestServerErrors(error.fieldErrors);
         }
 
         showToast(error.message || "Error al guardar datos", "error");
@@ -1652,7 +1637,7 @@ export default function Carrito() {
               missingInfo.length > 0
                 ? `Falta información: ${missingInfo.join(", ")}`
                 : summary.message ||
-                  "Por favor completa toda la información requerida";
+                "Por favor completa toda la información requerida";
 
             showToast(errorMsg, "error");
             // We stay in the cart as per latest requirement
@@ -1694,7 +1679,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-              "Por favor completa toda la información requerida",
+            "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
@@ -1716,7 +1701,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-              "Por favor completa toda la información requerida",
+            "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
@@ -2234,9 +2219,8 @@ export default function Carrito() {
                           checked={registroData.acceptTerms}
                           onChange={handleRegistroChange}
                           disabled={isLoginLoading}
-                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
-                            registroErrors.acceptTerms ? "border-error" : ""
-                          }`}
+                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${registroErrors.acceptTerms ? "border-error" : ""
+                            }`}
                         />
                         <span className="text-sm text-gray-700">
                           Acepto los{" "}
@@ -2271,9 +2255,8 @@ export default function Carrito() {
                           checked={registroData.receiveOffers}
                           onChange={handleRegistroChange}
                           disabled={isLoginLoading}
-                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
-                            registroErrors.receiveOffers ? "border-error" : ""
-                          }`}
+                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${registroErrors.receiveOffers ? "border-error" : ""
+                            }`}
                         />
                         <span className="text-sm text-gray-700">
                           Quiero recibir ofertas y beneficios exclusivos
@@ -2348,13 +2331,10 @@ export default function Carrito() {
               <GuestDataForm
                 activeTab={activeTab}
                 guestData={guestData}
-                guestErrors={guestErrors}
-                onGuestChange={handleGuestChange}
                 onGuestSubmit={handleGuestSubmit}
                 guestLocations={guestLocations}
                 onSetActiveTab={setActiveTab}
-                onSetGuestData={setGuestData}
-                setGuestErrors={setGuestErrors}
+                serverErrors={guestServerErrors}
                 deliveryZones={
                   metodoEnvio === "delivery" ? deliveryZones : undefined
                 }
@@ -2541,14 +2521,14 @@ export default function Carrito() {
             </div>
 
             {/* === SUGERENCIAS DE PROMOCIONES (Deshabilitado temporalmente para producción) === */}
-            {/* {(promoSuggestions.length > 0 || appliedPromotions.length > 0) && (
+            {(promoSuggestions.length > 0 || appliedPromotions.length > 0) && (
               <PromoSuggestions
                 suggestions={promoSuggestions}
                 appliedPromotions={appliedPromotions}
                 onApplyPromo={(code) => handleApplyCoupon(code)}
                 isApplyingCoupon={isApplyingCoupon}
               />
-            )} */}
+            )}
 
             <AuthorizedPersonInfo
               metodoEnvio={metodoEnvio as any}

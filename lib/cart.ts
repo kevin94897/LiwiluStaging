@@ -647,7 +647,12 @@ export async function saveGuestPersonalData(data: any): Promise<{ success: boole
                 throw error;
             }
 
-            throw new Error(errorData.message || `Error saving guest data: ${response.statusText}`);
+            // Preserve field-level validation errors (e.g. { nombre: "...", apellido: "..." })
+            const error = new Error(errorData.message || `Error saving guest data: ${response.statusText}`);
+            if (errorData.errors && typeof errorData.errors === 'object') {
+                (error as any).fieldErrors = errorData.errors;
+            }
+            throw error;
         }
 
         return await response.json();
