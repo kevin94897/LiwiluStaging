@@ -509,7 +509,23 @@ export async function getWarehouseMap(ubigeo: string): Promise<{ success: boolea
             throw new Error(errorData.message || `Error fetching warehouse map: ${response.statusText}`);
         }
 
-        return await response.json();
+        const json = await response.json();
+
+        // Temporal: Actualizar coordenadas para TIENDA WEB INGENIEROS
+        if (json?.data && Array.isArray(json.data)) {
+            json.data = json.data.map((store: WarehouseMapItem) => {
+                if (store.idAlmacen === 239) {
+                    return {
+                        ...store,
+                        latitud: -12.055074821816591,
+                        longitud: -76.95361789279112
+                    };
+                }
+                return store;
+            });
+        }
+
+        return json;
     } catch (error) {
         logger.error('Error in getWarehouseMap:', error);
         throw error;
