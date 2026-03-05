@@ -55,7 +55,7 @@ export default function CartSummary({
   return (
     <div className="lg:col-span-1 z-10 space-y-6">
       {/* === SECCIÓN CUPÓN (Deshabilitada temporalmente para producción) === */}
-      {true && (
+      {false && (
         <div className="bg-white rounded-sm shadow-lg p-6 animate-fade-in">
           <h3 className="text-lg font-semibold mb-4">Código de cupón</h3>
 
@@ -179,7 +179,7 @@ export default function CartSummary({
             <span>Envío ({selectedCarrier?.name || "Pendiente"})</span>
             <span className="font-semibold">
               {!metodoEnvio ||
-                (metodoEnvio === "delivery" && !hasDeliveryDistrict) ? (
+              (metodoEnvio === "delivery" && !hasDeliveryDistrict) ? (
                 <span className="text-gray-400 font-normal text-sm">
                   Pendiente
                 </span>

@@ -105,7 +105,9 @@ export default function StorePickupContent({
                       district.desDistrito.toLowerCase() !== "comas" &&
                       district.desDistrito.toLowerCase() !== "los olivos" &&
                       district.desDistrito.toLowerCase() !== "chaclacayo" &&
-                      district.desDistrito.toLowerCase() !== "el agustino",
+                      district.desDistrito.toLowerCase() !== "el agustino" &&
+                      district.desDistrito.toLowerCase() !==
+                        "san juan de lurigancho",
                   )
                   .map((district) => (
                     <option

@@ -80,7 +80,8 @@ export default function StoresModal({
               !d.desDistrito.toLowerCase().includes("comas") &&
               !d.desDistrito.toLowerCase().includes("los olivos") &&
               !d.desDistrito.toLowerCase().includes("chaclacayo") &&
-              !d.desDistrito.toLowerCase().includes("el agustino"),
+              !d.desDistrito.toLowerCase().includes("el agustino") &&
+              !d.desDistrito.toLowerCase().includes("san juan de lurigancho"),
           );
           setDistricts(filteredDistricts);
         }
