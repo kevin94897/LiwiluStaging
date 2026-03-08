@@ -1,0 +1,81 @@
+import type { Config } from 'tailwindcss';
+
+const config: Config = {
+	content: [
+		'./pages/**/*.{js,ts,jsx,tsx,mdx}',
+		'./components/**/*.{js,ts,jsx,tsx,mdx}',
+		'./app/**/*.{js,ts,jsx,tsx,mdx}',
+	],
+	theme: {
+		extend: {
+			screens: {
+				'xs': '475px',
+			},
+			animation: {
+				marquee: 'marquee 20s linear infinite',
+			},
+			keyframes: {
+				marquee: {
+					'0%': { transform: 'translateX(0)' },
+					'100%': { transform: 'translateX(-50%)' },
+				},
+			},
+			fontFamily: {
+				sans: ['var(--font-outfit)', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
+			},
+			colors: {
+				primary: {
+					DEFAULT: '#45b171',
+					hover: '#059669',
+					light: '#4ded8c',
+					dark: '#0f2828',
+				},
+				secondary: {
+					DEFAULT: '#0F766E',
+					hover: '#115E59',
+				},
+				success: '#10B981',
+				error: '#EF4444',
+				warning: '#F59E0B',
+				info: '#3B82F6',
+				neutral: {
+					black: '#1F2937',
+					'gray-dark': '#333',
+					gray: '#787D86',
+					grayLight: '#D1D5DB',
+					grayLighter: 'rgba(15, 54, 51, 0.4)',
+					white: '#FFFFFF',
+				},
+				bg: {
+					'primary-dark': '#0f2828',
+					DEFAULT: '#45b171',
+					hover: '#059669',
+					light: '#4ded8c',
+					dark: '#0f2828',
+				},
+				border: {
+					DEFAULT: '#45b171',
+					hover: '#059669',
+					light: '#4ded8c',
+					dark: '#0f2828',
+				},
+			},
+			borderRadius: {
+				xs: '4px',
+				sm: '8px',
+				md: '12px',
+				lg: '16px',
+				xl: '24px',
+				full: '9999px',
+			},
+			boxShadow: {
+				sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+				md: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+				lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+				xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+			},
+		},
+	},
+	plugins: [],
+};
+export default config;
