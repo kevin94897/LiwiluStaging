@@ -8,7 +8,6 @@ import dynamic from "next/dynamic";
 import { Outfit } from "next/font/google";
 import {
   getWarehouseDistricts,
-  getWarehouseProvinces,
   getWarehouseMap,
   getWarehouseDetails,
   WarehouseDistrict,
@@ -48,13 +47,15 @@ export default function StoresModal({
   buttonText = "Tiendas campañas 2026",
 }: StoresModalProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [pickupTab, setPickupTab] = useState<"lima" | "provincia">("lima");
   const [districts, setDistricts] = useState<WarehouseDistrict[]>([]);
-  const [provinces, setProvinces] = useState<WarehouseDistrict[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [mapWarehouses, setMapWarehouses] = useState<WarehouseMapItem[]>([]);
   const [warehouseDetails, setWarehouseDetails] = useState<WarehouseDetail[]>(
     [],
+  );
+
+  const visibleWarehouses = mapWarehouses.filter((w) =>
+    !/tienda web ingenieros/i.test(w.desAlmacen),
   );
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [loadingStores, setLoadingStores] = useState(false);
@@ -68,24 +69,13 @@ export default function StoresModal({
     const loadLocations = async () => {
       setLoadingLocations(true);
       try {
-        const [distRes, provRes] = await Promise.all([
-          getWarehouseDistricts(),
-          getWarehouseProvinces(),
-        ]);
+        const distRes = await getWarehouseDistricts();
         if (distRes.success) {
           const filteredDistricts = distRes.data.filter((d) =>
             ["ate", "ate vitarte"].includes(d.desDistrito.toLowerCase().trim()),
           );
           setDistricts(filteredDistricts);
         }
-
-        if (provRes.success) {
-          const filteredDistricts = provRes.data.filter(
-            (d) => !d.desDistrito.toLowerCase().includes("huaral"),
-          );
-          setProvinces(filteredDistricts);
-        }
-        // if (provRes.success) setProvinces(provRes.data);
       } catch (error) {
         logger.error("Error loading locations:", error);
       } finally {
@@ -107,7 +97,7 @@ export default function StoresModal({
       setLoadingStores(true);
       try {
         // Find the ubigeo for the selected location name
-        const currentLocations = pickupTab === "lima" ? districts : provinces;
+        const currentLocations = districts;
         const location = currentLocations.find(
           (l) => l.desDistrito === selectedLocation,
         );
@@ -128,15 +118,14 @@ export default function StoresModal({
       }
     };
     loadStores();
-  }, [selectedLocation, pickupTab, districts, provinces]);
+  }, [selectedLocation, districts]);
 
   const currentLocations = useMemo(() => {
-    const locations = pickupTab === "lima" ? districts : provinces;
-    if (!searchQuery) return locations;
-    return locations.filter((l) =>
+    if (!searchQuery) return districts;
+    return districts.filter((l) =>
       l.desDistrito.toLowerCase().includes(searchQuery.toLowerCase()),
     );
-  }, [pickupTab, districts, provinces, searchQuery]);
+  }, [districts, searchQuery]);
 
   const handleLocationToggle = (locationName: string) => {
     setSelectedLocation((prev) => (prev === locationName ? "" : locationName));
@@ -186,39 +175,18 @@ export default function StoresModal({
 
         {/* Body */}
         <div className="p-6 pt-0 md:p-12 md:pt-0 overflow-y-auto flex-1">
-          {/* Tabs for Lima and Provincia */}
+          {/* Tabs for Lima */}
           <div className="flex border-b mb-6">
             <button
-              onClick={() => {
-                setPickupTab("lima");
-                setSelectedLocation("");
-              }}
-              className={`flex-1 py-4 text-center font-semibold transition ${
-                pickupTab === "lima"
-                  ? "text-primary border-b-2 border-primary bg-primary/5"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
+              className="flex-1 py-4 text-center font-semibold text-primary border-b-2 border-primary bg-primary/5"
             >
               Lima
-            </button>
-            <button
-              onClick={() => {
-                setPickupTab("provincia");
-                setSelectedLocation("");
-              }}
-              className={`flex-1 py-4 text-center font-semibold transition ${
-                pickupTab === "provincia"
-                  ? "text-primary border-b-2 border-primary bg-primary/5"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              Provincia
             </button>
           </div>
 
           {/* Mapa */}
           <div className="relative h-64 md:h-80 bg-gray-100 rounded-lg mb-6 overflow-hidden border">
-            <WarehouseMap warehouses={mapWarehouses} />
+            <WarehouseMap warehouses={visibleWarehouses} />
           </div>
 
           {/* Buscador */}
@@ -241,7 +209,7 @@ export default function StoresModal({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={`Buscar ${pickupTab === "lima" ? "distrito" : "provincia"}...`}
+                placeholder="Buscar distrito..."
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-sm focus:border-green-500 focus:outline-none transition-colors text-primary-dark"
               />
             </div>
@@ -319,44 +287,44 @@ export default function StoresModal({
                         <div className="px-6 py-8 text-center">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
                         </div>
-                      ) : mapWarehouses.length === 0 ? (
+                      ) : visibleWarehouses.length === 0 ? (
                         <div className="px-6 py-4 text-center ">
                           <p className="text-gray-500 text-sm">
                             No hay tiendas disponibles
                           </p>
                         </div>
                       ) : (
-                        mapWarehouses.map((store) => {
-                          const details = warehouseDetails.find(
-                            (d) => d.idAlmacen === store.idAlmacen,
-                          );
-                          return (
-                            <div
-                              key={store.idAlmacen}
-                              className="px-6 py-4 hover:bg-gray-50 transition-colors border-b last:border-b-0 border-gray-100"
-                            >
-                              <h3 className="font-semibold text-gray-900 mb-1">
-                                {store.desAlmacen}
-                              </h3>
-                              {details && (
-                                <div className="space-y-1">
-                                  <p className="text-gray-600 text-sm">
-                                    <span className="font-medium">
-                                      Dirección:
-                                    </span>{" "}
-                                    {details.direccion}
-                                  </p>
-                                  <p className="text-gray-600 text-xs">
-                                    <span className="font-medium">
-                                      Horario:
-                                    </span>{" "}
-                                    {details.atencion}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
+                        visibleWarehouses.map((store) => {
+                            const details = warehouseDetails.find(
+                              (d) => d.idAlmacen === store.idAlmacen,
+                            );
+                            return (
+                              <div
+                                key={store.idAlmacen}
+                                className="px-6 py-4 hover:bg-gray-50 transition-colors border-b last:border-b-0 border-gray-100"
+                              >
+                                <h3 className="font-semibold text-gray-900 mb-1">
+                                  {store.desAlmacen}
+                                </h3>
+                                {details && (
+                                  <div className="space-y-1">
+                                    <p className="text-gray-600 text-sm">
+                                      <span className="font-medium">
+                                        Dirección:
+                                      </span>{" "}
+                                      {details.direccion}
+                                    </p>
+                                    <p className="text-gray-600 text-xs">
+                                      <span className="font-medium">
+                                        Horario:
+                                      </span>{" "}
+                                      {details.atencion}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
                       )}
                     </div>
                   )}

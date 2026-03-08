@@ -20,9 +20,6 @@ interface StorePickupContentProps {
   mostrarMapa: boolean;
   setMostrarMapa: (mostrar: boolean) => void;
   warehouseDistricts: any[];
-  warehouseProvinces: any[];
-  pickupTab: "lima" | "provincia";
-  onTabChange: (tab: "lima" | "provincia") => void;
   mapWarehouses: any[];
   warehouseDetails?: any[];
   tiendaSeleccionada: string | null;
@@ -39,9 +36,6 @@ export default function StorePickupContent({
   mostrarMapa,
   setMostrarMapa,
   warehouseDistricts,
-  warehouseProvinces,
-  pickupTab,
-  onTabChange,
   mapWarehouses,
   warehouseDetails = [],
   tiendaSeleccionada,
@@ -52,38 +46,17 @@ export default function StorePickupContent({
 }: StorePickupContentProps) {
   if (metodoEnvio !== "retiro") return null;
 
+  const visibleWarehouses = mapWarehouses.filter((w) =>
+    !/tienda web ingenieros/i.test(w.desAlmacen),
+  );
+
   return (
     <>
       <div className="mt-4 animate-fade-in bg-white rounded-sm shadow-md overflow-hidden transition-all">
-        {/* Tabs for Lima and Provincia */}
-        <div className="flex border-b">
-          <button
-            onClick={() => onTabChange("lima")}
-            className={`flex-1 py-4 text-center font-semibold transition ${
-              pickupTab === "lima"
-                ? "text-primary border-b-2 border-primary bg-primary/5"
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            Lima
-          </button>
-          <button
-            onClick={() => onTabChange("provincia")}
-            className={`flex-1 py-4 text-center font-semibold transition ${
-              pickupTab === "provincia"
-                ? "text-primary border-b-2 border-primary bg-primary/5"
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            Provincia
-          </button>
-        </div>
-
         <div className="p-6">
           <h2 className="text-lg font-semibold mb-4">Retiro en Tienda</h2>
           <p className="text-sm text-gray-700 mb-3">
-            Selecciona el {pickupTab === "lima" ? "distrito" : "la provincia"}{" "}
-            para consultar los puntos de retiro disponibles
+            Selecciona el distrito para consultar los puntos de retiro disponibles
           </p>
           <select
             value={distritoSeleccionado}
@@ -93,37 +66,18 @@ export default function StorePickupContent({
             }}
             className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
           >
-            <option value="">
-              Seleccionar {pickupTab === "lima" ? "distrito" : "provincia"}
-            </option>
-            {pickupTab === "lima"
-              ? warehouseDistricts
-                  .filter((district) =>
-                    ["ate", "ate vitarte"].includes(
-                      district.desDistrito.toLowerCase().trim(),
-                    ),
-                  )
-                  .map((district) => (
-                    <option
-                      key={district.codUbigeoAlm}
-                      value={district.desDistrito}
-                    >
-                      {district.desDistrito}
-                    </option>
-                  ))
-              : warehouseProvinces
-                  .filter(
-                    (province) =>
-                      province.desDistrito.toLowerCase() !== "huaral",
-                  )
-                  .map((province) => (
-                    <option
-                      key={province.codUbigeoAlm}
-                      value={province.desDistrito}
-                    >
-                      {province.desDistrito}
-                    </option>
-                  ))}
+            <option value="">Seleccionar distrito</option>
+            {warehouseDistricts
+              .filter((district) =>
+                ["ate", "ate vitarte"].includes(
+                  district.desDistrito.toLowerCase().trim(),
+                ),
+              )
+              .map((district) => (
+                <option key={district.codUbigeoAlm} value={district.desDistrito}>
+                  {district.desDistrito}
+                </option>
+              ))}
           </select>
         </div>
       </div>
@@ -142,16 +96,16 @@ export default function StorePickupContent({
           {/* Mapa Interactivo */}
           <div className="relative h-96 bg-gray-100 rounded-sm mb-6 overflow-hidden border">
             <WarehouseMap
-              warehouses={mapWarehouses}
+              warehouses={visibleWarehouses}
               center={
-                mapWarehouses.find(
+                visibleWarehouses.find(
                   (w) => w.idAlmacen.toString() === tiendaSeleccionada,
                 )
                   ? [
-                      mapWarehouses.find(
+                      visibleWarehouses.find(
                         (w) => w.idAlmacen.toString() === tiendaSeleccionada,
                       )!.latitud,
-                      mapWarehouses.find(
+                      visibleWarehouses.find(
                         (w) => w.idAlmacen.toString() === tiendaSeleccionada,
                       )!.longitud,
                     ]
@@ -168,7 +122,7 @@ export default function StorePickupContent({
                 Cargando tiendas disponibles...
               </p>
             </div>
-          ) : mapWarehouses.length === 0 ? (
+          ) : visibleWarehouses.length === 0 ? (
             <div className="text-center py-8 bg-amber-50 rounded-sm">
               <FaTimesCircle className="text-amber-500 text-4xl mx-auto mb-3" />
               <p className="text-amber-800 font-semibold">
@@ -180,7 +134,7 @@ export default function StorePickupContent({
             </div>
           ) : (
             <div className="space-y-3">
-              {mapWarehouses.map((tienda) => {
+              {visibleWarehouses.map((tienda) => {
                 const warehouseResult =
                   stockValidationResult?.resultadosPorAlmacen.find(
                     (w: any) => w.idAlmacen === tienda.idAlmacen,
