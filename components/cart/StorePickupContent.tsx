@@ -98,16 +98,10 @@ export default function StorePickupContent({
             </option>
             {pickupTab === "lima"
               ? warehouseDistricts
-                  .filter(
-                    (district) =>
-                      district.desDistrito.toLowerCase() !== "la victoria" &&
-                      district.desDistrito.toLowerCase() !== "lince" &&
-                      district.desDistrito.toLowerCase() !== "comas" &&
-                      district.desDistrito.toLowerCase() !== "los olivos" &&
-                      district.desDistrito.toLowerCase() !== "chaclacayo" &&
-                      district.desDistrito.toLowerCase() !== "el agustino" &&
-                      district.desDistrito.toLowerCase() !==
-                        "san juan de lurigancho",
+                  .filter((district) =>
+                    ["ate", "ate vitarte"].includes(
+                      district.desDistrito.toLowerCase().trim(),
+                    ),
                   )
                   .map((district) => (
                     <option

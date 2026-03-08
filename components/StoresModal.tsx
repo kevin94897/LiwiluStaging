@@ -73,15 +73,8 @@ export default function StoresModal({
           getWarehouseProvinces(),
         ]);
         if (distRes.success) {
-          const filteredDistricts = distRes.data.filter(
-            (d) =>
-              !d.desDistrito.toLowerCase().includes("lince") &&
-              !d.desDistrito.toLowerCase().includes("la victoria") &&
-              !d.desDistrito.toLowerCase().includes("comas") &&
-              !d.desDistrito.toLowerCase().includes("los olivos") &&
-              !d.desDistrito.toLowerCase().includes("chaclacayo") &&
-              !d.desDistrito.toLowerCase().includes("el agustino") &&
-              !d.desDistrito.toLowerCase().includes("san juan de lurigancho"),
+          const filteredDistricts = distRes.data.filter((d) =>
+            ["ate", "ate vitarte"].includes(d.desDistrito.toLowerCase().trim()),
           );
           setDistricts(filteredDistricts);
         }
