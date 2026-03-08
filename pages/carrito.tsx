@@ -56,7 +56,6 @@ import {
   getCarriers,
   CartCarrier,
   getWarehouseDistricts,
-  getWarehouseProvinces,
   WarehouseDistrict,
   getWarehouseMap,
   WarehouseMapItem,
@@ -119,10 +118,6 @@ export default function Carrito() {
   const [warehouseDistricts, setWarehouseDistricts] = useState<
     WarehouseDistrict[]
   >([]);
-  const [warehouseProvinces, setWarehouseProvinces] = useState<
-    WarehouseDistrict[]
-  >([]);
-  const [pickupTab, setPickupTab] = useState<"lima" | "provincia">("lima");
   const [mapWarehouses, setMapWarehouses] = useState<WarehouseMapItem[]>([]);
   const [warehouseDetails, setWarehouseDetails] = useState<WarehouseDetail[]>(
     [],
@@ -633,16 +628,10 @@ export default function Carrito() {
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        const [districtsRes, provincesRes] = await Promise.all([
-          getWarehouseDistricts(),
-          getWarehouseProvinces(),
-        ]);
+        const districtsRes = await getWarehouseDistricts();
 
         if (districtsRes.success) {
           setWarehouseDistricts(districtsRes.data);
-        }
-        if (provincesRes.success) {
-          setWarehouseProvinces(provincesRes.data);
         }
       } catch (error) {
         logger.error("Error fetching warehouse locations:", error);
@@ -807,9 +796,9 @@ export default function Carrito() {
 
     try {
       // Find the codUbigeoAlm for the selected district/province
-      const locationList =
-        pickupTab === "lima" ? warehouseDistricts : warehouseProvinces;
-      const location = locationList.find((l) => l.desDistrito === distrito);
+      const location = warehouseDistricts.find(
+        (l) => l.desDistrito === distrito,
+      );
       if (location) {
         logger.log(
           `📍 Buscando almacenes para: ${distrito} (${location.codUbigeoAlm})`,
@@ -2443,13 +2432,6 @@ export default function Carrito() {
               mostrarMapa={mostrarMapa}
               setMostrarMapa={setMostrarMapa}
               warehouseDistricts={warehouseDistricts}
-              warehouseProvinces={warehouseProvinces}
-              pickupTab={pickupTab}
-              onTabChange={(tab) => {
-                setPickupTab(tab);
-                setDistritoSeleccionado("");
-                setMostrarMapa(false);
-              }}
               mapWarehouses={mapWarehouses}
               warehouseDetails={warehouseDetails}
               tiendaSeleccionada={tiendaSeleccionada}
