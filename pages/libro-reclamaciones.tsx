@@ -252,7 +252,7 @@ export default function LibroReclamaciones() {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
           <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 text-center animate-fade-in">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <FaCheckCircle className="text-4xl text-green-600" />
+              <FaCheckCircle className="text-4xl text-primary" />
             </div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               ¡Reclamo enviado exitosamente!
@@ -301,7 +301,7 @@ export default function LibroReclamaciones() {
               </div>
               <div className="flex-shrink-0">
                 <div className="w-32 h-32 bg-gray-100 rounded-sm flex items-center justify-center">
-                  <span className="text-4xl font-semibold text-green-600">
+                  <span className="text-4xl font-semibold text-primary">
                     LIWILU
                   </span>
                 </div>
@@ -534,7 +534,7 @@ export default function LibroReclamaciones() {
                         value="reclamo"
                         checked={formData.tipoReclamo === "reclamo"}
                         onChange={handleInputChange}
-                        className="mr-3 w-5 h-5 text-green-600"
+                        className="mr-3 w-5 h-5 text-primary"
                       />
                       <div>
                         <p className="font-semibold text-gray-900">Reclamo</p>
@@ -550,7 +550,7 @@ export default function LibroReclamaciones() {
                         value="queja"
                         checked={formData.tipoReclamo === "queja"}
                         onChange={handleInputChange}
-                        className="mr-3 w-5 h-5 text-green-600"
+                        className="mr-3 w-5 h-5 text-primary"
                       />
                       <div>
                         <p className="font-semibold text-gray-900">Queja</p>

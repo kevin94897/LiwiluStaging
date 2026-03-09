@@ -54,40 +54,38 @@ export default function CartSummary({
 }: CartSummaryProps) {
   return (
     <div className="lg:col-span-1 z-10 space-y-6">
-      {/* === SECCIÓN CUPÓN (Deshabilitada temporalmente para producción) === */}
-      {false && (
-        <div className="bg-white rounded-sm shadow-lg p-6 animate-fade-in">
-          <h3 className="text-lg font-semibold mb-4">Código de cupón</h3>
+      {/* === SECCIÓN CUPÓN === */}
+      <div className="bg-white rounded-sm shadow-lg p-6 animate-fade-in">
+        <h3 className="text-lg font-semibold mb-4">Código de cupón</h3>
 
-          <div className="flex flex-col sm:flex-row md:gap-0 gap-2">
-            <input
-              type="text"
-              value={couponCode}
-              onChange={(e) => onCouponCodeChange(e.target.value.toUpperCase())}
-              onKeyDown={(e) =>
-                e.key === "Enter" &&
-                !isApplyingCoupon &&
-                couponCode.trim() &&
-                onApplyCoupon()
-              }
-              placeholder="Ingresa tu cupón"
-              className="w-full px-4 py-2 border border-gray-300 rounded-full md:rounded-r-none md:rounded-sm focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase"
-            />
+        <div className="flex flex-col sm:flex-row md:gap-0 gap-2">
+          <input
+            type="text"
+            value={couponCode}
+            onChange={(e) => onCouponCodeChange(e.target.value.toUpperCase())}
+            onKeyDown={(e) =>
+              e.key === "Enter" &&
+              !isApplyingCoupon &&
+              couponCode.trim() &&
+              onApplyCoupon()
+            }
+            placeholder="Ingresa tu cupón"
+            className="w-full px-4 py-2 border border-gray-300 rounded-xs md:rounded-r-none md:rounded-xs focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase"
+          />
 
-            <button
-              onClick={onApplyCoupon}
-              disabled={isApplyingCoupon || !couponCode.trim()}
-              className="w-full sm:w-auto bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-2 md:rounded-l-none rounded-full md:rounded-sm border border-primary transition-colors flex items-center justify-center gap-2"
-            >
-              {isApplyingCoupon ? (
-                <FaSpinner size={14} className="animate-spin" />
-              ) : (
-                "Aplicar"
-              )}
-            </button>
-          </div>
+          <button
+            onClick={onApplyCoupon}
+            disabled={isApplyingCoupon || !couponCode.trim()}
+            className="w-full sm:w-auto bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-2 md:rounded-l-none rounded-full md:rounded-xs border border-primary transition-colors flex items-center justify-center gap-2"
+          >
+            {isApplyingCoupon ? (
+              <FaSpinner size={14} className="animate-spin" />
+            ) : (
+              "Aplicar"
+            )}
+          </button>
         </div>
-      )}
+      </div>
 
       {/* === SECCIÓN RESUMEN === */}
       <div className="bg-white rounded-sm shadow-lg p-6 lg:sticky lg:top-32 animate-fade-in">
@@ -103,7 +101,7 @@ export default function CartSummary({
           </div>
 
           {/* Descuentos por promociones/cupones */}
-          {/* {totals.promoDiscount !== undefined && totals.promoDiscount > 0 && (
+          {totals.promoDiscount !== undefined && totals.promoDiscount > 0 && (
             <div className="flex justify-between text-primary font-medium">
               <span className="flex items-center gap-1.5">
                 <FaTag size={12} />
@@ -113,7 +111,7 @@ export default function CartSummary({
                 -{formatPrice(totals.promoDiscount.toString())}
               </span>
             </div>
-          )} */}
+          )}
 
           {/* Otros descuentos globales/reglas */}
           {totals.discount !== undefined && totals.discount > 0 && (
@@ -179,7 +177,7 @@ export default function CartSummary({
             <span>Envío ({selectedCarrier?.name || "Pendiente"})</span>
             <span className="font-semibold">
               {!metodoEnvio ||
-              (metodoEnvio === "delivery" && !hasDeliveryDistrict) ? (
+                (metodoEnvio === "delivery" && !hasDeliveryDistrict) ? (
                 <span className="text-gray-400 font-normal text-sm">
                   Pendiente
                 </span>

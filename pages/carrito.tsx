@@ -1102,7 +1102,7 @@ export default function Carrito() {
           guestData.tipoDocumento === "RUC"
             ? 11
             : guestData.tipoDocumento === "DNI" ||
-                guestData.tipoDocumento === "PASAPORTE"
+              guestData.tipoDocumento === "PASAPORTE"
               ? 8
               : 12; // CE
       } else if (name === "celular" || name === "telefonoOpcional") {
@@ -1626,7 +1626,7 @@ export default function Carrito() {
               missingInfo.length > 0
                 ? `Falta información: ${missingInfo.join(", ")}`
                 : summary.message ||
-                  "Por favor completa toda la información requerida";
+                "Por favor completa toda la información requerida";
 
             showToast(errorMsg, "error");
             // We stay in the cart as per latest requirement
@@ -1668,7 +1668,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-              "Por favor completa toda la información requerida",
+            "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
@@ -1690,7 +1690,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-              "Por favor completa toda la información requerida",
+            "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
@@ -2208,9 +2208,8 @@ export default function Carrito() {
                           checked={registroData.acceptTerms}
                           onChange={handleRegistroChange}
                           disabled={isLoginLoading}
-                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
-                            registroErrors.acceptTerms ? "border-error" : ""
-                          }`}
+                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${registroErrors.acceptTerms ? "border-error" : ""
+                            }`}
                         />
                         <span className="text-sm text-gray-700">
                           Acepto los{" "}
@@ -2245,9 +2244,8 @@ export default function Carrito() {
                           checked={registroData.receiveOffers}
                           onChange={handleRegistroChange}
                           disabled={isLoginLoading}
-                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
-                            registroErrors.receiveOffers ? "border-error" : ""
-                          }`}
+                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${registroErrors.receiveOffers ? "border-error" : ""
+                            }`}
                         />
                         <span className="text-sm text-gray-700">
                           Quiero recibir ofertas y beneficios exclusivos
@@ -2505,14 +2503,14 @@ export default function Carrito() {
             </div>
 
             {/* === SUGERENCIAS DE PROMOCIONES (Deshabilitado temporalmente para producción) === */}
-            {/* {(promoSuggestions.length > 0 || appliedPromotions.length > 0) && (
+            {(promoSuggestions.length > 0 || appliedPromotions.length > 0) && (
               <PromoSuggestions
                 suggestions={promoSuggestions}
                 appliedPromotions={appliedPromotions}
                 onApplyPromo={(code) => handleApplyCoupon(code)}
                 isApplyingCoupon={isApplyingCoupon}
               />
-            )} */}
+            )}
 
             <AuthorizedPersonInfo
               metodoEnvio={metodoEnvio as any}

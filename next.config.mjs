@@ -37,6 +37,15 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/libro-reclamaciones',
+        destination: 'https://libro-de-reclamaciones.liwilu.com.pe/',
+        permanent: true,
+      },
+    ]
+  },
 };
 
 export default nextConfig;

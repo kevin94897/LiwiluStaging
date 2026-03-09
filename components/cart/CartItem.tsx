@@ -105,11 +105,10 @@ export default function CartItem({
 
   return (
     <div
-      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${
-        itemStockStatus === "available"
+      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${itemStockStatus === "available"
           ? "border-2 border-primary"
           : "border-2 border-transparent"
-      }`}
+        }`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
       {/* Overlay Loader */}
@@ -325,7 +324,7 @@ export default function CartItem({
             {/* Precio + cantidad */}
             <div className="flex flex-col items-end justify-between shrink-0 gap-4">
               {/* Cantidad */}
-              <div className="flex items-center border border-gray-300 rounded-sm">
+              <div className="flex items-center border border-gray-300 rounded-xs">
                 <button
                   onClick={() =>
                     onUpdateQuantity(

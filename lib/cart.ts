@@ -1361,6 +1361,7 @@ export interface MatchingGroup {
     required: number;
     inCart: number;
     matched: boolean;
+    products?: EligibleProduct[];
 }
 
 export interface EligibleProduct {
@@ -1369,6 +1370,7 @@ export interface EligibleProduct {
     name: string;
     price: number;
     coverImage: string;
+    linkRewrite?: string;
 }
 
 export interface RequiredProduct {
@@ -1380,6 +1382,7 @@ export interface RequiredProduct {
     coverImage: string;
     inCart: boolean;
     isReductionProduct: boolean;
+    linkRewrite?: string;
 }
 
 export interface PromoSuggestion {
