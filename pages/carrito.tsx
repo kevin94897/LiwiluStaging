@@ -2513,14 +2513,14 @@ export default function Carrito() {
             </div>
 
             {/* === SUGERENCIAS DE PROMOCIONES (Deshabilitado temporalmente para producción) === */}
-            {(promoSuggestions.length > 0 || appliedPromotions.length > 0) && (
+            {/* {(promoSuggestions.length > 0 || appliedPromotions.length > 0) && (
               <PromoSuggestions
                 suggestions={promoSuggestions}
                 appliedPromotions={appliedPromotions}
                 onApplyPromo={(code) => handleApplyCoupon(code)}
                 isApplyingCoupon={isApplyingCoupon}
               />
-            )}
+            )} */}
 
             <AuthorizedPersonInfo
               metodoEnvio={metodoEnvio as any}
