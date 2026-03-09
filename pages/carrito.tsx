@@ -199,6 +199,7 @@ export default function Carrito() {
     Partial<Record<string, string>>
   >({}); // Field-level errors returned by the API
   const [guestDataCompleted, setGuestDataCompleted] = useState(false);
+  const [customTelefono, setCustomTelefono] = useState("");
 
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>(
     {},
@@ -1258,8 +1259,17 @@ export default function Carrito() {
       const { apiPut } = await import("@/lib/auth/apiClient");
       const token = localStorage.getItem("accessToken");
 
+      if (data.telefono) {
+        setCustomTelefono(data.telefono);
+      }
+
       // Ensure document type is uppercase for backend validation
       const payload = { ...data };
+
+      // ⚠️ TEMPORAL: Se elimina el campo 'telefono' antes de enviar a /users/profile 
+      // porque el endpoint aún no lo soporta. Se habilitará pronto.
+      delete payload.telefono;
+
       if (payload.documentType) {
         payload.documentType = payload.documentType.toUpperCase();
       }
@@ -1326,7 +1336,7 @@ export default function Carrito() {
           tipoDocumento: user.documentType || "DNI",
           numeroDocumento: user.documentNumber || "",
           celular: user.phone || "",
-          telefono: "",
+          telefono: customTelefono || (user as any).telefono || "",
           email: user.email,
           // Usar dirección principal para datos de contacto
           departamento: mainAddress ? mainAddress.department : "",
@@ -2411,7 +2421,7 @@ export default function Carrito() {
                 isLoggedIn={isLoggedIn}
                 guestDataCompleted={guestDataCompleted}
                 guestData={guestData}
-                userData={user}
+                userData={user ? { ...user, telefono: customTelefono || (user as any).telefono } : null}
                 userAddress={userAddresses.find((a) => a.isMain)}
                 onEdit={() => {
                   setActiveTab("guest");

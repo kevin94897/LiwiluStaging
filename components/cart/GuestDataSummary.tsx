@@ -43,6 +43,7 @@ export default function GuestDataSummary({
     documentType: userData?.documentType || "DNI",
     documentNumber: userData?.documentNumber || "",
     phone: userData?.phone || "",
+    telefono: userData?.telefono || "",
   });
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
 
@@ -100,6 +101,17 @@ export default function GuestDataSummary({
     setLocalErrors((prev) => {
       const newErrors = { ...prev };
       delete newErrors.phone;
+      return newErrors;
+    });
+  };
+
+  const handleTelefonoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 9) value = value.slice(0, 9);
+    setFormData((prev) => ({ ...prev, telefono: value }));
+    setLocalErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.telefono;
       return newErrors;
     });
   };
@@ -174,6 +186,7 @@ export default function GuestDataSummary({
       documentType: userData?.documentType || "DNI",
       documentNumber: userData?.documentNumber || "",
       phone: userData?.phone || "",
+      telefono: userData?.telefono || "",
     });
     setLocalErrors({});
   };
@@ -303,18 +316,29 @@ export default function GuestDataSummary({
               }
             />
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Celular *"
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handlePhoneChange}
+              error={displayErrors.phone || displayErrors.celular}
+              disabled={isSaving}
+              placeholder="987654321"
+            />
 
-          <Input
-            label="Celular *"
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handlePhoneChange}
-            error={displayErrors.phone || displayErrors.celular}
-            disabled={isSaving}
-            placeholder="987654321"
-          />
-
+            <Input
+              label="Teléfono (opcional)"
+              type="tel"
+              name="telefono"
+              value={formData.telefono}
+              onChange={handleTelefonoChange}
+              error={displayErrors.telefono}
+              disabled={isSaving}
+              placeholder="987654321"
+            />
+          </div>
           <div className="bg-gray-50 border border-gray-200 rounded-sm p-3">
             <p className="text-sm text-gray-600">
               <span className="font-medium text-gray-700">Email:</span>{" "}
@@ -391,6 +415,12 @@ export default function GuestDataSummary({
                       userAddress?.phone ||
                       "-"}
                   </p>
+                  {userData.telefono && (
+                    <p>
+                      <span className="text-gray-500">Teléfono:</span>{" "}
+                      {userData.telefono}
+                    </p>
+                  )}
                 </>
               ) : (
                 <>
@@ -411,6 +441,12 @@ export default function GuestDataSummary({
                     <span className="text-gray-500">Celular:</span>{" "}
                     {guestData.celular}
                   </p>
+                  {guestData.telefonoOpcional && (
+                    <p>
+                      <span className="text-gray-500">Teléfono:</span>{" "}
+                      {guestData.telefonoOpcional}
+                    </p>
+                  )}
                 </>
               )}
             </div>
