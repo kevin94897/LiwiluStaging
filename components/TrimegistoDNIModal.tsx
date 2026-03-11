@@ -9,6 +9,7 @@ import { dniSchema } from "../lib/dniSchema";
 import { z } from "zod";
 import { trimegistoRegisterSchema } from "@/lib/trimegistoRegisterSchema";
 import { PiWarningCircleFill } from "react-icons/pi";
+import { apiPost } from "@/lib/auth/apiClient";
 
 // ============================================
 // TrimegistoDNIModal
@@ -18,7 +19,8 @@ interface TrimegistoDNIModalProps {
   isOpen: boolean;
   onClose: () => void;
   onValidated: () => void;
-  onNewUser: () => void;
+  onNewUser: (data: any) => void;
+  onLoginRequired: () => void;
 }
 
 type DniFormType = z.infer<typeof dniSchema>;
@@ -28,6 +30,7 @@ export function TrimegistoDNIModal({
   onClose,
   onValidated,
   onNewUser,
+  onLoginRequired,
 }: TrimegistoDNIModalProps) {
   const [dni, setDni] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -76,18 +79,28 @@ export function TrimegistoDNIModal({
       return;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const response = await apiPost("/so-tp/consultar-datos", {
+        numero_documento: dni,
+        tipo_documento: "DNI",
+      }, { skipAuth: true });
 
-    const dniExists = dni === "12345678";
+      const data = await response.json();
 
-    if (dniExists) {
-      onValidated();
-    } else {
-      onNewUser();
+      if (data.status === true) {
+        onNewUser(data);
+      } else {
+        onClose();
+        onLoginRequired();
+      }
+    } catch (error) {
+      logger.error("Error al validar DNI:", error);
+      setErrors({
+        dni: "Ocurrió un error al validar el DNI. Inténtalo de nuevo.",
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    setDni("");
-    setIsLoading(false);
   };
 
   return (
@@ -202,17 +215,31 @@ interface TrimegistoRegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialData?: any;
 }
 
 type FullRegisterValues = z.infer<typeof trimegistoRegisterSchema>;
+
+// Helper: File → base64 string
+const fileToBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+  });
 
 export function TrimegistoRegisterModal({
   isOpen,
   onClose,
   onSuccess,
+  initialData,
 }: TrimegistoRegisterModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   // ✅ Estado completo para todos los campos
   const [formData, setFormData] = useState<FullRegisterValues>({
+    dni: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -224,6 +251,33 @@ export function TrimegistoRegisterModal({
     acceptTerms: false,
     acceptDeclarations: false,
   });
+
+  // ✅ Efecto para pre-cargar datos desde initialData
+  useEffect(() => {
+    if (isOpen && initialData) {
+      setFormData((prev) => ({
+        ...prev,
+        dni: initialData.numero_documento || "",
+        firstName: initialData.nombres || "",
+        lastName: `${initialData.apellido_paterno || ""} ${initialData.apellido_materno || ""}`.trim(),
+      }));
+    } else if (!isOpen) {
+      // Opcional: limpiar al cerrar
+      setFormData({
+        dni: "",
+        firstName: "",
+        lastName: "",
+        email: "",
+        emailConfirm: "",
+        password: "",
+        passwordConfirm: "",
+        contactNumber: "",
+        signatureFile: null,
+        acceptTerms: false,
+        acceptDeclarations: false,
+      });
+    }
+  }, [isOpen, initialData]);
 
   const [errors, setErrors] = useState<
     Partial<Record<keyof FullRegisterValues, string>>
@@ -272,7 +326,7 @@ export function TrimegistoRegisterModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.MouseEvent) => {
+  const handleSubmit = async (e: React.MouseEvent) => {
     e.preventDefault();
 
     // ✅ Validación con Zod
@@ -294,11 +348,44 @@ export function TrimegistoRegisterModal({
       return;
     }
 
-    // Si es válido
     setErrors({});
-    logger.log("Registro exitoso:", formData);
-    onSuccess();
-    onClose();
+    setIsSubmitting(true);
+
+    try {
+      const signatureBase64 = formData.signatureFile
+        ? await fileToBase64(formData.signatureFile as File)
+        : "";
+
+      const payload = {
+        documentType: "DNI",
+        documentNumber: formData.dni,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        confirmEmail: formData.emailConfirm,
+        password: formData.password,
+        confirmPassword: formData.passwordConfirm,
+        acceptTerms: formData.acceptTerms,
+        receiveOffers: true,
+        electronicSignatureBase64: signatureBase64,
+        acceptDataDeclaration: formData.acceptDeclarations,
+      };
+
+      const response = await apiPost("/auth/register/trismegismo", payload, { skipAuth: true });
+      const data = await response.json();
+
+      if (response.ok || data.status === true || data.success === true) {
+        setShowSuccess(true);
+        onSuccess();
+      } else {
+        setErrors({ email: data.message || "Ocurrió un error al registrarse. Inténtalo de nuevo." });
+      }
+    } catch (error) {
+      logger.error("Error al registrar:", error);
+      setErrors({ email: "Ocurrió un error al registrarse. Inténtalo de nuevo." });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inputClasses = (fieldName: keyof FullRegisterValues) =>
@@ -306,6 +393,44 @@ export function TrimegistoRegisterModal({
     }`;
 
   const fileName = formData.signatureFile ? formData.signatureFile.name : null;
+
+  // ✅ Modal de éxito
+  if (showSuccess) {
+    return (
+      <>
+        <div className="fixed inset-0 bg-black/50 z-50 animate-fade-in" onClick={() => { setShowSuccess(false); onClose(); }} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-sm w-full pointer-events-auto animate-scale-in relative text-center p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => { setShowSuccess(false); onClose(); }}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition"
+            >
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Liwilu</h2>
+            <div className="mx-auto mb-6 w-16 h-16 rounded-full border-2 border-primary flex items-center justify-center">
+              <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-xl font-bold text-gray-900 mb-2">¡Solicitud enviada con éxito!</p>
+            <p className="text-gray-500 text-sm mb-8">Un asesor se comunicará en breve</p>
+            <button
+              onClick={() => { setShowSuccess(false); onClose(); }}
+              className="w-full py-3 bg-primary hover:bg-primary-light text-white font-medium rounded-full transition"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -331,6 +456,20 @@ export function TrimegistoRegisterModal({
             </div>
 
             <div className="space-y-4">
+              {/* DNI (Deshabilitado) */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  DNI
+                </label>
+                <input
+                  name="dni"
+                  type="text"
+                  value={formData.dni}
+                  disabled
+                  className="w-full px-4 py-3 border border-gray-200 rounded-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+                />
+              </div>
+
               {/* Nombre y Apellido */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -587,8 +726,9 @@ export function TrimegistoRegisterModal({
                 size="md"
                 className="w-full"
                 onClick={handleSubmit}
+                disabled={isSubmitting}
               >
-                Registrarse
+                {isSubmitting ? "Enviando..." : "Registrarse"}
               </Button>
             </div>
           </div>

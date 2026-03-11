@@ -1,8 +1,13 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import { CartCarrier, AppliedPromotion } from "@/lib/cart";
 import { FaTimes, FaTag, FaSpinner } from "react-icons/fa";
+import { getCurrentUser } from "@/lib/auth/authUtils";
+import TrimegistoBalance from "./TrimegistoBalance";
 
 interface CartSummaryProps {
   couponCode: string;
@@ -18,6 +23,7 @@ interface CartSummaryProps {
     discount?: number;
     shipping: number;
     total: number;
+    trismegistoBalance?: number;
   };
   appliedPromotions: AppliedPromotion[];
 
@@ -31,6 +37,18 @@ interface CartSummaryProps {
   isValidatingStock: boolean;
   tiendaSeleccionada: string | null;
   onCheckout: () => void;
+  balanceAmount?: number;
+  balanceInstallments?: number;
+  onTotalsUpdate?: (totals: {
+    subtotal: number;
+    discount?: number;
+    promoDiscount?: number;
+    shipping: number;
+    trismegistoBalance?: number;
+    balanceAmount?: number;
+    balanceInstallments?: number;
+    total: number;
+  }) => void;
 }
 
 export default function CartSummary({
@@ -51,9 +69,52 @@ export default function CartSummary({
   isValidatingStock,
   tiendaSeleccionada,
   onCheckout,
+  onTotalsUpdate,
+  balanceAmount,
+  balanceInstallments,
 }: CartSummaryProps) {
+  const [isTrimegisto, setIsTrimegisto] = useState(false);
+  const [trimegistoApplied, setTrimegistoApplied] = useState(0);
+  const [trimegistoCuotas, setTrimegistoCuotas] = useState(1);
+  // Holds totals received directly from the PUT response (overrides prop until next full sync)
+  const [overrideTotals, setOverrideTotals] = useState<typeof totals | null>(null);
+  const activeTotals = overrideTotals ?? totals;
+
+  useEffect(() => {
+    const user = getCurrentUser();
+    const role = (user?.role || "").toUpperCase();
+    setIsTrimegisto(role === "TRIMEGISTO" || role === "TRISMEGISMO");
+  }, []);
+
+  // Whenever the cart prop totals change (full sync), clear the local override
+  useEffect(() => {
+    setOverrideTotals(null);
+  }, [totals]);
+
+  // Use the backend-provided trismegistoBalance when available, otherwise fall back to local state
+  const trismegistoDiscountFromApi = activeTotals.trismegistoBalance ?? 0;
+  const effectiveTrimegistoApplied = trismegistoDiscountFromApi > 0 ? trismegistoDiscountFromApi : trimegistoApplied;
+  const finalTotal = Math.max(activeTotals.total - (trismegistoDiscountFromApi > 0 ? 0 : trimegistoApplied), 0);
+
   return (
     <div className="lg:col-span-1 z-10 space-y-6">
+      {/* === SALDO TRIMEGISTO === */}
+      {isTrimegisto && (
+        <TrimegistoBalance
+          cartTotal={Math.max(0, activeTotals.subtotal - (activeTotals.discount ?? 0) - (activeTotals.promoDiscount ?? 0))}
+          initialBalanceAmount={balanceAmount}
+          initialBalanceInstallments={balanceInstallments}
+          onBalanceChange={(applied, cuotas) => {
+            setTrimegistoApplied(applied);
+            setTrimegistoCuotas(cuotas);
+          }}
+          onTotalsUpdate={(t) => {
+            setOverrideTotals({ ...activeTotals, ...t });
+            onTotalsUpdate?.(t);
+          }}
+        />
+      )}
+
       {/* === SECCIÓN CUPÓN === */}
       {/* 
       <div className="bg-white rounded-sm shadow-lg p-6 animate-fade-in">
@@ -98,7 +159,7 @@ export default function CartSummary({
           <div className="flex justify-between text-gray-600">
             <span>Subtotal</span>
             <span className="font-semibold">
-              {formatPrice(totals.subtotal.toString())}
+              {formatPrice(activeTotals.subtotal.toString())}
             </span>
           </div>
 
@@ -118,14 +179,14 @@ export default function CartSummary({
           */}
 
           {/* Otros descuentos globales/reglas */}
-          {totals.discount !== undefined && totals.discount > 0 && (
+          {activeTotals.discount !== undefined && activeTotals.discount > 0 && (
             <div className="flex justify-between text-primary font-medium">
               <span className="flex items-center gap-1.5">
                 <FaTag size={12} />
                 Descuentos extras
               </span>
               <span className="font-semibold">
-                -{formatPrice(totals.discount.toString())}
+                -{formatPrice(activeTotals.discount.toString())}
               </span>
             </div>
           )}
@@ -187,10 +248,10 @@ export default function CartSummary({
                 <span className="text-gray-400 font-normal text-sm">
                   Pendiente
                 </span>
-              ) : totals.shipping === 0 ? (
+              ) : activeTotals.shipping === 0 ? (
                 <span className="text-primary">Gratis</span>
               ) : (
-                formatPrice(totals.shipping.toString())
+                formatPrice(activeTotals.shipping.toString())
               )}
             </span>
           </div>
@@ -202,15 +263,39 @@ export default function CartSummary({
                 ¡Este método de envío es gratuito!
               </p>
             )}
+
+          {/* Saldo Trimegisto aplicado (de API o local) */}
+          {isTrimegisto && effectiveTrimegistoApplied > 0 && (
+            <div className="flex justify-between text-primary font-medium mt-2">
+              <span className="flex items-center gap-1.5 text-sm">
+                Saldo Trimegisto
+                {trimegistoCuotas > 1 && (
+                  <span className="text-xs text-gray-400">({trimegistoCuotas} cuotas)</span>
+                )}
+              </span>
+              <span className="font-semibold">− {formatPrice(effectiveTrimegistoApplied.toFixed(2))}</span>
+            </div>
+          )}
         </div>
 
         {/* Total Final */}
         <div className="flex justify-between items-center text-2xl font-semibold mb-6">
           <span>Total</span>
           <span className="text-primary tracking-tight">
-            {formatPrice(totals.total.toString())}
+            {formatPrice(finalTotal.toFixed(2))}
           </span>
         </div>
+
+        {isTrimegisto && effectiveTrimegistoApplied > 0 && finalTotal > 0 && (
+          <p className="text-xs text-gray-500 -mt-4 mb-4 text-right">
+            Restante a pagar: <span className="font-semibold text-gray-700">{formatPrice(finalTotal.toFixed(2))}</span>
+          </p>
+        )}
+        {isTrimegisto && effectiveTrimegistoApplied > 0 && finalTotal === 0 && (
+          <p className="text-xs text-green-600 font-medium -mt-4 mb-4 text-right">
+            ✓ Pedido cubierto completamente por tu saldo
+          </p>
+        )}
 
         {/* Términos */}
         <div className="space-y-3 mb-6 pb-6 border-b">
@@ -278,6 +363,9 @@ export default function CartSummary({
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               Validando stock...
             </div>
+          ) : activeTotals.trismegistoBalance &&
+            activeTotals.trismegistoBalance > 0 ? (
+            "Enviar confirmacion"
           ) : (
             "Finalizar compra"
           )}

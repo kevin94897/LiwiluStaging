@@ -39,6 +39,9 @@ interface CartContextType {
     total: number;
     discount?: number;
     promoDiscount?: number;
+    trismegistoBalance?: number;
+    balanceAmount?: number;
+    balanceInstallments?: number;
   };
   isLoading: boolean;
   cartExpired: boolean;
@@ -55,6 +58,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     total: number;
     discount?: number;
     promoDiscount?: number;
+    trismegistoBalance?: number;
+    balanceAmount?: number;
+    balanceInstallments?: number;
   }>({ subtotal: 0, shipping: 0, total: 0 });
   const [selectedCarrier, setSelectedCarrier] = useState<CartCarrier | null>(
     null,
@@ -117,16 +123,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Construct defaultVariation for compatibility with utils.ts pricing logic
     const defaultVariation = cartProduct.idVariation
       ? {
-          prestashopCombinationId: cartProduct.prestashopCombinationId || 0,
-          name: cartProduct.name,
-          reference: cartProduct.variationReference || "",
-          price:
-            cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0, // Treated as Sale Price by utils
-          priceWithTax:
-            cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0,
-          priceImpact: cartProduct.priceImpact || 0, // Treated as Regular Price by utils (when > 0)
-          queryString: "",
-        }
+        prestashopCombinationId: cartProduct.prestashopCombinationId || 0,
+        name: cartProduct.name,
+        reference: cartProduct.variationReference || "",
+        price:
+          cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0, // Treated as Sale Price by utils
+        priceWithTax:
+          cartProduct.variationPriceWithTax || cartProduct.priceWithTax || 0,
+        priceImpact: cartProduct.priceImpact || 0, // Treated as Regular Price by utils (when > 0)
+        queryString: "",
+      }
       : null;
 
     // Ensure price is the final effective price (Sale Price)
@@ -136,8 +142,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       (cartProduct.discountPrice && cartProduct.discountPrice > 0
         ? cartProduct.priceWithTax - cartProduct.discountPrice // If simple with discount, context priceWithTax likely includes it?
         : // Logic check: usually cartProduct.priceWithTax IS the final price in cart API.
-          // But if we follow utils: simple price = sale.
-          cartProduct.priceWithTax) ||
+        // But if we follow utils: simple price = sale.
+        cartProduct.priceWithTax) ||
       0;
 
     // RE-EVALUATION:
@@ -197,7 +203,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           setItems([]);
         }
 
-        setTotals(response.data.totals);
+        setTotals({
+          ...response.data.totals,
+          balanceAmount: response.data.balanceAmount,
+          balanceInstallments: response.data.balanceInstallments,
+        });
         setSelectedCarrier(response.data.carrier);
         setCartId(response.data.cartId);
       } else if (response.isExpired) {

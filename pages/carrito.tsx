@@ -60,6 +60,7 @@ import {
   getWarehouseMap,
   WarehouseMapItem,
   validateStock,
+  createOrder,
   StockValidationResponse,
   saveGuestPersonalData,
   getDeliveryZones,
@@ -80,6 +81,7 @@ import {
   getPromoSuggestions,
   PromoSuggestion,
   AppliedPromotion,
+  initiateTrimegistoPreOrder,
 } from "@/lib/cart";
 import PromoSuggestions from "@/components/cart/PromoSuggestions";
 import logger from "@/lib/logger";
@@ -1524,6 +1526,53 @@ export default function Carrito() {
     }
   };
 
+  const handleTrimegistoCheckout = async () => {
+    try {
+      setIsValidatingStock(true);
+
+      // 1. Create Order to get pendingOrderId
+      // We pass generic invoice data since the user hasn't selected it yet in this flow
+      // but the backend might require it. Usually createOrder in checkout.tsx uses 
+      // the selected invoice type. Here we can use a default or empty.
+      const orderResponse = await createOrder({
+        invoiceType: "boleta", // Default
+        invoiceData: {
+          tipoDocumento: "DNI",
+          numeroDocumento: "",
+          nombres: "",
+          apellidos: "",
+        },
+      });
+
+      if (!orderResponse.success || !orderResponse.data?.orderId) {
+        throw new Error(orderResponse.message || "Error al crear la orden previa");
+      }
+
+      const pendingOrderId = orderResponse.data.orderId;
+
+      // 2. Initiate Trimegisto Pre-Order
+      const trimegistoResponse = await initiateTrimegistoPreOrder(
+        pendingOrderId,
+        totals.trismegistoBalance || 0,
+        totals.balanceInstallments || 1
+      );
+
+      if (!trimegistoResponse.success) {
+        throw new Error(trimegistoResponse.message || "Error al iniciar el flujo Trismegisto");
+      }
+
+      // 3. Success! Redirect to checkout or a success page if needed
+      // Based on the requirement, we proceed to checkout where the order should be visible
+      showToast("Confirmación enviada con éxito", "success");
+      router.push(`/checkout?orderId=${pendingOrderId}`);
+    } catch (error: any) {
+      logger.error("Error in Trimegisto checkout flow:", error);
+      showToast(error.message || "Error al procesar el pedido Trismegisto", "error");
+    } finally {
+      setIsValidatingStock(false);
+    }
+  };
+
   const handleCheckoutSubmit = async () => {
     if (!acceptTerms) {
       showToast(
@@ -1613,7 +1662,11 @@ export default function Carrito() {
 
           // FIXED: Check summary.data.isComplete instead of summary.isComplete
           if (summary.success && summary.data?.isComplete) {
-            router.push("/checkout");
+            if (totals.trismegistoBalance && totals.trismegistoBalance > 0) {
+              handleTrimegistoCheckout();
+            } else {
+              router.push("/checkout");
+            }
           } else {
             logger.warn("⚠️ [Carrito] Checkout incomplete or error:", summary);
             const missingInfo = [];
@@ -2555,6 +2608,8 @@ export default function Carrito() {
             isValidatingStock={isValidatingStock}
             tiendaSeleccionada={tiendaSeleccionada}
             onCheckout={handleCheckoutSubmit}
+            balanceAmount={totals.balanceAmount}
+            balanceInstallments={totals.balanceInstallments}
           />
         </div>
       </div>

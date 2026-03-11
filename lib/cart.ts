@@ -56,8 +56,9 @@ export interface CartTotals {
     subtotal: number;
     shipping: number;
     total: number;
-    discount?: number;      // Total coupon/rule discount
-    promoDiscount?: number; // Discount from applied promotions
+    discount?: number;         // Total coupon/rule discount
+    promoDiscount?: number;    // Discount from applied promotions
+    trismegistoBalance?: number; // Balance applied from Trismegisto account
 }
 
 /**
@@ -104,7 +105,10 @@ export interface CartData {
         subtotal: number;
         discount?: number;
         promoDiscount?: number;
+        trismegistoBalance?: number;
     };
+    balanceAmount?: number;
+    balanceInstallments?: number;
     appliedPromotions?: AppliedPromotion[];
     expiresAt?: string; // Changed from string | null to optional string
     timeRemaining?: string; // Added
@@ -1339,7 +1343,43 @@ export async function getPendingOrderAttempt(status: string): Promise<{ success:
  * Get asynchronous payment status and Culqi Order ID
  */
 export async function getAsyncPaymentStatus(pendingOrderId: number | string): Promise<any> {
-    return checkAsyncPaymentStatus(pendingOrderId);
+}
+
+/**
+ * Initiate Trimegisto pre-order
+ * @param pendingOrderId - The ID of the pending order generated at checkout
+ * @param balanceAmount - The amount of the Trimegisto balance applied
+ * @param installments - The number of installments
+ */
+export async function initiateTrimegistoPreOrder(
+    pendingOrderId: number,
+    balanceAmount: number,
+    installments: number
+): Promise<{ success: boolean; data?: any; message?: string }> {
+    try {
+        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const response = await apiPost(
+            '/orders/trismegisto/initiate',
+            {
+                balanceAmount,
+                installments,
+                pendingOrderId
+            },
+            {
+                skipAuth: !accessToken
+            }
+        );
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error initiating trimegisto order: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        logger.error('Error in initiateTrimegistoPreOrder:', error);
+        throw error;
+    }
 }
 
 // ─────────────────────────────────────────────
