@@ -77,7 +77,9 @@ export default function CartSummary({
   const [trimegistoApplied, setTrimegistoApplied] = useState(0);
   const [trimegistoCuotas, setTrimegistoCuotas] = useState(1);
   // Holds totals received directly from the PUT response (overrides prop until next full sync)
-  const [overrideTotals, setOverrideTotals] = useState<typeof totals | null>(null);
+  const [overrideTotals, setOverrideTotals] = useState<typeof totals | null>(
+    null,
+  );
   const activeTotals = overrideTotals ?? totals;
 
   useEffect(() => {
@@ -93,15 +95,27 @@ export default function CartSummary({
 
   // Use the backend-provided trismegistoBalance when available, otherwise fall back to local state
   const trismegistoDiscountFromApi = activeTotals.trismegistoBalance ?? 0;
-  const effectiveTrimegistoApplied = trismegistoDiscountFromApi > 0 ? trismegistoDiscountFromApi : trimegistoApplied;
-  const finalTotal = Math.max(activeTotals.total - (trismegistoDiscountFromApi > 0 ? 0 : trimegistoApplied), 0);
+  const effectiveTrimegistoApplied =
+    trismegistoDiscountFromApi > 0
+      ? trismegistoDiscountFromApi
+      : trimegistoApplied;
+  const finalTotal = Math.max(
+    activeTotals.total -
+      (trismegistoDiscountFromApi > 0 ? 0 : trimegistoApplied),
+    0,
+  );
 
   return (
     <div className="lg:col-span-1 z-10 space-y-6">
       {/* === SALDO TRIMEGISTO === */}
       {isTrimegisto && (
         <TrimegistoBalance
-          cartTotal={Math.max(0, activeTotals.subtotal - (activeTotals.discount ?? 0) - (activeTotals.promoDiscount ?? 0))}
+          cartTotal={Math.max(
+            0,
+            activeTotals.subtotal -
+              (activeTotals.discount ?? 0) -
+              (activeTotals.promoDiscount ?? 0),
+          )}
           initialBalanceAmount={balanceAmount}
           initialBalanceInstallments={balanceInstallments}
           onBalanceChange={(applied, cuotas) => {
@@ -116,7 +130,6 @@ export default function CartSummary({
       )}
 
       {/* === SECCIÓN CUPÓN === */}
-      {/* 
       <div className="bg-white rounded-sm shadow-lg p-6 animate-fade-in">
         <h3 className="text-lg font-semibold mb-4">Código de cupón</h3>
 
@@ -148,7 +161,6 @@ export default function CartSummary({
           </button>
         </div>
       </div>
-      */}
 
       {/* === SECCIÓN RESUMEN === */}
       <div className="bg-white rounded-sm shadow-lg p-6 lg:sticky lg:top-32 animate-fade-in">
@@ -164,19 +176,18 @@ export default function CartSummary({
           </div>
 
           {/* Descuentos por promociones/cupones */}
-          {/*
-          {totals.promoDiscount !== undefined && totals.promoDiscount > 0 && (
-            <div className="flex justify-between text-primary font-medium">
-              <span className="flex items-center gap-1.5">
-                <FaTag size={12} />
-                Descuento promoción
-              </span>
-              <span className="font-semibold">
-                -{formatPrice(totals.promoDiscount.toString())}
-              </span>
-            </div>
-          )}
-          */}
+          {activeTotals.promoDiscount !== undefined &&
+            activeTotals.promoDiscount > 0 && (
+              <div className="flex justify-between text-primary font-medium">
+                <span className="flex items-center gap-1.5">
+                  <FaTag size={12} />
+                  Descuento promoción
+                </span>
+                <span className="font-semibold">
+                  -{formatPrice(activeTotals.promoDiscount.toString())}
+                </span>
+              </div>
+            )}
 
           {/* Otros descuentos globales/reglas */}
           {activeTotals.discount !== undefined && activeTotals.discount > 0 && (
@@ -192,7 +203,6 @@ export default function CartSummary({
           )}
 
           {/* Lista de promociones aplicadas (si hay) */}
-          {/*
           {appliedPromotions && appliedPromotions.length > 0 && (
             <div className="space-y-2 mt-3 pt-3 border-t border-gray-100">
               <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -237,14 +247,13 @@ export default function CartSummary({
               ))}
             </div>
           )}
-          */}
 
           {/* Costo de Envío */}
           <div className="flex justify-between text-gray-600 mt-4">
             <span>Envío ({selectedCarrier?.name || "Pendiente"})</span>
             <span className="font-semibold">
               {!metodoEnvio ||
-                (metodoEnvio === "delivery" && !hasDeliveryDistrict) ? (
+              (metodoEnvio === "delivery" && !hasDeliveryDistrict) ? (
                 <span className="text-gray-400 font-normal text-sm">
                   Pendiente
                 </span>
@@ -270,10 +279,14 @@ export default function CartSummary({
               <span className="flex items-center gap-1.5 text-sm">
                 Saldo Trimegisto
                 {trimegistoCuotas > 1 && (
-                  <span className="text-xs text-gray-400">({trimegistoCuotas} cuotas)</span>
+                  <span className="text-xs text-gray-400">
+                    ({trimegistoCuotas} cuotas)
+                  </span>
                 )}
               </span>
-              <span className="font-semibold">− {formatPrice(effectiveTrimegistoApplied.toFixed(2))}</span>
+              <span className="font-semibold">
+                − {formatPrice(effectiveTrimegistoApplied.toFixed(2))}
+              </span>
             </div>
           )}
         </div>
@@ -288,7 +301,10 @@ export default function CartSummary({
 
         {isTrimegisto && effectiveTrimegistoApplied > 0 && finalTotal > 0 && (
           <p className="text-xs text-gray-500 -mt-4 mb-4 text-right">
-            Restante a pagar: <span className="font-semibold text-gray-700">{formatPrice(finalTotal.toFixed(2))}</span>
+            Restante a pagar:{" "}
+            <span className="font-semibold text-gray-700">
+              {formatPrice(finalTotal.toFixed(2))}
+            </span>
           </p>
         )}
         {isTrimegisto && effectiveTrimegistoApplied > 0 && finalTotal === 0 && (

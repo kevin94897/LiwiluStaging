@@ -1405,12 +1405,27 @@ export interface MatchingGroup {
 }
 
 export interface EligibleProduct {
-    productId: number;
+    productId?: number;
     prestashopId: number;
     name: string;
     price: number;
     coverImage: string;
     linkRewrite?: string;
+    hasVariations?: boolean;
+    inCart?: boolean;
+    priceWithDiscount?: number;
+    combinations?: {
+        combinationId: number;
+        name: string | null;
+        price: number;
+        attributes: { type: string; value: string; colorHex: string | null }[];
+    }[];
+}
+
+export interface Combo2EligibleGroup {
+    groupIndex: number;
+    satisfied: boolean;
+    products: EligibleProduct[];
 }
 
 export interface RequiredProduct {
@@ -1425,13 +1440,21 @@ export interface RequiredProduct {
     linkRewrite?: string;
 }
 
+export interface ComboPlanStep {
+    step: number;
+    description: string;
+    completed: boolean;
+    eligibleProducts?: EligibleProduct[];
+    product?: EligibleProduct & { priceWithDiscount?: number };
+}
+
 export interface PromoSuggestion {
     prestashopId: number;
     code: string;
     name: string;
     description: 'COMBO_2' | 'QTY_DISCOUNT' | 'COMBO_PLAN' | 'MIN_PURCHASE' | string;
     alreadyApplied: boolean;
-    status: 'requires_products' | 'requires_minimum' | 'requires_combo2' | 'ready' | string;
+    status: 'requires_products' | 'requires_minimum' | 'requires_combo2' | 'requires_combo2_products' | 'ready' | string;
     message: string;
     reductionPercent?: number;
     reductionAmount?: number;
@@ -1439,15 +1462,16 @@ export interface PromoSuggestion {
     combosAvailable?: number;
     matchingGroups?: MatchingGroup[];
     missingProductIds?: number[];
+    eligibleProducts?: (EligibleProduct | Combo2EligibleGroup)[];
     // QTY_DISCOUNT
     inCart?: number;
     required?: number;
     discountedUnits?: number;
-    eligibleProducts?: EligibleProduct[];
     // COMBO_PLAN
     requiresCombo2?: boolean;
     reductionProductId?: number;
     requiredProducts?: RequiredProduct[];
+    steps?: ComboPlanStep[];
     // MIN_PURCHASE
     minimumAmount?: number;
     currentSubtotal?: number;

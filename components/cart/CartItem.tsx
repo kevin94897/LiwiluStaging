@@ -19,6 +19,7 @@ import {
   SavarStockValidationResult,
   StockValidationResponse,
   WarehouseMapItem,
+  AppliedPromotion,
 } from "@/lib/cart";
 
 interface CartItemProps {
@@ -34,6 +35,7 @@ interface CartItemProps {
   hasDeliveryDistrict: boolean;
   onRemove: (productId: string) => void;
   onUpdateQuantity: (productId: string, quantity: number) => void;
+  appliedPromotions?: AppliedPromotion[];
 }
 
 export default function CartItem({
@@ -49,6 +51,7 @@ export default function CartItem({
   hasDeliveryDistrict,
   onRemove,
   onUpdateQuantity,
+  appliedPromotions = [],
 }: CartItemProps) {
   // Prioritize the direct coverImage property if available (new logic)
   // Otherwise fall back to associations (legacy logic)
@@ -105,10 +108,11 @@ export default function CartItem({
 
   return (
     <div
-      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${itemStockStatus === "available"
+      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${
+        itemStockStatus === "available"
           ? "border-2 border-primary"
           : "border-2 border-transparent"
-        }`}
+      }`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
       {/* Overlay Loader */}
@@ -217,6 +221,69 @@ export default function CartItem({
                   {getProductName(item.product)}
                 </h3>
               </Link>
+
+              {/* Badge cupón aplicado */}
+              {(() => {
+                const productPrestashopId = item.product.prestashopId;
+
+                const matchingPromos = appliedPromotions.filter((promo) => {
+                  if (
+                    promo.eligibleProducts &&
+                    promo.eligibleProducts.length > 0
+                  ) {
+                    // Check if it's COMBO_2 format (groups)
+                    if ("groupIndex" in promo.eligibleProducts[0]) {
+                      const groups = promo.eligibleProducts as any[];
+                      return groups.some((g) =>
+                        g.products.some(
+                          (p: any) => p.prestashopId === productPrestashopId,
+                        ),
+                      );
+                    }
+                    // Regular format
+                    return (promo.eligibleProducts as any[]).some(
+                      (p) => p.prestashopId === productPrestashopId,
+                    );
+                  }
+
+                  if (promo.steps && promo.steps.length > 0) {
+                    return promo.steps.some(
+                      (step: any) =>
+                        step.eligibleProducts?.some(
+                          (p: any) => p.prestashopId === productPrestashopId,
+                        ) || step.product?.prestashopId === productPrestashopId,
+                    );
+                  }
+
+                  // Fallback to older format
+                  return (promo as any).eligibleProductIds?.includes(
+                    productPrestashopId,
+                  );
+                });
+
+                // Fallback: mostrar todas las promos aplicadas si el producto tiene descuento inherente
+                const hasPromoDiscount =
+                  (item.product as any).totalSavings > 0 ||
+                  (item.product as any).promoDiscount > 0;
+
+                if (matchingPromos.length > 0) {
+                  return (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {matchingPromos.map((p) => (
+                        <span
+                          key={p.prestashopId}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20"
+                        >
+                          <FaTag size={7} />
+                          {p.code} · -
+                          {p.totalSavings > 0 ? `S/${p.totalSavings}` : "desc."}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Variation Attributes */}
               {item.product.variationAttributes &&
