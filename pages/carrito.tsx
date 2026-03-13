@@ -574,6 +574,7 @@ export default function Carrito() {
         showToast("¡Cupón aplicado con éxito!", "success");
         // Refresh cart: updates items, totals (discount, promoDiscount), product prices
         await syncCart();
+        await fetchPromoSuggestions();
       } else {
         showToast(res.message || "Cupón inválido", "error");
       }
@@ -591,6 +592,7 @@ export default function Carrito() {
       setCouponDiscount(0);
       showToast("Cupón eliminado", "success");
       await syncCart();
+      await fetchPromoSuggestions();
     } catch (err: any) {
       showToast(err.message || "Error al eliminar el cupón", "error");
     }
@@ -811,7 +813,7 @@ export default function Carrito() {
       );
 
       if (itemToRemove && appliedPromotions.length > 0) {
-        const productPrestashopId = itemToRemove.product.productId;
+        const productPrestashopId = Number(itemToRemove.product.productId);
         const couponsToRemove: AppliedPromotion[] = [];
 
         // Pre-calcular una sola vez si el producto está en algún grupo de COMBO_2
@@ -1273,7 +1275,7 @@ export default function Carrito() {
           guestData.tipoDocumento === "RUC"
             ? 11
             : guestData.tipoDocumento === "DNI" ||
-                guestData.tipoDocumento === "PASAPORTE"
+              guestData.tipoDocumento === "PASAPORTE"
               ? 8
               : 12; // CE
       } else if (name === "celular" || name === "telefonoOpcional") {
@@ -1702,17 +1704,17 @@ export default function Carrito() {
       const invoiceData =
         isLoggedIn && user
           ? {
-              tipoDocumento: user.documentType || "DNI",
-              numeroDocumento: user.documentNumber || "",
-              nombres: user.firstName || "",
-              apellidos: user.lastName || "",
-            }
+            tipoDocumento: user.documentType || "DNI",
+            numeroDocumento: user.documentNumber || "",
+            nombres: user.firstName || "",
+            apellidos: user.lastName || "",
+          }
           : {
-              tipoDocumento: guestData.tipoDocumento || "DNI",
-              numeroDocumento: guestData.numeroDocumento || "",
-              nombres: guestData.nombre || "",
-              apellidos: guestData.apellido || "",
-            };
+            tipoDocumento: guestData.tipoDocumento || "DNI",
+            numeroDocumento: guestData.numeroDocumento || "",
+            nombres: guestData.nombre || "",
+            apellidos: guestData.apellido || "",
+          };
 
       const orderResponse = await createOrder({
         invoiceType: "boleta",
@@ -1892,7 +1894,7 @@ export default function Carrito() {
               missingInfo.length > 0
                 ? `Falta información: ${missingInfo.join(", ")}`
                 : summary.message ||
-                  "Por favor completa toda la información requerida";
+                "Por favor completa toda la información requerida";
 
             showToast(errorMsg, "error");
             // We stay in the cart as per latest requirement
@@ -1938,7 +1940,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-              "Por favor completa toda la información requerida",
+            "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
@@ -1964,7 +1966,7 @@ export default function Carrito() {
         } else {
           showToast(
             summary.message ||
-              "Por favor completa toda la información requerida",
+            "Por favor completa toda la información requerida",
             "error",
           );
           // We stay in the cart
@@ -2482,9 +2484,8 @@ export default function Carrito() {
                           checked={registroData.acceptTerms}
                           onChange={handleRegistroChange}
                           disabled={isLoginLoading}
-                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
-                            registroErrors.acceptTerms ? "border-error" : ""
-                          }`}
+                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${registroErrors.acceptTerms ? "border-error" : ""
+                            }`}
                         />
                         <span className="text-sm text-gray-700">
                           Acepto los{" "}
@@ -2519,9 +2520,8 @@ export default function Carrito() {
                           checked={registroData.receiveOffers}
                           onChange={handleRegistroChange}
                           disabled={isLoginLoading}
-                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${
-                            registroErrors.receiveOffers ? "border-error" : ""
-                          }`}
+                          className={`mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary disabled:cursor-not-allowed ${registroErrors.receiveOffers ? "border-error" : ""
+                            }`}
                         />
                         <span className="text-sm text-gray-700">
                           Quiero recibir ofertas y beneficios exclusivos
@@ -2690,9 +2690,9 @@ export default function Carrito() {
                 userData={
                   user
                     ? {
-                        ...user,
-                        telefono: customTelefono || (user as any).telefono,
-                      }
+                      ...user,
+                      telefono: customTelefono || (user as any).telefono,
+                    }
                     : null
                 }
                 userAddress={userAddresses.find((a) => a.isMain)}

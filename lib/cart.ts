@@ -90,6 +90,8 @@ export interface AppliedPromotion {
     prestashopId: number;
     productId?: number;
     totalSavings: number;
+    eligibleProducts?: (EligibleProduct | Combo2EligibleGroup)[];
+    steps?: ComboPlanStep[];
 }
 
 /**

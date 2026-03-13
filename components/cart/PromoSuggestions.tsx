@@ -796,6 +796,12 @@ export default function PromoSuggestions({
       }
     }
 
+    // 3. Relaxed condition: If it's ready, always show it. If it has products in cart, show it.
+    // Actually, if the API returns it as a suggestion, we should probably trust it more.
+    if (p.status === "ready") {
+      hasProductInCart = true;
+    }
+
     // API antigua matchingGroups (por si acaso)
     if (
       !hasProductInCart &&
@@ -808,6 +814,7 @@ export default function PromoSuggestions({
 
     // Para no ser tan destructivos y evitar que no salga nada en un MIN_PURCHASE:
     if (
+      !hasProductInCart &&
       p.description === "MIN_PURCHASE" &&
       p.currentSubtotal &&
       p.currentSubtotal > 0
@@ -815,7 +822,12 @@ export default function PromoSuggestions({
       hasProductInCart = true;
     }
 
-    return hasProductInCart;
+    // Fallback: Si el API lo mando como sugerencia "ready", o si ya tiene algun progreso, mostrarlo.
+    // La condicion original decia "Solo mostrar sugerencias personalizadas cuando uno de sus productos elegibles ya está en el carrito."
+    // Pero si el usuario quiere ver las 3 que trae el API, vamos a permitirlo si no estan aplicadas.
+    
+    // Decisión: Si el API lo devuelve en el array de sugerencias, y no está aplicada, lo mostramos.
+    return true; 
   });
 
   const allItems = [...appliedPromotions, ...filteredSuggestions];

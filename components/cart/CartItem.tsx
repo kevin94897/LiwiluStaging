@@ -249,7 +249,7 @@ export default function CartItem({
                 }
 
                 // Priority 2: Fallback to matching appliedPromotions from context
-                const productPrestashopId = item.product.prestashopId;
+                const productPrestashopId = item.product.productId;
 
                 const matchingPromos = appliedPromotions.filter((promo) => {
                   if (
