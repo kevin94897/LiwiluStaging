@@ -174,7 +174,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // @ts-ignore: Adding extra properties for utils compatibility
       discountPrice: cartProduct.discountPrice,
       defaultVariation: defaultVariation,
-    };
+      // @ts-ignore: Adding extra properties for utils compatibility
+      promoCodes: cartProduct.promoCodes,
+      // @ts-ignore: Adding extra properties for utils compatibility
+      promoDiscount: cartProduct.promoDiscount,
+    } as unknown as Product;
   };
 
   /**

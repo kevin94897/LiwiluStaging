@@ -101,20 +101,20 @@ export default function CartSummary({
       : trimegistoApplied;
   const finalTotal = Math.max(
     activeTotals.total -
-      (trismegistoDiscountFromApi > 0 ? 0 : trimegistoApplied),
+    (trismegistoDiscountFromApi > 0 ? 0 : trimegistoApplied),
     0,
   );
 
   return (
-    <div className="lg:col-span-1 z-10 space-y-6">
+    <div className="lg:col-span-1 z-10 lg:sticky lg:top-32 self-start space-y-6">
       {/* === SALDO TRIMEGISTO === */}
       {isTrimegisto && (
         <TrimegistoBalance
           cartTotal={Math.max(
             0,
             activeTotals.subtotal -
-              (activeTotals.discount ?? 0) -
-              (activeTotals.promoDiscount ?? 0),
+            (activeTotals.discount ?? 0) -
+            (activeTotals.promoDiscount ?? 0),
           )}
           initialBalanceAmount={balanceAmount}
           initialBalanceInstallments={balanceInstallments}
@@ -163,7 +163,7 @@ export default function CartSummary({
       </div>
 
       {/* === SECCIÓN RESUMEN === */}
-      <div className="bg-white rounded-sm shadow-lg p-6 lg:sticky lg:top-32 animate-fade-in">
+      <div className="bg-white rounded-sm shadow-lg p-6 animate-fade-in">
         <h2 className="text-xl font-semibold mb-6">Resumen del pedido</h2>
 
         {/* Detalle */}
@@ -253,7 +253,7 @@ export default function CartSummary({
             <span>Envío ({selectedCarrier?.name || "Pendiente"})</span>
             <span className="font-semibold">
               {!metodoEnvio ||
-              (metodoEnvio === "delivery" && !hasDeliveryDistrict) ? (
+                (metodoEnvio === "delivery" && !hasDeliveryDistrict) ? (
                 <span className="text-gray-400 font-normal text-sm">
                   Pendiente
                 </span>

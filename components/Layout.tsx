@@ -21,21 +21,23 @@ export default function Layout({ title, description, children, background }: Lay
 				/>
 			</Head>
 
-			<div className="min-h-screen flex flex-col bg-gray-50 relative overflow-hidden">
+			<div className="min-h-screen flex flex-col bg-gray-50 relative">
 				<Header />
 
-				<main className="flex-grow mt-[130px] lg:mt-[85px] overflow-hidden relative" >
+				<main className="flex-grow mt-[130px] lg:mt-[85px] relative" >
 					{background && (
-						<div className="absolute -right-60 md:-right-32 top-30 md:top-32 w-auto z-10 pointer-events-none hidden lg:block">
-							<Image
-								src="/images/vectores/liwilu_banner_productos_vector_04.png"
-								alt="background decoration"
-								width={408}
-								height={427}
-								quality={100}
-								className="h-auto"
-								priority
-							/>
+						<div className="absolute inset-x-0 top-0 bottom-0 overflow-hidden z-10 pointer-events-none hidden lg:block">
+							<div className="absolute -right-60 md:-right-32 top-30 md:top-32 w-auto">
+								<Image
+									src="/images/vectores/liwilu_banner_productos_vector_04.png"
+									alt="background decoration"
+									width={408}
+									height={427}
+									quality={100}
+									className="h-auto"
+									priority
+								/>
+							</div>
 						</div>
 					)}
 					{children}

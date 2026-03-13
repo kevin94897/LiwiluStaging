@@ -37,13 +37,12 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
   return (
     <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1">
       <div
-        className={`h-1.5 rounded-full transition-all duration-700 ease-out ${
-          isComplete
-            ? "bg-green-500"
-            : numValue > 0
-              ? "bg-primary"
-              : "bg-gray-300"
-        }`}
+        className={`h-1.5 rounded-full transition-all duration-700 ease-out ${isComplete
+          ? "bg-green-500"
+          : numValue > 0
+            ? "bg-primary"
+            : "bg-gray-300"
+          }`}
         style={{ width: `${pct}%` }}
       />
     </div>
@@ -53,14 +52,22 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 function StatusPill({
   isApplied,
   isReady,
+  isDisabled,
 }: {
   isApplied: boolean;
   isReady: boolean;
+  isDisabled?: boolean;
 }) {
   if (isApplied)
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-green-100 text-green-700">
         <FaCheck size={8} /> Aplicado
+      </span>
+    );
+  if (isDisabled)
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-100 text-red-600">
+        <FaLock size={8} /> No disponible
       </span>
     );
   if (isReady)
@@ -99,7 +106,7 @@ function ProductChip({
   const inCart = !!p.inCart;
   const href = p.linkRewrite
     ? `/tienda/${p.linkRewrite}`
-    : `/tienda/${p.productId || p.prestashopId}`;
+    : `/tienda/${p.productId ?? p.prestashopId}`;
 
   const handleAdd = async (e: React.MouseEvent) => {
     e.preventDefault(); // Evitar navegar por el Link
@@ -109,8 +116,8 @@ function ProductChip({
     try {
       await addToCart(
         {
-          id: p.prestashopId || p.productId,
-          productId: p.prestashopId || Number(p.productId),
+          id: p.productId ?? p.prestashopId,
+          productId: Number(p.productId ?? p.prestashopId),
           name: p.name,
           price: p.priceWithDiscount ?? p.price,
           coverImage: p.coverImage,
@@ -132,11 +139,10 @@ function ProductChip({
   return (
     <Link
       href={href}
-      className={`relative flex items-center gap-3 rounded-sm px-3 py-2.5 border min-w-[220px] transition-all hover:shadow-sm active:scale-[0.98] ${
-        inCart || highlight
-          ? "bg-primary/5 border-primary/25 hover:bg-primary/10 pb-2.5"
-          : "bg-gray-50 border-gray-100 hover:bg-gray-100 pb-2.5"
-      }`}
+      className={`relative flex items-center gap-3 rounded-sm px-3 py-2.5 border min-w-[220px] transition-all hover:shadow-sm active:scale-[0.98] ${inCart || highlight
+        ? "bg-primary/5 border-primary/25 hover:bg-primary/10 pb-2.5"
+        : "bg-gray-50 border-gray-100 hover:bg-gray-100 pb-2.5"
+        }`}
     >
       <div className="w-14 h-14 shrink-0 rounded overflow-hidden bg-white flex items-center justify-center">
         <Image
@@ -197,27 +203,24 @@ function ProductChip({
 function StepRow({ step }: { step: ComboPlanStep }) {
   return (
     <div
-      className={`flex gap-3 p-3 rounded-sm border ${
-        step.completed
-          ? "border-green-200 bg-green-50"
-          : "border-gray-100 bg-gray-50"
-      }`}
+      className={`flex gap-3 p-3 rounded-sm border ${step.completed
+        ? "border-green-200 bg-green-50"
+        : "border-gray-100 bg-gray-50"
+        }`}
     >
       <div
-        className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold ${
-          step.completed
-            ? "bg-green-500 text-white"
-            : "bg-gray-200 text-gray-500"
-        }`}
+        className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold ${step.completed
+          ? "bg-green-500 text-white"
+          : "bg-gray-200 text-gray-500"
+          }`}
       >
         {step.completed ? <FaCheck size={7} /> : step.step}
       </div>
 
       <div className="flex-1 min-w-0 space-y-2">
         <p
-          className={`text-xs leading-snug ${
-            step.completed ? "text-green-700 font-semibold" : "text-gray-600"
-          }`}
+          className={`text-xs leading-snug ${step.completed ? "text-green-700 font-semibold" : "text-gray-600"
+            }`}
         >
           {step.description}
         </p>
@@ -247,10 +250,12 @@ function PromoCard({
   promo,
   onApply,
   isApplying,
+  isAnyPromoApplied,
 }: {
   promo: PromoSuggestion | AppliedPromotion;
   onApply: (code: string) => void;
   isApplying: boolean;
+  isAnyPromoApplied?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -283,13 +288,12 @@ function PromoCard({
         onClick={() => setOpen((prev) => !prev)}
       >
         <div
-          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-            isApplied
-              ? "bg-green-100"
-              : isReady
-                ? "bg-primary/10"
-                : "bg-gray-100"
-          }`}
+          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isApplied
+            ? "bg-green-100"
+            : isReady
+              ? "bg-primary/10"
+              : "bg-gray-100"
+            }`}
         >
           <FaTag
             size={12}
@@ -308,7 +312,7 @@ function PromoCard({
             <p className="font-semibold text-sm text-gray-800 leading-tight truncate">
               {promo.name}
             </p>
-            <StatusPill isApplied={!!isApplied} isReady={isReady} />
+            <StatusPill isApplied={!!isApplied} isReady={isReady} isDisabled={isAnyPromoApplied && !isApplied} />
           </div>
           {discountLabel && (
             <p
@@ -431,13 +435,12 @@ function PromoCard({
                           {pendingGroups.length > 0 && (
                             <div className="space-y-2">
                               <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
-                                Grupos pendientes — elige 1 producto de
-                                cualquiera
+                                Grupos disponibles - elige 1 producto de cualquiera
                               </p>
                               {pendingGroups.map((g) => (
                                 <div
                                   key={g.groupIndex}
-                                  className="rounded-md p-2.5 border bg-gray-50 border-gray-200"
+                                  className="rounded-md p-2.5 border bg-gray-200 border-gray-200"
                                 >
                                   <span className="text-xs font-semibold text-gray-500 block mb-2">
                                     Grupo {g.groupIndex + 1}
@@ -665,38 +668,46 @@ function PromoCard({
 
                 {/* CTA */}
                 {!isApplied && isReady && (
-                  <button
-                    onClick={() => onApply(promo.code)}
-                    disabled={isApplying}
-                    className="mt-4 w-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2.5 rounded-md transition-all duration-150"
-                  >
-                    {isApplying ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg
-                          className="animate-spin h-3.5 w-3.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8v8z"
-                          />
-                        </svg>
-                        Aplicando...
-                      </span>
-                    ) : (
-                      `Aplicar ${promo.code}`
+                  <div className="mt-4 space-y-2">
+                    <button
+                      onClick={() => onApply(promo.code)}
+                      disabled={isApplying || isAnyPromoApplied}
+                      className="w-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2.5 rounded-md transition-all duration-150"
+                    >
+                      {isApplying ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg
+                            className="animate-spin h-3.5 w-3.5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                          Aplicando...
+                        </span>
+                      ) : (
+                        "Aplicar promoción"
+                      )}
+                    </button>
+                    {isAnyPromoApplied && (
+                      <p className="text-[11px] text-gray-500 text-center flex items-center justify-center gap-1.5 font-medium bg-gray-50 py-1.5 rounded border border-gray-100/50">
+                        <FaLock className="text-gray-400" size={10} />
+                        Solo puedes aplicar una promoción a la vez
+                      </p>
                     )}
-                  </button>
+                  </div>
                 )}
               </>
             )}
@@ -713,7 +724,7 @@ export default function PromoSuggestions({
   onApplyPromo,
   isApplyingCoupon,
 }: PromoSuggestionsProps) {
-  const appliedIds = new Set(appliedPromotions.map((p) => p.prestashopId));
+  const appliedIds = new Set(appliedPromotions.map((p) => p.productId ?? p.prestashopId));
 
   // Condición pedida por el cliente: Si hay un producto elegible del COMBO_2 en el carrito,
   // se debe sugerir también el COMBO_PLAN.
@@ -737,7 +748,7 @@ export default function PromoSuggestions({
   // Condición pedida: Sólo mostrar sugerencias personalizadas cuando uno de sus productos elegibles ya está en el carrito.
   const filteredSuggestions = suggestions.filter((p) => {
     // 1. Ocultar si ya está aplicada
-    if (appliedIds.has(p.prestashopId)) return false;
+    if (appliedIds.has(p.productId ?? p.prestashopId)) return false;
 
     // 2. Comprobar si hay algún producto elegible en el carrito
     let hasProductInCart = false;
@@ -820,12 +831,12 @@ export default function PromoSuggestions({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+          {/* <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
             <FaTag size={13} className="text-primary" />
-          </div>
+          </div> */}
           <div>
-            <h3 className="text-sm font-bold text-gray-800 leading-tight">
-              Promociones personalizadas
+            <h3 className="text-md font-bold text-gray-800 leading-tight">
+              Sugerencias de promociones
             </h3>
             <p className="text-xs text-gray-400">
               {allItems.length} promocion{allItems.length !== 1 ? "es" : ""}
@@ -844,10 +855,11 @@ export default function PromoSuggestions({
       <div className="space-y-2">
         {allItems.map((promo) => (
           <PromoCard
-            key={promo.prestashopId}
+            key={promo.productId ?? promo.prestashopId}
             promo={promo}
             onApply={onApplyPromo}
             isApplying={isApplyingCoupon}
+            isAnyPromoApplied={appliedPromotions.length > 0}
           />
         ))}
       </div>

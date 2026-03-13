@@ -802,8 +802,8 @@ export default function Checkout() {
       // ═══════════════════════════════════════════════════════════
       logger.log(
         "💳 Procesando pago con tarjeta para orden " +
-          currentPendingOrderId +
-          "...",
+        currentPendingOrderId +
+        "...",
       );
 
       payResponse = await payOrder(
@@ -1356,23 +1356,23 @@ export default function Checkout() {
           invoiceData:
             tipoComprobante === "boleta"
               ? {
-                  tipoDocumento: datosBoleta.tipoDocumento,
-                  numeroDocumento: datosBoleta.numeroDocumento,
-                  nombres: datosBoleta.nombres,
-                  apellidos: datosBoleta.apellidos,
-                  direccion: datosBoleta.direccion,
-                  departamento: datosBoleta.departamento,
-                  provincia: datosBoleta.provincia,
-                  distrito: datosBoleta.distrito,
-                }
+                tipoDocumento: datosBoleta.tipoDocumento,
+                numeroDocumento: datosBoleta.numeroDocumento,
+                nombres: datosBoleta.nombres,
+                apellidos: datosBoleta.apellidos,
+                direccion: datosBoleta.direccion,
+                departamento: datosBoleta.departamento,
+                provincia: datosBoleta.provincia,
+                distrito: datosBoleta.distrito,
+              }
               : {
-                  ruc: datosFactura.ruc,
-                  razonSocial: datosFactura.razonSocial,
-                  direccionFiscal: datosFactura.direccionFiscal,
-                  departamento: datosFactura.departamento,
-                  provincia: datosFactura.provincia,
-                  distrito: datosFactura.distrito,
-                },
+                ruc: datosFactura.ruc,
+                razonSocial: datosFactura.razonSocial,
+                direccionFiscal: datosFactura.direccionFiscal,
+                departamento: datosFactura.departamento,
+                provincia: datosFactura.provincia,
+                distrito: datosFactura.distrito,
+              },
         };
 
         const orderResponse = await createOrder(invoicePayload);
@@ -1535,7 +1535,7 @@ export default function Checkout() {
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8 my-24 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-fade-in">
           {/* COLUMNA IZQUIERDA - FORMULARIO */}
           <div className="lg:col-span-2 space-y-6">
             {/* Botón volver */}
@@ -1573,21 +1573,19 @@ export default function Checkout() {
               <div className="flex gap-4 mb-6">
                 <button
                   onClick={() => setTipoComprobante("boleta")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                    tipoComprobante === "boleta"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "boleta"
+                    ? "border-primary bg-primary text-white"
+                    : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                 >
                   Boleta
                 </button>
                 <button
                   onClick={() => setTipoComprobante("factura")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                    tipoComprobante === "factura"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "factura"
+                    ? "border-primary bg-primary text-white"
+                    : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                 >
                   Factura
                 </button>
@@ -1642,16 +1640,15 @@ export default function Checkout() {
                           }
                           maxLength={
                             datosBoleta.tipoDocumento === "DNI" ||
-                            datosBoleta.tipoDocumento === "PASAPORTE"
+                              datosBoleta.tipoDocumento === "PASAPORTE"
                               ? 8
                               : 12
                           }
                           className={`
                             w-full px-4 py-3 border-2 rounded-sm transition-all duration-200 outline-none
-                            ${
-                              errors.rucBoleta
-                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
-                                : "border-gray-200 focus:border-primary focus:ring-2 focus:ring-green-200 hover:border-green-400"
+                            ${errors.rucBoleta
+                              ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
+                              : "border-gray-200 focus:border-primary focus:ring-2 focus:ring-green-200 hover:border-green-400"
                             }
                             ${datosBoleta.tipoDocumento === "DNI" ? "pr-12" : ""}
                           `.trim()}
@@ -2016,11 +2013,10 @@ export default function Checkout() {
               <div className="space-y-3">
                 <button
                   onClick={() => setMetodoPago("card")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                    metodoPago === "card"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "card"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex -space-x-2">
@@ -2054,11 +2050,10 @@ export default function Checkout() {
 
                 <button
                   onClick={() => setMetodoPago("async")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                    metodoPago === "async"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
+                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "async"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary/50"
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <FaQrcode className="text-2xl text-purple-600" />
@@ -2106,8 +2101,8 @@ export default function Checkout() {
           </div>
 
           {/* COLUMNA DERECHA - RESUMEN */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-md shadow-lg p-6 sticky top-24">
+          <div className="lg:col-span-1 lg:sticky lg:top-32 self-start animate-fade-in relative z-10">
+            <div className="bg-white rounded-md shadow-lg p-6">
               <h2 className="text-xl font-semibold mb-6">Resumen del pedido</h2>
 
               <div className="space-y-4 mb-6">

@@ -14,6 +14,7 @@ import {
   getRegularPrice,
   hasDiscount,
 } from "@/lib/utils";
+import { FaTag } from "react-icons/fa6";
 import { CartItem as CartItemType } from "@/context/CartContext";
 import {
   SavarStockValidationResult,
@@ -108,11 +109,10 @@ export default function CartItem({
 
   return (
     <div
-      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${
-        itemStockStatus === "available"
-          ? "border-2 border-primary"
-          : "border-2 border-transparent"
-      }`}
+      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${itemStockStatus === "available"
+        ? "border-2 border-primary"
+        : "border-2 border-transparent"
+        }`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
       {/* Overlay Loader */}
@@ -224,6 +224,31 @@ export default function CartItem({
 
               {/* Badge cupón aplicado */}
               {(() => {
+                const { promoCodes, promoDiscount, totalSavings } = item.product as any;
+
+                // Priority 1: Backend explicit promo properties
+                if (promoCodes && promoCodes.length > 0) {
+                  return (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {promoCodes.map((code: string, i: number) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1 text-[13px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20"
+                        >
+                          <FaTag size={10} />
+                          {code}
+                          {promoDiscount && promoDiscount > 0
+                            ? ` | -S/${promoDiscount}`
+                            : totalSavings && totalSavings > 0
+                              ? ` | -S/${totalSavings}`
+                              : ""}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                }
+
+                // Priority 2: Fallback to matching appliedPromotions from context
                 const productPrestashopId = item.product.prestashopId;
 
                 const matchingPromos = appliedPromotions.filter((promo) => {
@@ -260,11 +285,6 @@ export default function CartItem({
                     productPrestashopId,
                   );
                 });
-
-                // Fallback: mostrar todas las promos aplicadas si el producto tiene descuento inherente
-                const hasPromoDiscount =
-                  (item.product as any).totalSavings > 0 ||
-                  (item.product as any).promoDiscount > 0;
 
                 if (matchingPromos.length > 0) {
                   return (
@@ -368,7 +388,7 @@ export default function CartItem({
                   );
                   if (productIssue) {
                     return (
-                      <div className="flex items-center gap-1.5 text-red-600 font-medium text-xs mb-2 hidden">
+                      <div className="flex items-center gap-1.5 text-red-600 font-medium text-xs mb-2">
                         <FaTimesCircle className="shrink-0" />
                         <span>{productIssue.mensaje}</span>
                       </div>

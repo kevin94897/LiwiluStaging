@@ -88,6 +88,7 @@ export interface AppliedPromotion {
     name: string;
     description: string;
     prestashopId: number;
+    productId?: number;
     totalSavings: number;
 }
 
@@ -1450,6 +1451,7 @@ export interface ComboPlanStep {
 
 export interface PromoSuggestion {
     prestashopId: number;
+    productId?: number;
     code: string;
     name: string;
     description: 'COMBO_2' | 'QTY_DISCOUNT' | 'COMBO_PLAN' | 'MIN_PURCHASE' | string;

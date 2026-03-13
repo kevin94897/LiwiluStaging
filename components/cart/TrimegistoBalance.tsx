@@ -82,7 +82,7 @@ export default function TrimegistoBalance({
                 "/so-tp/consultar-saldo",
                 {
                     numero_documento: user.documentNumber,
-                    tipo_documento: user.documentType || "DNI",
+                    opcion: "consultar_saldo",
                 },
                 { skipAuth: true }
             );
