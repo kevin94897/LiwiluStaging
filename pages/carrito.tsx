@@ -1671,25 +1671,26 @@ export default function Carrito() {
       }
 
       // Fallback: Check if error message contains validation keywords
-      if (
-        error.message &&
-        (error.message.toLowerCase().includes("documento") ||
-          error.message.toLowerCase().includes("celular"))
-      ) {
-        if (isLoggedIn) {
-          // For logged users, try to parse the error message
+      // Ahora mostramos los errores específicos para invitados para dar mayor precisión
+      if (isLoggedIn) {
+        // For logged users, try to parse the error message if it looks like validation
+        if (
+          error.message &&
+          (error.message.toLowerCase().includes("documento") ||
+            error.message.toLowerCase().includes("celular"))
+        ) {
           const messages = error.message
             .split(",")
             .map((m: string) => m.trim());
           const fieldErrors = parseValidationErrors(messages);
           setUserDataErrors(fieldErrors);
         } else {
-          // For guests, show the generic modal
-          setValidationErrorMessage(error.message);
-          setShowValidationModal(true);
+          showToast(error.message || "Error al procesar la información del carrito", "error");
         }
       } else {
-        showToast("Error al procesar la información del carrito", "error");
+        // Para invitados, siempre mostrar el error exacto en el modal en lugar del genérico
+        setValidationErrorMessage(error.message || "Error configurando los datos del envío");
+        setShowValidationModal(true);
       }
 
       return false;
@@ -1700,36 +1701,7 @@ export default function Carrito() {
     try {
       setIsValidatingStock(true);
 
-      // 1. Crear la orden pendiente con los datos reales del usuario
-      const invoiceData =
-        isLoggedIn && user
-          ? {
-            tipoDocumento: user.documentType || "DNI",
-            numeroDocumento: user.documentNumber || "",
-            nombres: user.firstName || "",
-            apellidos: user.lastName || "",
-          }
-          : {
-            tipoDocumento: guestData.tipoDocumento || "DNI",
-            numeroDocumento: guestData.numeroDocumento || "",
-            nombres: guestData.nombre || "",
-            apellidos: guestData.apellido || "",
-          };
-
-      const orderResponse = await createOrder({
-        invoiceType: "boleta",
-        invoiceData,
-      });
-
-      if (!orderResponse.success || !orderResponse.data?.orderId) {
-        throw new Error(
-          orderResponse.message || "Error al crear la orden previa",
-        );
-      }
-
-      const pendingOrderId = orderResponse.data.orderId;
-
-      // 2. Iniciar pre-orden Trimegisto con el saldo y cuotas seleccionadas
+      // Iniciar pre-orden Trimegisto con el saldo y cuotas seleccionadas
       // Se prioriza el override local (actualizado por el widget TrimegistoBalance)
       // y se cae al valor de totals como fallback
       const balanceAmount =
@@ -1743,13 +1715,11 @@ export default function Carrito() {
       );
 
       logger.log("🔮 [Trimegisto] Iniciando pre-orden:", {
-        pendingOrderId,
         balanceAmount,
         installments,
       });
 
       const trimegistoResponse = await initiateTrimegistoPreOrder(
-        pendingOrderId,
         balanceAmount,
         installments,
       );
@@ -1760,13 +1730,20 @@ export default function Carrito() {
         );
       }
 
-      // 3. Éxito: mostrar mensaje y redirigir a confirmación
+      // Éxito: mostrar mensaje
       logger.log(
         "✅ [Trimegisto] Pre-orden iniciada exitosamente:",
         trimegistoResponse.data,
       );
-      showToast("Confirmación enviada con éxito", "success");
-      router.push(`/checkout?orderId=${pendingOrderId}&source=trimegisto`);
+      
+      // Mostrar popup al usuario indicando que revise su correo
+      showToast("Pre-orden iniciada. Revisa tu correo para confirmar la compra.", "success");
+      
+      // Ya no redirigimos al checkout pendiente porque la orden no existe aún
+      // El usuario debe ir a su correo.
+      // Podríamos mostrar un SweetAlert o modal, pero el showToast y quedarse en la página
+      // con un mensaje claro es suficiente por ahora según el flujo descrito.
+      
     } catch (error: any) {
       logger.error("Error in Trimegisto checkout flow:", error);
       showToast(

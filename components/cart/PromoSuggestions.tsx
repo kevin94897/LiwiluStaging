@@ -90,6 +90,7 @@ function ProductChip({
   p: {
     productId?: string | number;
     prestashopId?: number;
+    url?: string;
     name: string;
     coverImage: string;
     price: number;
@@ -98,15 +99,44 @@ function ProductChip({
     priceWithDiscount?: number | null;
     linkRewrite?: string;
     hasVariations?: boolean;
+    // Flat combination (QTY_DISCOUNT format)
+    combinationId?: number;
+    combinationName?: string | null;
+    attributes?: { type: string; value: string; colorHex: string | null }[];
+    // Nested combinations array (COMBO_2 format)
+    combinations?: {
+      combinationId: number;
+      name: string | null;
+      price: number;
+      attributes: { type: string; value: string; colorHex: string | null }[];
+    }[];
   };
   highlight?: boolean;
 }) {
   const { addToCart } = useCart();
   const [isAdding, setIsAdding] = useState(false);
   const inCart = !!p.inCart;
-  const href = p.linkRewrite
-    ? `/tienda/${p.linkRewrite}`
-    : `/tienda/${p.productId ?? p.prestashopId}`;
+  const href = p.url
+    ? `/tienda/${p.url}`
+    : p.linkRewrite
+      ? `/tienda/${p.linkRewrite}`
+      : `/tienda/${p.productId ?? p.prestashopId}`;
+
+  // Determine if it's a variable product WITHOUT a specific combination selected
+  const hasSpecificCombo = p.combinationId != null || (p.combinations && p.combinations.length > 0);
+  const isVariableWithoutCombo = p.hasVariations === true && !hasSpecificCombo;
+
+  // We find the specific combinationId to use if available
+  const specificCombinationId = p.combinationId ?? (p.combinations && p.combinations.length > 0 ? p.combinations[0].combinationId : undefined);
+
+  // Collect attributes to show as tags
+  // Priority: flat attributes (QTY_DISCOUNT) > first combination's attributes (COMBO_2)
+  const attributeTags: { type: string; value: string; colorHex: string | null }[] =
+    p.attributes && p.attributes.length > 0
+      ? p.attributes
+      : p.combinations && p.combinations.length > 0
+        ? p.combinations[0].attributes
+        : [];
 
   const handleAdd = async (e: React.MouseEvent) => {
     e.preventDefault(); // Evitar navegar por el Link
@@ -124,6 +154,7 @@ function ProductChip({
           linkRewrite: p.linkRewrite,
           originalPrice: p.price,
           quantity: 1,
+          prestashopCombinationId: specificCombinationId,
         } as any,
         1,
       );
@@ -174,6 +205,10 @@ function ProductChip({
             </span>
           )}
         </div>
+        {/* "Ver opciones" hint for variable products without specific combo */}
+        {isVariableWithoutCombo && attributeTags.length === 0 && (
+          <p className="text-[12px] text-primary/70 mt-1 font-medium">Ver opciones →</p>
+        )}
       </div>
 
       {inCart ? (
@@ -181,7 +216,7 @@ function ProductChip({
           size={9}
           className="text-primary shrink-0 ml-auto absolute right-2 top-1/2 -translate-y-1/2"
         />
-      ) : p.hasVariations === false ? (
+      ) : !isVariableWithoutCombo ? (
         <button
           className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
           onClick={handleAdd}
@@ -825,9 +860,9 @@ export default function PromoSuggestions({
     // Fallback: Si el API lo mando como sugerencia "ready", o si ya tiene algun progreso, mostrarlo.
     // La condicion original decia "Solo mostrar sugerencias personalizadas cuando uno de sus productos elegibles ya está en el carrito."
     // Pero si el usuario quiere ver las 3 que trae el API, vamos a permitirlo si no estan aplicadas.
-    
+
     // Decisión: Si el API lo devuelve en el array de sugerencias, y no está aplicada, lo mostramos.
-    return true; 
+    return true;
   });
 
   const allItems = [...appliedPromotions, ...filteredSuggestions];

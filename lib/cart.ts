@@ -1350,12 +1350,10 @@ export async function getAsyncPaymentStatus(pendingOrderId: number | string): Pr
 
 /**
  * Initiate Trimegisto pre-order
- * @param pendingOrderId - The ID of the pending order generated at checkout
  * @param balanceAmount - The amount of the Trimegisto balance applied
  * @param installments - The number of installments
  */
 export async function initiateTrimegistoPreOrder(
-    pendingOrderId: number,
     balanceAmount: number,
     installments: number
 ): Promise<{ success: boolean; data?: any; message?: string }> {
@@ -1365,8 +1363,7 @@ export async function initiateTrimegistoPreOrder(
             '/orders/trismegisto/initiate',
             {
                 balanceAmount,
-                installments,
-                pendingOrderId
+                installments
             },
             {
                 skipAuth: !accessToken
@@ -1410,6 +1407,13 @@ export interface MatchingGroup {
 export interface EligibleProduct {
     productId?: number;
     prestashopId: number;
+    url?: string;                    // Pre-built URL slug, e.g. "polo?talla=4" → use /tienda/{url}
+    // --- Flat combination fields ---
+    combinationId?: number;
+    combinationName?: string | null;
+    attributes?: { type: string; value: string; colorHex: string | null }[];
+    quantityInCart?: number;
+    // ---
     name: string;
     price: number;
     coverImage: string;
@@ -1417,6 +1421,7 @@ export interface EligibleProduct {
     hasVariations?: boolean;
     inCart?: boolean;
     priceWithDiscount?: number;
+    // Nested combinations array (legacy / COMBO_2 format)
     combinations?: {
         combinationId: number;
         name: string | null;
