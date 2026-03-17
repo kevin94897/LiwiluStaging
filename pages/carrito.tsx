@@ -81,9 +81,9 @@ import {
   getPromoSuggestions,
   PromoSuggestion,
   AppliedPromotion,
-  initiateTrimegistoPreOrder,
 } from "@/lib/cart";
 import PromoSuggestions from "@/components/cart/PromoSuggestions";
+import TrismegistoBillingModal from "@/components/cart/TrismegistoBillingModal";
 import logger from "@/lib/logger";
 
 // Distritos disponibles
@@ -215,6 +215,7 @@ export default function Carrito() {
 
   // Estados para autorización de retiro
   const [showAutorizacionModal, setShowAutorizacionModal] = useState(false);
+  const [showTrismegistoBillingModal, setShowTrismegistoBillingModal] = useState(false);
   const [autorizacionData, setAutorizacionData] =
     useState<AutorizacionSchemaType | null>(null);
   const [isSelfPickup, setIsSelfPickup] = useState(true);
@@ -1697,63 +1698,7 @@ export default function Carrito() {
     }
   };
 
-  const handleTrimegistoCheckout = async () => {
-    try {
-      setIsValidatingStock(true);
 
-      // Iniciar pre-orden Trimegisto con el saldo y cuotas seleccionadas
-      // Se prioriza el override local (actualizado por el widget TrimegistoBalance)
-      // y se cae al valor de totals como fallback
-      const balanceAmount =
-        trimegistoOverride?.balanceAmount ?? totals.trismegistoBalance ?? 0;
-      const installments = Math.min(
-        Math.max(
-          trimegistoOverride?.installments ?? totals.balanceInstallments ?? 1,
-          1,
-        ),
-        3,
-      );
-
-      logger.log("🔮 [Trimegisto] Iniciando pre-orden:", {
-        balanceAmount,
-        installments,
-      });
-
-      const trimegistoResponse = await initiateTrimegistoPreOrder(
-        balanceAmount,
-        installments,
-      );
-
-      if (!trimegistoResponse.success) {
-        throw new Error(
-          trimegistoResponse.message || "Error al iniciar el flujo Trismegisto",
-        );
-      }
-
-      // Éxito: mostrar mensaje
-      logger.log(
-        "✅ [Trimegisto] Pre-orden iniciada exitosamente:",
-        trimegistoResponse.data,
-      );
-      
-      // Mostrar popup al usuario indicando que revise su correo
-      showToast("Pre-orden iniciada. Revisa tu correo para confirmar la compra.", "success");
-      
-      // Ya no redirigimos al checkout pendiente porque la orden no existe aún
-      // El usuario debe ir a su correo.
-      // Podríamos mostrar un SweetAlert o modal, pero el showToast y quedarse en la página
-      // con un mensaje claro es suficiente por ahora según el flujo descrito.
-      
-    } catch (error: any) {
-      logger.error("Error in Trimegisto checkout flow:", error);
-      showToast(
-        error.message || "Error al procesar el pedido Trismegisto",
-        "error",
-      );
-    } finally {
-      setIsValidatingStock(false);
-    }
-  };
 
   const handleCheckoutSubmit = async () => {
     if (!acceptTerms) {
@@ -1845,7 +1790,7 @@ export default function Carrito() {
           // FIXED: Check summary.data.isComplete instead of summary.isComplete
           if (summary.success && summary.data?.isComplete) {
             if (totals.trismegistoBalance && totals.trismegistoBalance > 0) {
-              handleTrimegistoCheckout();
+              setShowTrismegistoBillingModal(true);
             } else {
               router.push("/checkout");
             }
@@ -1910,7 +1855,7 @@ export default function Carrito() {
         // FIXED: Check summary.data.isComplete instead of summary.isComplete
         if (summary.success && summary.data?.isComplete) {
           if (totals.trismegistoBalance && totals.trismegistoBalance > 0) {
-            handleTrimegistoCheckout();
+            setShowTrismegistoBillingModal(true);
           } else {
             router.push("/checkout");
           }
@@ -1936,7 +1881,7 @@ export default function Carrito() {
         // FIXED: Check summary.data.isComplete instead of summary.isComplete
         if (summary.success && summary.data?.isComplete) {
           if (totals.trismegistoBalance && totals.trismegistoBalance > 0) {
-            handleTrimegistoCheckout();
+            setShowTrismegistoBillingModal(true);
           } else {
             router.push("/checkout");
           }
@@ -2887,6 +2832,14 @@ export default function Carrito() {
         showValidationModal={showValidationModal}
         onCloseValidation={() => setShowValidationModal(false)}
         validationMessage={validationErrorMessage}
+      />
+
+      <TrismegistoBillingModal
+        isOpen={showTrismegistoBillingModal}
+        onClose={() => setShowTrismegistoBillingModal(false)}
+        balanceAmount={trimegistoOverride?.balanceAmount ?? totals.trismegistoBalance ?? 0}
+        installments={trimegistoOverride?.installments ?? totals.balanceInstallments ?? 1}
+        cartTotal={totals.total}
       />
     </Layout>
   );

@@ -957,7 +957,16 @@ export async function payOrder(orderId: string | number, data: {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `Error processing payment: ${response.statusText}`);
+            // Usar merchantMessage si está disponible, sino el mensaje genérico
+            const errMessage =
+                errorData.error?.merchantMessage ||
+                errorData.message ||
+                `Error processing payment: ${response.statusText}`;
+            const err: any = new Error(errMessage);
+            err.code = errorData.error?.code;
+            err.declineCode = errorData.error?.declineCode;
+            err.error = errorData.error; // Preservar el objeto error completo
+            throw err;
         }
 
         return await response.json();
@@ -1016,6 +1025,7 @@ export async function createCulqiOrder(pendingOrderId: string | number, email: s
 export async function createOrder(data: {
     invoiceType: string;
     invoiceData?: any;
+    preOrderId?: string;
 }): Promise<{ success: boolean; data?: { orderId: number;[key: string]: any }; orderId?: number; message?: string;[key: string]: any }> {
     try {
         const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -1348,39 +1358,7 @@ export async function getPendingOrderAttempt(status: string): Promise<{ success:
 export async function getAsyncPaymentStatus(pendingOrderId: number | string): Promise<any> {
 }
 
-/**
- * Initiate Trimegisto pre-order
- * @param balanceAmount - The amount of the Trimegisto balance applied
- * @param installments - The number of installments
- */
-export async function initiateTrimegistoPreOrder(
-    balanceAmount: number,
-    installments: number
-): Promise<{ success: boolean; data?: any; message?: string }> {
-    try {
-        const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const response = await apiPost(
-            '/orders/trismegisto/initiate',
-            {
-                balanceAmount,
-                installments
-            },
-            {
-                skipAuth: !accessToken
-            }
-        );
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `Error initiating trimegisto order: ${response.statusText}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        logger.error('Error in initiateTrimegistoPreOrder:', error);
-        throw error;
-    }
-}
 
 // ─────────────────────────────────────────────
 // CUPONES Y SUGERENCIAS DE PROMOCIONES

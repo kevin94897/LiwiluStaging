@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import Layout from "@/components/Layout";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { getProductImageUrl, formatPrice, getProductName } from "@/lib/utils";
 import { FaCreditCard, FaQrcode, FaTag } from "react-icons/fa";
@@ -62,8 +62,20 @@ const findMatchingLocation = (
 
 export default function Checkout() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuth();
   const { items, getCartTotal, clearCart, totals, syncCart } = useCart();
+
+  // Trimegisto pre-order ID from email link (e.g. /checkout?preOrderId=...)
+  const [trimegistoPreOrderId, setTrimegistoPreOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const pid = searchParams?.get("preOrderId");
+    if (pid) {
+      setTrimegistoPreOrderId(pid);
+      logger.log("🔮 [Checkout] Trimegisto preOrderId detectado:", pid);
+    }
+  }, [searchParams]);
 
   // ============================================
   // ESTADO DEL FORMULARIO
@@ -859,9 +871,15 @@ export default function Checkout() {
         logger.log("✅ Pago confirmado para orden #" + confirmedOrderId);
         await handlePaymentSuccess(confirmedOrderId);
       } else {
+        // Preferir merchantMessage (detallado) sobre el message genérico
         const errorMsg =
-          payResponse.message || "El pago no pudo ser completado.";
-        throw new Error(errorMsg);
+          payResponse.error?.merchantMessage ||
+          payResponse.message ||
+          "El pago no pudo ser completado.";
+        const err: any = new Error(errorMsg);
+        err.code = payResponse.error?.code;
+        err.declineCode = payResponse.error?.declineCode;
+        throw err;
       }
     } catch (error: any) {
       logger.error("❌ Error en pago con tarjeta:", error);
@@ -1040,6 +1058,7 @@ export default function Checkout() {
 
     let message =
       error.user_message ||
+      error.error?.merchantMessage ||
       error.message ||
       "Ocurrió un error al procesar el pago. Por favor, intenta con otra tarjeta o método de pago.";
     let actionLabel: string | undefined;
@@ -1375,7 +1394,10 @@ export default function Checkout() {
               },
         };
 
-        const orderResponse = await createOrder(invoicePayload);
+        const orderResponse = await createOrder({
+          ...invoicePayload,
+          ...(trimegistoPreOrderId ? { preOrderId: trimegistoPreOrderId } : {}),
+        });
         if (!orderResponse.success || !orderResponse.data?.pendingOrderId) {
           throw new Error(orderResponse.message || "Error al crear la orden");
         }
@@ -1560,6 +1582,18 @@ export default function Checkout() {
                 Volver al carrito
               </button>
             </div>
+
+            {/* TRIMEGISTO NOTICE - Solo si viene del link del correo */}
+            {trimegistoPreOrderId && (
+              <div className="bg-purple-50 border border-purple-200 rounded-md p-4 flex items-start gap-3">
+                <div>
+                  <p className="font-semibold text-purple-900 text-sm">Pago con saldo Trimegisto</p>
+                  <p className="text-purple-700 text-sm mt-0.5">
+                    Estás completando el pago de tu pre-orden aprobada. Selecciona tu comprobante, método de pago y confirma.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* TIPO DE COMPROBANTE */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">

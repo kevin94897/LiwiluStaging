@@ -36,12 +36,39 @@ export interface PreOrder {
 }
 
 /**
+ * Invoice data for Boleta
+ */
+export interface InvoiceDataBoleta {
+  tipoDocumento: string;
+  numeroDocumento: string;
+  nombres: string;
+  apellidos: string;
+  direccion: string;
+  departamento: string;
+  provincia: string;
+  distrito: string;
+}
+
+/**
+ * Invoice data for Factura
+ */
+export interface InvoiceDataFactura {
+  ruc: string;
+  razonSocial: string;
+  direccionFiscal: string;
+  departamento: string;
+  provincia: string;
+  distrito: string;
+}
+
+/**
  * Initiate Trimegisto Payment Request
  */
 export interface InitiateTrismegistoRequest {
-  balanceAmount: number;      // Amount to charge from balance
-  installments: number;        // Number of installments (1-3)
-  pendingOrderId: number;     // Pending order ID from checkout
+  balanceAmount: number;         // Amount to charge from balance
+  installments: number;          // Number of installments (1-3)
+  invoiceType: 'BOLETA' | 'FACTURA';
+  invoiceData: InvoiceDataBoleta | InvoiceDataFactura;
 }
 
 /**
@@ -80,25 +107,28 @@ export interface TrismegistoBalanceInfo {
 
 /**
  * Initiate a Trimegisto payment
- * Creates a pre-order and sends confirmation email to user
- * 
- * @param balanceAmount - Total amount to charge from balance
+ * Creates a pre-order and sends a confirmation email to the user.
+ * No pendingOrderId needed — the backend creates the order at confirmation time.
+ *
+ * @param balanceAmount - Amount to charge from balance
  * @param installments - Number of installments (1-3)
- * @param pendingOrderId - ID of the pending order from checkout
- * @returns Response with pre-order ID and confirmation message
+ * @param invoiceType - 'BOLETA' | 'FACTURA'
+ * @param invoiceData - Invoice fields matching the selected type
  */
 export async function initiateTrismegistoPayment(
   balanceAmount: number,
   installments: number,
-  pendingOrderId: number,
+  invoiceType: 'BOLETA' | 'FACTURA',
+  invoiceData: InvoiceDataBoleta | InvoiceDataFactura,
 ): Promise<InitiateTrismegistoResponse> {
   try {
-    logger.log('[Trimegisto] Initiating payment:', { balanceAmount, installments, pendingOrderId });
+    logger.log('[Trimegisto] Initiating payment:', { balanceAmount, installments, invoiceType });
 
     const payload: InitiateTrismegistoRequest = {
       balanceAmount,
       installments,
-      pendingOrderId,
+      invoiceType,
+      invoiceData,
     };
 
     const response = await apiPost('/orders/trismegisto/initiate', payload);
@@ -107,13 +137,13 @@ export async function initiateTrismegistoPayment(
       const errorData = await response.json().catch(() => ({}));
       logger.error('[Trimegisto] Initiation failed:', errorData);
       throw new Error(
-        errorData.error || errorData.message || 'Failed to initiate Trimegisto payment'
+        errorData.error || errorData.message || 'Error al iniciar el pago Trimegisto'
       );
     }
 
     const data = await response.json() as InitiateTrismegistoResponse;
     logger.log('[Trimegisto] Initiation successful:', { preOrderId: data.preOrderId });
-    
+
     return data;
   } catch (error) {
     logger.error('[Trimegisto] Error in initiateTrismegistoPayment:', error);
