@@ -42,6 +42,8 @@ interface TrimegistoBalanceProps {
     initialBalanceAmount?: number;
     /** Installments already applied from a previous session/sync */
     initialBalanceInstallments?: number;
+    /** Called whenever the "must apply before checkout" state changes */
+    onPendingChange?: (isPending: boolean) => void;
 }
 
 export default function TrimegistoBalance({
@@ -51,6 +53,7 @@ export default function TrimegistoBalance({
     onAfterApply,
     initialBalanceAmount = 0,
     initialBalanceInstallments = 1,
+    onPendingChange,
 }: TrimegistoBalanceProps) {
     const [balance, setBalance] = useState<BalanceData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -72,6 +75,13 @@ export default function TrimegistoBalance({
             setUseBalanceToggle(true);
         }
     }, [initialBalanceAmount, initialBalanceInstallments]);
+
+    // Notify parent whenever "pending apply" state changes:
+    // pending = toggle is ON, amount > 0, but not yet applied via the button
+    useEffect(() => {
+        const isPending = useBalanceToggle && appliedAmount > 0 && !applied;
+        onPendingChange?.(isPending);
+    }, [useBalanceToggle, appliedAmount, applied, onPendingChange]);
 
     const user = typeof window !== "undefined" ? getCurrentUser() : null;
 

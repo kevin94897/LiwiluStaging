@@ -196,9 +196,39 @@ export async function initiateTrismegistoPayment(
 }
 
 /**
+ * Pre-Order Status Response
+ */
+export interface PreOrderStatusResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    preOrderId: string;
+    expiresAt: string;
+    status: string;
+  };
+}
+
+/**
+ * Check the status of an existing Trimegisto pre-order.
+ * Use this to recover state when the user reloads the page.
+ */
+export async function checkPreOrderStatus(
+  preOrderId: string,
+): Promise<PreOrderStatusResponse> {
+  try {
+    const response = await apiPost('/orders/trismegisto/status', { preOrderId });
+    const json = await response.json();
+    return json as PreOrderStatusResponse;
+  } catch (error) {
+    logger.error('[Trimegisto] Error checking pre-order status:', error);
+    throw error;
+  }
+}
+
+/**
  * Confirm a Trimegisto payment via email link
  * Should be called when user clicks the confirmation link from email
- * 
+ *
  * @param token - Confirmation token from email link
  * @returns Response with success status and redirect URL
  */
@@ -369,6 +399,8 @@ export function formatInstallmentDisplay(totalAmount: number, installments: numb
 export async function verifyTrismegistoOTP(
   preOrderId: string,
   otpCode: string,
+  invoiceType?: 'BOLETA' | 'FACTURA',
+  invoiceData?: InvoiceDataBoleta | InvoiceDataFactura,
 ): Promise<VerifyOTPResponse> {
   try {
     logger.log('[Trimegisto] Verifying OTP for preOrderId:', preOrderId);
@@ -376,6 +408,8 @@ export async function verifyTrismegistoOTP(
     const response = await apiPost('/orders/trismegisto/verify-otp', {
       preOrderId,
       otpCode,
+      ...(invoiceType ? { invoiceType } : {}),
+      ...(invoiceData ? { invoiceData } : {}),
     });
 
     if (!response.ok) {

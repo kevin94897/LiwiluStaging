@@ -2766,6 +2766,7 @@ export default function Carrito() {
             acceptNewsletter={acceptNewsletter}
             onAcceptNewsletterChange={setAcceptNewsletter}
             isValidatingStock={isValidatingStock}
+            isSubmitting={isInitiatingTrimegisto}
             tiendaSeleccionada={tiendaSeleccionada}
             onCheckout={handleCheckoutSubmit}
             balanceAmount={totals.balanceAmount}

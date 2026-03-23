@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { PiX, PiEnvelopeFill, PiWarningCircleFill, PiCheckCircleFill } from "react-icons/pi";
 import { FaSpinner } from "react-icons/fa";
 import Button from "@/components/ui/Button";
-import { verifyTrismegistoOTP, resendTrismegistoOTP, VerifyOTPResponse } from "@/lib/trimegisto";
+import { verifyTrismegistoOTP, resendTrismegistoOTP, VerifyOTPResponse, InvoiceDataBoleta, InvoiceDataFactura } from "@/lib/trimegisto";
 import logger from "@/lib/logger";
 
 const OTP_LENGTH = 6;
@@ -18,6 +18,10 @@ interface TrismegistoOTPModalProps {
   preOrderId: string;
   /** Called with verify-otp response on success */
   onSuccess: (data: VerifyOTPResponse) => void;
+  /** Invoice type to include in the verify-otp request */
+  invoiceType?: 'BOLETA' | 'FACTURA';
+  /** Invoice data to include in the verify-otp request */
+  invoiceData?: InvoiceDataBoleta | InvoiceDataFactura;
 }
 
 export default function TrismegistoOTPModal({
@@ -25,6 +29,8 @@ export default function TrismegistoOTPModal({
   onClose,
   preOrderId,
   onSuccess,
+  invoiceType,
+  invoiceData,
 }: TrismegistoOTPModalProps) {
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [isVerifying, setIsVerifying] = useState(false);
@@ -107,7 +113,7 @@ export default function TrismegistoOTPModal({
     setIsVerifying(true);
     setError(null);
     try {
-      const data = await verifyTrismegistoOTP(preOrderId, otpCode);
+      const data = await verifyTrismegistoOTP(preOrderId, otpCode, invoiceType, invoiceData);
       onSuccess(data);
     } catch (err: any) {
       logger.error("[OTP Modal] Verification error:", err);

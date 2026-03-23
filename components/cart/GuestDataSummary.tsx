@@ -422,6 +422,7 @@ export default function GuestDataSummary({
             <Button
               variant="primary"
               size="sm"
+              className="w-1/2"
               onClick={handleSave}
               disabled={isSaving}
             >
@@ -432,17 +433,18 @@ export default function GuestDataSummary({
                 </span>
               ) : (
                 <>
-                  <FaSave className="inline mr-1" /> Guardar
+                  Guardar
                 </>
               )}
             </Button>
             <Button
               variant="outline"
               size="sm"
+              className="w-1/2"
               onClick={handleCancel}
               disabled={isSaving}
             >
-              <FaTimes className="inline mr-1" /> Cancelar
+              Cancelar
             </Button>
           </div>
         </div>

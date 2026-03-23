@@ -5,7 +5,7 @@ import Link from "next/link";
 import Button from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import { CartCarrier, AppliedPromotion } from "@/lib/cart";
-import { FaTimes, FaTag, FaSpinner } from "react-icons/fa";
+import { FaTimes, FaTag, FaSpinner, FaExclamationTriangle } from "react-icons/fa";
 import { getCurrentUser } from "@/lib/auth/authUtils";
 import TrimegistoBalance from "./TrimegistoBalance";
 
@@ -35,6 +35,7 @@ interface CartSummaryProps {
   acceptNewsletter: boolean;
   onAcceptNewsletterChange: (checked: boolean) => void;
   isValidatingStock: boolean;
+  isSubmitting?: boolean;
   tiendaSeleccionada: string | null;
   onCheckout: () => void;
   balanceAmount?: number;
@@ -69,6 +70,7 @@ export default function CartSummary({
   acceptNewsletter,
   onAcceptNewsletterChange,
   isValidatingStock,
+  isSubmitting = false,
   tiendaSeleccionada,
   onCheckout,
   onTotalsUpdate,
@@ -79,6 +81,9 @@ export default function CartSummary({
   const [isTrimegisto, setIsTrimegisto] = useState(false);
   const [trimegistoApplied, setTrimegistoApplied] = useState(0);
   const [trimegistoCuotas, setTrimegistoCuotas] = useState(1);
+  const [trimegistoPending, setTrimegistoPending] = useState(false);
+  const [pendingDismissed, setPendingDismissed] = useState(false);
+  const [showPendingModal, setShowPendingModal] = useState(false);
   // Holds totals received directly from the PUT response (overrides prop until next full sync)
   const [overrideTotals, setOverrideTotals] = useState<typeof totals | null>(
     null,
@@ -130,11 +135,15 @@ export default function CartSummary({
             onTotalsUpdate?.(t);
           }}
           onAfterApply={onAfterBalanceApply}
+          onPendingChange={(isPending) => {
+            setTrimegistoPending(isPending);
+            if (isPending) setPendingDismissed(false);
+          }}
         />
       )}
 
       {/* === SECCIÓN CUPÓN === */}
-      <div className="bg-white rounded-sm shadow-lg p-6 animate-fade-in">
+      <div className="bg-white rounded-lg shadow-lg p-6 animate-fade-in">
         <h3 className="text-lg font-semibold mb-4">Código de cupón</h3>
 
         <div className="flex flex-col sm:flex-row md:gap-0 gap-2">
@@ -149,13 +158,13 @@ export default function CartSummary({
               onApplyCoupon()
             }
             placeholder="Ingresa tu cupón"
-            className="w-full px-4 py-2 border border-gray-300 rounded-xs md:rounded-r-none md:rounded-xs focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase"
+            className="w-full px-5 py-3 border border-gray-300 rounded-lg md:rounded-r-none md:rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase"
           />
 
           <button
             onClick={onApplyCoupon}
             disabled={isApplyingCoupon || !couponCode.trim()}
-            className="w-full sm:w-auto bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-2 md:rounded-l-none rounded-full md:rounded-xs border border-primary transition-colors flex items-center justify-center gap-2"
+            className="w-full sm:w-auto bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-2 md:rounded-l-none rounded-full md:rounded-lg border border-primary transition-colors flex items-center justify-center gap-2"
           >
             {isApplyingCoupon ? (
               <FaSpinner size={14} className="animate-spin" />
@@ -367,6 +376,36 @@ export default function CartSummary({
           </div>
         </div>
 
+        {/* Modal: saldo pendiente de aplicar */}
+        {showPendingModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="relative bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4 text-center">
+              <button
+                onClick={() => { setShowPendingModal(false); setPendingDismissed(true); }}
+                className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition"
+                aria-label="Cerrar"
+              >
+                <FaTimes size={16} />
+              </button>
+              
+              <div className="flex justify-center mb-4 mt-2">
+                <FaExclamationTriangle size={36} className="text-amber-400" />
+              </div>
+              <p className="text-gray-800 font-medium mb-6">
+                Tus nuevos cambios en saldo Trimegisto no fueron aplicados.
+              </p>
+              <Button
+                variant="primary"
+                size="md"
+                className="w-full"
+                onClick={() => { setShowPendingModal(false); setPendingDismissed(true); onCheckout(); }}
+              >
+                Aceptar y continuar
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* CTA */}
         <Button
           variant="primary"
@@ -374,14 +413,26 @@ export default function CartSummary({
           className="w-full mb-3 flex justify-center items-center gap-2"
           disabled={
             (metodoEnvio === "retiro" && !tiendaSeleccionada) ||
-            isValidatingStock
+            isValidatingStock ||
+            isSubmitting
           }
-          onClick={onCheckout}
+          onClick={() => {
+            if (trimegistoPending && !pendingDismissed) {
+              setShowPendingModal(true);
+              return;
+            }
+            onCheckout();
+          }}
         >
           {isValidatingStock ? (
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               Validando stock...
+            </div>
+          ) : isSubmitting ? (
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Procesando...
             </div>
           ) : activeTotals.trismegistoBalance &&
             activeTotals.trismegistoBalance > 0 ? (
