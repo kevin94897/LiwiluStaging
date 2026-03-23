@@ -7,6 +7,8 @@ import Link from "next/link";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
+import { useDocumentLookup } from "@/hooks/useDocumentLookup";
+import { showToast } from "@/lib/notifications";
 
 interface GuestDataSummaryProps {
   isGuest: boolean;
@@ -43,9 +45,30 @@ export default function GuestDataSummary({
     documentType: userData?.documentType || "DNI",
     documentNumber: userData?.documentNumber || "",
     phone: userData?.phone || "",
-    telefono: userData?.telefono || "",
+    telefono: userData?.secondaryPhone || userData?.telefono || "",
   });
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+
+  const { isLoading: isConsulting, isConsulted, resetConsulted } = useDocumentLookup({
+    type: formData.documentType,
+    number: formData.documentNumber,
+    enabled: isEditing,
+    onSuccess: (data) => {
+      if (formData.documentType === "DNI") {
+        setFormData((prev) => ({
+          ...prev,
+          firstName: data.nombres || "",
+          lastName: `${data.apellido_paterno || ""} ${data.apellido_materno || ""}`.trim(),
+        }));
+      } else if (formData.documentType === "RUC") {
+        setFormData((prev) => ({
+          ...prev,
+          firstName: data.nombre_o_razon_social || "",
+          lastName: "No aplica",
+        }));
+      }
+    },
+  });
 
   // Auto-enter edit mode if there are validation errors
   const hasErrors = Object.keys(validationErrors).length > 0;
@@ -92,6 +115,11 @@ export default function GuestDataSummary({
       delete newErrors.numeroDocumento;
       return newErrors;
     });
+    
+    // Si cambia de número, reseteamos si es que ya había sido consultado
+    if (value.length < maxLength && isConsulted) {
+       resetConsulted();
+    }
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,7 +214,7 @@ export default function GuestDataSummary({
       documentType: userData?.documentType || "DNI",
       documentNumber: userData?.documentNumber || "",
       phone: userData?.phone || "",
-      telefono: userData?.telefono || "",
+      telefono: userData?.secondaryPhone || userData?.telefono || "",
     });
     setLocalErrors({});
   };
@@ -239,7 +267,7 @@ export default function GuestDataSummary({
               value={formData.firstName}
               onChange={handleChange}
               error={displayErrors.firstName}
-              disabled={isSaving}
+              disabled={isSaving || (isConsulted && formData.documentType === "DNI")}
             />
             <Input
               label="Apellido *"
@@ -253,7 +281,7 @@ export default function GuestDataSummary({
                   : undefined
               }
               error={displayErrors.lastName}
-              disabled={isSaving || formData.documentType === "RUC"}
+              disabled={isSaving || formData.documentType === "RUC" || (isConsulted && formData.documentType === "DNI")}
             />
           </div>
 
@@ -271,6 +299,7 @@ export default function GuestDataSummary({
                   // Auto-fill lastName with "No aplica" for RUC to avoid empty submission
                   lastName: newDocType === "RUC" ? "No aplica" : prev.lastName
                 }));
+                resetConsulted();
                 setLocalErrors((prev) => {
                   const newErrors = { ...prev };
                   delete newErrors.documentNumber;
@@ -286,35 +315,69 @@ export default function GuestDataSummary({
               <option value="CE">Carnet de Extranjería</option>
               <option value="PASAPORTE">Pasaporte</option>
             </Select>
-            <Input
-              label="Número de documento *"
-              type="text"
-              name="documentNumber"
-              value={formData.documentNumber}
-              onChange={handleDocumentChange}
-              error={
-                displayErrors.documentNumber || displayErrors.numeroDocumento
-              }
-              disabled={isSaving}
-              placeholder={
-                formData.documentType === "RUC"
-                  ? "20100000001"
-                  : formData.documentType === "PASAPORTE"
-                    ? "A1234567"
-                    : "74218601"
-              }
-              maxLength={
-                formData.documentType === "RUC"
-                  ? 11
-                  : formData.documentType === "DNI" ||
-                    formData.documentType === "PASAPORTE"
-                    ? 8
-                    : 12
-              }
-              inputMode={
-                formData.documentType === "PASAPORTE" ? "text" : "numeric"
-              }
-            />
+            <div className="relative">
+              <Input
+                label="Número de documento *"
+                type="text"
+                name="documentNumber"
+                value={formData.documentNumber}
+                onChange={handleDocumentChange}
+                error={
+                  displayErrors.documentNumber || displayErrors.numeroDocumento
+                }
+                disabled={isSaving}
+                placeholder={
+                  formData.documentType === "RUC"
+                    ? "20100000001"
+                    : formData.documentType === "PASAPORTE"
+                      ? "A1234567"
+                      : "74218601"
+                }
+                maxLength={
+                  formData.documentType === "RUC"
+                    ? 11
+                    : formData.documentType === "DNI" ||
+                      formData.documentType === "PASAPORTE"
+                      ? 8
+                      : 12
+                }
+                inputMode={
+                  formData.documentType === "PASAPORTE" ? "text" : "numeric"
+                }
+                className="pr-12"
+              />
+              {(formData.documentType === "DNI" || formData.documentType === "RUC") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!formData.documentNumber) {
+                      showToast("Ingresa un número de documento", "error");
+                    }
+                  }}
+                  disabled={isConsulting || !formData.documentNumber}
+                  className="absolute right-2 top-[35px] text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
+                  title="Consultar"
+                >
+                  {isConsulting ? (
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input

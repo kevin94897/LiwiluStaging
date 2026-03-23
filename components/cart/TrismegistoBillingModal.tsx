@@ -411,12 +411,14 @@ export default function TrismegistoBillingModal({
                   value={datosBoleta.nombres}
                   onChange={(e) => setDatosBoleta({ ...datosBoleta, nombres: e.target.value })}
                   error={errors.nombres}
+                  disabled={boletaConsulted && datosBoleta.tipoDocumento === "DNI"}
                 />
                 <Input
                   label="Apellidos"
                   value={datosBoleta.apellidos}
                   onChange={(e) => setDatosBoleta({ ...datosBoleta, apellidos: e.target.value })}
                   error={errors.apellidos}
+                  disabled={boletaConsulted && datosBoleta.tipoDocumento === "DNI"}
                 />
               </div>
 

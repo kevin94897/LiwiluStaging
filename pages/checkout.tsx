@@ -1744,6 +1744,7 @@ export default function Checkout() {
                           })
                         }
                         error={errors.nombres}
+                        disabled={boletaConsulted && datosBoleta.tipoDocumento === "DNI"}
                       />
                     </div>
                     <div>
@@ -1757,6 +1758,7 @@ export default function Checkout() {
                           })
                         }
                         error={errors.apellidos}
+                        disabled={boletaConsulted && datosBoleta.tipoDocumento === "DNI"}
                       />
                     </div>
                   </div>

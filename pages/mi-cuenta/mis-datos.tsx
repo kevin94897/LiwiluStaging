@@ -27,6 +27,7 @@ export default function MisDatos() {
     numeroDocumento: "",
     celular: "",
     email: "",
+    telefonoSecundario: "",
   });
 
   const [errors, setErrors] = useState<
@@ -39,7 +40,7 @@ export default function MisDatos() {
   const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
   const [pendingEmailChange, setPendingEmailChange] = useState("");
 
-  const { isLoading: isConsultingDoc, resetConsulted } = useDocumentLookup({
+  const { isLoading: isConsultingDoc, isConsulted: isConsultedDoc, resetConsulted } = useDocumentLookup({
     type: formData.tipoDocumento,
     number: formData.numeroDocumento,
     enabled: !isLoading, // Solo cuando ya cargó el usuario inicial
@@ -91,6 +92,7 @@ export default function MisDatos() {
               numeroDocumento: userData.documentNumber || "",
               celular: userData.phone || "",
               email: userData.email || "",
+              telefonoSecundario: userData.secondaryPhone || "",
             });
 
             // Actualizar localStorage con datos frescos usando la utilidad centralizada
@@ -154,6 +156,14 @@ export default function MisDatos() {
     if (value.length <= 9) {
       setFormData((prev) => ({ ...prev, celular: value }));
       setErrors((prev) => ({ ...prev, celular: undefined }));
+    }
+  };
+
+  const handleTelefonoSecundarioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, "");
+    if (value.length <= 9) {
+      setFormData((prev) => ({ ...prev, telefonoSecundario: value }));
+      setErrors((prev) => ({ ...prev, telefonoSecundario: undefined }));
     }
   };
 
@@ -246,6 +256,7 @@ export default function MisDatos() {
           : "",
         documentNumber: formData.numeroDocumento,
         phone: formData.celular,
+        secondaryPhone: formData.telefonoSecundario || "",
         // email: formData.email, // ❌ NO actualizar email aquí
         receiveOffers: originalUser?.receiveOffers || false, // ✅ Mantener preferencia actual
       };
@@ -414,7 +425,7 @@ export default function MisDatos() {
                               value={formData.nombre}
                               onChange={handleChange}
                               maxLength={50}
-                              disabled={isSubmitting}
+                              disabled={isSubmitting || (isConsultedDoc && formData.tipoDocumento === "DNI")}
                               error={errors.nombre}
                             />
                           </div>
@@ -432,7 +443,7 @@ export default function MisDatos() {
                                   : undefined
                               }
                               disabled={
-                                isSubmitting || formData.tipoDocumento === "RUC"
+                                isSubmitting || formData.tipoDocumento === "RUC" || (isConsultedDoc && formData.tipoDocumento === "DNI")
                               }
                               error={errors.apellido}
                             />
@@ -476,7 +487,7 @@ export default function MisDatos() {
                             </Select>
                           </div>
 
-                          <div>
+                          <div className="relative">
                             <Input
                               label="Número de Documento *"
                               type="text"
@@ -506,11 +517,43 @@ export default function MisDatos() {
                               }
                               disabled={isSubmitting}
                               error={errors.numeroDocumento}
+                              className="pr-12"
                             />
+                            {(formData.tipoDocumento === "DNI" || formData.tipoDocumento === "RUC") && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!formData.numeroDocumento) {
+                                    showToast("Ingresa un número de documento", "error");
+                                  }
+                                }}
+                                disabled={isConsultingDoc || !formData.numeroDocumento}
+                                className="absolute right-2 top-[35px] text-primary hover:text-primary-dark disabled:text-gray-300 p-1"
+                                title="Consultar"
+                              >
+                                {isConsultingDoc ? (
+                                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                  <svg
+                                    className="w-6 h-6"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                    />
+                                  </svg>
+                                )}
+                              </button>
+                            )}
                           </div>
                         </div>
 
-                        {/* Celular y Email */}
+                        {/* Celular y Teléfono Secundario */}
                         <div className="grid md:grid-cols-2 gap-6">
                           <div>
                             <Input
@@ -528,17 +571,33 @@ export default function MisDatos() {
                           </div>
                           <div>
                             <Input
-                              label="Correo electrónico *"
-                              type="email"
-                              id="email"
-                              name="email"
-                              value={formData.email}
-                              onChange={handleChange}
-                              placeholder="ejemplo@correo.com"
+                              label="Teléfono (opcional)"
+                              type="tel"
+                              id="telefonoSecundario"
+                              name="telefonoSecundario"
+                              value={formData.telefonoSecundario || ""}
+                              onChange={handleTelefonoSecundarioChange}
+                              placeholder="973820088"
+                              maxLength={9}
                               disabled={isSubmitting}
-                              error={errors.email}
+                              error={errors.telefonoSecundario}
                             />
                           </div>
+                        </div>
+
+                        {/* Email */}
+                        <div>
+                          <Input
+                            label="Correo electrónico *"
+                            type="email"
+                            id="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            placeholder="ejemplo@correo.com"
+                            disabled={isSubmitting}
+                            error={errors.email}
+                          />
                         </div>
 
                         {/* Botones de acción */}

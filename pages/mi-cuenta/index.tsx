@@ -15,6 +15,8 @@ interface UserData {
 	lastName: string;
 	email: string;
 	emailVerified: boolean;
+	phone?: string;
+	secondaryPhone?: string;
 }
 
 interface Address {
@@ -57,6 +59,8 @@ export default function MiCuenta() {
 						lastName: result.data.lastName || '',
 						email: result.data.email || '',
 						emailVerified: result.data.emailVerified || false,
+						phone: result.data.phone || '',
+						secondaryPhone: result.data.secondaryPhone || '',
 					});
 
 					// Actualizar localStorage con datos frescos usando la utilidad centralizada
@@ -146,6 +150,16 @@ export default function MiCuenta() {
 													<p className="text-gray-600 mb-1">
 														{userData?.email || 'Sin correo registrado'}
 													</p>
+													{userData?.phone && (
+														<p className="text-gray-600 mb-1">
+															<span className="text-gray-500 text-sm">Celular:</span> {userData.phone}
+														</p>
+													)}
+													{userData?.secondaryPhone && (
+														<p className="text-gray-600 mb-1">
+															<span className="text-gray-500 text-sm">Teléfono:</span> {userData.secondaryPhone}
+														</p>
+													)}
 													{/* Indicador de verificación de email */}
 													{userData?.emailVerified ? (
 														<p className="text-green-600 text-sm mb-4 flex items-center gap-1">

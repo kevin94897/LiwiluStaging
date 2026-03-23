@@ -96,7 +96,7 @@ export default function LibroReclamaciones() {
     pedidoDetalle: "",
   });
 
-  const { isLoading: isConsulting, resetConsulted } = useDocumentLookup({
+  const { isLoading: isConsulting, isConsulted, resetConsulted } = useDocumentLookup({
     type: formData.tipoDocumento,
     number: formData.numeroDocumento,
     onSuccess: (data) => {
@@ -335,7 +335,10 @@ export default function LibroReclamaciones() {
                     label="Tipo de Documento *"
                     name="tipoDocumento"
                     value={formData.tipoDocumento}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      resetConsulted();
+                    }}
                     error={errors.tipoDocumento}
                   >
                     <option value="DNI">DNI</option>
@@ -366,6 +369,7 @@ export default function LibroReclamaciones() {
                     onChange={handleInputChange}
                     placeholder="Juan Carlos"
                     error={errors.nombres}
+                    disabled={isConsulted && formData.tipoDocumento === "DNI"}
                   />
                 </div>
 
@@ -378,6 +382,7 @@ export default function LibroReclamaciones() {
                     onChange={handleInputChange}
                     placeholder="Pérez García"
                     error={errors.apellidos}
+                    disabled={isConsulted && formData.tipoDocumento === "DNI"}
                   />
                 </div>
 
