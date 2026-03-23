@@ -67,8 +67,8 @@ export interface InvoiceDataFactura {
 export interface InitiateTrismegistoRequest {
   balanceAmount: number;         // Amount to charge from balance
   installments: number;          // Number of installments (1-3)
-  invoiceType: 'BOLETA' | 'FACTURA';
-  invoiceData: InvoiceDataBoleta | InvoiceDataFactura;
+  invoiceType?: 'BOLETA' | 'FACTURA';
+  invoiceData?: InvoiceDataBoleta | InvoiceDataFactura;
 }
 
 /**
@@ -76,9 +76,40 @@ export interface InitiateTrismegistoRequest {
  */
 export interface InitiateTrismegistoResponse {
   success: boolean;
-  preOrderId: string;
   message: string;
+  error?: string;
+  /** Datos de la pre-orden — vienen anidados bajo "data" en la respuesta del API */
+  data?: {
+    preOrderId: string;
+    expiresAt: string;
+    /** Ruta relativa al PDF de consentimiento, e.g. /uploads/consent-files/xxx.pdf */
+    trismegistoDocumentUrl?: string;
+    token?: string;
+  };
+  // Campos aplanados que devuelve la función initiateTrismegistoPayment
+  preOrderId: string;
   expiresAt: string;
+  trismegistoDocumentUrl?: string;
+  token?: string;
+}
+
+/**
+ * Verify OTP Response — two possible cases:
+ * A) Mixed payment (still needs card) → success=true, autoProcessed=false, token and redirectUrl
+ * B) 100% balance → success=true, autoProcessed=true, orderNumber and redirectUrl
+ */
+export interface VerifyOTPResponse {
+  success: boolean;
+  autoProcessed: boolean;
+  orderNumber?: string;
+  message: string;
+  /** URL to redirect to after OTP confirmation */
+  redirectUrl?: string;
+  /** Token used when redirecting to mixed checkout */
+  token?: string;
+  /** trismegistoDocumentUrl from the pre-order */
+  trismegistoDocumentUrl?: string;
+  orderId?: number;
   error?: string;
 }
 
@@ -118,8 +149,8 @@ export interface TrismegistoBalanceInfo {
 export async function initiateTrismegistoPayment(
   balanceAmount: number,
   installments: number,
-  invoiceType: 'BOLETA' | 'FACTURA',
-  invoiceData: InvoiceDataBoleta | InvoiceDataFactura,
+  invoiceType?: 'BOLETA' | 'FACTURA',
+  invoiceData?: InvoiceDataBoleta | InvoiceDataFactura,
 ): Promise<InitiateTrismegistoResponse> {
   try {
     logger.log('[Trimegisto] Initiating payment:', { balanceAmount, installments, invoiceType });
@@ -127,8 +158,8 @@ export async function initiateTrismegistoPayment(
     const payload: InitiateTrismegistoRequest = {
       balanceAmount,
       installments,
-      invoiceType,
-      invoiceData,
+      ...(invoiceType ? { invoiceType } : {}),
+      ...(invoiceData ? { invoiceData } : {}),
     };
 
     const response = await apiPost('/orders/trismegisto/initiate', payload);
@@ -141,10 +172,23 @@ export async function initiateTrismegistoPayment(
       );
     }
 
-    const data = await response.json() as InitiateTrismegistoResponse;
-    logger.log('[Trimegisto] Initiation successful:', { preOrderId: data.preOrderId });
+    const json = await response.json();
 
-    return data;
+    // La API retorna { success, message, data: { preOrderId, expiresAt, trismegistoDocumentUrl, token } }
+    // Aplanamos para que los consumers accedan directamente a response.preOrderId, etc.
+    const inner = json.data ?? json;
+    const result: InitiateTrismegistoResponse = {
+      success: json.success,
+      message: json.message,
+      preOrderId: inner.preOrderId,
+      expiresAt: inner.expiresAt,
+      trismegistoDocumentUrl: inner.trismegistoDocumentUrl,
+      token: inner.token,
+    };
+
+    logger.log('[Trimegisto] Initiation successful:', { preOrderId: result.preOrderId });
+
+    return result;
   } catch (error) {
     logger.error('[Trimegisto] Error in initiateTrismegistoPayment:', error);
     throw error;
@@ -313,4 +357,75 @@ export function validateTrismegistoPayment(
 export function formatInstallmentDisplay(totalAmount: number, installments: number): string {
   const perInstallment = totalAmount / installments;
   return `${installments} cuota${installments > 1 ? 's' : ''} de S/. ${perInstallment.toFixed(2)}`;
+}
+
+/**
+ * Verify a Trismegisto OTP code.
+ * Called when the user submits the 6-digit code received via email.
+ *
+ * @param preOrderId - ID of the pre-order from /initiate
+ * @param otpCode - 6-digit code entered by the user
+ */
+export async function verifyTrismegistoOTP(
+  preOrderId: string,
+  otpCode: string,
+): Promise<VerifyOTPResponse> {
+  try {
+    logger.log('[Trimegisto] Verifying OTP for preOrderId:', preOrderId);
+
+    const response = await apiPost('/orders/trismegisto/verify-otp', {
+      preOrderId,
+      otpCode,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      logger.error('[Trimegisto] OTP verification failed:', errorData);
+      throw new Error(
+        errorData.message || errorData.error || 'Código OTP inválido o expirado'
+      );
+    }
+
+    const data = await response.json() as VerifyOTPResponse;
+    logger.log('[Trimegisto] OTP verified successfully:', { autoProcessed: data.autoProcessed });
+
+    return data;
+  } catch (error) {
+    logger.error('[Trimegisto] Error in verifyTrismegistoOTP:', error);
+    throw error;
+  }
+}
+
+/**
+ * Resend the OTP code for a Trismegisto pre-order.
+ * Extends OTP lifetime to 10 minutes and sends a new code to the user's email.
+ *
+ * @param preOrderId - ID of the pre-order from /initiate
+ */
+export async function resendTrismegistoOTP(
+  preOrderId: string,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    logger.log('[Trimegisto] Resending OTP for preOrderId:', preOrderId);
+
+    const response = await apiPost('/orders/trismegisto/resend-otp', {
+      preOrderId,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      logger.error('[Trimegisto] OTP resend failed:', errorData);
+      throw new Error(
+        errorData.message || errorData.error || 'Error al reenviar el código OTP'
+      );
+    }
+
+    const data = await response.json();
+    logger.log('[Trimegisto] OTP resent successfully');
+
+    return data;
+  } catch (error) {
+    logger.error('[Trimegisto] Error in resendTrismegistoOTP:', error);
+    throw error;
+  }
 }

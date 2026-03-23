@@ -36,6 +36,8 @@ interface TrimegistoBalanceProps {
         trismegistoBalance?: number;
         total: number;
     }) => void;
+    /** Called after balance is successfully applied or removed — use to trigger a full cart sync */
+    onAfterApply?: () => void;
     /** Amount already applied from a previous session/sync */
     initialBalanceAmount?: number;
     /** Installments already applied from a previous session/sync */
@@ -46,6 +48,7 @@ export default function TrimegistoBalance({
     cartTotal,
     onBalanceChange,
     onTotalsUpdate,
+    onAfterApply,
     initialBalanceAmount = 0,
     initialBalanceInstallments = 1,
 }: TrimegistoBalanceProps) {
@@ -176,6 +179,7 @@ export default function TrimegistoBalance({
                 setCuotas(confirmedCuotas);
                 notify(confirmedAmount, confirmedCuotas);
                 onTotalsUpdate?.(confirmed.totals);
+                onAfterApply?.();
             } else {
                 setApplyError(data.message || "No se pudo aplicar el saldo.");
             }

@@ -83,7 +83,8 @@ import {
   AppliedPromotion,
 } from "@/lib/cart";
 import PromoSuggestions from "@/components/cart/PromoSuggestions";
-import TrismegistoBillingModal from "@/components/cart/TrismegistoBillingModal";
+import TrismegistoConsentModal from "@/components/cart/TrismegistoConsentModal";
+import { initiateTrismegistoPayment } from "@/lib/trimegisto";
 import logger from "@/lib/logger";
 
 // Distritos disponibles
@@ -107,12 +108,7 @@ export default function Carrito() {
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
-  // Trimegisto: captura los valores más recientes seleccionados por el usuario
-  // (saldo aplicado y cuotas) para usarlos al crear la pre-orden
-  const [trimegistoOverride, setTrimegistoOverride] = useState<{
-    balanceAmount: number;
-    installments: number;
-  } | null>(null);
+  const [isInitiatingTrimegisto, setIsInitiatingTrimegisto] = useState(false);
   const [promoSuggestions, setPromoSuggestions] = useState<PromoSuggestion[]>(
     [],
   );
@@ -215,7 +211,9 @@ export default function Carrito() {
 
   // Estados para autorización de retiro
   const [showAutorizacionModal, setShowAutorizacionModal] = useState(false);
-  const [showTrismegistoBillingModal, setShowTrismegistoBillingModal] = useState(false);
+  const [showTrismegistoConsentModal, setShowTrismegistoConsentModal] = useState(false);
+  const [trismegistoPreOrderId, setTrismegistoPreOrderId] = useState<string | null>(null);
+  const [trismegistoDocumentUrl, setTrismegistoDocumentUrl] = useState<string>("");
   const [autorizacionData, setAutorizacionData] =
     useState<AutorizacionSchemaType | null>(null);
   const [isSelfPickup, setIsSelfPickup] = useState(true);
@@ -1702,6 +1700,34 @@ export default function Carrito() {
 
 
 
+  // Para usuarios Trimegisto con saldo aplicado: llama /initiate y muestra el
+  // modal de consentimiento antes de navegar al checkout.
+  // Para el resto: navega directamente.
+  const isTrimegistoUser =
+    (user?.role || "").toUpperCase() === "TRIMEGISTO" ||
+    (user?.role || "").toUpperCase() === "TRISMEGISMO";
+
+  const navigateToCheckout = async () => {
+    if (isTrimegistoUser && (totals.trismegistoBalance ?? 0) > 0) {
+      setIsInitiatingTrimegisto(true);
+      try {
+        const response = await initiateTrismegistoPayment(
+          totals.trismegistoBalance!,
+          totals.balanceInstallments ?? 1,
+        );
+        setTrismegistoPreOrderId(response.preOrderId);
+        setTrismegistoDocumentUrl(response.trismegistoDocumentUrl ?? "");
+        setShowTrismegistoConsentModal(true);
+      } catch (err: any) {
+        showToast(err.message || "Error al iniciar el pago Trimegisto", "error");
+      } finally {
+        setIsInitiatingTrimegisto(false);
+      }
+    } else {
+      router.push("/checkout");
+    }
+  };
+
   const handleCheckoutSubmit = async () => {
     if (!acceptTerms) {
       showToast(
@@ -1791,11 +1817,7 @@ export default function Carrito() {
 
           // FIXED: Check summary.data.isComplete instead of summary.isComplete
           if (summary.success && summary.data?.isComplete) {
-            if (totals.trismegistoBalance && totals.trismegistoBalance > 0) {
-              setShowTrismegistoBillingModal(true);
-            } else {
-              router.push("/checkout");
-            }
+            await navigateToCheckout();
           } else {
             logger.warn("⚠️ [Carrito] Checkout incomplete or error:", summary);
             const missingInfo = [];
@@ -1856,11 +1878,7 @@ export default function Carrito() {
         const summary = await getCheckoutSummary();
         // FIXED: Check summary.data.isComplete instead of summary.isComplete
         if (summary.success && summary.data?.isComplete) {
-          if (totals.trismegistoBalance && totals.trismegistoBalance > 0) {
-            setShowTrismegistoBillingModal(true);
-          } else {
-            router.push("/checkout");
-          }
+          await navigateToCheckout();
         } else {
           showToast(
             summary.message ||
@@ -1882,11 +1900,7 @@ export default function Carrito() {
         const summary = await getCheckoutSummary();
         // FIXED: Check summary.data.isComplete instead of summary.isComplete
         if (summary.success && summary.data?.isComplete) {
-          if (totals.trismegistoBalance && totals.trismegistoBalance > 0) {
-            setShowTrismegistoBillingModal(true);
-          } else {
-            router.push("/checkout");
-          }
+          await navigateToCheckout();
         } else {
           showToast(
             summary.message ||
@@ -2756,24 +2770,7 @@ export default function Carrito() {
             onCheckout={handleCheckoutSubmit}
             balanceAmount={totals.balanceAmount}
             balanceInstallments={totals.balanceInstallments}
-            onTotalsUpdate={(t) => {
-              // Sincronizar saldo y cuotas seleccionadas de vuelta a carrito.tsx
-              if (
-                t.trismegistoBalance !== undefined ||
-                t.balanceInstallments !== undefined
-              ) {
-                setTrimegistoOverride({
-                  balanceAmount:
-                    t.trismegistoBalance ??
-                    trimegistoOverride?.balanceAmount ??
-                    0,
-                  installments:
-                    t.balanceInstallments ??
-                    trimegistoOverride?.installments ??
-                    1,
-                });
-              }
-            }}
+            onAfterBalanceApply={syncCart}
           />
         </div>
       </div>
@@ -2837,12 +2834,14 @@ export default function Carrito() {
         validationMessage={validationErrorMessage}
       />
 
-      <TrismegistoBillingModal
-        isOpen={showTrismegistoBillingModal}
-        onClose={() => setShowTrismegistoBillingModal(false)}
-        balanceAmount={trimegistoOverride?.balanceAmount ?? totals.trismegistoBalance ?? 0}
-        installments={trimegistoOverride?.installments ?? totals.balanceInstallments ?? 1}
-        cartTotal={totals.total}
+      <TrismegistoConsentModal
+        isOpen={showTrismegistoConsentModal}
+        onClose={() => setShowTrismegistoConsentModal(false)}
+        documentUrl={trismegistoDocumentUrl}
+        onConfirm={() => {
+          setShowTrismegistoConsentModal(false);
+          router.push(`/checkout?preOrderId=${trismegistoPreOrderId}`);
+        }}
       />
     </Layout>
   );

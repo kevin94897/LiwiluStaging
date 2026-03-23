@@ -49,6 +49,8 @@ interface CartSummaryProps {
     balanceInstallments?: number;
     total: number;
   }) => void;
+  /** Called after balance is applied/removed to trigger a full cart sync */
+  onAfterBalanceApply?: () => void;
 }
 
 export default function CartSummary({
@@ -72,6 +74,7 @@ export default function CartSummary({
   onTotalsUpdate,
   balanceAmount,
   balanceInstallments,
+  onAfterBalanceApply,
 }: CartSummaryProps) {
   const [isTrimegisto, setIsTrimegisto] = useState(false);
   const [trimegistoApplied, setTrimegistoApplied] = useState(0);
@@ -126,6 +129,7 @@ export default function CartSummary({
             setOverrideTotals({ ...activeTotals, ...t });
             onTotalsUpdate?.(t);
           }}
+          onAfterApply={onAfterBalanceApply}
         />
       )}
 

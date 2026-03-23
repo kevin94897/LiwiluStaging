@@ -8,9 +8,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { getProductImageUrl, formatPrice, getProductName } from "@/lib/utils";
 import { FaCreditCard, FaQrcode, FaTag } from "react-icons/fa";
+import { FaWallet } from "react-icons/fa";
 import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "@/components/ui/Button";
 import Script from "next/script";
+import TrismegistoOTPModal from "@/components/cart/TrismegistoOTPModal";
 import {
   openCulqiForTokenization,
   openCulqiForAsyncOrder,
@@ -48,7 +50,7 @@ import type {
 } from "@/lib/types/culqi.types";
 
 type TipoComprobante = "boleta" | "factura";
-type MetodoPago = "card" | "async" | null;
+type MetodoPago = "card" | "async" | "trismegisto" | null;
 
 // Helper para búsqueda case-insensitive
 const findMatchingLocation = (
@@ -66,13 +68,19 @@ export default function Checkout() {
   const { user, isAuthenticated } = useAuth();
   const { items, getCartTotal, clearCart, totals, syncCart } = useCart();
 
+  // Determine if user is Trismegisto segment
+  const isTrimegisto = (user?.role || "").toUpperCase() === "TRIMEGISTO" || (user?.role || "").toUpperCase() === "TRISMEGISMO";
+
   // Trimegisto pre-order ID from email link (e.g. /checkout?preOrderId=...)
   const [trimegistoPreOrderId, setTrimegistoPreOrderId] = useState<string | null>(null);
+  const [showTrismegistoOTPModal, setShowTrismegistoOTPModal] = useState(false);
+  const [trimegistoOtpConfirmed, setTrimegistoOtpConfirmed] = useState(false);
 
   useEffect(() => {
     const pid = searchParams?.get("preOrderId");
     if (pid) {
       setTrimegistoPreOrderId(pid);
+      setMetodoPago("trismegisto");
       logger.log("🔮 [Checkout] Trimegisto preOrderId detectado:", pid);
     }
   }, [searchParams]);
@@ -1276,6 +1284,21 @@ export default function Checkout() {
     logger.log("🚀 [handleProcesarPago] Iniciando proceso de pago");
     logger.log("📦 Método de pago seleccionado:", metodoPago);
 
+    // ── TRISMEGISTO: el /initiate ya fue llamado en el carrito.
+    // Aquí solo validamos datos de facturación y abrimos el OTP modal.
+    if (metodoPago === "trismegisto") {
+      if (!trimegistoPreOrderId) {
+        showToast("No se encontró la pre-orden Trimegisto. Vuelve al carrito para aplicar tu saldo.", "error");
+        return;
+      }
+      if (!validarDatos()) {
+        showToast("Por favor completa todos los campos requeridos", "error");
+        return;
+      }
+      setShowTrismegistoOTPModal(true);
+      return;
+    }
+
     if (!validarDatos()) {
       showToast("Por favor completa todos los campos requeridos", "error");
       return;
@@ -2042,9 +2065,16 @@ export default function Checkout() {
               <h2 className="text-xl font-semibold mb-2 text-gray-900">
                 Método de pago
               </h2>
-              <p className="text-gray-500 mb-8">
-                Elige la opción más conveniente
-              </p>
+              {trimegistoOtpConfirmed ? (
+                <p className="text-green-600 font-medium text-sm mb-4 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                  Saldo Trimegisto confirmado. Selecciona un método para completar el pago.
+                </p>
+              ) : (
+                <p className="text-gray-500 mb-8">
+                  Elige la opción más conveniente
+                </p>
+              )}
 
               <div className="space-y-3">
                 <button
@@ -2116,6 +2146,37 @@ export default function Checkout() {
                     </div>
                   )}
                 </button>
+                {/* TRISMEGISTO METHOD — oculto una vez que el OTP fue confirmado (pago mixto) */}
+                {isTrimegisto && (totals.trismegistoBalance ?? 0) > 0 && !trimegistoOtpConfirmed && (
+                  <button
+                    onClick={() => setMetodoPago("trismegisto")}
+                    className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "trismegisto"
+                        ? "border-primary bg-primary/5"
+                        : "border-gray-200 hover:border-primary/50"
+                      }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <FaWallet className="text-2xl text-primary" />
+                      <div className="text-left">
+                        <p className="font-medium">Pagar con Saldo Trismegisto</p>
+                        <p className="text-xs text-gray-500">
+                          Confirma tu pago con el código OTP recibido
+                        </p>
+                      </div>
+                    </div>
+                    {metodoPago === "trismegisto" && (
+                      <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                )}
               </div>
 
               {errors.metodoPago && (
@@ -2224,6 +2285,22 @@ export default function Checkout() {
                   </div>
                 )}
 
+                {/* Descuento saldo Trimegisto */}
+                {(totals.trismegistoBalance ?? 0) > 0 && (
+                  <div className="flex justify-between text-primary font-medium text-sm">
+                    <span className="flex items-center gap-1.5">
+                      <FaWallet size={12} />
+                      Saldo Trimegisto
+                      {(totals.balanceInstallments ?? 1) > 1 && (
+                        <span className="text-xs text-gray-400">
+                          ({totals.balanceInstallments} cuotas)
+                        </span>
+                      )}
+                    </span>
+                    <span>-{formatPrice(totals.trismegistoBalance!.toString())}</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between text-gray-500 text-sm">
                   <span>Envío</span>
                   <span className="font-medium text-gray-900">
@@ -2237,7 +2314,9 @@ export default function Checkout() {
                 <div className="flex justify-between text-lg font-semibold pt-4 border-t border-gray-100">
                   <span className="text-gray-900">Total</span>
                   <span className="text-primary">
-                    {formatPrice(totals.total.toString())}
+                    {formatPrice(
+                      Math.max(totals.total - (totals.trismegistoBalance ?? 0), 0).toString()
+                    )}
                   </span>
                 </div>
               </div>
@@ -2261,6 +2340,24 @@ export default function Checkout() {
         onLoad={handleCulqiLoad}
         onError={() => logger.error("❌ Error al cargar Culqi Checkout")}
       />
+      <TrismegistoOTPModal
+        isOpen={showTrismegistoOTPModal && !!trimegistoPreOrderId}
+        preOrderId={trimegistoPreOrderId ?? ""}
+        onClose={() => setShowTrismegistoOTPModal(false)}
+        onSuccess={(data) => {
+          setShowTrismegistoOTPModal(false);
+          if (data.autoProcessed) {
+            // 100% saldo — orden ya creada por el backend
+            router.push(data.redirectUrl ?? "/checkout/success");
+          } else {
+            // Pago mixto — saldo confirmado, aún falta pagar con tarjeta/async.
+            // El preOrderId ya está en estado y se incluirá en createOrder.
+            setMetodoPago(null);
+            setTrimegistoOtpConfirmed(true);
+          }
+        }}
+      />
+
     </Layout>
   );
 }
