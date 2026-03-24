@@ -4,13 +4,15 @@
 import { useState, useEffect, useRef } from "react";
 import Layout from "@/components/Layout";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { getProductImageUrl, formatPrice, getProductName } from "@/lib/utils";
 import { FaCreditCard, FaQrcode, FaTag } from "react-icons/fa";
+import { FaWallet } from "react-icons/fa";
 import { PiWarningCircleFill } from "react-icons/pi";
 import Button from "@/components/ui/Button";
 import Script from "next/script";
+import TrismegistoOTPModal from "@/components/cart/TrismegistoOTPModal";
 import {
   openCulqiForTokenization,
   openCulqiForAsyncOrder,
@@ -42,13 +44,14 @@ import ErrorModal from "@/components/ui/ErrorModal";
 import logger from "@/lib/logger";
 import { validateRUC } from "@/lib/validations";
 import { useDocumentLookup } from "@/hooks/useDocumentLookup";
+import { checkPreOrderStatus, type PreOrderStatusResponse } from "@/lib/trimegisto";
 import type {
   CulqiTokenResponse,
   CulqiOrderResponse,
 } from "@/lib/types/culqi.types";
 
 type TipoComprobante = "boleta" | "factura";
-type MetodoPago = "card" | "async" | null;
+type MetodoPago = "card" | "async" | "trismegisto" | null;
 
 // Helper para búsqueda case-insensitive
 const findMatchingLocation = (
@@ -62,8 +65,42 @@ const findMatchingLocation = (
 
 export default function Checkout() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuth();
-  const { items, getCartTotal, clearCart, totals, syncCart } = useCart();
+  const { items, getCartTotal, clearCart, totals, syncCart, selectedCarrier } = useCart();
+
+  // Determine if user is Trismegisto segment
+  const isTrimegisto = (user?.role || "").toUpperCase() === "TRIMEGISTO" || (user?.role || "").toUpperCase() === "TRISMEGISMO";
+
+  // Trimegisto pre-order ID from email link (e.g. /checkout?preOrderId=...)
+  const [trimegistoPreOrderId, setTrimegistoPreOrderId] = useState<string | null>(null);
+  const [showTrismegistoOTPModal, setShowTrismegistoOTPModal] = useState(false);
+  const [trimegistoOtpConfirmed, setTrimegistoOtpConfirmed] = useState(false);
+  const [preOrderStatus, setPreOrderStatus] = useState<PreOrderStatusResponse | null>(null);
+
+  useEffect(() => {
+    const pid = searchParams?.get("preOrderId");
+    if (pid) {
+      setTrimegistoPreOrderId(pid);
+      setMetodoPago("trismegisto");
+      logger.log("🔮 [Checkout] Trimegisto preOrderId detectado:", pid);
+      checkPreOrderStatus(pid)
+        .then((res) => {
+          setPreOrderStatus(res);
+          if (res.data?.status === "CONFIRMED" || res.data?.status === "CONFIRMADA") {
+            setTrimegistoOtpConfirmed(true);
+          } else if (res.data?.status === "EXPIRED") {
+            logger.warn("[Checkout] Pre-orden Trimegisto expirada, redirigiendo al carrito.");
+            showToast(
+              "Tu solicitud de pago con saldo Trimegisto ha expirado. Por favor, reinicia el proceso desde el carrito.",
+              "error",
+            );
+            router.push("/carrito");
+          }
+        })
+        .catch((err) => logger.error("[Checkout] Error al verificar estado de pre-orden:", err));
+    }
+  }, [searchParams]);
 
   // ============================================
   // ESTADO DEL FORMULARIO
@@ -802,8 +839,8 @@ export default function Checkout() {
       // ═══════════════════════════════════════════════════════════
       logger.log(
         "💳 Procesando pago con tarjeta para orden " +
-          currentPendingOrderId +
-          "...",
+        currentPendingOrderId +
+        "...",
       );
 
       payResponse = await payOrder(
@@ -859,9 +896,15 @@ export default function Checkout() {
         logger.log("✅ Pago confirmado para orden #" + confirmedOrderId);
         await handlePaymentSuccess(confirmedOrderId);
       } else {
+        // Preferir merchantMessage (detallado) sobre el message genérico
         const errorMsg =
-          payResponse.message || "El pago no pudo ser completado.";
-        throw new Error(errorMsg);
+          payResponse.error?.merchantMessage ||
+          payResponse.message ||
+          "El pago no pudo ser completado.";
+        const err: any = new Error(errorMsg);
+        err.code = payResponse.error?.code;
+        err.declineCode = payResponse.error?.declineCode;
+        throw err;
       }
     } catch (error: any) {
       logger.error("❌ Error en pago con tarjeta:", error);
@@ -1040,6 +1083,7 @@ export default function Checkout() {
 
     let message =
       error.user_message ||
+      error.error?.merchantMessage ||
       error.message ||
       "Ocurrió un error al procesar el pago. Por favor, intenta con otra tarjeta o método de pago.";
     let actionLabel: string | undefined;
@@ -1257,6 +1301,21 @@ export default function Checkout() {
     logger.log("🚀 [handleProcesarPago] Iniciando proceso de pago");
     logger.log("📦 Método de pago seleccionado:", metodoPago);
 
+    // ── TRISMEGISTO: el /initiate ya fue llamado en el carrito.
+    // Aquí solo validamos datos de facturación y abrimos el OTP modal.
+    if (metodoPago === "trismegisto") {
+      if (!trimegistoPreOrderId) {
+        showToast("No se encontró la pre-orden Trimegisto. Vuelve al carrito para aplicar tu saldo.", "error");
+        return;
+      }
+      if (!validarDatos()) {
+        showToast("Por favor completa todos los campos requeridos", "error");
+        return;
+      }
+      setShowTrismegistoOTPModal(true);
+      return;
+    }
+
     if (!validarDatos()) {
       showToast("Por favor completa todos los campos requeridos", "error");
       return;
@@ -1356,26 +1415,29 @@ export default function Checkout() {
           invoiceData:
             tipoComprobante === "boleta"
               ? {
-                  tipoDocumento: datosBoleta.tipoDocumento,
-                  numeroDocumento: datosBoleta.numeroDocumento,
-                  nombres: datosBoleta.nombres,
-                  apellidos: datosBoleta.apellidos,
-                  direccion: datosBoleta.direccion,
-                  departamento: datosBoleta.departamento,
-                  provincia: datosBoleta.provincia,
-                  distrito: datosBoleta.distrito,
-                }
+                tipoDocumento: datosBoleta.tipoDocumento,
+                numeroDocumento: datosBoleta.numeroDocumento,
+                nombres: datosBoleta.nombres,
+                apellidos: datosBoleta.apellidos,
+                direccion: datosBoleta.direccion,
+                departamento: datosBoleta.departamento,
+                provincia: datosBoleta.provincia,
+                distrito: datosBoleta.distrito,
+              }
               : {
-                  ruc: datosFactura.ruc,
-                  razonSocial: datosFactura.razonSocial,
-                  direccionFiscal: datosFactura.direccionFiscal,
-                  departamento: datosFactura.departamento,
-                  provincia: datosFactura.provincia,
-                  distrito: datosFactura.distrito,
-                },
+                ruc: datosFactura.ruc,
+                razonSocial: datosFactura.razonSocial,
+                direccionFiscal: datosFactura.direccionFiscal,
+                departamento: datosFactura.departamento,
+                provincia: datosFactura.provincia,
+                distrito: datosFactura.distrito,
+              },
         };
 
-        const orderResponse = await createOrder(invoicePayload);
+        const orderResponse = await createOrder({
+          ...invoicePayload,
+          ...(trimegistoPreOrderId ? { preOrderId: trimegistoPreOrderId } : {}),
+        });
         if (!orderResponse.success || !orderResponse.data?.pendingOrderId) {
           throw new Error(orderResponse.message || "Error al crear la orden");
         }
@@ -1535,7 +1597,7 @@ export default function Checkout() {
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8 my-24 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-fade-in">
           {/* COLUMNA IZQUIERDA - FORMULARIO */}
           <div className="lg:col-span-2 space-y-6">
             {/* Botón volver */}
@@ -1561,6 +1623,23 @@ export default function Checkout() {
               </button>
             </div>
 
+            {/* TRIMEGISTO NOTICE - Solo si viene del link del correo */}
+            {trimegistoPreOrderId && (
+              <div className="bg-purple-50 border border-purple-200 rounded-md p-4 flex items-start gap-3">
+                <div className="w-full">
+                  <p className="font-semibold text-purple-900 text-sm">Pago con saldo Trimegisto</p>
+                  <p className="text-purple-700 text-sm mt-0.5">
+                    Estás completando el pago de tu pre-orden aprobada. Selecciona tu comprobante, método de pago y confirma.
+                  </p>
+                  {preOrderStatus && (
+                    <p className={`text-sm mt-2 font-medium ${preOrderStatus.success ? "text-purple-800" : "text-red-600"}`}>
+                      {preOrderStatus.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* TIPO DE COMPROBANTE */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
               <h2 className="text-xl font-semibold mb-2 text-gray-900">
@@ -1573,21 +1652,19 @@ export default function Checkout() {
               <div className="flex gap-4 mb-6">
                 <button
                   onClick={() => setTipoComprobante("boleta")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                    tipoComprobante === "boleta"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "boleta"
+                    ? "border-primary bg-primary text-white"
+                    : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                 >
                   Boleta
                 </button>
                 <button
                   onClick={() => setTipoComprobante("factura")}
-                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${
-                    tipoComprobante === "factura"
-                      ? "border-primary bg-primary text-white"
-                      : "border-gray-200 text-gray-700 hover:border-primary"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-sm border font-semibold transition-all ${tipoComprobante === "factura"
+                    ? "border-primary bg-primary text-white"
+                    : "border-gray-200 text-gray-700 hover:border-primary"
+                    }`}
                 >
                   Factura
                 </button>
@@ -1642,16 +1719,15 @@ export default function Checkout() {
                           }
                           maxLength={
                             datosBoleta.tipoDocumento === "DNI" ||
-                            datosBoleta.tipoDocumento === "PASAPORTE"
+                              datosBoleta.tipoDocumento === "PASAPORTE"
                               ? 8
                               : 12
                           }
                           className={`
                             w-full px-4 py-3 border-2 rounded-sm transition-all duration-200 outline-none
-                            ${
-                              errors.rucBoleta
-                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
-                                : "border-gray-200 focus:border-primary focus:ring-2 focus:ring-green-200 hover:border-green-400"
+                            ${errors.rucBoleta
+                              ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
+                              : "border-gray-200 focus:border-primary focus:ring-2 focus:ring-green-200 hover:border-green-400"
                             }
                             ${datosBoleta.tipoDocumento === "DNI" ? "pr-12" : ""}
                           `.trim()}
@@ -1713,6 +1789,7 @@ export default function Checkout() {
                           })
                         }
                         error={errors.nombres}
+                        disabled={boletaConsulted && datosBoleta.tipoDocumento === "DNI"}
                       />
                     </div>
                     <div>
@@ -1726,6 +1803,7 @@ export default function Checkout() {
                           })
                         }
                         error={errors.apellidos}
+                        disabled={boletaConsulted && datosBoleta.tipoDocumento === "DNI"}
                       />
                     </div>
                   </div>
@@ -2009,82 +2087,113 @@ export default function Checkout() {
               <h2 className="text-xl font-semibold mb-2 text-gray-900">
                 Método de pago
               </h2>
-              <p className="text-gray-500 mb-8">
-                Elige la opción más conveniente
-              </p>
+              {trimegistoOtpConfirmed ? (
+                <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-md px-4 py-3 mb-6">
+                  {/* <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div> */}
+                  <div>
+                    <p className="text-green-800 font-semibold text-md">Saldo Trimegisto confirmado</p>
+                    <p className="text-green-700 text-sm mt-0.5">Selecciona un método para completar el pago.</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-500 mb-4">
+                  Elige la opción más conveniente
+                </p>
+              )}
 
               <div className="space-y-3">
-                <button
-                  onClick={() => setMetodoPago("card")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                    metodoPago === "card"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex -space-x-2">
-                      <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs overflow-hidden">
-                        <FaCreditCard className="text-gray-600" />
+                {(!trimegistoPreOrderId || trimegistoOtpConfirmed) && (
+                  <>
+                    <button
+                      onClick={() => setMetodoPago("card")}
+                      className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "card"
+                        ? "border-primary bg-primary/5"
+                        : "border-gray-200 hover:border-primary/50"
+                        }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex -space-x-2">
+                          <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs overflow-hidden">
+                            <FaCreditCard className="text-gray-600" />
+                          </div>
+                        </div>
+                        <div className="text-left">
+                          <p className="font-medium">Tarjeta de crédito / débito</p>
+                          <p className="text-xs text-gray-500">
+                            Visa, Mastercard o Amex
+                          </p>
+                        </div>
+                      </div>
+                      {metodoPago === "card" && (
+                        <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => setMetodoPago("async")}
+                      className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "async"
+                        ? "border-primary bg-primary/5"
+                        : "border-gray-200 hover:border-primary/50"
+                        }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <FaQrcode className="text-2xl text-purple-600" />
+                        <div className="text-left">
+                          <p className="font-medium">PagoEfectivo / QR / Yape</p>
+                          <p className="text-xs text-gray-500">
+                            Generar código CIP, QR o código de aprobación
+                          </p>
+                        </div>
+                      </div>
+                      {metodoPago === "async" && (
+                        <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
+                  </>
+                )}
+                {/* TRISMEGISTO METHOD — oculto una vez que el OTP fue confirmado (pago mixto) */}
+                {isTrimegisto && (totals.trismegistoBalance ?? 0) > 0 && !trimegistoOtpConfirmed && (
+                  <button
+                    onClick={() => setMetodoPago("trismegisto")}
+                    className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${metodoPago === "trismegisto"
+                        ? "border-primary bg-primary/5"
+                        : "border-gray-200 hover:border-primary/50"
+                      }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <FaWallet className="text-2xl text-primary" />
+                      <div className="text-left">
+                        <p className="font-medium">Pagar con Saldo Trismegisto</p>
+                        <p className="text-xs text-gray-500">
+                          Confirma tu pago con el código OTP recibido
+                        </p>
                       </div>
                     </div>
-                    <div className="text-left">
-                      <p className="font-medium">Tarjeta de crédito / débito</p>
-                      <p className="text-xs text-gray-500">
-                        Visa, Mastercard o Amex
-                      </p>
-                    </div>
-                  </div>
-                  {metodoPago === "card" && (
-                    <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-4 h-4 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setMetodoPago("async")}
-                  className={`w-full flex items-center justify-between p-4 rounded-sm border transition-all ${
-                    metodoPago === "async"
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-primary/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <FaQrcode className="text-2xl text-purple-600" />
-                    <div className="text-left">
-                      <p className="font-medium">PagoEfectivo / QR / Yape</p>
-                      <p className="text-xs text-gray-500">
-                        Generar código CIP, QR o código de aprobación
-                      </p>
-                    </div>
-                  </div>
-                  {metodoPago === "async" && (
-                    <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-4 h-4 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </button>
+                    {metodoPago === "trismegisto" && (
+                      <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                )}
               </div>
 
               {errors.metodoPago && (
@@ -2106,8 +2215,8 @@ export default function Checkout() {
           </div>
 
           {/* COLUMNA DERECHA - RESUMEN */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-md shadow-lg p-6 sticky top-24">
+          <div className="lg:col-span-1 lg:sticky lg:top-32 self-start animate-fade-in relative z-10">
+            <div className="bg-white rounded-md shadow-lg p-6">
               <h2 className="text-xl font-semibold mb-6">Resumen del pedido</h2>
 
               <div className="space-y-4 mb-6">
@@ -2193,8 +2302,41 @@ export default function Checkout() {
                   </div>
                 )}
 
+                {/* Descuento saldo Trimegisto */}
+                {(totals.trismegistoBalance ?? 0) > 0 && (
+                  <div className="flex justify-between text-primary font-medium text-sm">
+                    <span className="flex items-center gap-1.5">
+                      <FaWallet size={12} />
+                      Saldo Trimegisto
+                      {(totals.balanceInstallments ?? 1) > 1 && (
+                        <span className="text-xs text-gray-400">
+                          ({totals.balanceInstallments} cuotas)
+                        </span>
+                      )}
+                    </span>
+                    <span>-{formatPrice(totals.trismegistoBalance!.toString())}</span>
+                  </div>
+                )}
+
+                {/* Tipo de envío */}
                 <div className="flex justify-between text-gray-500 text-sm">
-                  <span>Envío</span>
+                  <span className="flex items-center gap-1.5">
+                    {selectedCarrier?.name?.toLowerCase().includes("retiro") ? (
+                      <>
+                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        Envio (Retiro)
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1.544 7.716A2 2 0 008.528 17h6.944a2 2 0 001.984-1.716L19 8M10 12h4" />
+                        </svg>
+                        Envio (Delivery)
+                      </>
+                    )}
+                  </span>
                   <span className="font-medium text-gray-900">
                     {totals.shipping === 0 ? (
                       <span className="text-primary font-medium">Gratis</span>
@@ -2203,11 +2345,16 @@ export default function Checkout() {
                     )}
                   </span>
                 </div>
-                <div className="flex justify-between text-lg font-semibold pt-4 border-t border-gray-100">
-                  <span className="text-gray-900">Total</span>
-                  <span className="text-primary">
-                    {formatPrice(totals.total.toString())}
-                  </span>
+
+                {/* Total */}
+                <div className="pt-3 mt-1 border-t border-gray-200">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-gray-900 font-bold text-lg">Total</span>
+                    <span className="text-primary font-bold text-2xl">
+                      {formatPrice(totals.total.toString())}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 text-right mt-1">Precio incluye IGV</p>
                 </div>
               </div>
             </div>
@@ -2230,6 +2377,46 @@ export default function Checkout() {
         onLoad={handleCulqiLoad}
         onError={() => logger.error("❌ Error al cargar Culqi Checkout")}
       />
+      <TrismegistoOTPModal
+        isOpen={showTrismegistoOTPModal && !!trimegistoPreOrderId}
+        preOrderId={trimegistoPreOrderId ?? ""}
+        onClose={() => setShowTrismegistoOTPModal(false)}
+        invoiceType={tipoComprobante === "boleta" ? "BOLETA" : "FACTURA"}
+        invoiceData={
+          tipoComprobante === "boleta"
+            ? {
+                tipoDocumento: datosBoleta.tipoDocumento,
+                numeroDocumento: datosBoleta.numeroDocumento,
+                nombres: datosBoleta.nombres,
+                apellidos: datosBoleta.apellidos,
+                direccion: datosBoleta.direccion,
+                departamento: datosBoleta.departamento,
+                provincia: datosBoleta.provincia,
+                distrito: datosBoleta.distrito,
+              }
+            : {
+                ruc: datosFactura.ruc,
+                razonSocial: datosFactura.razonSocial,
+                direccionFiscal: datosFactura.direccionFiscal,
+                departamento: datosFactura.departamento,
+                provincia: datosFactura.provincia,
+                distrito: datosFactura.distrito,
+              }
+        }
+        onSuccess={(data) => {
+          setShowTrismegistoOTPModal(false);
+          if (data.autoProcessed) {
+            // 100% saldo — orden ya creada por el backend
+            router.push(data.redirectUrl ?? "/checkout/success");
+          } else {
+            // Pago mixto — saldo confirmado, aún falta pagar con tarjeta/async.
+            // El preOrderId ya está en estado y se incluirá en createOrder.
+            setMetodoPago(null);
+            setTrimegistoOtpConfirmed(true);
+          }
+        }}
+      />
+
     </Layout>
   );
 }

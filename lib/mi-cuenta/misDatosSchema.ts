@@ -36,7 +36,13 @@ export const misDatosSchema = z.object({
     celular: z
         .string()
         .min(1, "El celular es obligatorio")
-        .regex(/^[0-9]{9}$/, "El celular debe tener exactamente 9 dígitos")
+        .regex(/^[0-9]{9}$/, "El celular debe tener exactamente 9 dígitos"),
+
+    telefonoSecundario: z
+        .string()
+        .regex(/^[0-9]{9}$/, "El teléfono secundario debe tener exactamente 9 dígitos")
+        .optional()
+        .or(z.literal(""))
 }).superRefine((data, ctx) => {
     if (data.tipoDocumento === 'DNI') {
         if (!DNI_REGEX.test(data.numeroDocumento)) {

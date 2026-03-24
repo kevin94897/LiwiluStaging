@@ -16,6 +16,7 @@ export interface User {
     documentType?: string;
     documentNumber?: string;
     phone?: string;
+    secondaryPhone?: string;
 }
 
 /**
@@ -55,7 +56,8 @@ export const mapApiUserToUser = (userData: any): User | null => {
         emailVerified: !!userData.emailVerified,
         documentType: normalizeDocumentType(userData.documentType || userData.tipoDocumento || userData.typeDocument || ''),
         documentNumber: userData.documentNumber || userData.numeroDocumento || userData.dni || userData.ruc || userData.document || '',
-        phone: userData.phone || userData.celular || userData.mobile || userData.telefono || ''
+        phone: userData.phone || userData.celular || userData.mobile || userData.telefono || '',
+        secondaryPhone: userData.secondaryPhone || userData.telefonoSecundario || ''
     };
 };
 

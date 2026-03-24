@@ -60,6 +60,7 @@ import {
   getWarehouseMap,
   WarehouseMapItem,
   validateStock,
+  createOrder,
   StockValidationResponse,
   saveGuestPersonalData,
   getDeliveryZones,
@@ -82,6 +83,8 @@ import {
   AppliedPromotion,
 } from "@/lib/cart";
 import PromoSuggestions from "@/components/cart/PromoSuggestions";
+import TrismegistoConsentModal from "@/components/cart/TrismegistoConsentModal";
+import { initiateTrismegistoPayment } from "@/lib/trimegisto";
 import logger from "@/lib/logger";
 
 // Distritos disponibles
@@ -105,6 +108,7 @@ export default function Carrito() {
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
+  const [isInitiatingTrimegisto, setIsInitiatingTrimegisto] = useState(false);
   const [promoSuggestions, setPromoSuggestions] = useState<PromoSuggestion[]>(
     [],
   );
@@ -207,6 +211,9 @@ export default function Carrito() {
 
   // Estados para autorización de retiro
   const [showAutorizacionModal, setShowAutorizacionModal] = useState(false);
+  const [showTrismegistoConsentModal, setShowTrismegistoConsentModal] = useState(false);
+  const [trismegistoPreOrderId, setTrismegistoPreOrderId] = useState<string | null>(null);
+  const [trismegistoDocumentUrl, setTrismegistoDocumentUrl] = useState<string>("");
   const [autorizacionData, setAutorizacionData] =
     useState<AutorizacionSchemaType | null>(null);
   const [isSelfPickup, setIsSelfPickup] = useState(true);
@@ -566,6 +573,7 @@ export default function Carrito() {
         showToast("¡Cupón aplicado con éxito!", "success");
         // Refresh cart: updates items, totals (discount, promoDiscount), product prices
         await syncCart();
+        await fetchPromoSuggestions();
       } else {
         showToast(res.message || "Cupón inválido", "error");
       }
@@ -583,6 +591,7 @@ export default function Carrito() {
       setCouponDiscount(0);
       showToast("Cupón eliminado", "success");
       await syncCart();
+      await fetchPromoSuggestions();
     } catch (err: any) {
       showToast(err.message || "Error al eliminar el cupón", "error");
     }
@@ -736,12 +745,174 @@ export default function Carrito() {
     }
   }, [activeTab]);
 
+  /**
+   * Returns true if the given prestashopId belongs to any eligible product
+   * inside a COMBO_2 promotion, searching both appliedPromotions and
+   * promoSuggestions (covers the case where COMBO_2 is applied and has been
+   * moved out of suggestions, or is still a suggestion).
+   */
+  const isProductInCombo2 = (prestashopId: number): boolean => {
+    const checkEligibleProducts = (eligibleProducts: any[]): boolean => {
+      if (!eligibleProducts || eligibleProducts.length === 0) return false;
+      if ("groupIndex" in eligibleProducts[0]) {
+        return eligibleProducts.some((g) =>
+          g.products?.some((p: any) => p.prestashopId === prestashopId),
+        );
+      }
+      return eligibleProducts.some((p: any) => p.prestashopId === prestashopId);
+    };
+
+    const inApplied = appliedPromotions
+      .filter((p) => p.description === "COMBO_2")
+      .some((p) => checkEligibleProducts((p as any).eligibleProducts ?? []));
+
+    if (inApplied) return true;
+
+    const inSuggestions = promoSuggestions
+      .filter((s) => s.description === "COMBO_2")
+      .some((s) => checkEligibleProducts((s as any).eligibleProducts ?? []));
+
+    return inSuggestions;
+  };
+
+  const isProductInAnyCombo2Group = (prestashopId: number): boolean => {
+    const checkEligibleProducts = (eligibleProducts: any[]): boolean => {
+      if (!eligibleProducts || eligibleProducts.length === 0) return false;
+      if ("groupIndex" in eligibleProducts[0]) {
+        // Formato agrupado: [{ groupIndex, products: [...] }]
+        return eligibleProducts.some((g) =>
+          g.products?.some((p: any) => p.prestashopId === prestashopId),
+        );
+      }
+      // Formato plano
+      return eligibleProducts.some((p: any) => p.prestashopId === prestashopId);
+    };
+
+    // Buscar en suggestions (COMBO_2 pendiente o activo aún listado)
+    const inSuggestions = promoSuggestions
+      .filter((s) => s.description === "COMBO_2")
+      .some((s) => checkEligibleProducts((s as any).eligibleProducts ?? []));
+
+    if (inSuggestions) return true;
+
+    // Buscar en appliedPromotions (COMBO_2 ya aplicado)
+    const inApplied = appliedPromotions
+      .filter((p) => p.description === "COMBO_2")
+      .some((p) => checkEligibleProducts((p as any).eligibleProducts ?? []));
+
+    return inApplied;
+  };
+
+  const handleRemoveProduct = async (productId: string) => {
+    try {
+      const itemToRemove = items.find((i) => i.product.id === productId);
+      console.log(
+        "🔍 [itemToRemove] product completo:",
+        JSON.stringify(itemToRemove?.product, null, 2),
+      );
+
+      if (itemToRemove && appliedPromotions.length > 0) {
+        const productPrestashopId = Number(itemToRemove.product.productId);
+        const couponsToRemove: AppliedPromotion[] = [];
+
+        // Pre-calcular una sola vez si el producto está en algún grupo de COMBO_2
+        const productIsInCombo2 =
+          isProductInAnyCombo2Group(productPrestashopId);
+
+        console.log(
+          "🔍 appliedPromotions:",
+          JSON.stringify(appliedPromotions, null, 2),
+        );
+        console.log(
+          "🔍 promoSuggestions COMBO_2:",
+          JSON.stringify(
+            promoSuggestions.filter((s) => s.description === "COMBO_2"),
+            null,
+            2,
+          ),
+        );
+        console.log(
+          "🔍 productIsInCombo2:",
+          productIsInCombo2,
+          "for prestashopId:",
+          productPrestashopId,
+        );
+
+        for (const promo of appliedPromotions) {
+          let isEligible = false;
+
+          // 1. Direct eligibleProducts (COMBO_2 / QTY_DISCOUNT / MIN_PURCHASE)
+          if (promo.eligibleProducts && promo.eligibleProducts.length > 0) {
+            if ("groupIndex" in (promo.eligibleProducts as any[])[0]) {
+              isEligible = (promo.eligibleProducts as any[]).some((g) =>
+                g.products?.some(
+                  (p: any) => p.prestashopId === productPrestashopId,
+                ),
+              );
+            } else {
+              isEligible = (promo.eligibleProducts as any[]).some(
+                (p: any) => p.prestashopId === productPrestashopId,
+              );
+            }
+          }
+
+          // 2. Steps — productos directos del COMBO_PLAN (plan lector, etc.)
+          if (!isEligible && promo.steps && promo.steps.length > 0) {
+            isEligible = promo.steps.some(
+              (step: any) =>
+                step.eligibleProducts?.some(
+                  (p: any) => p.prestashopId === productPrestashopId,
+                ) || step.product?.prestashopId === productPrestashopId,
+            );
+          }
+
+          // 3. COMBO_PLAN depende de COMBO_2 — si el producto eliminado
+          //    pertenece a cualquier grupo de COMBO_2, COMBO_PLAN ya no es válido
+          if (!isEligible && promo.description === "COMBO_PLAN") {
+            isEligible = productIsInCombo2;
+          }
+
+          // 4. Fallback legacy
+          if (
+            !isEligible &&
+            (promo as any).eligibleProductIds?.includes(productPrestashopId)
+          ) {
+            isEligible = true;
+          }
+
+          if (isEligible) {
+            couponsToRemove.push(promo);
+          }
+        }
+
+        for (const promo of couponsToRemove) {
+          try {
+            await removeCoupon(promo.code);
+            showToast(
+              `El cupón "${promo.code}" se eliminó porque dependía de un producto que fue removido.`,
+              "error",
+            );
+          } catch (couponError) {
+            console.error(
+              `Error al remover el cupón ${promo.code}:`,
+              couponError,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error al interceptar remoción de producto: ", error);
+    } finally {
+      removeFromCart(productId);
+    }
+  };
+
   const handleUpdateQuantity = async (
     productId: string,
     newQuantity: number,
   ) => {
     if (newQuantity < 1) {
-      removeFromCart(productId);
+      await handleRemoveProduct(productId);
       return;
     }
     await updateQuantity(productId, newQuantity);
@@ -1259,16 +1430,18 @@ export default function Carrito() {
       const { apiPut } = await import("@/lib/auth/apiClient");
       const token = localStorage.getItem("accessToken");
 
-      if (data.telefono) {
+      if (data.telefono !== undefined) {
         setCustomTelefono(data.telefono);
       }
 
       // Ensure document type is uppercase for backend validation
       const payload = { ...data };
 
-      // ⚠️ TEMPORAL: Se elimina el campo 'telefono' antes de enviar a /users/profile 
-      // porque el endpoint aún no lo soporta. Se habilitará pronto.
-      delete payload.telefono;
+      // Remap 'telefono' (internal UI field) to 'secondaryPhone' (API field)
+      if (payload.telefono !== undefined) {
+        payload.secondaryPhone = payload.telefono;
+        delete payload.telefono;
+      }
 
       if (payload.documentType) {
         payload.documentType = payload.documentType.toUpperCase();
@@ -1336,7 +1509,7 @@ export default function Carrito() {
           tipoDocumento: user.documentType || "DNI",
           numeroDocumento: user.documentNumber || "",
           celular: user.phone || "",
-          telefono: customTelefono || (user as any).telefono || "",
+          telefono: customTelefono || user.secondaryPhone || "",
           email: user.email,
           // Usar dirección principal para datos de contacto
           departamento: mainAddress ? mainAddress.department : "",
@@ -1499,28 +1672,59 @@ export default function Carrito() {
       }
 
       // Fallback: Check if error message contains validation keywords
-      if (
-        error.message &&
-        (error.message.toLowerCase().includes("documento") ||
-          error.message.toLowerCase().includes("celular"))
-      ) {
-        if (isLoggedIn) {
-          // For logged users, try to parse the error message
+      // Ahora mostramos los errores específicos para invitados para dar mayor precisión
+      if (isLoggedIn) {
+        // For logged users, try to parse the error message if it looks like validation
+        if (
+          error.message &&
+          (error.message.toLowerCase().includes("documento") ||
+            error.message.toLowerCase().includes("celular"))
+        ) {
           const messages = error.message
             .split(",")
             .map((m: string) => m.trim());
           const fieldErrors = parseValidationErrors(messages);
           setUserDataErrors(fieldErrors);
         } else {
-          // For guests, show the generic modal
-          setValidationErrorMessage(error.message);
-          setShowValidationModal(true);
+          showToast(error.message || "Error al procesar la información del carrito", "error");
         }
       } else {
-        showToast("Error al procesar la información del carrito", "error");
+        // Para invitados, siempre mostrar el error exacto en el modal en lugar del genérico
+        setValidationErrorMessage(error.message || "Error configurando los datos del envío");
+        setShowValidationModal(true);
       }
 
       return false;
+    }
+  };
+
+
+
+  // Para usuarios Trimegisto con saldo aplicado: llama /initiate y muestra el
+  // modal de consentimiento antes de navegar al checkout.
+  // Para el resto: navega directamente.
+  const isTrimegistoUser =
+    (user?.role || "").toUpperCase() === "TRIMEGISTO" ||
+    (user?.role || "").toUpperCase() === "TRISMEGISMO";
+
+  const navigateToCheckout = async () => {
+    if (isTrimegistoUser && (totals.trismegistoBalance ?? 0) > 0) {
+      setIsInitiatingTrimegisto(true);
+      try {
+        const response = await initiateTrismegistoPayment(
+          totals.trismegistoBalance!,
+          totals.balanceInstallments ?? 1,
+        );
+        setTrismegistoPreOrderId(response.preOrderId);
+        setTrismegistoDocumentUrl(response.trismegistoDocumentUrl ?? "");
+        setShowTrismegistoConsentModal(true);
+      } catch (err: any) {
+        showToast(err.message || "Error al iniciar el pago Trimegisto", "error");
+      } finally {
+        setIsInitiatingTrimegisto(false);
+      }
+    } else {
+      router.push("/checkout");
     }
   };
 
@@ -1613,7 +1817,7 @@ export default function Carrito() {
 
           // FIXED: Check summary.data.isComplete instead of summary.isComplete
           if (summary.success && summary.data?.isComplete) {
-            router.push("/checkout");
+            await navigateToCheckout();
           } else {
             logger.warn("⚠️ [Carrito] Checkout incomplete or error:", summary);
             const missingInfo = [];
@@ -1674,7 +1878,7 @@ export default function Carrito() {
         const summary = await getCheckoutSummary();
         // FIXED: Check summary.data.isComplete instead of summary.isComplete
         if (summary.success && summary.data?.isComplete) {
-          router.push("/checkout");
+          await navigateToCheckout();
         } else {
           showToast(
             summary.message ||
@@ -1696,7 +1900,7 @@ export default function Carrito() {
         const summary = await getCheckoutSummary();
         // FIXED: Check summary.data.isComplete instead of summary.isComplete
         if (summary.success && summary.data?.isComplete) {
-          router.push("/checkout");
+          await navigateToCheckout();
         } else {
           showToast(
             summary.message ||
@@ -2421,7 +2625,15 @@ export default function Carrito() {
                 isLoggedIn={isLoggedIn}
                 guestDataCompleted={guestDataCompleted}
                 guestData={guestData}
-                userData={user ? { ...user, telefono: customTelefono || (user as any).telefono } : null}
+                userData={
+                  user
+                    ? {
+                      ...user,
+                      secondaryPhone: customTelefono || user.secondaryPhone,
+                      telefono: customTelefono || user.secondaryPhone,
+                    }
+                    : null
+                }
                 userAddress={userAddresses.find((a) => a.isMain)}
                 onEdit={() => {
                   setActiveTab("guest");
@@ -2492,8 +2704,9 @@ export default function Carrito() {
                         isValidatingStock={isValidatingStock}
                         isValidatingSavar={isValidatingSavar}
                         hasDeliveryDistrict={!!currentDeliveryDistrict}
-                        onRemove={removeFromCart}
+                        onRemove={handleRemoveProduct}
                         onUpdateQuantity={handleUpdateQuantity}
+                        appliedPromotions={appliedPromotions}
                       />
                     ))}
                   </>
@@ -2512,15 +2725,15 @@ export default function Carrito() {
               </button>
             </div>
 
-            {/* === SUGERENCIAS DE PROMOCIONES (Deshabilitado temporalmente para producción) === */}
-            {/* {(promoSuggestions.length > 0 || appliedPromotions.length > 0) && (
+            {/* === SUGERENCIAS DE PROMOCIONES === */}
+            {(promoSuggestions.length > 0 || appliedPromotions.length > 0) && (
               <PromoSuggestions
                 suggestions={promoSuggestions}
                 appliedPromotions={appliedPromotions}
                 onApplyPromo={(code) => handleApplyCoupon(code)}
                 isApplyingCoupon={isApplyingCoupon}
               />
-            )} */}
+            )}
 
             <AuthorizedPersonInfo
               metodoEnvio={metodoEnvio as any}
@@ -2553,8 +2766,12 @@ export default function Carrito() {
             acceptNewsletter={acceptNewsletter}
             onAcceptNewsletterChange={setAcceptNewsletter}
             isValidatingStock={isValidatingStock}
+            isSubmitting={isInitiatingTrimegisto}
             tiendaSeleccionada={tiendaSeleccionada}
             onCheckout={handleCheckoutSubmit}
+            balanceAmount={totals.balanceAmount}
+            balanceInstallments={totals.balanceInstallments}
+            onAfterBalanceApply={syncCart}
           />
         </div>
       </div>
@@ -2616,6 +2833,16 @@ export default function Carrito() {
         showValidationModal={showValidationModal}
         onCloseValidation={() => setShowValidationModal(false)}
         validationMessage={validationErrorMessage}
+      />
+
+      <TrismegistoConsentModal
+        isOpen={showTrismegistoConsentModal}
+        onClose={() => setShowTrismegistoConsentModal(false)}
+        documentUrl={trismegistoDocumentUrl}
+        onConfirm={() => {
+          setShowTrismegistoConsentModal(false);
+          router.push(`/checkout?preOrderId=${trismegistoPreOrderId}`);
+        }}
       />
     </Layout>
   );

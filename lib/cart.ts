@@ -56,8 +56,9 @@ export interface CartTotals {
     subtotal: number;
     shipping: number;
     total: number;
-    discount?: number;      // Total coupon/rule discount
-    promoDiscount?: number; // Discount from applied promotions
+    discount?: number;         // Total coupon/rule discount
+    promoDiscount?: number;    // Discount from applied promotions
+    trismegistoBalance?: number; // Balance applied from Trismegisto account
 }
 
 /**
@@ -87,7 +88,10 @@ export interface AppliedPromotion {
     name: string;
     description: string;
     prestashopId: number;
+    productId?: number;
     totalSavings: number;
+    eligibleProducts?: (EligibleProduct | Combo2EligibleGroup)[];
+    steps?: ComboPlanStep[];
 }
 
 /**
@@ -104,7 +108,10 @@ export interface CartData {
         subtotal: number;
         discount?: number;
         promoDiscount?: number;
+        trismegistoBalance?: number;
     };
+    balanceAmount?: number;
+    balanceInstallments?: number;
     appliedPromotions?: AppliedPromotion[];
     expiresAt?: string; // Changed from string | null to optional string
     timeRemaining?: string; // Added
@@ -950,7 +957,16 @@ export async function payOrder(orderId: string | number, data: {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `Error processing payment: ${response.statusText}`);
+            // Usar merchantMessage si está disponible, sino el mensaje genérico
+            const errMessage =
+                errorData.error?.merchantMessage ||
+                errorData.message ||
+                `Error processing payment: ${response.statusText}`;
+            const err: any = new Error(errMessage);
+            err.code = errorData.error?.code;
+            err.declineCode = errorData.error?.declineCode;
+            err.error = errorData.error; // Preservar el objeto error completo
+            throw err;
         }
 
         return await response.json();
@@ -1009,6 +1025,7 @@ export async function createCulqiOrder(pendingOrderId: string | number, email: s
 export async function createOrder(data: {
     invoiceType: string;
     invoiceData?: any;
+    preOrderId?: string;
 }): Promise<{ success: boolean; data?: { orderId: number;[key: string]: any }; orderId?: number; message?: string;[key: string]: any }> {
     try {
         const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -1339,8 +1356,9 @@ export async function getPendingOrderAttempt(status: string): Promise<{ success:
  * Get asynchronous payment status and Culqi Order ID
  */
 export async function getAsyncPaymentStatus(pendingOrderId: number | string): Promise<any> {
-    return checkAsyncPaymentStatus(pendingOrderId);
 }
+
+
 
 // ─────────────────────────────────────────────
 // CUPONES Y SUGERENCIAS DE PROMOCIONES
@@ -1365,12 +1383,35 @@ export interface MatchingGroup {
 }
 
 export interface EligibleProduct {
-    productId: number;
+    productId?: number;
     prestashopId: number;
+    url?: string;                    // Pre-built URL slug, e.g. "polo?talla=4" → use /tienda/{url}
+    // --- Flat combination fields ---
+    combinationId?: number;
+    combinationName?: string | null;
+    attributes?: { type: string; value: string; colorHex: string | null }[];
+    quantityInCart?: number;
+    // ---
     name: string;
     price: number;
     coverImage: string;
     linkRewrite?: string;
+    hasVariations?: boolean;
+    inCart?: boolean;
+    priceWithDiscount?: number;
+    // Nested combinations array (legacy / COMBO_2 format)
+    combinations?: {
+        combinationId: number;
+        name: string | null;
+        price: number;
+        attributes: { type: string; value: string; colorHex: string | null }[];
+    }[];
+}
+
+export interface Combo2EligibleGroup {
+    groupIndex: number;
+    satisfied: boolean;
+    products: EligibleProduct[];
 }
 
 export interface RequiredProduct {
@@ -1385,13 +1426,22 @@ export interface RequiredProduct {
     linkRewrite?: string;
 }
 
+export interface ComboPlanStep {
+    step: number;
+    description: string;
+    completed: boolean;
+    eligibleProducts?: EligibleProduct[];
+    product?: EligibleProduct & { priceWithDiscount?: number };
+}
+
 export interface PromoSuggestion {
     prestashopId: number;
+    productId?: number;
     code: string;
     name: string;
     description: 'COMBO_2' | 'QTY_DISCOUNT' | 'COMBO_PLAN' | 'MIN_PURCHASE' | string;
     alreadyApplied: boolean;
-    status: 'requires_products' | 'requires_minimum' | 'requires_combo2' | 'ready' | string;
+    status: 'requires_products' | 'requires_minimum' | 'requires_combo2' | 'requires_combo2_products' | 'ready' | string;
     message: string;
     reductionPercent?: number;
     reductionAmount?: number;
@@ -1399,15 +1449,16 @@ export interface PromoSuggestion {
     combosAvailable?: number;
     matchingGroups?: MatchingGroup[];
     missingProductIds?: number[];
+    eligibleProducts?: (EligibleProduct | Combo2EligibleGroup)[];
     // QTY_DISCOUNT
     inCart?: number;
     required?: number;
     discountedUnits?: number;
-    eligibleProducts?: EligibleProduct[];
     // COMBO_PLAN
     requiresCombo2?: boolean;
     reductionProductId?: number;
     requiredProducts?: RequiredProduct[];
+    steps?: ComboPlanStep[];
     // MIN_PURCHASE
     minimumAmount?: number;
     currentSubtotal?: number;

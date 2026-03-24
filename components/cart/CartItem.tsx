@@ -14,11 +14,13 @@ import {
   getRegularPrice,
   hasDiscount,
 } from "@/lib/utils";
+import { FaTag } from "react-icons/fa6";
 import { CartItem as CartItemType } from "@/context/CartContext";
 import {
   SavarStockValidationResult,
   StockValidationResponse,
   WarehouseMapItem,
+  AppliedPromotion,
 } from "@/lib/cart";
 
 interface CartItemProps {
@@ -34,6 +36,7 @@ interface CartItemProps {
   hasDeliveryDistrict: boolean;
   onRemove: (productId: string) => void;
   onUpdateQuantity: (productId: string, quantity: number) => void;
+  appliedPromotions?: AppliedPromotion[];
 }
 
 export default function CartItem({
@@ -49,6 +52,7 @@ export default function CartItem({
   hasDeliveryDistrict,
   onRemove,
   onUpdateQuantity,
+  appliedPromotions = [],
 }: CartItemProps) {
   // Prioritize the direct coverImage property if available (new logic)
   // Otherwise fall back to associations (legacy logic)
@@ -106,8 +110,8 @@ export default function CartItem({
   return (
     <div
       className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${itemStockStatus === "available"
-          ? "border-2 border-primary"
-          : "border-2 border-transparent"
+        ? "border-2 border-primary"
+        : "border-2 border-transparent"
         }`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
@@ -218,6 +222,89 @@ export default function CartItem({
                 </h3>
               </Link>
 
+              {/* Badge cupón aplicado */}
+              {(() => {
+                const { promoCodes, promoDiscount, totalSavings } = item.product as any;
+
+                // Priority 1: Backend explicit promo properties
+                if (promoCodes && promoCodes.length > 0) {
+                  return (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {promoCodes.map((code: string, i: number) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1 text-[13px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20"
+                        >
+                          <FaTag size={10} />
+                          {code}
+                          {promoDiscount && promoDiscount > 0
+                            ? ` | -S/${promoDiscount}`
+                            : totalSavings && totalSavings > 0
+                              ? ` | -S/${totalSavings}`
+                              : ""}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                }
+
+                // Priority 2: Fallback to matching appliedPromotions from context
+                const productPrestashopId = item.product.productId;
+
+                const matchingPromos = appliedPromotions.filter((promo) => {
+                  if (
+                    promo.eligibleProducts &&
+                    promo.eligibleProducts.length > 0
+                  ) {
+                    // Check if it's COMBO_2 format (groups)
+                    if ("groupIndex" in promo.eligibleProducts[0]) {
+                      const groups = promo.eligibleProducts as any[];
+                      return groups.some((g) =>
+                        g.products.some(
+                          (p: any) => p.prestashopId === productPrestashopId,
+                        ),
+                      );
+                    }
+                    // Regular format
+                    return (promo.eligibleProducts as any[]).some(
+                      (p) => p.prestashopId === productPrestashopId,
+                    );
+                  }
+
+                  if (promo.steps && promo.steps.length > 0) {
+                    return promo.steps.some(
+                      (step: any) =>
+                        step.eligibleProducts?.some(
+                          (p: any) => p.prestashopId === productPrestashopId,
+                        ) || step.product?.prestashopId === productPrestashopId,
+                    );
+                  }
+
+                  // Fallback to older format
+                  return (promo as any).eligibleProductIds?.includes(
+                    productPrestashopId,
+                  );
+                });
+
+                if (matchingPromos.length > 0) {
+                  return (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {matchingPromos.map((p) => (
+                        <span
+                          key={p.prestashopId}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20"
+                        >
+                          <FaTag size={7} />
+                          {p.code} · -
+                          {p.totalSavings > 0 ? `S/${p.totalSavings}` : "desc."}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               {/* Variation Attributes */}
               {item.product.variationAttributes &&
                 item.product.variationAttributes.length > 0 && (
@@ -301,7 +388,7 @@ export default function CartItem({
                   );
                   if (productIssue) {
                     return (
-                      <div className="flex items-center gap-1.5 text-red-600 font-medium text-xs mb-2 hidden">
+                      <div className="flex items-center gap-1.5 text-red-600 font-medium text-xs mb-2">
                         <FaTimesCircle className="shrink-0" />
                         <span>{productIssue.mensaje}</span>
                       </div>

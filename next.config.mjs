@@ -44,6 +44,11 @@ const nextConfig = {
         destination: 'https://libro-de-reclamaciones.liwilu.com.pe/',
         permanent: true,
       },
+      {
+        source: '/checkout/success',
+        destination: '/pedido-exitoso',
+        permanent: true,
+      },
     ]
   },
 };

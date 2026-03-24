@@ -64,6 +64,14 @@ export interface PaymentData {
     amountInCents: number;
     referenceCode: string;
     rawResponse?: any;
+    trismegistoInfo?: TrismegistoInfo;
+}
+
+export interface TrismegistoInfo {
+    balanceAmount: number;
+    cardAmount: number;
+    balanceInstallments: number;
+    soTpRegistroId?: string;
 }
 
 export interface Order {

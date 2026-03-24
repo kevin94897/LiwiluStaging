@@ -409,7 +409,7 @@ export default function DeliveryAddressForm({
             )}
 
             <div className="flex gap-2 md:flex-row flex-col justify-center">
-              <Button onClick={onSaveAddress} variant="primary" size="sm">
+              <Button onClick={onSaveAddress} variant="primary" size="sm" className="w-1/2">
                 Guardar dirección
               </Button>
               {!(isLoggedIn && userAddresses.length === 0) && (
@@ -423,6 +423,7 @@ export default function DeliveryAddressForm({
                   }}
                   variant="outline"
                   size="sm"
+                  className="w-1/2"
                 >
                   Cancelar
                 </Button>

@@ -12,7 +12,7 @@ import {
   getPickupStatus,
   Order,
 } from "@/lib/orders";
-import { FaCheckCircle, FaClock, FaTruck, FaBox, FaHome } from "react-icons/fa";
+import { FaCheckCircle, FaClock, FaTruck, FaBox, FaHome, FaWallet } from "react-icons/fa";
 
 // ─── Tracking helpers (mirrors rastreo/[id].tsx) ────────────────────────────
 
@@ -139,10 +139,10 @@ function mapSAVARToSteps(savarData: any): TrackingStep[] {
       step.codes.length > 0
         ? estadosApi.find((e: any) => step.codes.includes(e.vCodEstado))
         : estadosApi.find((e: any) =>
-            step.keywords.some((k) =>
-              e.vNombreEstado.toLowerCase().includes(k),
-            ),
-          );
+          step.keywords.some((k) =>
+            e.vNombreEstado.toLowerCase().includes(k),
+          ),
+        );
     let fecha = apiMatch
       ? formatTrackingDate(apiMatch.dFechaEstado, "date")
       : "";
@@ -379,15 +379,15 @@ export default function MisPedidos() {
                         const firstItem = order.items[0];
                         const formattedDate = order.paidAt
                           ? new Intl.DateTimeFormat("es-PE", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            })
-                              .format(new Date(order.paidAt))
-                              .replace(",", "") + " pm"
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          })
+                            .format(new Date(order.paidAt))
+                            .replace(",", "") + " pm"
                           : "-";
 
                         const isExpanded = expandedOrderId === order.id;
@@ -483,9 +483,8 @@ export default function MisPedidos() {
                                     ? "Ocultar detalles"
                                     : "Ver detalles"}{" "}
                                   <svg
-                                    className={`w-4 h-4 transition-transform ${
-                                      isExpanded ? "rotate-180" : ""
-                                    }`}
+                                    className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""
+                                      }`}
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -520,13 +519,13 @@ export default function MisPedidos() {
                                           </p>
                                           {order.deliveryInfo
                                             .direccionAlmacen && (
-                                            <p className="text-primary">
-                                              {
-                                                order.deliveryInfo
-                                                  .direccionAlmacen
-                                              }
-                                            </p>
-                                          )}
+                                              <p className="text-primary">
+                                                {
+                                                  order.deliveryInfo
+                                                    .direccionAlmacen
+                                                }
+                                              </p>
+                                            )}
                                           {order.deliveryInfo.atencion && (
                                             <p className="text-primary mt-0.5">
                                               🕐 {order.deliveryInfo.atencion}
@@ -569,25 +568,24 @@ export default function MisPedidos() {
                                               }}
                                             >
                                               <div
-                                                className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                                                  step.completado
-                                                    ? step.activo
-                                                      ? "bg-primary text-white shadow-lg shadow-green-200 animate-pulse"
-                                                      : "bg-primary text-white shadow-lg shadow-green-200"
-                                                    : "bg-gray-200 text-gray-400"
-                                                }`}
+                                                className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${step.completado
+                                                  ? step.activo
+                                                    ? "bg-primary text-white shadow-lg shadow-green-200 animate-pulse"
+                                                    : "bg-primary text-white shadow-lg shadow-green-200"
+                                                  : "bg-gray-200 text-gray-400"
+                                                  }`}
                                               >
                                                 {step.id === "confirmado" && (
                                                   <FaCheckCircle className="text-base" />
                                                 )}
                                                 {(step.id === "recepcionado" ||
                                                   step.id === "sin_armado") && (
-                                                  <FaBox className="text-base" />
-                                                )}
+                                                    <FaBox className="text-base" />
+                                                  )}
                                                 {(step.id === "planificado" ||
                                                   step.id === "armado") && (
-                                                  <FaClock className="text-base" />
-                                                )}
+                                                    <FaClock className="text-base" />
+                                                  )}
                                                 {step.id === "ruta" && (
                                                   <FaTruck className="text-base" />
                                                 )}
@@ -625,6 +623,40 @@ export default function MisPedidos() {
                                     )}
                                   </div>
                                 </div>
+
+                                {/* Pago Trimegisto */}
+                                {order.paymentData?.trismegistoInfo && (
+                                  <div className="bg-green-50 border border-primary/20 rounded-lg p-4 mt-5">
+                                    <h4 className="font-bold text-primary-dark mb-3 flex items-center gap-2 text-sm">
+                                      <FaWallet className="text-primary" size={14} />
+                                      Pago con saldo Trimegisto
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs text-gray-700">
+                                      <div>
+                                        <span className="text-gray-500">Saldo aplicado</span>
+                                        <p className="font-semibold text-primary">
+                                          S/ {order.paymentData.trismegistoInfo.balanceAmount.toFixed(2)}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-500">Cuotas</span>
+                                        <p className="font-semibold">
+                                          {order.paymentData.trismegistoInfo.balanceInstallments === 1
+                                            ? "Al contado"
+                                            : `${order.paymentData.trismegistoInfo.balanceInstallments} cuotas de S/ ${(order.paymentData.trismegistoInfo.balanceAmount / order.paymentData.trismegistoInfo.balanceInstallments).toFixed(2)}`}
+                                        </p>
+                                      </div>
+                                      {(order.paymentData.trismegistoInfo.cardAmount ?? 0) > 0 && (
+                                        <div>
+                                          <span className="text-gray-500">Monto con tarjeta</span>
+                                          <p className="font-semibold">
+                                            S/ {order.paymentData.trismegistoInfo.cardAmount.toFixed(2)}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
 
                                 {/* <div className="flex justify-end pt-4 border-t">
                                   <Link

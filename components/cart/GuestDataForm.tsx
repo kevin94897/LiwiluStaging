@@ -49,7 +49,7 @@ export default function GuestDataForm({
   }, [serverErrors]);
 
   // ── Document auto-lookup hook ────────────────────────────────────────────────
-  const { isLoading: isConsulting, resetConsulted } = useDocumentLookup({
+  const { isLoading: isConsulting, isConsulted, resetConsulted } = useDocumentLookup({
     type: localData.tipoDocumento,
     number: localData.numeroDocumento,
     enabled: activeTab === "guest",
@@ -277,6 +277,7 @@ export default function GuestDataForm({
               onChange={handleChange}
               placeholder="Nombres"
               error={localErrors.nombre}
+              disabled={isConsulted && localData.tipoDocumento === "DNI"}
             />
           </div>
           <div>
@@ -292,7 +293,7 @@ export default function GuestDataForm({
                   : "Apellidos"
               }
               error={localErrors.apellido}
-              disabled={localData.tipoDocumento === "RUC"}
+              disabled={localData.tipoDocumento === "RUC" || (isConsulted && localData.tipoDocumento === "DNI")}
             />
           </div>
         </div>

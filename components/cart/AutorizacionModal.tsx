@@ -290,6 +290,7 @@ export default function AutorizacionModal({
                   onChange={handleChange}
                   className="bg-white text-gray-700"
                   error={errors.fullName}
+                  disabled={isConsulted && formData.documentType === "DNI"}
                 />
               </div>
 
