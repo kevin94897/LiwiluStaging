@@ -236,7 +236,7 @@ export function TrimegistoRegisterModal({
   initialData,
 }: TrimegistoRegisterModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [resultModal, setResultModal] = useState<{ isOpen: boolean; success: boolean; message: string }>({ isOpen: false, success: false, message: "" });
   // ✅ Estado completo para todos los campos
   const [formData, setFormData] = useState<FullRegisterValues>({
     dni: "",
@@ -375,14 +375,26 @@ export function TrimegistoRegisterModal({
       const data = await response.json();
 
       if (response.ok || data.status === true || data.success === true) {
-        setShowSuccess(true);
+        setResultModal({
+          isOpen: true,
+          success: true,
+          message: data.message || "¡Tu solicitud fue enviada con éxito! Un asesor se comunicará en breve.",
+        });
         onSuccess();
       } else {
-        setErrors({ email: data.message || "Ocurrió un error al registrarse. Inténtalo de nuevo." });
+        setResultModal({
+          isOpen: true,
+          success: false,
+          message: data.message || "Ocurrió un error al registrarse. Inténtalo de nuevo.",
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error("Error al registrar:", error);
-      setErrors({ email: "Ocurrió un error al registrarse. Inténtalo de nuevo." });
+      setResultModal({
+        isOpen: true,
+        success: false,
+        message: error?.message || "Error de conexión. Inténtalo de nuevo.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -394,18 +406,22 @@ export function TrimegistoRegisterModal({
 
   const fileName = formData.signatureFile ? formData.signatureFile.name : null;
 
-  // ✅ Modal de éxito
-  if (showSuccess) {
+  // ✅ Modal de resultado (éxito o error)
+  if (resultModal.isOpen) {
+    const closeResult = () => {
+      setResultModal({ isOpen: false, success: false, message: "" });
+      if (resultModal.success) onClose();
+    };
     return (
       <>
-        <div className="fixed inset-0 bg-black/50 z-50 animate-fade-in" onClick={() => { setShowSuccess(false); onClose(); }} />
+        <div className="fixed inset-0 bg-black/50 z-50 animate-fade-in" onClick={closeResult} />
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
           <div
             className="bg-white rounded-2xl shadow-2xl max-w-sm w-full pointer-events-auto animate-scale-in relative text-center p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => { setShowSuccess(false); onClose(); }}
+              onClick={closeResult}
               className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition"
             >
               <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -413,18 +429,30 @@ export function TrimegistoRegisterModal({
               </svg>
             </button>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Liwilu</h2>
-            <div className="mx-auto mb-6 w-16 h-16 rounded-full border-2 border-primary flex items-center justify-center">
-              <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="text-xl font-bold text-gray-900 mb-2">¡Solicitud enviada con éxito!</p>
-            <p className="text-gray-500 text-sm mb-8">Un asesor se comunicará en breve</p>
+            {resultModal.success ? (
+              <div className="mx-auto mb-6 w-16 h-16 rounded-full border-2 border-primary flex items-center justify-center">
+                <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            ) : (
+              <div className="mx-auto mb-6 w-16 h-16 rounded-full border-2 border-red-400 flex items-center justify-center">
+                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            )}
+            <p className={`text-xl font-bold mb-2 ${resultModal.success ? "text-gray-900" : "text-red-600"}`}>
+              {resultModal.success ? "¡Registro enviado!" : "Ocurrió un error"}
+            </p>
+            <p className="text-gray-600 text-sm mb-8">{resultModal.message}</p>
             <button
-              onClick={() => { setShowSuccess(false); onClose(); }}
-              className="w-full py-3 bg-primary hover:bg-primary-light text-white font-medium rounded-full transition"
+              onClick={closeResult}
+              className={`w-full py-3 font-medium rounded-full transition text-white ${
+                resultModal.success ? "bg-primary hover:bg-primary-light" : "bg-red-500 hover:bg-red-600"
+              }`}
             >
-              Cerrar
+              {resultModal.success ? "Cerrar" : "Intentar de nuevo"}
             </button>
           </div>
         </div>
@@ -673,7 +701,7 @@ export function TrimegistoRegisterModal({
                     name="acceptTerms"
                     checked={formData.acceptTerms}
                     onChange={handleCheckboxChange}
-                    className="mt-1 w-5 h-5 text-green-500 border-gray-300 rounded focus:ring-green-500"
+                    className="h-5 text-green-500 border-gray-300 rounded focus:ring-green-500"
                   />
                   <span className="text-sm text-gray-700">
                     Acepto los{" "}
@@ -706,7 +734,7 @@ export function TrimegistoRegisterModal({
                     name="acceptDeclarations"
                     checked={formData.acceptDeclarations}
                     onChange={handleCheckboxChange}
-                    className="mt-1 w-5 h-5 text-green-500 border-gray-300 rounded focus:ring-green-500"
+                    className="h-5 text-green-500 border-gray-300 rounded focus:ring-green-500"
                   />
                   <span className="text-sm text-gray-700">
                     Acepto declaración jurada de datos personales

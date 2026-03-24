@@ -33,9 +33,8 @@ export const guestDataSchema = z.object({
         .regex(/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, "El correo contiene caracteres no permitidos"),
 
     telefonoOpcional: z.string()
-        .regex(/^[0-9]+$/, "El teléfono opcional solo puede contener números")
-        .optional()
-        .or(z.literal("")),
+        .min(9, "El celular secundario debe tener 9 dígitos")
+        .regex(/^[0-9]+$/, "El celular secundario solo puede contener números"),
 
     departamento: z.string().min(1, "El departamento es obligatorio"),
 

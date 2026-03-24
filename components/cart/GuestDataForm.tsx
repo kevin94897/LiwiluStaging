@@ -326,12 +326,13 @@ export default function GuestDataForm({
           </div>
           <div>
             <Input
-              label="Teléfono opcional"
+              label="Celular (secundario)"
               type="tel"
               name="telefonoOpcional"
               value={localData.telefonoOpcional}
               onChange={handleChange}
               placeholder="973 820 088"
+              error={localErrors.telefonoOpcional}
             />
           </div>
         </div>

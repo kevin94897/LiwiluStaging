@@ -1642,6 +1642,26 @@ export default function Carrito() {
         return false;
       }
 
+      // Check for field-specific errors attached by saveGuestPersonalData (e.g. 400 Bad Request)
+      if (error.fieldErrors && typeof error.fieldErrors === "object" && Object.keys(error.fieldErrors).length > 0) {
+        setUserDataErrors(error.fieldErrors);
+
+        // Scroll to GuestDataSummary to show errors
+        setTimeout(() => {
+          const summaryElement = document.querySelector(
+            '[data-component="guest-data-summary"]',
+          );
+          if (summaryElement) {
+            summaryElement.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+          }
+        }, 100);
+
+        return false;
+      }
+
       // Parse API validation errors for logged-in users
       if (isLoggedIn && error.response) {
         try {
