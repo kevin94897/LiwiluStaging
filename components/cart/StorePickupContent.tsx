@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { FaCheck, FaTimesCircle } from "react-icons/fa";
 import { FaPencil } from "react-icons/fa6";
 import dynamic from "next/dynamic";
@@ -44,11 +45,50 @@ export default function StorePickupContent({
   loadingStores,
   stockValidationResult,
 }: StorePickupContentProps) {
-  if (metodoEnvio !== "retiro") return null;
-
   const visibleWarehouses = mapWarehouses.filter((w) =>
     !/tienda web ingenieros/i.test(w.desAlmacen),
   );
+
+  const filteredDistricts = warehouseDistricts.filter((district) =>
+    ["ate", "ate vitarte"].includes(district.desDistrito.toLowerCase().trim()),
+  );
+
+  // Auto-seleccionar distrito si solo hay uno disponible
+  useEffect(() => {
+    if (metodoEnvio !== "retiro") return;
+    if (filteredDistricts.length === 1 && !distritoSeleccionado) {
+      onSelectDistrito(filteredDistricts[0].desDistrito);
+      setMostrarMapa(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metodoEnvio, filteredDistricts.length, distritoSeleccionado]);
+
+  // Auto-seleccionar primera tienda al elegir un distrito
+  useEffect(() => {
+    if (metodoEnvio !== "retiro") return;
+    if (!distritoSeleccionado) return;
+    if (!loadingStores && visibleWarehouses.length > 0 && !tiendaSeleccionada) {
+      const tienda = visibleWarehouses[0];
+      setTiendaSeleccionada(tienda.idAlmacen.toString());
+
+      if (onSelectStore && warehouseDetails) {
+        const details = warehouseDetails.find(
+          (d: any) => d.idAlmacen === tienda.idAlmacen,
+        );
+        if (details) {
+          onSelectStore({
+            idAlmacen: tienda.idAlmacen,
+            desAlmacen: tienda.desAlmacen,
+            direccion: details.direccion,
+            atencion: details.atencion,
+          });
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metodoEnvio, distritoSeleccionado, loadingStores, visibleWarehouses.length, tiendaSeleccionada, warehouseDetails]);
+
+  if (metodoEnvio !== "retiro") return null;
 
   return (
     <>
@@ -67,18 +107,17 @@ export default function StorePickupContent({
             className="w-full px-4 py-3 border-2 border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
           >
             <option value="">Seleccionar distrito</option>
-            {warehouseDistricts
-              .filter((district) =>
-                ["ate", "ate vitarte"].includes(
-                  district.desDistrito.toLowerCase().trim(),
-                ),
-              )
-              .map((district) => (
-                <option key={district.codUbigeoAlm} value={district.desDistrito}>
-                  {district.desDistrito}
-                </option>
-              ))}
+            {filteredDistricts.map((district) => (
+              <option key={district.codUbigeoAlm} value={district.desDistrito}>
+                {district.desDistrito}
+              </option>
+            ))}
           </select>
+          {distritoSeleccionado && !tiendaSeleccionada && !loadingStores && (
+            <p className="mt-2 text-sm text-amber-600 font-medium">
+              Elige una tienda para continuar
+            </p>
+          )}
         </div>
       </div>
 
