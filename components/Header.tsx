@@ -476,10 +476,32 @@ export default function Header() {
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const mobileToggleRef = useRef<HTMLButtonElement | null>(null);
 
+  const closeTrimegistoModal = () => {
+    setTrimegistoModalOpen(false);
+    if (router.query.trimegisto === "true") {
+      const { trimegisto, ...rest } = router.query;
+      router.replace(
+        {
+          pathname: router.pathname,
+          query: rest,
+        },
+        undefined,
+        { shallow: true },
+      );
+    }
+  };
+
   // ✅ Efecto para abrir login desde URL
   useEffect(() => {
     if (router.isReady && router.query.login === "true") {
       setLoginModalOpen(true);
+    }
+  }, [router.isReady, router.query]);
+
+  // ✅ Efecto para abrir trimegisto desde URL
+  useEffect(() => {
+    if (router.isReady && router.query.trimegisto === "true") {
+      setTrimegistoModalOpen(true);
     }
   }, [router.isReady, router.query]);
 
@@ -762,17 +784,15 @@ export default function Header() {
 
       <TrimegistoDNIModal
         isOpen={trimegistoModalOpen}
-        onClose={() => setTrimegistoModalOpen(false)}
-        onValidated={() => {
-          setTrimegistoModalOpen(false);
-        }}
+        onClose={closeTrimegistoModal}
+        onValidated={closeTrimegistoModal}
         onLoginRequired={() => {
-          setTrimegistoModalOpen(false);
+          closeTrimegistoModal();
           setLoginModalOpen(true);
         }}
         onNewUser={(data) => {
           setTrimegistoUserData(data);
-          setTrimegistoModalOpen(false);
+          closeTrimegistoModal();
           setTrimegistoRegisterModalOpen(true);
         }}
       />
