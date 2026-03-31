@@ -975,18 +975,15 @@ export default function Carrito() {
         logger.log(
           `📍 Buscando almacenes para: ${distrito} (${location.codUbigeoAlm})`,
         );
-        const response = await getWarehouseMap(location.codUbigeoAlm);
+        const [response, detailsRes] = await Promise.all([
+          getWarehouseMap(location.codUbigeoAlm),
+          getWarehouseDetails(location.codUbigeoAlm),
+        ]);
         if (response.success) {
           setMapWarehouses(response.data);
-
-          // Also fetch details
-          getWarehouseDetails(location.codUbigeoAlm).then((detailsRes) => {
-            if (detailsRes.success) {
-              setWarehouseDetails(detailsRes.data);
-            }
-          });
-
-          // The useEffect will handle the re-validation when 'mapWarehouses' state updates
+        }
+        if (detailsRes.success) {
+          setWarehouseDetails(detailsRes.data);
         }
       }
     } catch (error) {
