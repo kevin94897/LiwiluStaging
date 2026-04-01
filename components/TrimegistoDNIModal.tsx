@@ -87,9 +87,15 @@ export function TrimegistoDNIModal({
 
       const data = await response.json();
 
-      if (data.status === true) {
-        onNewUser(data);
+      if (data.status === false && data.message === "El usuario ya se encuentra registrado.") {
+        // Ya está registrado → debe hacer login
+        onClose();
+        onLoginRequired();
+      } else if (data.status === false) {
+        // "No existe Personal" → usuario nuevo, puede registrarse
+        onNewUser({ ...data, numero_documento: dni });
       } else {
+        // status === true → persona encontrada en el sistema → debe hacer login
         onClose();
         onLoginRequired();
       }
@@ -236,6 +242,7 @@ export function TrimegistoRegisterModal({
   initialData,
 }: TrimegistoRegisterModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDataPrefilled, setIsDataPrefilled] = useState(false);
   const [resultModal, setResultModal] = useState<{ isOpen: boolean; success: boolean; message: string }>({ isOpen: false, success: false, message: "" });
   // ✅ Estado completo para todos los campos
   const [formData, setFormData] = useState<FullRegisterValues>({
@@ -252,17 +259,52 @@ export function TrimegistoRegisterModal({
     acceptDeclarations: false,
   });
 
-  // ✅ Efecto para pre-cargar datos desde initialData
+  const [isFetchingDni, setIsFetchingDni] = useState(false);
+
+  // ✅ Al abrir el modal, consultar el DNI para pre-llenar nombre y apellidos
   useEffect(() => {
-    if (isOpen && initialData) {
-      setFormData((prev) => ({
-        ...prev,
-        dni: initialData.numero_documento || "",
-        firstName: initialData.nombres || "",
-        lastName: `${initialData.apellido_paterno || ""} ${initialData.apellido_materno || ""}`.trim(),
-      }));
+    if (isOpen && initialData?.numero_documento) {
+      const dniValue = initialData.numero_documento;
+
+      // Pre-cargar el DNI de inmediato
+      setFormData((prev) => ({ ...prev, dni: dniValue }));
+
+      // Consultar el endpoint para obtener nombre y apellidos
+      const fetchDniData = async () => {
+        setIsFetchingDni(true);
+        try {
+          const response = await apiPost(
+            "/so-tp/consultar-datos",
+            { numero_documento: dniValue, tipo_documento: "DNI" },
+            { skipAuth: true }
+          );
+          const data = await response.json();
+
+          const nombres = data.nombres || "";
+          const apellidos =
+            `${data.apellido_paterno || ""} ${data.apellido_materno || ""}`.trim();
+
+          if (nombres || apellidos) {
+            setIsDataPrefilled(true);
+            setFormData((prev) => ({
+              ...prev,
+              firstName: nombres,
+              lastName: apellidos,
+            }));
+          } else {
+            setIsDataPrefilled(false);
+          }
+        } catch {
+          setIsDataPrefilled(false);
+        } finally {
+          setIsFetchingDni(false);
+        }
+      };
+
+      fetchDniData();
     } else if (!isOpen) {
-      // Opcional: limpiar al cerrar
+      setIsDataPrefilled(false);
+      setIsFetchingDni(false);
       setFormData({
         dni: "",
         firstName: "",
@@ -509,8 +551,13 @@ export function TrimegistoRegisterModal({
                     type="text"
                     value={formData.firstName}
                     onChange={handleChange}
-                    placeholder="Nombres"
-                    className={inputClasses("firstName")}
+                    placeholder={isFetchingDni ? "Consultando..." : "Nombres"}
+                    disabled={isDataPrefilled || isFetchingDni}
+                    className={
+                      isDataPrefilled || isFetchingDni
+                        ? "w-full px-4 py-3 border border-gray-200 rounded-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+                        : inputClasses("firstName")
+                    }
                   />
                   {errors.firstName && (
                     <p className="text-red-500 text-xs flex items-center gap-1 mt-1">
@@ -528,8 +575,13 @@ export function TrimegistoRegisterModal({
                     type="text"
                     value={formData.lastName}
                     onChange={handleChange}
-                    placeholder="García"
-                    className={inputClasses("lastName")}
+                    placeholder={isFetchingDni ? "Consultando..." : "García"}
+                    disabled={isDataPrefilled || isFetchingDni}
+                    className={
+                      isDataPrefilled || isFetchingDni
+                        ? "w-full px-4 py-3 border border-gray-200 rounded-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+                        : inputClasses("lastName")
+                    }
                   />
                   {errors.lastName && (
                     <p className="text-red-500 text-xs flex items-center gap-1 mt-1">
