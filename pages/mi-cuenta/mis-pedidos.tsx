@@ -12,7 +12,7 @@ import {
   getPickupStatus,
   Order,
 } from "@/lib/orders";
-import { FaCheckCircle, FaClock, FaTruck, FaBox, FaHome, FaWallet } from "react-icons/fa";
+import { FaCheckCircle, FaClock, FaTruck, FaBox, FaHome, FaWallet, FaFileDownload } from "react-icons/fa";
 
 // ─── Tracking helpers (mirrors rastreo/[id].tsx) ────────────────────────────
 
@@ -387,7 +387,7 @@ export default function MisPedidos() {
                             hour12: true,
                           })
                             .format(new Date(order.paidAt))
-                            .replace(",", "") + " pm"
+                            .replace(",", "")
                           : "-";
 
                         const isExpanded = expandedOrderId === order.id;
@@ -510,29 +510,7 @@ export default function MisPedidos() {
                                       Seguimiento del pedido
                                     </h4>
 
-                                    {/* Info de la tienda para Pickups */}
-                                    {order.deliveryType === "RETIRO_TIENDA" &&
-                                      order.deliveryInfo?.desAlmacen && (
-                                        <div className="bg-green-50 border border-primary rounded-sm p-3 mb-4 text-xs text-primary">
-                                          <p className="font-semibold mb-0.5">
-                                            📍 {order.deliveryInfo.desAlmacen}
-                                          </p>
-                                          {order.deliveryInfo
-                                            .direccionAlmacen && (
-                                              <p className="text-primary">
-                                                {
-                                                  order.deliveryInfo
-                                                    .direccionAlmacen
-                                                }
-                                              </p>
-                                            )}
-                                          {order.deliveryInfo.atencion && (
-                                            <p className="text-primary mt-0.5">
-                                              🕐 {order.deliveryInfo.atencion}
-                                            </p>
-                                          )}
-                                        </div>
-                                      )}
+                                    
 
                                     {/* Timeline Dynamic Loading */}
                                     {trackingLoading[order.id] ? (
@@ -557,7 +535,7 @@ export default function MisPedidos() {
                                         </button>
                                       </div>
                                     ) : (
-                                      <div className="space-y-4">
+                                      <div className="space-y-2 my-6">
                                         {(trackingSteps[order.id] || []).map(
                                           (step, i) => (
                                             <div
@@ -624,9 +602,33 @@ export default function MisPedidos() {
                                   </div>
                                 </div>
 
+                                {/* Info de la tienda para Pickups */}
+                                    {order.deliveryType === "RETIRO_TIENDA" &&
+                                      order.deliveryInfo?.desAlmacen && (
+                                        <div className="bg-green-50 border border-primary/20 rounded-sm p-3 mb-4 text-xs text-primary mt-4">
+                                          <p className="font-bold mb-2 text-primary-dark">
+                                            {order.deliveryInfo.desAlmacen}
+                                          </p>
+                                          {order.deliveryInfo
+                                            .direccionAlmacen && (
+                                              <p className="text-gray-700">
+                                                {
+                                                  order.deliveryInfo
+                                                    .direccionAlmacen
+                                                }
+                                              </p>
+                                            )}
+                                          {order.deliveryInfo.atencion && (
+                                            <p className="text-gray-700 mt-0.5">
+                                              {order.deliveryInfo.atencion}
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
+
                                 {/* Pago Trimegisto */}
                                 {order.paymentData?.trismegistoInfo && (
-                                  <div className="bg-green-50 border border-primary/20 rounded-lg p-4 mt-5">
+                                  <div className="bg-green-50 border border-primary/20 rounded-lg p-4 mt-2">
                                     <h4 className="font-bold text-primary-dark mb-3 flex items-center gap-2 text-sm">
                                       <FaWallet className="text-primary" size={14} />
                                       Pago con saldo Trimegisto
@@ -655,6 +657,19 @@ export default function MisPedidos() {
                                         </div>
                                       )}
                                     </div>
+                                    {order.paymentData.trismegistoInfo.trismegistoDocumentUrl && (
+                                      <div className="mt-3 pt-3 border-t border-primary/10">
+                                        <a
+                                          href={`${process.env.NEXT_PUBLIC_API_URL}${order.paymentData.trismegistoInfo.trismegistoDocumentUrl}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-2 bg-primary text-white text-xs font-semibold px-4 py-2 rounded-full hover:bg-primary-dark transition"
+                                        >
+                                          <FaFileDownload size={14} />
+                                          Descargar documento
+                                        </a>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
 

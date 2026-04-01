@@ -185,6 +185,14 @@ export default function GuestDataSummary({
       errors.phone = "El celular debe comenzar con 9";
     }
 
+    if (!formData.telefono.trim()) {
+      errors.telefono = "El celular secundario es obligatorio";
+    } else if (formData.telefono.length !== 9) {
+      errors.telefono = "El celular secundario debe tener 9 dígitos";
+    } else if (!formData.telefono.startsWith("9")) {
+      errors.telefono = "El celular secundario debe comenzar con 9";
+    }
+
     // If there are validation errors, show them and don't submit
     if (Object.keys(errors).length > 0) {
       setLocalErrors(errors);
@@ -392,7 +400,7 @@ export default function GuestDataSummary({
             />
 
             <Input
-              label="Teléfono (opcional)"
+              label="Celular (secundario)"
               type="tel"
               name="telefono"
               value={formData.telefono}

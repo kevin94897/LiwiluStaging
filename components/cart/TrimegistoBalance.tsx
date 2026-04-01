@@ -19,7 +19,7 @@ interface BalanceData {
 }
 
 // Increment step for +/- buttons (in soles)
-const STEP = 2;
+const STEP = 10;
 const CUOTAS_OPTIONS = [1, 2, 3];
 
 interface TrimegistoBalanceProps {
@@ -44,6 +44,8 @@ interface TrimegistoBalanceProps {
     initialBalanceInstallments?: number;
     /** Called whenever the "must apply before checkout" state changes */
     onPendingChange?: (isPending: boolean) => void;
+    /** Increment this counter to force-reset the applied balance (e.g. when shipping changes) */
+    resetTrigger?: number;
 }
 
 export default function TrimegistoBalance({
@@ -54,6 +56,7 @@ export default function TrimegistoBalance({
     initialBalanceAmount = 0,
     initialBalanceInstallments = 1,
     onPendingChange,
+    resetTrigger = 0,
 }: TrimegistoBalanceProps) {
     const [balance, setBalance] = useState<BalanceData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -75,6 +78,31 @@ export default function TrimegistoBalance({
             setUseBalanceToggle(true);
         }
     }, [initialBalanceAmount, initialBalanceInstallments]);
+
+    // Auto-reset balance when resetTrigger changes (e.g. shipping changed)
+    const [prevResetTrigger, setPrevResetTrigger] = useState(resetTrigger);
+    useEffect(() => {
+        if (resetTrigger !== prevResetTrigger) {
+            setPrevResetTrigger(resetTrigger);
+            if (applied && appliedAmount > 0) {
+                // Saldo ya aplicado en backend — removerlo via API
+                applyAmountToApi(0, 1).then(() => {
+                    setAppliedAmount(0);
+                    setCuotas(1);
+                    setApplied(false);
+                    setUseBalanceToggle(false);
+                    notify(0, 1);
+                });
+            } else if (appliedAmount > 0) {
+                // Monto ingresado pero no aplicado aún — solo resetear estado local
+                setAppliedAmount(0);
+                setCuotas(1);
+                setApplied(false);
+                setUseBalanceToggle(false);
+                notify(0, 1);
+            }
+        }
+    }, [resetTrigger]);
 
     // Notify parent whenever "pending apply" state changes:
     // pending = toggle is ON, amount > 0, but not yet applied via the button
@@ -367,11 +395,17 @@ export default function TrimegistoBalance({
                                 </div>
                             </div>
 
+                            
+
                             {/* Apply button */}
                             <Button
                                 onClick={handleApply}
                                 disabled={appliedAmount <= 0 || isApplying}
-                                className=" w-full disabled:opacity-40 disabled:cursor-not-allowed"
+                                className={`w-full disabled:opacity-40 disabled:cursor-not-allowed transition-all ${
+                                    !applied && appliedAmount > 0 && !isApplying
+                                        ? "animate-pulse ring-primary ring-offset-2"
+                                        : ""
+                                }`}
                             >
                                 {isApplying ? (
                                     <FaSync size={13} className="animate-spin" />
@@ -381,6 +415,13 @@ export default function TrimegistoBalance({
                                     "Aplicar saldo"
                                 )}
                             </Button>
+
+                            {/* Aviso pendiente de aplicar */}
+                            {!applied && appliedAmount > 0 && !isApplying && (
+                                <p className="text-xs text-primary text-center mt-2 animate-fade-in">
+                                    Haz click en <strong>Aplicar saldo</strong> para confirmar los cambios
+                                </p>
+                            )}
 
                             {/* Apply error */}
                             {applyError && (

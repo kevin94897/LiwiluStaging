@@ -202,7 +202,7 @@ export default function TrismegistoOTPModal({
                   value={digit}
                   onChange={(e) => handleDigitChange(i, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(i, e)}
-                  className={`w-12 h-14 text-center text-2xl font-bold border-2 rounded-md outline-none transition-all
+                  className={`w-12 h-14 text-center text-2xl font-bold border-2 rounded-sm outline-none transition-all
                     ${error
                       ? "border-red-400 bg-red-50"
                       : digit

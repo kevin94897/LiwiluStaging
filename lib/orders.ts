@@ -72,6 +72,7 @@ export interface TrismegistoInfo {
     cardAmount: number;
     balanceInstallments: number;
     soTpRegistroId?: string;
+    trismegistoDocumentUrl?: string;
 }
 
 export interface Order {

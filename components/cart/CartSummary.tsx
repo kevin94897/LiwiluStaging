@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
@@ -96,6 +96,27 @@ export default function CartSummary({
     setIsTrimegisto(role === "TRIMEGISTO" || role === "TRISMEGISMO");
   }, []);
 
+  // Auto-reset Trimegisto balance when shipping or delivery method changes
+  const [balanceResetTrigger, setBalanceResetTrigger] = useState(0);
+  const prevShippingRef = useRef(activeTotals.shipping);
+  const prevMetodoRef = useRef(metodoEnvio);
+  const [shippingChangedMsg, setShippingChangedMsg] = useState(false);
+
+  useEffect(() => {
+    const shippingChanged = prevShippingRef.current !== activeTotals.shipping;
+    const metodoChanged = prevMetodoRef.current !== metodoEnvio;
+    prevShippingRef.current = activeTotals.shipping;
+    prevMetodoRef.current = metodoEnvio;
+
+    if (shippingChanged || metodoChanged) {
+      setBalanceResetTrigger((prev) => prev + 1);
+      setTrimegistoApplied(0);
+      setTrimegistoCuotas(1);
+      setShippingChangedMsg(true);
+      setTimeout(() => setShippingChangedMsg(false), 5000);
+    }
+  }, [activeTotals.shipping, metodoEnvio]);
+
   // Whenever the cart prop totals change (full sync), clear the local override
   useEffect(() => {
     setOverrideTotals(null);
@@ -116,30 +137,39 @@ export default function CartSummary({
   return (
     <div className="lg:col-span-1 z-10 lg:sticky lg:top-32 self-start space-y-6">
       {/* === SALDO TRIMEGISTO === */}
-      {isTrimegisto && (
-        <TrimegistoBalance
-          cartTotal={Math.max(
-            0,
-            activeTotals.subtotal -
-            (activeTotals.discount ?? 0) -
-            (activeTotals.promoDiscount ?? 0),
-          )}
-          initialBalanceAmount={balanceAmount}
-          initialBalanceInstallments={balanceInstallments}
-          onBalanceChange={(applied, cuotas) => {
-            setTrimegistoApplied(applied);
-            setTrimegistoCuotas(cuotas);
-          }}
-          onTotalsUpdate={(t) => {
-            setOverrideTotals({ ...activeTotals, ...t });
-            onTotalsUpdate?.(t);
-          }}
-          onAfterApply={onAfterBalanceApply}
-          onPendingChange={(isPending) => {
-            setTrimegistoPending(isPending);
-            if (isPending) setPendingDismissed(false);
-          }}
-        />
+      {isTrimegisto && (metodoEnvio === "retiro" || (metodoEnvio === "delivery" && hasDeliveryDistrict)) && (
+        <>
+          {/* {shippingChangedMsg && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700 text-center animate-fade-in">
+              El costo de envío cambió. Tu saldo Trimegisto fue removido, aplícalo nuevamente.
+            </div>
+          )} */}
+          <TrimegistoBalance
+            cartTotal={Math.max(
+              0,
+              activeTotals.subtotal -
+              (activeTotals.discount ?? 0) -
+              (activeTotals.promoDiscount ?? 0) +
+              activeTotals.shipping,
+            )}
+            initialBalanceAmount={balanceAmount}
+            initialBalanceInstallments={balanceInstallments}
+            onBalanceChange={(applied, cuotas) => {
+              setTrimegistoApplied(applied);
+              setTrimegistoCuotas(cuotas);
+            }}
+            onTotalsUpdate={(t) => {
+              setOverrideTotals({ ...activeTotals, ...t });
+              onTotalsUpdate?.(t);
+            }}
+            onAfterApply={onAfterBalanceApply}
+            onPendingChange={(isPending) => {
+              setTrimegistoPending(isPending);
+              if (isPending) setPendingDismissed(false);
+            }}
+            resetTrigger={balanceResetTrigger}
+          />
+        </>
       )}
 
       {/* === SECCIÓN CUPÓN === */}

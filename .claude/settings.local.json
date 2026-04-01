@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(find 'c:/Users/Usuario/Desktop/Kevin DATA/liwilu' -path *orders*confirm*token* -type f)",
-      "Bash(find 'c:/Users/Usuario/Desktop/Kevin DATA/liwilu' -type f -name *[token]* -o -name *token*)"
+      "Bash(find 'c:/Users/Usuario/Desktop/Kevin DATA/liwilu' -type f -name *[token]* -o -name *token*)",
+      "Bash(php artisan:*)",
+      "Bash(php --version)",
+      "Read(//c/laragon/bin/php/**)"
     ]
   }
 }
