@@ -357,7 +357,12 @@ export default function Checkout() {
   // ============================================
   const subtotal = getCartTotal();
   const envio = totals.shipping;
-  const total = subtotal + envio;
+  const total =
+    (totals.subtotal || subtotal)
+    - (totals.discount || 0)
+    - (totals.promoDiscount || 0)
+    - (totals.trismegistoBalance || 0)
+    + envio;
 
   // Sincronizar total con Ref para callbacks asíncronos
   useEffect(() => {
@@ -1447,7 +1452,7 @@ export default function Checkout() {
 
       setCurrentPendingOrderId(pendingOrderId);
       pendingOrderIdRef.current = pendingOrderId;
-      orderTotalRef.current = totals.total;
+      orderTotalRef.current = total;
 
       // 2️⃣ ABRIR MODAL O PROCESAR ASYNC
       if (metodoPago === "card") {
@@ -1458,7 +1463,7 @@ export default function Checkout() {
           title: "Liwilu",
           currency: "PEN",
           description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
-          amount: totals.total,
+          amount: total,
         });
 
         // No mostramos overlay aquí, se mostrará en handleCulqiToken (etapa completing)
@@ -1496,9 +1501,7 @@ export default function Checkout() {
                 currency:
                   (asyncStatusResp.data.currency as "PEN" | "USD") || "PEN",
                 description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
-                amount: asyncStatusResp.data.total
-                  ? asyncStatusResp.data.total
-                  : totals.total,
+                amount: total,
                 orderId: culqiOrderId,
               });
               isProcessingRef.current = false;
@@ -1522,9 +1525,7 @@ export default function Checkout() {
               currency:
                 (createCulqiResp.data.currency as "PEN" | "USD") || "PEN",
               description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
-              amount: createCulqiResp.data.amount
-                ? createCulqiResp.data.amount
-                : totals.total,
+              amount: total,
               orderId: newCulqiOrderId,
             });
           } else {
@@ -1545,9 +1546,7 @@ export default function Checkout() {
                 title: "Liwilu",
                 currency: (retryResp.data.currency as "PEN" | "USD") || "PEN",
                 description: `Pedido ${pendingOrderId!} - Liwilu Shop`,
-                amount: retryResp.data.amount
-                  ? retryResp.data.amount
-                  : totals.total,
+                amount: total,
                 orderId: retryResp.data.culqiOrderId,
               });
             } else {
@@ -2403,14 +2402,15 @@ export default function Checkout() {
                 distrito: datosFactura.distrito,
               }
         }
-        onSuccess={(data) => {
+        onSuccess={async (data) => {
           setShowTrismegistoOTPModal(false);
           if (data.autoProcessed) {
             // 100% saldo — orden ya creada por el backend
             router.push(data.redirectUrl ?? "/checkout/success");
           } else {
             // Pago mixto — saldo confirmado, aún falta pagar con tarjeta/async.
-            // El preOrderId ya está en estado y se incluirá en createOrder.
+            // Sincronizar el carrito para obtener el total actualizado (descontado el saldo Trimegisto).
+            await syncCart();
             setMetodoPago(null);
             setTrimegistoOtpConfirmed(true);
           }
