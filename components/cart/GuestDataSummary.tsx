@@ -49,7 +49,7 @@ export default function GuestDataSummary({
   });
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
 
-  const { isLoading: isConsulting, isConsulted, resetConsulted } = useDocumentLookup({
+  const { isLoading: isConsulting, isConsulted, resetConsulted, rucType } = useDocumentLookup({
     type: formData.documentType,
     number: formData.documentNumber,
     enabled: isEditing,
@@ -107,7 +107,7 @@ export default function GuestDataSummary({
 
     if (value.length > maxLength) value = value.slice(0, maxLength);
 
-    setFormData((prev) => ({ ...prev, documentNumber: value }));
+    setFormData((prev) => ({ ...prev, documentNumber: value, firstName: "", lastName: "" }));
     setLocalErrors((prev) => {
       const newErrors = { ...prev };
       delete newErrors.documentNumber;
@@ -115,10 +115,10 @@ export default function GuestDataSummary({
       delete newErrors.numeroDocumento;
       return newErrors;
     });
-    
+
     // Si cambia de número, reseteamos si es que ya había sido consultado
-    if (value.length < maxLength && isConsulted) {
-       resetConsulted();
+    if (isConsulted) {
+      resetConsulted();
     }
   };
 
@@ -275,7 +275,7 @@ export default function GuestDataSummary({
               value={formData.firstName}
               onChange={handleChange}
               error={displayErrors.firstName}
-              disabled={isSaving || (isConsulted && formData.documentType === "DNI")}
+              disabled={isSaving || (isConsulted && formData.documentType === "DNI") || rucType === "10" || rucType === "20"}
             />
             <Input
               label="Apellido *"

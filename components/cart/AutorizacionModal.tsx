@@ -42,6 +42,7 @@ export default function AutorizacionModal({
     isLoading: consultingAuto,
     isConsulted,
     resetConsulted,
+    rucType,
   } = useDocumentLookup({
     type: formData.documentType,
     number: formData.documentNumber,
@@ -130,7 +131,7 @@ export default function AutorizacionModal({
           : 12;
 
     if (value.length <= maxLength) {
-      setFormData((prev) => ({ ...prev, documentNumber: value }));
+      setFormData((prev) => ({ ...prev, documentNumber: value, fullName: "" }));
       setErrors((prev) => ({ ...prev, documentNumber: undefined }));
       resetConsulted();
     }
@@ -290,7 +291,7 @@ export default function AutorizacionModal({
                   onChange={handleChange}
                   className="bg-white text-gray-700"
                   error={errors.fullName}
-                  disabled={isConsulted && formData.documentType === "DNI"}
+                  disabled={(isConsulted && formData.documentType === "DNI") || rucType === "10" || rucType === "20"}
                 />
               </div>
 
