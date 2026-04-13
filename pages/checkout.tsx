@@ -288,6 +288,7 @@ export default function Checkout() {
     isLoading: isConsultingRuc,
     isConsulted: rucConsulted,
     resetConsulted: resetRucConsulted,
+    rucType: rucTypeFactura,
   } = useDocumentLookup({
     type: "RUC",
     number: datosFactura.ruc,
@@ -1912,6 +1913,8 @@ export default function Checkout() {
                             setDatosFactura({
                               ...datosFactura,
                               ruc: e.target.value.replace(/\D/g, ""),
+                              razonSocial: "",
+                              direccionFiscal: "",
                             });
                             resetRucConsulted();
                           }}
@@ -1974,6 +1977,7 @@ export default function Checkout() {
                         }
                         placeholder="Nombre de la empresa"
                         className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                        disabled={rucTypeFactura === "10" || rucTypeFactura === "20"}
                       />
                       {errors.razonSocial && (
                         <p className="text-red-500 text-xs mt-1">
@@ -1996,6 +2000,7 @@ export default function Checkout() {
                         }
                         placeholder="Av. Principal 123"
                         className="w-full px-4 py-3 border border-gray-200 rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                        disabled={rucTypeFactura === "20"}
                       />
                       {errors.direccionFiscal && (
                         <p className="text-red-500 text-xs mt-1">

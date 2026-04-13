@@ -40,7 +40,7 @@ export default function MisDatos() {
   const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
   const [pendingEmailChange, setPendingEmailChange] = useState("");
 
-  const { isLoading: isConsultingDoc, isConsulted: isConsultedDoc, resetConsulted } = useDocumentLookup({
+  const { isLoading: isConsultingDoc, isConsulted: isConsultedDoc, resetConsulted, rucType } = useDocumentLookup({
     type: formData.tipoDocumento,
     number: formData.numeroDocumento,
     enabled: !isLoading, // Solo cuando ya cargó el usuario inicial
@@ -145,7 +145,7 @@ export default function MisDatos() {
             : 12; // CE up to 12
 
     if (value.length <= maxLength) {
-      setFormData((prev) => ({ ...prev, numeroDocumento: value }));
+      setFormData((prev) => ({ ...prev, numeroDocumento: value, nombre: "", apellido: "" }));
       setErrors((prev) => ({ ...prev, numeroDocumento: undefined }));
       resetConsulted();
     }
@@ -425,7 +425,7 @@ export default function MisDatos() {
                               value={formData.nombre}
                               onChange={handleChange}
                               maxLength={50}
-                              disabled={isSubmitting || (isConsultedDoc && formData.tipoDocumento === "DNI")}
+                              disabled={isSubmitting || (isConsultedDoc && formData.tipoDocumento === "DNI") || rucType === "10" || rucType === "20"}
                               error={errors.nombre}
                             />
                           </div>

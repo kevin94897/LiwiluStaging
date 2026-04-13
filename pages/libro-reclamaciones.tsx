@@ -96,7 +96,7 @@ export default function LibroReclamaciones() {
     pedidoDetalle: "",
   });
 
-  const { isLoading: isConsulting, isConsulted, resetConsulted } = useDocumentLookup({
+  const { isLoading: isConsulting, isConsulted, resetConsulted, rucType } = useDocumentLookup({
     type: formData.tipoDocumento,
     number: formData.numeroDocumento,
     onSuccess: (data) => {
@@ -134,6 +134,17 @@ export default function LibroReclamaciones() {
             : 20;
       if (value.length > maxLength) value = value.slice(0, maxLength);
       resetConsulted();
+      setFormData((prev) => ({
+        ...prev,
+        numeroDocumento: value,
+        nombres: "",
+        apellidos: "",
+        direccion: "",
+      }));
+      if (errors[name as keyof ReclamacionesFormValues]) {
+        setErrors((prev) => ({ ...prev, [name]: undefined }));
+      }
+      return;
     }
 
     setFormData((prev) => ({
@@ -369,7 +380,7 @@ export default function LibroReclamaciones() {
                     onChange={handleInputChange}
                     placeholder="Juan Carlos"
                     error={errors.nombres}
-                    disabled={isConsulted && formData.tipoDocumento === "DNI"}
+                    disabled={(isConsulted && formData.tipoDocumento === "DNI") || rucType === "10" || rucType === "20"}
                   />
                 </div>
 
@@ -382,7 +393,7 @@ export default function LibroReclamaciones() {
                     onChange={handleInputChange}
                     placeholder="Pérez García"
                     error={errors.apellidos}
-                    disabled={isConsulted && formData.tipoDocumento === "DNI"}
+                    disabled={(isConsulted && formData.tipoDocumento === "DNI") || rucType === "10" || rucType === "20"}
                   />
                 </div>
 
@@ -419,6 +430,7 @@ export default function LibroReclamaciones() {
                     onChange={handleInputChange}
                     placeholder="Av. Los Pinos 123, Urb. Las Flores"
                     error={errors.direccion}
+                    disabled={rucType === "20"}
                   />
                 </div>
 

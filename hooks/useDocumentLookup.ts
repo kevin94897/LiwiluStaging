@@ -13,6 +13,8 @@ interface UseDocumentLookupProps {
 export const useDocumentLookup = ({ type, number, onSuccess, enabled = true }: UseDocumentLookupProps) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isConsulted, setIsConsulted] = useState(false);
+    /** '10' = persona natural (RUC 10/15), '20' = empresa (RUC 20), null = no aplica */
+    const [rucType, setRucType] = useState<'10' | '20' | null>(null);
     
     // Usar refs para evitar que cambios en props o estado interno disparen el efecto innecesariamente
     const onSuccessRef = useRef(onSuccess);
@@ -38,15 +40,37 @@ export const useDocumentLookup = ({ type, number, onSuccess, enabled = true }: U
                     res = await consultaRUC(docNumber);
                 }
 
-                if (res.success && res.data) {
+                // La API puede retornar success:true pero data como string cuando no existe
+                // e.g. {"success":true,"data":"Ruc No existe!! "}
+                const hasValidData = res.success && res.data && typeof res.data === 'object';
+
+                if (hasValidData) {
                     onSuccessRef.current(res.data);
                     setIsConsulted(true);
                     lastConsultedRef.current = docNumber;
+
+                    // Detectar tipo de RUC por sus primeros 2 dígitos
+                    if (docType === 'RUC') {
+                        const prefix = docNumber.substring(0, 2);
+                        if (prefix === '20') {
+                            setRucType('20');
+                        } else if (prefix === '10' || prefix === '15') {
+                            setRucType('10');
+                        } else {
+                            setRucType(null);
+                        }
+                    } else {
+                        setRucType(null);
+                    }
+
                     showToast(`${docType} encontrado`, 'success');
                 } else {
-                    // Solo marcar como fallido para este número para evitar bucles
+                    // RUC/DNI no encontrado — marcar número para evitar bucles, sin bloquear campos
                     lastConsultedRef.current = docNumber;
-                    showToast(`No se encontraron datos para este ${docType}`, 'error');
+                    setRucType(null);
+                    const rawData = res.data as unknown;
+                    const message = typeof rawData === 'string' ? (rawData as string).trim() : `No se encontraron datos para este ${docType}`;
+                    showToast(message, 'error');
                 }
             } catch (error) {
                 logger.error(`Error en lookup ${docType}:`, error);
@@ -73,8 +97,13 @@ export const useDocumentLookup = ({ type, number, onSuccess, enabled = true }: U
     return {
         isLoading,
         isConsulted,
+        /** '10' = persona natural (RUC 10/15) → bloquea nombre, dirección editable
+         *  '20' = empresa → bloquea nombre/razón social Y dirección
+         *  null = DNI u otro, o aún no consultado */
+        rucType,
         resetConsulted: () => {
             setIsConsulted(false);
+            setRucType(null);
             lastConsultedRef.current = '';
         }
     };
