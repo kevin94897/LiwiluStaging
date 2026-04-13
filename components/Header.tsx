@@ -700,7 +700,8 @@ export default function Header() {
                     <div className="absolute left-0 top-full mt-3 w-72 z-50 rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] overflow-hidden">
                       <ul className="divide-y divide-gray-200">
                         {menuCategories.map((c) => (
-                          <li key={c.label}>
+                          /*COMENTADO TEMPORAL TRIMEGISTO*/
+                          <li key={c.label} className={c.label === "Trimegisto" ? "hidden" : ""}>
                             <Link
                               href={c.href}
                               className={`group flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
