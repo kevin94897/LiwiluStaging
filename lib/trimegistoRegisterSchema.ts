@@ -29,7 +29,12 @@ export const trimegistoRegisterSchema = z.object({
     passwordConfirm: z.string()
         .min(1, "Confirma tu contraseña"),
 
-    signatureFile: z.any().refine((v) => v, "La firma es obligatoria"),
+    signatureFile: z.any()
+        .refine((v) => v, "La firma es obligatoria")
+        .refine(
+            (file) => !file || file.size <= 1048576,
+            "El archivo de la firma no debe superar 1 MB"
+        ),
 
     contactNumber: z.string().min(1, "Ingresa un número"),
     acceptTerms: z.boolean().refine(val => val === true, {

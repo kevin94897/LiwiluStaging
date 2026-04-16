@@ -87,17 +87,17 @@ export function TrimegistoDNIModal({
 
       const data = await response.json();
 
-      if (data.status === false && data.message === "El usuario ya se encuentra registrado.") {
+      const isExistingUser = data.existing_user !== undefined 
+        ? data.existing_user 
+        : (data.status === true || (data.status === false && data.message === "El usuario ya se encuentra registrado."));
+
+      if (isExistingUser) {
         // Ya está registrado → debe hacer login
         onClose();
         onLoginRequired();
-      } else if (data.status === false) {
-        // "No existe Personal" → usuario nuevo, puede registrarse
-        onNewUser({ ...data, numero_documento: dni });
       } else {
-        // status === true → persona encontrada en el sistema → debe hacer login
-        onClose();
-        onLoginRequired();
+        // Usuario nuevo → puede registrarse
+        onNewUser({ ...data, numero_documento: dni });
       }
     } catch (error) {
       logger.error("Error al validar DNI:", error);
@@ -344,6 +344,13 @@ export function TrimegistoRegisterModal({
   // ✅ Manejador de archivo
   const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
+
+    if (file && file.size > 1048576) {
+      setErrors((prev) => ({ ...prev, signatureFile: "El archivo no debe superar 1 MB" }));
+      e.target.value = ""; // Resetear input
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, signatureFile: file }));
     if (file) {
       setErrors((prev) => ({ ...prev, signatureFile: undefined }));
