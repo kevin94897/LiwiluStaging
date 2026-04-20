@@ -320,7 +320,7 @@ export default function CartSummary({
           {isTrimegisto && effectiveTrimegistoApplied > 0 && (
             <div className="flex justify-between text-primary font-medium mt-2">
               <span className="flex items-center gap-1.5 text-sm">
-                Saldo Trimegisto
+                Uso línea Trismegisto
                 {trimegistoCuotas > 1 && (
                   <span className="text-xs text-gray-400">
                     ({trimegistoCuotas} cuotas)

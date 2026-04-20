@@ -429,7 +429,6 @@ export function TrimegistoRegisterModal({
           success: true,
           message: data.message || "¡Tu solicitud fue enviada con éxito! Un asesor se comunicará en breve.",
         });
-        onSuccess();
       } else {
         setResultModal({
           isOpen: true,
@@ -459,7 +458,7 @@ export function TrimegistoRegisterModal({
   if (resultModal.isOpen) {
     const closeResult = () => {
       setResultModal({ isOpen: false, success: false, message: "" });
-      if (resultModal.success) onClose();
+      if (resultModal.success) { onSuccess(); onClose(); }
     };
     return (
       <>

@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getCurrentUser } from "@/lib/auth/authUtils";
-import { apiPost } from "@/lib/auth/apiClient";
+import { apiPost, fetchUserProfile } from "@/lib/auth/apiClient";
 
 import { formatPrice } from "@/lib/utils";
 import { FaWallet, FaSync, FaTimesCircle, FaPlus, FaMinus, FaCheck } from "react-icons/fa";
@@ -20,7 +20,6 @@ interface BalanceData {
 
 // Increment step for +/- buttons (in soles)
 const STEP = 10;
-const CUOTAS_OPTIONS = [1, 2, 3];
 
 interface TrimegistoBalanceProps {
     /** Total of the cart, used to cap the applied balance */
@@ -68,6 +67,7 @@ export default function TrimegistoBalance({
     // Amount the user will apply from balance (0 = not using balance)
     const [appliedAmount, setAppliedAmount] = useState(initialBalanceAmount);
     const [cuotas, setCuotas] = useState(initialBalanceInstallments);
+    const [availableCuotas, setAvailableCuotas] = useState<number[]>([1]);
     const [useBalanceToggle, setUseBalanceToggle] = useState(initialBalanceAmount > 0);
 
     useEffect(() => {
@@ -119,20 +119,22 @@ export default function TrimegistoBalance({
         setIsLoading(true);
         setError(null);
         try {
-            const response = await apiPost(
-                "/so-tp/consultar-saldo",
-                {
-                    numero_documento: user.documentNumber,
-                    opcion: "consultar_saldo",
-                },
-                { skipAuth: true }
-            );
-            const data = await response.json();
-            if (response.ok || data.status !== false) {
+            const [balanceResponse, profile] = await Promise.all([
+                apiPost(
+                    "/so-tp/consultar-saldo",
+                    { numero_documento: user.documentNumber, opcion: "consultar_saldo" },
+                    { skipAuth: true }
+                ),
+                fetchUserProfile(),
+            ]);
+            const data = await balanceResponse.json();
+            if (balanceResponse.ok || data.status !== false) {
                 setBalance(data);
             } else {
                 setError(data.message || "No se pudo obtener el saldo.");
             }
+            const maxInstallments = profile?.installments ?? 1;
+            setAvailableCuotas(Array.from({ length: maxInstallments }, (_, i) => i + 1));
         } catch (err) {
             logger.error("Error al consultar saldo Trimegisto:", err);
             setError("Error al conectar con el servidor.");
@@ -333,23 +335,26 @@ export default function TrimegistoBalance({
                                     <FaMinus size={11} />
                                 </button>
 
-                                <input
-                                    type="number"
-                                    min={0}
-                                    max={maxApplicable}
-                                    step="any"
-                                    value={appliedAmount}
-                                    onChange={(e) => {
-                                        let val = parseFloat(e.target.value);
-                                        if (isNaN(val)) val = 0;
-                                        val = Math.max(0, Math.min(val, maxApplicable));
-                                        val = Math.round(val * 100) / 100;
-                                        setAppliedAmount(val);
-                                        notify(val, cuotas);
-                                        setApplied(false);
-                                    }}
-                                    className="flex-1 w-full text-center text-lg font-bold text-primary border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                />
+                                <div className="flex-1 flex items-center border border-gray-200 rounded focus-within:ring-2 focus-within:ring-primary/30">
+                                    <span className="pl-2 text-lg font-bold text-primary select-none">S/</span>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={maxApplicable}
+                                        step="any"
+                                        value={appliedAmount}
+                                        onChange={(e) => {
+                                            let val = parseFloat(e.target.value);
+                                            if (isNaN(val)) val = 0;
+                                            val = Math.max(0, Math.min(val, maxApplicable));
+                                            val = Math.round(val * 100) / 100;
+                                            setAppliedAmount(val);
+                                            notify(val, cuotas);
+                                            setApplied(false);
+                                        }}
+                                        className="w-full text-center text-lg font-bold text-primary bg-transparent px-2 py-1 focus:outline-none"
+                                    />
+                                </div>
 
                                 <button
                                     onClick={handleIncrease}
@@ -380,7 +385,7 @@ export default function TrimegistoBalance({
                             <div className="mb-4">
                                 <p className="text-md font-medium text-gray-700 mb-4">Número de cuotas</p>
                                 <div className="flex gap-2">
-                                    {CUOTAS_OPTIONS.map((q) => (
+                                    {availableCuotas.map((q) => (
                                         <button
                                             key={q}
                                             onClick={() => handleCuotasChange(q)}
@@ -389,7 +394,7 @@ export default function TrimegistoBalance({
                                                 : "bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary"
                                                 }`}
                                         >
-                                            {q === 1 ? "Contado" : `${q} cuotas`}
+                                            {`${q} cuotas`}
                                         </button>
                                     ))}
                                 </div>

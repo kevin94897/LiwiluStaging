@@ -21,7 +21,7 @@ export default function Layout({ title, description, children, background }: Lay
 				/>
 			</Head>
 
-			<div className="min-h-screen flex flex-col bg-gray-50 relative">
+			<div className="min-h-screen flex flex-col bg-gray-50 relative overflow-x-hidden">
 				<Header />
 
 				<main className="flex-grow mt-[130px] lg:mt-[85px] relative" >
