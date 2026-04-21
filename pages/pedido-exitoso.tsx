@@ -8,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatPrice } from "@/lib/utils";
-import { FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
+import { FaCheckCircle, FaExclamationTriangle, FaWallet, FaFileDownload, FaCreditCard } from "react-icons/fa";
 import Button from "@/components/ui/Button";
 import {
   getOrderDetail,
@@ -191,7 +191,7 @@ export default function PedidoExitoso() {
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Columna izquierda - Confirmación */}
-            <div className="flex flex-col items-center justify-center text-center space-y-6 animate-fade-in">
+            <div className="flex flex-col items-center justify-center text-center gap-6 animate-fade-in">
               {/* Logo */}
               <div className="mb-4">
                 <Image
@@ -273,7 +273,7 @@ export default function PedidoExitoso() {
                 </h2>
 
                 {/* Lista de productos */}
-                <div className="space-y-6 mb-6">
+                <div className="flex flex-col gap-6 mb-6">
                   {order.items.map((item: any) => (
                     <div key={item.id} className="flex gap-4">
                       <div className="relative w-20 h-20 bg-gray-50 rounded-md overflow-hidden flex-shrink-0">
@@ -331,12 +331,37 @@ export default function PedidoExitoso() {
                   </div>
 
                   {order.discount > 0 && (
-                    <div className="flex justify-between text-green-600">
+                    <div className="flex justify-between text-primary">
                       <span className="font-medium">Descuento</span>
                       <span className="font-semibold">
                         -{formatPrice(order.discount || "0")}
                       </span>
                     </div>
+                  )}
+
+                  {order.paymentData?.trismegistoInfo && (
+                    <>
+                      <div className="flex justify-between text-primary font-medium">
+                        <span className="flex items-center gap-1.5">
+                          Uso línea Trimegisto
+                          {order.paymentData.trismegistoInfo.balanceInstallments > 1 && (
+                            <span className="text-xs text-gray-400">
+                              ({order.paymentData.trismegistoInfo.balanceInstallments} cuotas)
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-semibold">-S/ {order.paymentData.trismegistoInfo.balanceAmount.toFixed(2)}</span>
+                      </div>
+                      {(order.paymentData.trismegistoInfo.cardAmount ?? 0) > 0 && (
+                        <div className="flex justify-between text-gray-700">
+                          <span className="font-medium flex items-center gap-2">
+                            <FaCreditCard className="text-gray-400" />
+                            Pago con tarjeta
+                          </span>
+                          <span className="font-semibold">S/ {order.paymentData.trismegistoInfo.cardAmount.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   <div className="flex justify-between text-2xl font-semibold text-gray-900 pt-4 border-t-2 border-gray-100">
@@ -359,6 +384,20 @@ export default function PedidoExitoso() {
                       </span>
                     </div>
                   </div>
+
+                  {order.paymentData?.trismegistoInfo?.trismegistoDocumentUrl && (
+                    <div className="pt-2">
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_API_URL}${order.paymentData.trismegistoInfo.trismegistoDocumentUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 bg-primary text-white text-xs font-semibold px-4 py-2 rounded-full hover:bg-primary-dark transition"
+                      >
+                        <FaFileDownload size={14} />
+                        Descargar documento Trimegisto
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {/* Información del pedido */}

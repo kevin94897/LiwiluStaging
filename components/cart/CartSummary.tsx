@@ -291,6 +291,14 @@ export default function CartSummary({
             </div>
           )}
 
+          {/* Subtotal Productos */}
+          <div className="flex justify-between text-gray-600">
+            <span></span>
+            <span className="font-semibold">
+              {formatPrice((activeTotals.subtotal - (activeTotals.discount ?? 0)).toString())}
+            </span>
+          </div>
+
           {/* Costo de Envío */}
           <div className="flex justify-between text-gray-600 mt-4">
             <span>Envío ({selectedCarrier?.name || "Pendiente"})</span>
