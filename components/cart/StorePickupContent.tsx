@@ -45,13 +45,9 @@ export default function StorePickupContent({
   loadingStores,
   stockValidationResult,
 }: StorePickupContentProps) {
-  const visibleWarehouses = mapWarehouses.filter((w) =>
-    !/tienda web ingenieros/i.test(w.desAlmacen),
-  );
+  const visibleWarehouses = mapWarehouses;
 
-  const filteredDistricts = warehouseDistricts.filter((district) =>
-    ["ate", "ate vitarte"].includes(district.desDistrito.toLowerCase().trim()),
-  );
+  const filteredDistricts = warehouseDistricts;
 
   // Auto-seleccionar distrito si solo hay uno disponible
   useEffect(() => {

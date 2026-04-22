@@ -54,9 +54,7 @@ export default function StoresModal({
     [],
   );
 
-  const visibleWarehouses = mapWarehouses.filter((w) =>
-    !/tienda web ingenieros/i.test(w.desAlmacen),
-  );
+  const visibleWarehouses = mapWarehouses;
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [loadingStores, setLoadingStores] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,10 +69,7 @@ export default function StoresModal({
       try {
         const distRes = await getWarehouseDistricts();
         if (distRes.success) {
-          const filteredDistricts = distRes.data.filter((d) =>
-            ["ate", "ate vitarte"].includes(d.desDistrito.toLowerCase().trim()),
-          );
-          setDistricts(filteredDistricts);
+          setDistricts(distRes.data);
         }
       } catch (error) {
         logger.error("Error loading locations:", error);

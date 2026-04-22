@@ -54,7 +54,7 @@ export default function TrismegistoConsentModal({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 shrink-0">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <PiFilePdfFill className="text-primary" size={20} />
@@ -63,9 +63,9 @@ export default function TrismegistoConsentModal({
                 <h2 className="text-lg font-bold text-gray-900">
                   Documento de consentimiento
                 </h2>
-                <p className="text-sm text-gray-500">
+                {/* <p className="text-sm text-gray-500">
                   Revisa el documento antes de continuar
-                </p>
+                </p> */}
               </div>
             </div>
             <button
@@ -82,7 +82,7 @@ export default function TrismegistoConsentModal({
             <iframe
               src={`${proxyUrl}#navpanes=0&view=FitH`}
               className="w-full h-full border-0"
-              style={{ minHeight: "800px" }}
+              style={{ minHeight: "900px" }}
               title="Documento de consentimiento"
             />
           </div>

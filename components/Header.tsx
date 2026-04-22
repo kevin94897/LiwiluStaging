@@ -454,7 +454,13 @@ export default function Header() {
           highlight: true,
         };
 
-        setMenuCategories([...formattedCats, trimegistoItem]);
+        const showTrimegisto = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEBUG === "true";
+
+        if (showTrimegisto) {
+          setMenuCategories([...formattedCats, trimegistoItem]);
+        } else {
+          setMenuCategories(formattedCats);
+        }
       } catch (error) {
         logger.error("Failed to load header categories", error);
         // Fallback or keep empty
@@ -700,8 +706,7 @@ export default function Header() {
                     <div className="absolute left-0 top-full mt-3 w-72 z-50 rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] overflow-hidden">
                       <ul className="divide-y divide-gray-200">
                         {menuCategories.map((c) => (
-                          /*COMENTADO TEMPORAL TRIMEGISTO*/
-                          <li key={c.label} className={c.label === "Trimegisto" ? "hidden" : ""}>
+                          <li key={c.label}>
                             <Link
                               href={c.href}
                               className={`group flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
