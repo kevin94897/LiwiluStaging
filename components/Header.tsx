@@ -454,13 +454,7 @@ export default function Header() {
           highlight: true,
         };
 
-        const showTrimegisto = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEBUG === "true";
-
-        if (showTrimegisto) {
-          setMenuCategories([...formattedCats, trimegistoItem]);
-        } else {
-          setMenuCategories(formattedCats);
-        }
+        setMenuCategories([...formattedCats, trimegistoItem]);
       } catch (error) {
         logger.error("Failed to load header categories", error);
         // Fallback or keep empty
