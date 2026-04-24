@@ -431,7 +431,11 @@ interface MenuCategory {
 }
 
 export default function Header() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const isTrimegistoUser = isAuthenticated && (
+    (user?.role || "").toUpperCase() === "TRIMEGISTO" ||
+    (user?.role || "").toUpperCase() === "TRISMEGISMO"
+  );
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
 
   useEffect(() => {
@@ -653,7 +657,7 @@ export default function Header() {
                 >
                   <nav className="px-2 py-3">
                     <ul className="space-y-1">
-                      {menuCategories.map((c) => (
+                      {menuCategories.filter(c => !(c.label === "Trimegisto" && isTrimegistoUser)).map((c) => (
                         <li key={c.label}>
                           <Link
                             href={c.href}
@@ -699,7 +703,7 @@ export default function Header() {
                   {mobileCatsOpen && (
                     <div className="absolute left-0 top-full mt-3 w-72 z-50 rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] overflow-hidden">
                       <ul className="divide-y divide-gray-200">
-                        {menuCategories.map((c) => (
+                        {menuCategories.filter(c => !(c.label === "Trimegisto" && isTrimegistoUser)).map((c) => (
                           <li key={c.label}>
                             <Link
                               href={c.href}

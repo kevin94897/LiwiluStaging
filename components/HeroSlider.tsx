@@ -8,6 +8,8 @@ import SlideNuevosModelos from "./sliders/SlideNuevosModelos";
 import SlidePromocionInvierno from "./sliders/SlidePromocionInvierno";
 import SlideNuevosArticulos from "./sliders/SlideNuevosArticulos";
 import SlideCanjeaCupones from "./sliders/SlideCanjeaCupones";
+import SlideNuevasPromociones from "./sliders/SlideNuevasPromociones";
+import SlideCompromiso from "./sliders/SlideCompromiso";
 
 interface HeroSliderProps {
   latestProducts: Product[];
@@ -34,22 +36,25 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
     <div className="overflow-hidden" ref={emblaRef}>
       <div className="flex">
         {/* Slide 1: Regreso a clases */}
-        {/* <SlidePromocionInvierno isActive={selectedIndex === 0} /> */}
+        <SlidePromocionInvierno isActive={selectedIndex === 0} />
 
         {/* Slide 2: Nuevas promociones */}
-        {/* <SlideNuevosModelos isActive={selectedIndex === 1} latestProducts={latestProducts} /> */}
+        <SlideNuevosModelos isActive={selectedIndex === 1} latestProducts={latestProducts} />
 
         {/* Slide 3: Tu compra nuestro compromiso */}
-        {/* <SlideCompromiso isActive={selectedIndex === 2} /> */}
+        <SlideCompromiso isActive={selectedIndex === 2} />
 
         {/* Slide 4: Promoción invierno - Casaca NBA */}
-        {/* <SlideRegresoClases isActive={selectedIndex === 2} /> */}
+        <SlideRegresoClases isActive={selectedIndex === 2} />
 
-        {/* Slide 4: Promoción invierno - Casaca NBA */}
-        <SlideNuevosArticulos isActive={selectedIndex === 0} />
-        
-        {/* Slide 5: Canjea Cupones */}
-        <SlideCanjeaCupones isActive={selectedIndex === 1} />
+        {/* Slide 1: Nuevos artículos */}
+        {/* <SlideNuevosArticulos isActive={selectedIndex === 0} /> */}
+
+        {/* Slide 2: Canjea Cupones */}
+        {/* <SlideCanjeaCupones isActive={selectedIndex === 1} /> */}
+
+        {/* Slide 3: Nuevas Promociones */}
+        {/* <SlideNuevasPromociones isActive={selectedIndex === 2} /> */}
       </div>
     </div>
   );
