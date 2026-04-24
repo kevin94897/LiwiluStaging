@@ -143,8 +143,10 @@ export async function searchProducts(params: FilterParams = {}): Promise<Catalog
     logger.log('Fetching products from:', url);
 
     try {
-        // Try to fetch without auth first (public catalog)
-        const response = await fetch(url, {
+        // Use authenticatedFetch with skipAuth: true to send token if available 
+        // but allow guest access if not.
+        const response = await authenticatedFetch(url, {
+            skipAuth: true,
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -186,7 +188,8 @@ export async function getFeaturedProducts(): Promise<CatalogProduct[]> {
     logger.log('Fetching featured products from:', url);
 
     try {
-        const response = await fetch(url, {
+        const response = await authenticatedFetch(url, {
+            skipAuth: true,
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -262,7 +265,10 @@ export async function getCatalogHierarchy(): Promise<HierarchyResponse | null> {
     logger.log('Fetching hierarchy from:', url);
 
     try {
-        const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+        const response = await authenticatedFetch(url, {
+            skipAuth: true,
+            headers: { 'Content-Type': 'application/json' }
+        });
         if (!response.ok) throw new Error(`Error fetching hierarchy: ${response.statusText}`);
         return await response.json();
     } catch (error) {
@@ -540,7 +546,10 @@ export async function getProductBasic(productId: string | number): Promise<Produ
     const url = `${baseUrl}/catalog/products/${productId}/basic`;
     logger.log('Fetching product basic from:', url);
     try {
-        const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+        const response = await authenticatedFetch(url, {
+            skipAuth: true,
+            headers: { 'Content-Type': 'application/json' }
+        });
         if (!response.ok) {
             logger.error(`Error fetching product basic: ${response.status} ${response.statusText} URL: ${url}`);
             throw new Error(`Error fetching product basic: ${response.statusText}`);
@@ -565,7 +574,10 @@ export async function getProductVariations(productId: string | number): Promise<
         // MOCK RESPONSE FOR DEVELOPMENT
         // TODO: Uncomment the actual fetch when backend is ready
         // /*
-        const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+        const response = await authenticatedFetch(url, {
+            skipAuth: true,
+            headers: { 'Content-Type': 'application/json' }
+        });
         if (!response.ok) {
             logger.error(`Error fetching product variations: ${response.status} ${response.statusText} URL: ${url}`);
             throw new Error(`Error fetching product variations: ${response.statusText}`);
@@ -1159,7 +1171,10 @@ export async function getLevelTwoCategories(): Promise<CategoryLevelTwo[]> {
     logger.log('Fetching level two categories from:', url);
 
     try {
-        const response = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+        const response = await authenticatedFetch(url, {
+            skipAuth: true,
+            headers: { 'Content-Type': 'application/json' }
+        });
         if (!response.ok) throw new Error(`Error fetching level two categories: ${response.statusText}`);
         const data: LevelTwoCategoriesResponse = await response.json();
         return data.data || [];
