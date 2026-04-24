@@ -940,7 +940,8 @@ export default function Carrito() {
         try {
           const response = await getWarehouseMap(district.codUbigeoAlm);
           if (response.success) {
-            setMapWarehouses(response.data);
+            // TODO: Unhide warehouse 321 when ready
+            setMapWarehouses(response.data.filter((w: any) => w.idAlmacen !== 321));
           }
         } catch (error) {
           logger.error("Error syncing delivery warehouses:", error);
@@ -980,7 +981,8 @@ export default function Carrito() {
           getWarehouseDetails(location.codUbigeoAlm),
         ]);
         if (response.success) {
-          setMapWarehouses(response.data);
+          // TODO: Unhide warehouse 321 when ready
+          setMapWarehouses(response.data.filter((w: any) => w.idAlmacen !== 321));
         }
         if (detailsRes.success) {
           setWarehouseDetails(detailsRes.data);
