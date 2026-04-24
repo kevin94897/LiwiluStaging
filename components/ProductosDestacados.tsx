@@ -151,18 +151,15 @@ export default function ProductosDestacados({
     }
   };
 
-  const PLACEHOLDER = "/images/productos/placeholder_liwilu.png";
-
   const ProductCard = ({ product }: { product: Product }) => {
-    const [imgSrc, setImgSrc] = React.useState(
+    const imageUrl =
       product.coverImage ||
       (product.associations?.images?.[0]?.id
         ? getProductImageUrl(
           product.id.toString(),
           product.associations.images[0].id,
         )
-        : PLACEHOLDER)
-    );
+        : "/images/productos/placeholder_liwilu.png");
 
     return (
       <Link href={`/tienda/${product.linkRewrite || product.id}`}>
@@ -173,13 +170,12 @@ export default function ProductosDestacados({
             </span>
             <div className="relative w-full h-48">
               <Image
-                src={imgSrc}
+                src={imageUrl}
                 alt={getProductName(product)}
                 fill
                 sizes="(max-width: 640px) 200px, (max-width: 1024px) 300px, 400px"
                 className="object-cover"
                 quality={75}
-                onError={() => setImgSrc(PLACEHOLDER)}
               />
             </div>
             <button
