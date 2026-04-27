@@ -39,20 +39,6 @@ import { FaRegHeart, FaPlus, FaMinus, FaHeart, FaFilter, FaTimes } from "react-i
 import { fadeInUp, slideInRight } from "@/lib/motionVariants";
 import Button from "@/components/ui/Button";
 
-interface TiendaProps {
-  products: Product[];
-  levelTwoCategories: CategoryLevelTwo[];
-  hierarchy: HierarchyResponse | null;
-  error?: string;
-  pagination?: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasMore: boolean;
-  };
-}
-
 // Definimos una interfaz para los parámetros de filtro esperados en el query
 interface QueryParams {
   categoryIds?: string;
@@ -64,72 +50,72 @@ interface QueryParams {
   search?: string;
 }
 
-export const getServerSideProps: GetServerSideProps = async (context) => {
-  try {
-    const { query } = context;
-    const params: QueryParams = query;
-
-    // Parsear parámetros
-    const page = params.page ? parseInt(params.page) : 1;
-    const categoryIds = params.categoryIds
-      ? params.categoryIds.split(",").map(Number)
-      : undefined;
-    const brandIds = params.brandIds
-      ? params.brandIds.split(",").map(Number)
-      : undefined;
-    const attributeIds = params.attributeIds
-      ? params.attributeIds.split(",").map(Number)
-      : undefined;
-    const inStock = params.inStock === "true";
-
-    const [searchResponse, levelTwoCategories, hierarchy] = await Promise.all([
-      searchProducts({
-        page,
-        categoryIds,
-        brandIds,
-        attributeIds,
-        inStock,
-        sortBy: params.sortBy,
-        search: params.search,
-        limit: 20,
-      }),
-      getLevelTwoCategories(),
-      getCatalogHierarchy(),
-    ]);
-
-    return {
-      props: {
-        products: searchResponse.data || [],
-        levelTwoCategories,
-        hierarchy,
-        pagination: searchResponse.pagination || null,
-      },
-    };
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Error desconocido";
-    return {
-      props: {
-        products: [],
-        levelTwoCategories: [],
-        hierarchy: null,
-        error: message,
-      },
-    };
-  }
+export const getServerSideProps: GetServerSideProps = async () => {
+  return { props: {} };
 };
 
-export default function Tienda({
-  products,
-  levelTwoCategories = [],
-  hierarchy,
-  pagination,
-}: TiendaProps & { pagination: any }) {
+export default function Tienda() {
   const router = useRouter();
+
+  // Data state (fetched client-side to send token/sessionId)
+  const [products, setProducts] = useState<Product[]>([]);
+  const [levelTwoCategories, setLevelTwoCategories] = useState<CategoryLevelTwo[]>([]);
+  const [hierarchy, setHierarchy] = useState<HierarchyResponse | null>(null);
+  const [pagination, setPagination] = useState<any>(null);
+  const [productsLoading, setProductsLoading] = useState(true);
+
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false); // 🆕 Mobile drawer state
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const productsTopRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
+
+  // Fetch categories and hierarchy once on mount
+  useEffect(() => {
+    async function fetchMeta() {
+      try {
+        const [cats, hier] = await Promise.all([
+          getLevelTwoCategories(),
+          getCatalogHierarchy(),
+        ]);
+        setLevelTwoCategories(cats);
+        setHierarchy(hier);
+      } catch (err) {
+        logger.error("Error loading categories/hierarchy:", err);
+      }
+    }
+    fetchMeta();
+  }, []);
+
+  // Fetch products on every query change (sends token/sessionId)
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    async function fetchProducts() {
+      setProductsLoading(true);
+      try {
+        const q = router.query as QueryParams;
+        const response = await searchProducts({
+          page: q.page ? parseInt(q.page) : 1,
+          categoryIds: q.categoryIds ? q.categoryIds.split(",").map(Number) : undefined,
+          brandIds: q.brandIds ? q.brandIds.split(",").map(Number) : undefined,
+          attributeIds: q.attributeIds ? q.attributeIds.split(",").map(Number) : undefined,
+          inStock: q.inStock === "true",
+          sortBy: q.sortBy,
+          search: q.search,
+          limit: 20,
+        });
+        setProducts(response.data || []);
+        setPagination(response.pagination || null);
+      } catch (err) {
+        logger.error("Error loading products:", err);
+        setProducts([]);
+        setPagination(null);
+      } finally {
+        setProductsLoading(false);
+      }
+    }
+    fetchProducts();
+  }, [router.isReady, router.query]);
 
   // Scroll to top of grid when page changes (skip initial render)
   // Scroll to top of grid when page changes or search is performed
@@ -339,10 +325,7 @@ export default function Tienda({
     }
   };
 
-  // Use products directly from props (server-side filtered)
   const currentProducts = products;
-
-  // Use pagination from backend if available, otherwise calculate
   const currentPage = pagination?.page || 1;
   const totalPages = pagination?.totalPages || 1;
 
@@ -680,8 +663,17 @@ export default function Tienda({
               </div>
             </div>
 
-            {/* Empty state */}
-            {currentProducts.length === 0 ? (
+            {/* Loading skeleton */}
+            {productsLoading ? (
+              <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="rounded-md shadow-md overflow-hidden animate-pulse">
+                    <div className="w-full h-48 bg-gray-200" />
+                    <div className="p-4 bg-gray-100 h-36" />
+                  </div>
+                ))}
+              </div>
+            ) : currentProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 px-6 animate-fade-in">
                 <div className="w-32 h-32 mb-6 relative animate-bounce-slow">
                   <svg

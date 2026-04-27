@@ -428,6 +428,8 @@ interface MenuCategory {
   isModal: boolean;
   highlight: boolean;
   highlightBottom?: boolean;
+  linkRewrite?: string;
+  isTrimegistoGate?: boolean;
 }
 
 export default function Header() {
@@ -449,16 +451,19 @@ export default function Header() {
           label: c.name,
           isModal: false,
           highlight: false,
+          linkRewrite: c.linkRewrite,
         }));
 
-        const trimegistoItem: MenuCategory = {
+        // Botón manual que abre el modal DNI — solo visible para usuarios NO Trimegisto
+        const trimegistoGateItem: MenuCategory = {
           href: "/#trimegisto",
           label: "Trimegisto",
           isModal: true,
           highlight: true,
+          isTrimegistoGate: true,
         };
 
-        setMenuCategories([...formattedCats, trimegistoItem]);
+        setMenuCategories([...formattedCats, trimegistoGateItem]);
       } catch (error) {
         logger.error("Failed to load header categories", error);
         // Fallback or keep empty
@@ -657,7 +662,11 @@ export default function Header() {
                 >
                   <nav className="px-2 py-3">
                     <ul className="space-y-1">
-                      {menuCategories.filter(c => !(c.label === "Trimegisto" && isTrimegistoUser)).map((c) => (
+                      {menuCategories.filter(c => {
+                        if (c.isTrimegistoGate) return !isTrimegistoUser;
+                        if (c.linkRewrite === "trimegisto") return isTrimegistoUser;
+                        return true;
+                      }).map((c) => (
                         <li key={c.label}>
                           <Link
                             href={c.href}
@@ -703,7 +712,11 @@ export default function Header() {
                   {mobileCatsOpen && (
                     <div className="absolute left-0 top-full mt-3 w-72 z-50 rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] overflow-hidden">
                       <ul className="divide-y divide-gray-200">
-                        {menuCategories.filter(c => !(c.label === "Trimegisto" && isTrimegistoUser)).map((c) => (
+                        {menuCategories.filter(c => {
+                        if (c.isTrimegistoGate) return !isTrimegistoUser;
+                        if (c.linkRewrite === "trimegisto") return isTrimegistoUser;
+                        return true;
+                      }).map((c) => (
                           <li key={c.label}>
                             <Link
                               href={c.href}

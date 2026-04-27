@@ -29,70 +29,15 @@ import { formatPrice } from "@/lib/utils";
 import Button from "@/components/ui/Button";
 
 interface ProductDetailProps {
-  productId: string;
   slug: string;
-  basicData: ProductBasicData | null;
-  variationsData: ProductVariationsData | null;
-  queryParams: Record<string, string>;
-  error?: string;
 }
 
-export const getServerSideProps: GetServerSideProps = async ({
-  params,
-  query,
-}) => {
-  const slug = params?.slug as string;
-
-  // Extract query parameters (e.g., talla=4, color=azul)
-  const queryParams: Record<string, string> = {};
-  Object.keys(query).forEach((key) => {
-    if (key !== "slug" && typeof query[key] === "string") {
-      queryParams[key] = query[key] as string;
-    }
-  });
-
-  try {
-    const [basicData, variationsData] = await Promise.all([
-      getProductBasic(slug),
-      getProductVariations(slug),
-    ]);
-
-    if (!basicData || !variationsData) {
-      return {
-        props: {
-          productId: variationsData?.productId?.toString() || "",
-          slug,
-          basicData: null,
-          variationsData: null,
-          queryParams,
-          error: "Producto no encontrado",
-        },
-      };
-    }
-
-    return {
-      props: {
-        productId: variationsData.productId.toString(),
-        slug,
-        basicData,
-        variationsData,
-        queryParams,
-      },
-    };
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Error desconocido";
-    return {
-      props: {
-        productId: "",
-        slug: slug || "",
-        basicData: null,
-        variationsData: null,
-        queryParams,
-        error: message,
-      },
-    };
-  }
+export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+  return {
+    props: {
+      slug: params?.slug as string,
+    },
+  };
 };
 
 // ✅ Función helper para validar imágenes
@@ -117,14 +62,17 @@ const getImageUrl = (urlOrObj: string | any | null | undefined): string => {
     : urlOrObj?.url || "/images/placeholder-product.jpg";
 };
 
-export default function ProductDetail({
-  productId,
-  slug,
-  basicData,
-  variationsData,
-  queryParams,
-  error,
-}: ProductDetailProps) {
+export default function ProductDetail({ slug }: ProductDetailProps) {
+  const router = useRouter();
+
+  // Data state (fetched client-side to send token/sessionId)
+  const [productId, setProductId] = useState<string>("");
+  const [basicData, setBasicData] = useState<ProductBasicData | null>(null);
+  const [variationsData, setVariationsData] = useState<ProductVariationsData | null>(null);
+  const [queryParams, setQueryParams] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | undefined>(undefined);
+
   const [quantity, setQuantity] = useState(1);
   const [selectedAttributes, setSelectedAttributes] = useState<
     Record<string, number>
@@ -138,7 +86,6 @@ export default function ProductDetail({
   const [loadingFavorite, setLoadingFavorite] = useState(false);
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
-  const router = useRouter();
 
   type TabKey =
     | "Descripción del producto"
@@ -147,6 +94,48 @@ export default function ProductDetail({
   const [activeTab, setActiveTab] = useState<TabKey>(
     "Descripción del producto",
   );
+
+  // Fetch product data client-side (sends token/sessionId via authenticatedFetch)
+  useEffect(() => {
+    if (!router.isReady || !slug) return;
+
+    // Extract query params from URL (exclude slug)
+    const qp: Record<string, string> = {};
+    Object.keys(router.query).forEach((key) => {
+      if (key !== "slug" && typeof router.query[key] === "string") {
+        qp[key] = router.query[key] as string;
+      }
+    });
+    setQueryParams(qp);
+
+    async function fetchProduct() {
+      setLoading(true);
+      setError(undefined);
+      try {
+        const [basic, variations] = await Promise.all([
+          getProductBasic(slug),
+          getProductVariations(slug),
+        ]);
+        if (!basic || !variations) {
+          setError("Producto no encontrado");
+          setBasicData(null);
+          setVariationsData(null);
+          setProductId("");
+        } else {
+          setBasicData(basic);
+          setVariationsData(variations);
+          setProductId(variations.productId.toString());
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error desconocido");
+        setBasicData(null);
+        setVariationsData(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProduct();
+  }, [router.isReady, slug]);
 
   // ✅ Inicializar variación por defecto o desde query params
   useEffect(() => {
@@ -370,24 +359,6 @@ export default function ProductDetail({
     return "/images/placeholder-product.jpg";
   };
 
-  if (error || !basicData || !variationsData) {
-    return (
-      <Layout title="Error - Liwilu" description="Producto no encontrado">
-        <div className="max-w-7xl mx-auto px-6 py-12">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-            <strong>Error:</strong> {error || "Producto no encontrado"}
-          </div>
-          <Link
-            href="/productos"
-            className="text-primary hover:underline mt-4 inline-block"
-          >
-            Volver a la tienda
-          </Link>
-        </div>
-      </Layout>
-    );
-  }
-
   const handleIncrease = () => {
     if (quantity < getAvailableQuantity) {
       setQuantity((q) => q + 1);
@@ -397,7 +368,7 @@ export default function ProductDetail({
   const handleDecrease = () => setQuantity((q) => Math.max(1, q - 1));
 
   const handleAddToCart = async () => {
-    // priceInfo is already calculated by the hook
+    if (!basicData || !variationsData) return;
 
     // Construct the product name with attributes if a variation is selected
     let productName = basicData.name;
@@ -525,6 +496,7 @@ export default function ProductDetail({
   };
 
   const handleAttributeChange = (type: string, valueId: number) => {
+    if (!variationsData) return;
     const newAttrs = { ...selectedAttributes, [type]: valueId };
     setSelectedAttributes(newAttrs);
 
@@ -648,7 +620,7 @@ export default function ProductDetail({
 
   // ✅ Ordenar atributos: los que contienen "tipo" van primero
   const sortedAttributesList = useMemo(() => {
-    if (!variationsData.attributes) return [];
+    if (!variationsData?.attributes) return [];
     return [...variationsData.attributes].sort((a, b) => {
       const aType = (a.type || "").toLowerCase();
       const aName = (a.name || "").toLowerCase();
@@ -662,12 +634,12 @@ export default function ProductDetail({
       if (!aIsTipo && bIsTipo) return 1;
       return 0;
     });
-  }, [variationsData.attributes]);
+  }, [variationsData?.attributes]);
 
   const tabs = {
     "Descripción del producto": (
       <div className="space-y-6">
-        {basicData.description && (
+        {basicData?.description && (
           <div
             className="prose prose-sm max-w-none text-gray-600 space-y-4"
             dangerouslySetInnerHTML={{
@@ -679,7 +651,7 @@ export default function ProductDetail({
     ),
     Especificaciones: (
       <div className="overflow-x-auto">
-        {basicData.features && basicData.features.length > 0 ? (
+        {basicData?.features && basicData.features.length > 0 ? (
           <table className="min-w-full border border-gray-200 rounded-md">
             <tbody className="divide-y divide-gray-200">
               {basicData.features.map((feature, idx) => (
@@ -699,7 +671,7 @@ export default function ProductDetail({
     ),
     "Guía de tallas": (
       <div className="space-y-6">
-        {basicData.resume && (
+        {basicData?.resume && (
           <div
             className="prose prose-sm max-w-none text-gray-600"
             dangerouslySetInnerHTML={{
@@ -761,562 +733,579 @@ export default function ProductDetail({
 
   return (
     <Layout
-      title={`${basicData.name} - Liwilu`}
-      description={basicData.metaDescription || "Detalle del producto"}
+      title={loading ? "Cargando... - Liwilu" : error ? "Error - Liwilu" : `${basicData!.name} - Liwilu`}
+      description={basicData?.metaDescription || "Detalle del producto"}
     >
-      {/* Vectores decorativos */}
-      <div className="absolute md:right-[-15vw] md:top-80 w-auto md:w-auto z-0 pointer-events-none md:block hidden">
-        <Image
-          src="/images/vectores/liwilu_banner_productos_vector_04.png"
-          alt="Vector background"
-          width={408}
-          height={427}
-          quality={100}
-          className="h-auto"
-          priority
-        />
-      </div>
-      <div className="absolute -left-56 md:-left-40 bottom-10 md:bottom-1/3 w-auto md:w-auto z-0 pointer-events-none">
-        <Image
-          src="/images/vectores/liwilu_banner_productos_vector_05.png"
-          alt="Vector background"
-          width={408}
-          height={427}
-          quality={100}
-          className="h-auto"
-          priority
-        />
-      </div>
-      {/* Breadcrumb */}
-      <div className="md:mt-14 mt-10">
-        <div className="max-w-7xl mx-auto px-6 xl:px-0 py-4">
-          <div className="text-neutral-gray text-md font-semibold">
-            <Link href="/" className="hover:underline">
-              Inicio
-            </Link>
-            <span className="mx-2">/</span>
-            <Link href="/productos" className="hover:underline">
-              Tienda virtual
-            </Link>
-            {basicData.defaultCategory && (
-              <>
-                <span className="mx-2">/</span>
-                <Link
-                  href={`/productos?category=${basicData.defaultCategory.linkRewrite}`}
-                  className="hover:underline"
-                >
-                  {basicData.defaultCategory.name}
-                </Link>
-              </>
-            )}
-            <span className="mx-2">/</span>
-            <span className="text-primary-dark font-medium">
-              {basicData.name}
-            </span>
-          </div>
+      {loading ? (
+        <div className="max-w-7xl mx-auto px-6 py-12 flex justify-center items-center min-h-[50vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
         </div>
-      </div>
-      {/* Contenido principal */}
-      <div className="px-6 py-2 md:py-8 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Columna izquierda - Imágenes */}
-            <div className="w-full lg:w-2/3 flex flex-col lg:flex-row gap-6">
-              {/* Columna de miniaturas - Slider vertical */}
-              {currentGallery.length > 1 && (
-                <div className="order-2 lg:order-1 w-full lg:w-24">
-                  <div className="flex lg:flex-col gap-4 lg:gap-0">
-                    {/* Botón scroll arriba (desktop) */}
-                    {currentGallery.length > THUMBNAILS_VISIBLE &&
-                      thumbnailScrollPosition > 0 && (
-                        <button
-                          onClick={handleScrollUp}
-                          className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-md mb-2 transition"
-                          aria-label="Scroll up thumbnails"
-                        >
-                          <svg
-                            className="w-5 h-5 text-gray-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 15l7-7 7 7"
-                            />
-                          </svg>
-                        </button>
-                      )}
-
-                    {/* Grid de miniaturas */}
-                    <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible scrollbar-hide w-full">
-                      {currentGallery
-                        .slice(
-                          thumbnailScrollPosition,
-                          thumbnailScrollPosition + THUMBNAILS_VISIBLE,
-                        )
-                        .map((img, idx) => {
-                          const actualIndex = idx + thumbnailScrollPosition;
-                          const isSelected = selectedImageIndex === actualIndex;
-
-                          return (
-                            <div
-                              key={actualIndex}
-                              onClick={() => setSelectedImageIndex(actualIndex)}
-                              className={`relative my-2 ml-2 aspect-square bg-white rounded-sm shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
-																${isSelected
-                                  ? "ring-2 ring-primary scale-105"
-                                  : "hover:shadow-lg hover:scale-105"
-                                }
-															`}
-                            >
-                              <Image
-                                src={img}
-                                alt={`${basicData.name} - miniatura ${actualIndex + 1
-                                  }`}
-                                fill
-                                className="object-contain"
-                                unoptimized
-                              />
-                            </div>
-                          );
-                        })}
-                    </div>
-
-                    {/* Botón scroll abajo (desktop) */}
-                    {currentGallery.length > THUMBNAILS_VISIBLE &&
-                      thumbnailScrollPosition < maxScroll && (
-                        <button
-                          onClick={handleScrollDown}
-                          className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-md mt-2 transition"
-                          aria-label="Scroll down thumbnails"
-                        >
-                          <svg
-                            className="w-5 h-5 text-gray-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        </button>
-                      )}
-
-                    {/* Contador de imágenes */}
-                    {currentGallery.length > THUMBNAILS_VISIBLE && (
-                      <div className="hidden lg:flex items-center justify-center mt-2 text-xs text-gray-500">
-                        {thumbnailScrollPosition + 1}-
-                        {Math.min(
-                          thumbnailScrollPosition + THUMBNAILS_VISIBLE,
-                          currentGallery.length,
-                        )}{" "}
-                        de {currentGallery.length}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Imagen principal */}
-              <div className="flex-1 order-1 lg:order-2">
-                <div className="relative aspect-square bg-white rounded-sm shadow-md overflow-hidden">
-                  <Image
-                    src={
-                      currentGallery[selectedImageIndex] || currentGallery[0]
-                    }
-                    alt={basicData.name}
-                    fill
-                    className="object-contain"
-                    priority
-                    unoptimized
-                  />
-
-                  {/* Navegación de flechas en la imagen principal */}
-                  {currentGallery.length > 1 && (
-                    <>
-                      <button
-                        onClick={() =>
-                          setSelectedImageIndex((prev) => Math.max(0, prev - 1))
-                        }
-                        disabled={selectedImageIndex === 0}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition lg:hidden"
-                        aria-label="Imagen anterior"
-                      >
-                        <svg
-                          className="w-6 h-6 text-gray-800"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 19l-7-7 7-7"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() =>
-                          setSelectedImageIndex((prev) =>
-                            Math.min(currentGallery.length - 1, prev + 1),
-                          )
-                        }
-                        disabled={
-                          selectedImageIndex === currentGallery.length - 1
-                        }
-                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white md:p-3 p-2 rounded-full shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition lg:hidden"
-                        aria-label="Siguiente imagen"
-                      >
-                        <svg
-                          className="w-6 h-6 text-gray-800"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </button>
-                    </>
-                  )}
-
-                  {/* Indicador de posición */}
-                  {currentGallery.length > 1 && (
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
-                      {selectedImageIndex + 1} / {currentGallery.length}
-                    </div>
-                  )}
-                </div>
+      ) : (error || !basicData || !variationsData) ? (
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
+            <strong>Error:</strong> {error || "Producto no encontrado"}
+          </div>
+          <Link href="/productos" className="text-primary hover:underline mt-4 inline-block">
+            Volver a la tienda
+          </Link>
+        </div>
+      ) : (
+        <>
+          {/* Vectores decorativos */}
+          <div className="absolute md:right-[-15vw] md:top-80 w-auto md:w-auto z-0 pointer-events-none md:block hidden">
+            <Image
+              src="/images/vectores/liwilu_banner_productos_vector_04.png"
+              alt="Vector background"
+              width={408}
+              height={427}
+              quality={100}
+              className="h-auto"
+              priority
+            />
+          </div>
+          <div className="absolute -left-56 md:-left-40 bottom-10 md:bottom-1/3 w-auto md:w-auto z-0 pointer-events-none">
+            <Image
+              src="/images/vectores/liwilu_banner_productos_vector_05.png"
+              alt="Vector background"
+              width={408}
+              height={427}
+              quality={100}
+              className="h-auto"
+              priority
+            />
+          </div>
+          {/* Breadcrumb */}
+          <div className="md:mt-14 mt-10">
+            <div className="max-w-7xl mx-auto px-6 xl:px-0 py-4">
+              <div className="text-neutral-gray text-md font-semibold">
+                <Link href="/" className="hover:underline">
+                  Inicio
+                </Link>
+                <span className="mx-2">/</span>
+                <Link href="/productos" className="hover:underline">
+                  Tienda virtual
+                </Link>
+                {basicData.defaultCategory && (
+                  <>
+                    <span className="mx-2">/</span>
+                    <Link
+                      href={`/productos?category=${basicData.defaultCategory.linkRewrite}`}
+                      className="hover:underline"
+                    >
+                      {basicData.defaultCategory.name}
+                    </Link>
+                  </>
+                )}
+                <span className="mx-2">/</span>
+                <span className="text-primary-dark font-medium">
+                  {basicData.name}
+                </span>
               </div>
             </div>
+          </div>
+          {/* Contenido principal */}
+          <div className="px-6 py-2 md:py-8 relative overflow-hidden">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex flex-col lg:flex-row gap-8">
+                {/* Columna izquierda - Imágenes */}
+                <div className="w-full lg:w-2/3 flex flex-col lg:flex-row gap-6">
+                  {/* Columna de miniaturas - Slider vertical */}
+                  {currentGallery.length > 1 && (
+                    <div className="order-2 lg:order-1 w-full lg:w-24">
+                      <div className="flex lg:flex-col gap-4 lg:gap-0">
+                        {/* Botón scroll arriba (desktop) */}
+                        {currentGallery.length > THUMBNAILS_VISIBLE &&
+                          thumbnailScrollPosition > 0 && (
+                            <button
+                              onClick={handleScrollUp}
+                              className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-md mb-2 transition"
+                              aria-label="Scroll up thumbnails"
+                            >
+                              <svg
+                                className="w-5 h-5 text-gray-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 15l7-7 7 7"
+                                />
+                              </svg>
+                            </button>
+                          )}
 
-            {/* Columna derecha - Información */}
-            <div className="w-full lg:w-1/3">
-              <div className="md:p-6">
-                {/* Badge condición */}
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="bg-[#D3D3D3] text-greendark-500 px-3 py-1 rounded-full text-xs font-semibold uppercase">
-                    {basicData.condition === "new"
-                      ? "Nuevo"
-                      : basicData.condition === "used"
-                        ? "Usado"
-                        : basicData.condition === "refurbished"
-                          ? "Reacondicionado"
-                          : basicData.condition}
-                  </span>
-                </div>
+                        {/* Grid de miniaturas */}
+                        <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible scrollbar-hide w-full">
+                          {currentGallery
+                            .slice(
+                              thumbnailScrollPosition,
+                              thumbnailScrollPosition + THUMBNAILS_VISIBLE,
+                            )
+                            .map((img, idx) => {
+                              const actualIndex = idx + thumbnailScrollPosition;
+                              const isSelected = selectedImageIndex === actualIndex;
 
-                {/* Título */}
-                <h1 className="text-2xl md:text-4xl font-semibold mb-2 text-primary-dark">
-                  {basicData.name}
-                </h1>
+                              return (
+                                <div
+                                  key={actualIndex}
+                                  onClick={() => setSelectedImageIndex(actualIndex)}
+                                  className={`relative my-2 ml-2 aspect-square bg-white rounded-sm shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
+																${isSelected
+                                      ? "ring-2 ring-primary scale-105"
+                                      : "hover:shadow-lg hover:scale-105"
+                                    }
+															`}
+                                >
+                                  <Image
+                                    src={img}
+                                    alt={`${basicData.name} - miniatura ${actualIndex + 1
+                                      }`}
+                                    fill
+                                    className="object-contain"
+                                    unoptimized
+                                  />
+                                </div>
+                              );
+                            })}
+                        </div>
 
-                {/* Nombre de la variación seleccionada */}
-                {currentVariation &&
-                  currentVariation.name &&
-                  currentVariation.name !== basicData.name && (
-                    <div className="text-lg md:text-xl text-gray-500 mb-4 font-medium">
-                      {currentVariation.name}
+                        {/* Botón scroll abajo (desktop) */}
+                        {currentGallery.length > THUMBNAILS_VISIBLE &&
+                          thumbnailScrollPosition < maxScroll && (
+                            <button
+                              onClick={handleScrollDown}
+                              className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-md mt-2 transition"
+                              aria-label="Scroll down thumbnails"
+                            >
+                              <svg
+                                className="w-5 h-5 text-gray-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 9l-7 7-7-7"
+                                />
+                              </svg>
+                            </button>
+                          )}
+
+                        {/* Contador de imágenes */}
+                        {currentGallery.length > THUMBNAILS_VISIBLE && (
+                          <div className="hidden lg:flex items-center justify-center mt-2 text-xs text-gray-500">
+                            {thumbnailScrollPosition + 1}-
+                            {Math.min(
+                              thumbnailScrollPosition + THUMBNAILS_VISIBLE,
+                              currentGallery.length,
+                            )}{" "}
+                            de {currentGallery.length}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
-                {/* Rating y SKU */}
-                <div className="flex items-center gap-5 mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex text-yellow-400">{"★".repeat(5)}</div>
-                    <span className="text-sm text-gray-600">(4.8/5)</span>
-                  </div>
-                  <span className="text-gray-600 text-sm">
-                    SKU: {basicData.sku}
-                  </span>
-                </div>
+                  {/* Imagen principal */}
+                  <div className="flex-1 order-1 lg:order-2">
+                    <div className="relative aspect-square bg-white rounded-sm shadow-md overflow-hidden">
+                      <Image
+                        src={
+                          currentGallery[selectedImageIndex] || currentGallery[0]
+                        }
+                        alt={basicData.name}
+                        fill
+                        className="object-contain"
+                        priority
+                        unoptimized
+                      />
 
-                {/* Precio */}
-                <div className="flex items-center gap-4 mb-6">
-                  {priceInfo.salePrice < priceInfo.regularPrice && (
-                    <span className="text-lg text-[#D3D3D3] line-through font-semibold">
-                      {formatPrice(priceInfo.regularPrice)}
-                    </span>
-                  )}
-                  <span className="md:text-4xl text-2xl font-semibold text-primary-dark">
-                    {formatPrice(priceInfo.salePrice)}
-                  </span>
-                </div>
-
-                {/* Opciones de personalización (Atributos) */}
-                {sortedAttributesList.length > 0 && (
-                  <div className="flex flex-col gap-6 mb-6">
-                    {sortedAttributesList.map((attr) => (
-                      <div key={attr.type}>
-                        <label className="block text-dark font-medium mb-3">
-                          {attr.name || attr.type}:
-                          {currentVariation &&
-                            currentVariation.attributes?.length > 0 && (
-                              <span className="ml-2 text-primary-dark font-normal">
-                                {
-                                  currentVariation.attributes.find(
-                                    (a) => a.type === attr.type,
-                                  )?.value
-                                }
-                              </span>
-                            )}
-                        </label>
-                        <div className="flex flex-wrap items-center gap-1 md:gap-3">
-                          {attr.values?.map((val) => {
-                            const isAvailableInContext =
-                              checkAttributeAvailability(attr.type, val.id);
-
-                            const isSelected =
-                              selectedAttributes[attr.type] === val.id;
-
-                            const previewVariation =
-                              variationsData.variations.find((v) =>
-                                v.attributes?.some(
-                                  (a) =>
-                                    a.type === attr.type && a.id === val.id,
-                                ),
-                              );
-
-                            return (
-                              <div key={val.id} className="relative group">
-                                <button
-                                  title={val.value}
-                                  onClick={() =>
-                                    isAvailableInContext &&
-                                    handleAttributeChange(attr.type, val.id)
-                                  }
-                                  disabled={!isAvailableInContext}
-                                  className={
-                                    attr.type === "color"
-                                      ? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
-                                        ? "border-primary border-4 scale-110"
-                                        : !isAvailableInContext
-                                          ? "border-gray-100 opacity-30 cursor-not-allowed grayscale"
-                                          : "border-gray-300 hover:scale-105"
-                                      }`
-                                      : `px-5 py-2 border rounded-sm font-medium transition ${isSelected
-                                        ? "bg-primary-dark text-white border-gray-900"
-                                        : !isAvailableInContext
-                                          ? "border-gray-100 text-gray-300 cursor-not-allowed"
-                                          : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                      }`
-                                  }
-                                  style={
-                                    attr.type === "color" && val.colorHex
-                                      ? { backgroundColor: val.colorHex }
-                                      : {}
-                                  }
-                                >
-                                  {attr.type !== "color" && val.value}
-                                </button>
-                                {attr.type === "color" &&
-                                  previewVariation &&
-                                  isAvailableInContext &&
-                                  !isSelected && (
-                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                      <div className="bg-white rounded-md shadow-xl border-2 border-gray-200 p-2">
-                                        <div className="relative w-24 h-24">
-                                          <Image
-                                            src={getImageUrl(
-                                              previewVariation.images?.[0] ||
-                                              variationsData.media
-                                                ?.coverImage,
-                                            )}
-                                            alt={val.value}
-                                            fill
-                                            className="object-contain rounded"
-                                            unoptimized
-                                          />
-                                        </div>
-                                        <p className="text-[10px] text-center mt-1 text-gray-600 font-semibold uppercase truncate max-w-[90px]">
-                                          {val.value}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Variaciones Standalone (Sin atributos) */}
-                {(() => {
-                  const standaloneVariations = variationsData.variations.filter(
-                    (v) => !v.attributes || v.attributes.length === 0,
-                  );
-
-                  if (standaloneVariations.length === 0) return null;
-
-                  return (
-                    <div className="flex flex-col gap-4 mb-6 pt-4 border-t border-gray-100">
-                      <label className="block text-primary-dark font-medium">
-                        {variationsData.attributes?.length > 0
-                          ? "Otras versiones:"
-                          : "Opciones disponibles:"}
-                      </label>
-                      <div className="flex flex-wrap gap-3">
-                        {standaloneVariations.map((v) => {
-                          const isSelected = currentVariation?.id === v.id;
-                          return (
-                            <button
-                              key={v.id}
-                              onClick={() => {
-                                setCurrentVariation(v);
-                                setSelectedAttributes({});
-                              }}
-                              className={`px-4 py-2 border rounded-md font-medium transition ${isSelected
-                                ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
-                                : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                                }`}
+                      {/* Navegación de flechas en la imagen principal */}
+                      {currentGallery.length > 1 && (
+                        <>
+                          <button
+                            onClick={() =>
+                              setSelectedImageIndex((prev) => Math.max(0, prev - 1))
+                            }
+                            disabled={selectedImageIndex === 0}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition lg:hidden"
+                            aria-label="Imagen anterior"
+                          >
+                            <svg
+                              className="w-6 h-6 text-gray-800"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
                             >
-                              <div className="flex flex-col items-center">
-                                <span className="text-sm font-semibold">
-                                  {v.name && v.name !== basicData.name
-                                    ? v.name
-                                    : v.sku || v.reference || `Opción ${v.id}`}
-                                </span>
-                                {v.price?.amount > 0 && (
-                                  <span
-                                    className={`text-[10px] ${isSelected ? "text-white/80" : "text-gray-500"}`}
-                                  >
-                                    {formatPrice(
-                                      v.price.amountWithTax || v.price.amount,
-                                    )}
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 19l-7-7 7-7"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() =>
+                              setSelectedImageIndex((prev) =>
+                                Math.min(currentGallery.length - 1, prev + 1),
+                              )
+                            }
+                            disabled={
+                              selectedImageIndex === currentGallery.length - 1
+                            }
+                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white md:p-3 p-2 rounded-full shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition lg:hidden"
+                            aria-label="Siguiente imagen"
+                          >
+                            <svg
+                              className="w-6 h-6 text-gray-800"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                              />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+
+                      {/* Indicador de posición */}
+                      {currentGallery.length > 1 && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+                          {selectedImageIndex + 1} / {currentGallery.length}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Columna derecha - Información */}
+                <div className="w-full lg:w-1/3">
+                  <div className="md:p-6">
+                    {/* Badge condición */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="bg-[#D3D3D3] text-greendark-500 px-3 py-1 rounded-full text-xs font-semibold uppercase">
+                        {basicData.condition === "new"
+                          ? "Nuevo"
+                          : basicData.condition === "used"
+                            ? "Usado"
+                            : basicData.condition === "refurbished"
+                              ? "Reacondicionado"
+                              : basicData.condition}
+                      </span>
+                    </div>
+
+                    {/* Título */}
+                    <h1 className="text-2xl md:text-4xl font-semibold mb-2 text-primary-dark">
+                      {basicData.name}
+                    </h1>
+
+                    {/* Nombre de la variación seleccionada */}
+                    {currentVariation &&
+                      currentVariation.name &&
+                      currentVariation.name !== basicData.name && (
+                        <div className="text-lg md:text-xl text-gray-500 mb-4 font-medium">
+                          {currentVariation.name}
+                        </div>
+                      )}
+
+                    {/* Rating y SKU */}
+                    <div className="flex items-center gap-5 mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="flex text-yellow-400">{"★".repeat(5)}</div>
+                        <span className="text-sm text-gray-600">(4.8/5)</span>
+                      </div>
+                      <span className="text-gray-600 text-sm">
+                        SKU: {basicData.sku}
+                      </span>
+                    </div>
+
+                    {/* Precio */}
+                    <div className="flex items-center gap-4 mb-6">
+                      {priceInfo.salePrice < priceInfo.regularPrice && (
+                        <span className="text-lg text-[#D3D3D3] line-through font-semibold">
+                          {formatPrice(priceInfo.regularPrice)}
+                        </span>
+                      )}
+                      <span className="md:text-4xl text-2xl font-semibold text-primary-dark">
+                        {formatPrice(priceInfo.salePrice)}
+                      </span>
+                    </div>
+
+                    {/* Opciones de personalización (Atributos) */}
+                    {sortedAttributesList.length > 0 && (
+                      <div className="flex flex-col gap-6 mb-6">
+                        {sortedAttributesList.map((attr) => (
+                          <div key={attr.type}>
+                            <label className="block text-dark font-medium mb-3">
+                              {attr.name || attr.type}:
+                              {currentVariation &&
+                                currentVariation.attributes?.length > 0 && (
+                                  <span className="ml-2 text-primary-dark font-normal">
+                                    {
+                                      currentVariation.attributes.find(
+                                        (a) => a.type === attr.type,
+                                      )?.value
+                                    }
                                   </span>
                                 )}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
+                            </label>
+                            <div className="flex flex-wrap items-center gap-1 md:gap-3">
+                              {attr.values?.map((val) => {
+                                const isAvailableInContext =
+                                  checkAttributeAvailability(attr.type, val.id);
 
-                {/* Cantidad */}
-                <div className="mb-6">
-                  <label className="text-gray-700 font-medium pb-2 block">
-                    Cantidad:
-                  </label>
-                  <div className="flex items-center border border-primary rounded-sm overflow-hidden w-fit">
-                    <button
-                      className="px-2 py-2 hover:bg-gray-100 transition text-lg disabled:opacity-50"
-                      onClick={handleDecrease}
-                      disabled={quantity <= 1}
-                    >
-                      <FaMinus className="w-3 h-3 text-primary transition" />
-                    </button>
-                    <span className="px-4 py-2 font-semibold">{quantity}</span>
-                    <button
-                      className="px-2 py-2 hover:bg-gray-100 transition disabled:opacity-50"
-                      onClick={handleIncrease}
-                      disabled={quantity >= getAvailableQuantity}
-                    >
-                      <FaPlus className="w-3 h-3 text-primary transition" />
-                    </button>
-                  </div>
-                  {/* <span className="text-sm text-gray-500 mt-2 block">
+                                const isSelected =
+                                  selectedAttributes[attr.type] === val.id;
+
+                                const previewVariation =
+                                  variationsData.variations.find((v) =>
+                                    v.attributes?.some(
+                                      (a) =>
+                                        a.type === attr.type && a.id === val.id,
+                                    ),
+                                  );
+
+                                return (
+                                  <div key={val.id} className="relative group">
+                                    <button
+                                      title={val.value}
+                                      onClick={() =>
+                                        isAvailableInContext &&
+                                        handleAttributeChange(attr.type, val.id)
+                                      }
+                                      disabled={!isAvailableInContext}
+                                      className={
+                                        attr.type === "color"
+                                          ? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
+                                            ? "border-primary border-4 scale-110"
+                                            : !isAvailableInContext
+                                              ? "border-gray-100 opacity-30 cursor-not-allowed grayscale"
+                                              : "border-gray-300 hover:scale-105"
+                                          }`
+                                          : `px-5 py-2 border rounded-sm font-medium transition ${isSelected
+                                            ? "bg-primary-dark text-white border-gray-900"
+                                            : !isAvailableInContext
+                                              ? "border-gray-100 text-gray-300 cursor-not-allowed"
+                                              : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                          }`
+                                      }
+                                      style={
+                                        attr.type === "color" && val.colorHex
+                                          ? { backgroundColor: val.colorHex }
+                                          : {}
+                                      }
+                                    >
+                                      {attr.type !== "color" && val.value}
+                                    </button>
+                                    {attr.type === "color" &&
+                                      previewVariation &&
+                                      isAvailableInContext &&
+                                      !isSelected && (
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                          <div className="bg-white rounded-md shadow-xl border-2 border-gray-200 p-2">
+                                            <div className="relative w-24 h-24">
+                                              <Image
+                                                src={getImageUrl(
+                                                  previewVariation.images?.[0] ||
+                                                  variationsData.media
+                                                    ?.coverImage,
+                                                )}
+                                                alt={val.value}
+                                                fill
+                                                className="object-contain rounded"
+                                                unoptimized
+                                              />
+                                            </div>
+                                            <p className="text-[10px] text-center mt-1 text-gray-600 font-semibold uppercase truncate max-w-[90px]">
+                                              {val.value}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Variaciones Standalone (Sin atributos) */}
+                    {(() => {
+                      const standaloneVariations = variationsData.variations.filter(
+                        (v) => !v.attributes || v.attributes.length === 0,
+                      );
+
+                      if (standaloneVariations.length === 0) return null;
+
+                      return (
+                        <div className="flex flex-col gap-4 mb-6 pt-4 border-t border-gray-100">
+                          <label className="block text-primary-dark font-medium">
+                            {variationsData.attributes?.length > 0
+                              ? "Otras versiones:"
+                              : "Opciones disponibles:"}
+                          </label>
+                          <div className="flex flex-wrap gap-3">
+                            {standaloneVariations.map((v) => {
+                              const isSelected = currentVariation?.id === v.id;
+                              return (
+                                <button
+                                  key={v.id}
+                                  onClick={() => {
+                                    setCurrentVariation(v);
+                                    setSelectedAttributes({});
+                                  }}
+                                  className={`px-4 py-2 border rounded-md font-medium transition ${isSelected
+                                    ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
+                                    : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                    }`}
+                                >
+                                  <div className="flex flex-col items-center">
+                                    <span className="text-sm font-semibold">
+                                      {v.name && v.name !== basicData.name
+                                        ? v.name
+                                        : v.sku || v.reference || `Opción ${v.id}`}
+                                    </span>
+                                    {v.price?.amount > 0 && (
+                                      <span
+                                        className={`text-[10px] ${isSelected ? "text-white/80" : "text-gray-500"}`}
+                                      >
+                                        {formatPrice(
+                                          v.price.amountWithTax || v.price.amount,
+                                        )}
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Cantidad */}
+                    <div className="mb-6">
+                      <label className="text-gray-700 font-medium pb-2 block">
+                        Cantidad:
+                      </label>
+                      <div className="flex items-center border border-primary rounded-sm overflow-hidden w-fit">
+                        <button
+                          className="px-2 py-2 hover:bg-gray-100 transition text-lg disabled:opacity-50"
+                          onClick={handleDecrease}
+                          disabled={quantity <= 1}
+                        >
+                          <FaMinus className="w-3 h-3 text-primary transition" />
+                        </button>
+                        <span className="px-4 py-2 font-semibold">{quantity}</span>
+                        <button
+                          className="px-2 py-2 hover:bg-gray-100 transition disabled:opacity-50"
+                          onClick={handleIncrease}
+                          disabled={quantity >= getAvailableQuantity}
+                        >
+                          <FaPlus className="w-3 h-3 text-primary transition" />
+                        </button>
+                      </div>
+                      {/* <span className="text-sm text-gray-500 mt-2 block">
                     {getAvailableQuantity > 0
                       ? `${getAvailableQuantity} disponibles`
                       : "Sin stock"}
                   </span> */}
-                </div>
+                    </div>
 
-                {/* Botones de acción */}
-                <div className="flex gap-2 md:gap-4">
-                  <Button
-                    className="disabled:opacity-50 disabled:cursor-not-allowed w-full"
-                    disabled={
-                      getAvailableQuantity === 0 ||
-                      (!currentVariation &&
-                        variationsData.variations?.length > 0)
-                    }
-                    onClick={handleAddToCart}
-                  >
-                    {!currentVariation && variationsData.variations?.length > 0
-                      ? "Selecciona opciones"
-                      : getAvailableQuantity > 0
-                        ? "Agregar al carrito"
-                        : "Sin stock"}
-                  </Button>
-                  <button
-                    onClick={handleToggleFavorite}
-                    disabled={loadingFavorite}
-                    className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] min-w-[56px] min-h-[56px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
-                      }`}
-                  >
-                    {loadingFavorite ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-                    ) : (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-6 w-6"
-                        fill={isFavorite ? "currentColor" : "none"}
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                    {/* Botones de acción */}
+                    <div className="flex gap-2 md:gap-4">
+                      <Button
+                        className="disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                        disabled={
+                          getAvailableQuantity === 0 ||
+                          (!currentVariation &&
+                            variationsData.variations?.length > 0)
+                        }
+                        onClick={handleAddToCart}
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                        />
-                      </svg>
-                    )}
-                  </button>
+                        {!currentVariation && variationsData.variations?.length > 0
+                          ? "Selecciona opciones"
+                          : getAvailableQuantity > 0
+                            ? "Agregar al carrito"
+                            : "Sin stock"}
+                      </Button>
+                      <button
+                        onClick={handleToggleFavorite}
+                        disabled={loadingFavorite}
+                        className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] min-w-[56px] min-h-[56px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
+                          }`}
+                      >
+                        {loadingFavorite ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-6 w-6"
+                            fill={isFavorite ? "currentColor" : "none"}
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-      {/* Pestañas de información */}
-      <div className="max-w-7xl mx-auto px-6 py-4 liwilu-tabs z-10 relative">
-        <div className="flex border-b border-gray-200 overflow-x-auto overflow-y-hidden">
-          {visibleTabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab as TabKey)}
-              className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${activeTab === tab
-                ? "border-gray-900 text-primary-dark"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-        <div className="mt-8">{tabs[activeTab]}</div>
-      </div>
-      {/* Productos relacionados */}
-      <ProductosRelacionados productId={productId} />
-      {/* Banner publicitario */}
-      <BannerPublicidad />
-      {/* Aptitudes */}
-      <Aptitudes />
-      {/* Modal de carrito */}
-      {modalProduct && (
-        <AddToCartModal
-          isOpen={!!modalProduct}
-          onClose={() => setModalProduct(null)}
-          product={modalProduct}
-        />
+          {/* Pestañas de información */}
+          <div className="max-w-7xl mx-auto px-6 py-4 liwilu-tabs z-10 relative">
+            <div className="flex border-b border-gray-200 overflow-x-auto overflow-y-hidden">
+              {visibleTabs.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab as TabKey)}
+                  className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${activeTab === tab
+                    ? "border-gray-900 text-primary-dark"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div className="mt-8">{tabs[activeTab]}</div>
+          </div>
+          {/* Productos relacionados */}
+          <ProductosRelacionados productId={productId} />
+          {/* Banner publicitario */}
+          <BannerPublicidad />
+          {/* Aptitudes */}
+          <Aptitudes />
+          {/* Modal de carrito */}
+          {modalProduct && (
+            <AddToCartModal
+              isOpen={!!modalProduct}
+              onClose={() => setModalProduct(null)}
+              product={modalProduct}
+            />
+          )}
+        </>
       )}
     </Layout>
   );
