@@ -60,7 +60,7 @@ export default function HeroSlider({ latestProducts }: HeroSliderProps) {
         <SlideNuevosArticulos isActive={selectedIndex === 3} />
 
         {/* Slide 5: Regreso a clases */}
-        <SlidePromocionInvierno isActive={selectedIndex === 4} />
+        {/* <SlidePromocionInvierno isActive={selectedIndex === 4} /> */}
 
       </div>
     </div>
