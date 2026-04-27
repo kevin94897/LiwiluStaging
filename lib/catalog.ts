@@ -1200,6 +1200,47 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 /**
+ * Fetch products filtered by condition (nuevo, usado, etc.)
+ * Endpoint: /catalog/products/condition/:condition
+ */
+export async function getProductsByCondition(
+    condition: string,
+    params: Omit<FilterParams, 'search'> = {}
+): Promise<CatalogResponse> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    const queryParts: string[] = [];
+    if (params.page) queryParts.push(`page=${params.page}`);
+    if (params.limit) queryParts.push(`limit=${params.limit}`);
+    if (params.sortBy) queryParts.push(`sortBy=${params.sortBy}`);
+    if (params.sortOrder) queryParts.push(`sortOrder=${params.sortOrder}`);
+    if (params.inStock !== undefined) queryParts.push(`inStock=${params.inStock}`);
+    if (params.categoryIds?.length) queryParts.push(`categoryIds=${params.categoryIds.join(',')}`);
+    if (params.brandIds?.length) queryParts.push(`brandIds=${params.brandIds.join(',')}`);
+    if (params.attributeIds?.length) queryParts.push(`attributeIds=${params.attributeIds.join(',')}`);
+
+    const qs = queryParts.length ? `?${queryParts.join('&')}` : '';
+    const url = `${baseUrl}/catalog/products/condition/${encodeURIComponent(condition)}${qs}`;
+
+    try {
+        const response = await authenticatedFetch(url, {
+            skipAuth: true,
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) throw new Error(`Error fetching products by condition: ${response.statusText}`);
+        return await response.json();
+    } catch (error) {
+        logger.error('Error in getProductsByCondition:', error);
+        return {
+            success: false,
+            data: [],
+            pagination: { page: 1, limit: 20, total: 0, totalPages: 0, hasMore: false },
+            filters: { applied: { categories: [], brands: [], sortBy: 'price', sortOrder: 'asc' } }
+        };
+    }
+}
+
+/**
  * Legacy getRelatedProducts for compatibility
  */
 export async function getRelatedProducts(
