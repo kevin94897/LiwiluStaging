@@ -4,7 +4,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const ALLOWED_BASE =
-  (process.env.NEXT_PUBLIC_API_URL ?? "").replace("/api", "");
+  (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "");
 
 export default async function handler(
   req: NextApiRequest,
