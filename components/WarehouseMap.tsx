@@ -35,11 +35,15 @@ function ChangeView({ warehouses, center }: { warehouses: WarehouseMapItem[], ce
     const map = useMap();
 
     useEffect(() => {
-        if (center) {
-            map.setView(center, map.getZoom());
-        } else if (warehouses.length > 0) {
-            const bounds = L.latLngBounds(warehouses.map(w => [w.latitud, w.longitud]));
-            map.fitBounds(bounds, { padding: [50, 50] });
+        try {
+            if (center) {
+                map.setView(center, map.getZoom(), { animate: false });
+            } else if (warehouses.length > 0) {
+                const bounds = L.latLngBounds(warehouses.map(w => [w.latitud, w.longitud]));
+                map.fitBounds(bounds, { padding: [50, 50], animate: false });
+            }
+        } catch {
+            // Map may have been unmounted during the update
         }
     }, [warehouses, center, map]);
 
