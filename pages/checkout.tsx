@@ -79,7 +79,13 @@ export default function Checkout() {
   const [preOrderStatus, setPreOrderStatus] = useState<PreOrderStatusResponse | null>(null);
 
   useEffect(() => {
-    const pid = searchParams?.get("preOrderId");
+    // useSearchParams from next/navigation can return null in Pages Router;
+    // fall back to window.location.search to guarantee we read the param.
+    const pid =
+      searchParams?.get("preOrderId") ??
+      (typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("preOrderId")
+        : null);
     if (pid) {
       setTrimegistoPreOrderId(pid);
       setMetodoPago("trismegisto");
@@ -364,6 +370,13 @@ export default function Checkout() {
     - (totals.promoDiscount || 0)
     - (totals.trismegistoBalance || 0)
     + envio;
+
+  // When balance fully covers the order, force Trimegisto as the only method.
+  useEffect(() => {
+    if (isTrimegisto && (totals.trismegistoBalance ?? 0) > 0 && total <= 0 && !metodoPago) {
+      setMetodoPago("trismegisto");
+    }
+  }, [isTrimegisto, totals.trismegistoBalance, total, metodoPago]);
 
   // Sincronizar total con Ref para callbacks asíncronos
   useEffect(() => {
@@ -2110,7 +2123,7 @@ export default function Checkout() {
               )}
 
               <div className="space-y-3">
-                {(!trimegistoPreOrderId || trimegistoOtpConfirmed) && (
+                {(!trimegistoPreOrderId || trimegistoOtpConfirmed) && total > 0 && (
                   <>
                     <button
                       onClick={() => setMetodoPago("card")}

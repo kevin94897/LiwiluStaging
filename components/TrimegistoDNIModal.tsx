@@ -260,6 +260,7 @@ export function TrimegistoRegisterModal({
   });
 
   const [isFetchingDni, setIsFetchingDni] = useState(false);
+  const [signaturePreviewUrl, setSignaturePreviewUrl] = useState<string | null>(null);
 
   // ✅ Al abrir el modal, consultar el DNI para pre-llenar nombre y apellidos
   useEffect(() => {
@@ -347,14 +348,22 @@ export function TrimegistoRegisterModal({
 
     if (file && file.size > 1048576) {
       setErrors((prev) => ({ ...prev, signatureFile: "El archivo no debe superar 1 MB" }));
-      e.target.value = ""; // Resetear input
+      e.target.value = "";
       return;
     }
 
-    setFormData((prev) => ({ ...prev, signatureFile: file }));
+    // Revocar URL anterior para liberar memoria
+    if (signaturePreviewUrl) URL.revokeObjectURL(signaturePreviewUrl);
+
     if (file) {
+      const isImage = file.type.startsWith("image/");
+      setSignaturePreviewUrl(isImage ? URL.createObjectURL(file) : null);
       setErrors((prev) => ({ ...prev, signatureFile: undefined }));
+    } else {
+      setSignaturePreviewUrl(null);
     }
+
+    setFormData((prev) => ({ ...prev, signatureFile: file }));
   };
 
   useEffect(() => {
@@ -647,7 +656,7 @@ export function TrimegistoRegisterModal({
                   type="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 6 caracteres, mayúsculas, minúsculas y números"
                   className={inputClasses("password")}
                 />
                 {errors.password && (
@@ -712,7 +721,7 @@ export function TrimegistoRegisterModal({
                     type="file"
                     id="signature-upload"
                     name="signatureFile"
-                    accept=".png,.jpg,.jpeg,.pdf"
+                    accept=".png,.jpg,.jpeg"
                     onChange={handleSignatureUpload}
                     className="sr-only"
                   />
@@ -734,7 +743,7 @@ export function TrimegistoRegisterModal({
                     <span className="text-sm font-medium">
                       {fileName
                         ? `Archivo: ${fileName}`
-                        : "Subir Firma Electrónica (PNG, JPG o PDF)"}
+                        : "Subir Firma Electrónica (PNG o JPG)"}
                     </span>
                   </div>
 
@@ -749,6 +758,17 @@ export function TrimegistoRegisterModal({
                 <p className="text-red-500 text-xs flex items-center gap-1 mt-1">
                   <PiWarningCircleFill size={16} /> {errors.signatureFile}
                 </p>
+              )}
+
+              {/* Preview de firma */}
+              {formData.signatureFile && (
+                <div className="mt-2 rounded-sm border border-green-200 bg-green-50 overflow-hidden">
+                  <img
+                    src={signaturePreviewUrl!}
+                    alt="Preview firma"
+                    className="w-full max-h-40 object-contain p-2"
+                  />
+                </div>
               )}
 
               {/* Checkboxes */}

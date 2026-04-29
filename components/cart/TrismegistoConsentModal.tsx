@@ -111,7 +111,6 @@ export default function TrismegistoConsentModal({
                   className="sr-only"
                 />
                 <div
-                  onClick={() => setAccepted((v) => !v)}
                   className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
                     ${accepted
                       ? "bg-primary border-primary"

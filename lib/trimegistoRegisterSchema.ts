@@ -24,7 +24,10 @@ export const trimegistoRegisterSchema = z.object({
         .email("Ingresa un correo válido"),
 
     password: z.string()
-        .min(6, "La contraseña debe tener mínimo 6 caracteres"),
+        .min(6, "La contraseña debe tener mínimo 6 caracteres")
+        .regex(/[A-Z]/, "La contraseña debe contener al menos una mayúscula")
+        .regex(/[a-z]/, "La contraseña debe contener al menos una minúscula")
+        .regex(/[0-9]/, "La contraseña debe contener al menos un número"),
 
     passwordConfirm: z.string()
         .min(1, "Confirma tu contraseña"),
