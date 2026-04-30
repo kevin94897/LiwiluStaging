@@ -45,6 +45,10 @@ interface TrimegistoBalanceProps {
     onPendingChange?: (isPending: boolean) => void;
     /** Increment this counter to force-reset the applied balance (e.g. when shipping changes) */
     resetTrigger?: number;
+    /** Whether shipping is fully configured (method + district). Blocks apply if false. */
+    isShippingReady?: boolean;
+    /** Increment this counter to programmatically trigger the apply action */
+    applyTrigger?: number;
 }
 
 export default function TrimegistoBalance({
@@ -56,6 +60,8 @@ export default function TrimegistoBalance({
     initialBalanceInstallments = 1,
     onPendingChange,
     resetTrigger = 0,
+    isShippingReady = true,
+    applyTrigger = 0,
 }: TrimegistoBalanceProps) {
     const [balance, setBalance] = useState<BalanceData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -86,7 +92,7 @@ export default function TrimegistoBalance({
             setPrevResetTrigger(resetTrigger);
             if (applied && appliedAmount > 0) {
                 // Saldo ya aplicado en backend — removerlo via API
-                applyAmountToApi(0, 1).then(() => {
+                applyAmountToApi(0, 1, true).then(() => {
                     setAppliedAmount(0);
                     setCuotas(1);
                     setApplied(false);
@@ -184,7 +190,7 @@ export default function TrimegistoBalance({
     };
 
     // ── Step 2: Apply balance to cart via /cart/trismegisto-balance ───────
-    const applyAmountToApi = async (amount: number, q: number) => {
+    const applyAmountToApi = async (amount: number, q: number, silent = false) => {
         setIsApplying(true);
         setApplyError(null);
         try {
@@ -221,11 +227,11 @@ export default function TrimegistoBalance({
                 onTotalsUpdate?.(confirmed.totals);
                 onAfterApply?.();
             } else {
-                setApplyError(data.message || "No se pudo aplicar el saldo.");
+                if (!silent) setApplyError(data.message || "No se pudo aplicar el saldo.");
             }
         } catch (err) {
             logger.error("Error al aplicar saldo Trimegisto al carrito:", err);
-            setApplyError("Error al conectar con el servidor.");
+            if (!silent) setApplyError("Error al conectar con el servidor.");
         } finally {
             setIsApplying(false);
         }
@@ -233,8 +239,21 @@ export default function TrimegistoBalance({
 
     const handleApply = async () => {
         if (appliedAmount <= 0) return;
+        if (!isShippingReady) {
+            setApplyError("Primero debes seleccionar una zona de delivery.");
+            return;
+        }
         await applyAmountToApi(appliedAmount, cuotas);
     };
+
+    // Trigger apply programmatically (e.g. from parent modal)
+    const [prevApplyTrigger, setPrevApplyTrigger] = useState(applyTrigger);
+    useEffect(() => {
+        if (applyTrigger !== prevApplyTrigger) {
+            setPrevApplyTrigger(applyTrigger);
+            handleApply();
+        }
+    }, [applyTrigger]);
 
     const handleToggle = async () => {
         const nextState = !useBalanceToggle;

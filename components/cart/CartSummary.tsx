@@ -84,6 +84,19 @@ export default function CartSummary({
   const [trimegistoPending, setTrimegistoPending] = useState(false);
   const [pendingDismissed, setPendingDismissed] = useState(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [balanceApplyTrigger, setBalanceApplyTrigger] = useState(0);
+
+  // Reset checkout overlay when the parent's isSubmitting transitions true → false
+  // (covers: trimegisto API done, consent modal about to appear, or flow cancelled)
+  const prevIsSubmittingRef = useRef(isSubmitting);
+  useEffect(() => {
+    if (prevIsSubmittingRef.current && !isSubmitting) {
+      setIsCheckingOut(false);
+    }
+    prevIsSubmittingRef.current = isSubmitting;
+  }, [isSubmitting]);
+
   // Holds totals received directly from the PUT response (overrides prop until next full sync)
   const [overrideTotals, setOverrideTotals] = useState<typeof totals | null>(
     null,
@@ -168,6 +181,8 @@ export default function CartSummary({
               if (isPending) setPendingDismissed(false);
             }}
             resetTrigger={balanceResetTrigger}
+            isShippingReady={metodoEnvio === "retiro" || (metodoEnvio === "delivery" && !!hasDeliveryDistrict)}
+            applyTrigger={balanceApplyTrigger}
           />
         </>
       )}
@@ -414,6 +429,16 @@ export default function CartSummary({
           </div>
         </div>
 
+        {/* Overlay bloqueante durante checkout */}
+        {(isCheckingOut || isSubmitting) && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 cursor-not-allowed">
+            <div className="bg-white rounded-xl px-8 py-6 flex flex-col items-center gap-3 shadow-xl">
+              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-gray-700 font-medium text-sm">Procesando...</p>
+            </div>
+          </div>
+        )}
+
         {/* Modal: saldo pendiente de aplicar */}
         {showPendingModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -425,21 +450,39 @@ export default function CartSummary({
               >
                 <FaTimes size={16} />
               </button>
-              
+
               <div className="flex justify-center mb-4 mt-2">
                 <FaExclamationTriangle size={36} className="text-amber-400" />
               </div>
               <p className="text-gray-800 font-medium mb-6">
-                Tus nuevos cambios en saldo Trimegisto no fueron aplicados.
+                Tienes cambios en saldo Trimegisto sin aplicar. ¿Deseas aplicarlos antes de continuar?
               </p>
-              <Button
-                variant="primary"
-                size="md"
-                className="w-full"
-                onClick={() => { setShowPendingModal(false); setPendingDismissed(true); onCheckout(); }}
-              >
-                Aceptar y continuar
-              </Button>
+              <div className="flex flex-col gap-3">
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="w-full"
+                  onClick={() => {
+                    setShowPendingModal(false);
+                    setBalanceApplyTrigger((n) => n + 1);
+                  }}
+                >
+                  Aplicar saldo
+                </Button>
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="w-full"
+                  onClick={() => {
+                    setShowPendingModal(false);
+                    setPendingDismissed(true);
+                    setIsCheckingOut(true);
+                    onCheckout();
+                  }}
+                >
+                  Continuar sin aplicar
+                </Button>
+              </div>
             </div>
           </div>
         )}
