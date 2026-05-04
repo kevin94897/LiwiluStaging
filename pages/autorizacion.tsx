@@ -1,0 +1,167 @@
+// app/trimegisto/autorizar-retiro/page.tsx
+"use client";
+
+import { useState } from "react";
+import logger from '@/lib/logger';
+import Layout from "@/components/Layout";
+import { HiArrowLeft } from "react-icons/hi";
+import { PiWarningCircleFill } from "react-icons/pi";
+import router from "next/router";
+import { showToast } from "@/lib/notifications";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
+import {
+  autorizacionSchema,
+  AutorizacionSchemaType,
+} from "@/lib/autorizacionSchema";
+
+export default function AutorizarRetiroPage() {
+  const [formData, setFormData] = useState<AutorizacionSchemaType>({
+    documentType: "DNI",
+    documentNumber: "",
+    fullName: "",
+  });
+
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof AutorizacionSchemaType, string>>
+  >({});
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Limpiar error del campo al escribir
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleDocumentNumberChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const value = e.target.value.replace(/\D/g, "");
+    const maxLength = formData.documentType === "RUC" ? 11 : 8;
+    if (value.length <= maxLength) {
+      setFormData((prev) => ({ ...prev, documentNumber: value }));
+      setErrors((prev) => ({ ...prev, documentNumber: undefined }));
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validación con Zod
+    const result = autorizacionSchema.safeParse(formData);
+
+    if (!result.success) {
+      const formattedErrors = result.error.flatten().fieldErrors;
+      const newErrors: Partial<Record<keyof AutorizacionSchemaType, string>> =
+        {};
+
+      for (const key in formattedErrors) {
+        const errorArray = formattedErrors[key as keyof typeof formattedErrors];
+        if (errorArray && errorArray.length > 0) {
+          newErrors[key as keyof AutorizacionSchemaType] = errorArray[0];
+        }
+      }
+
+      setErrors(newErrors);
+      logger.log("Errores de validación:", newErrors);
+      return;
+    }
+
+    // Si es válido
+    setErrors({});
+    logger.log("Autorización de retiro exitosa:", formData);
+    // Aquí iría la lógica para guardar la autorización
+    showToast("Autorización guardada exitosamente");
+    router.back();
+  };
+
+  return (
+    <Layout
+      title="Políticas - Liwilu"
+      description="Políticas de envío y recojo de productos"
+      background={true}
+    >
+      <div className="flex items-center justify-center px-8 py-24 relative overflow-hidden">
+        {/* Decorative circles */}
+        <div className="absolute top-10 right-10 w-32 h-32 border-4 border-green-200 rounded-full opacity-20"></div>
+        <div className="absolute top-20 right-32 w-20 h-20 border-4 border-green-300 rounded-full opacity-30"></div>
+        <div className="absolute bottom-10 right-20 w-40 h-20 border-4 border-green-200 rounded-full opacity-20 transform rotate-45"></div>
+        <div className="absolute bottom-32 right-10 w-24 h-24 border-4 border-green-300 rounded-full opacity-25"></div>
+
+        {/* Card */}
+        <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 md:p-12 relative z-10">
+          {/* Botón Retroceder */}
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition mb-6 group"
+          >
+            <HiArrowLeft className="w-5 h-5 transform group-hover:-translate-x-1 transition" />
+            <span className="font-medium">Volver</span>
+          </button>
+
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl md:text-4xl font-semibold text-primary-dark mb-3">
+              Autorizo que alguien más retire
+            </h1>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Tipo de documento */}
+            <div>
+              <Select
+                label="Tipo de documento *"
+                name="documentType"
+                value={formData.documentType}
+                onChange={handleChange}
+                error={errors.documentType}
+              >
+                <option value="">Seleccionar tipo</option>
+                <option value="DNI">DNI</option>
+                {/* <option value="RUC">RUC</option> */}
+                <option value="CE">Carnet de Extranjería</option>
+                <option value="PASAPORTE">Pasaporte</option>
+              </Select>
+            </div>
+
+            {/* Número de Documento */}
+            <div>
+              <Input
+                label="Número de Documento *"
+                type="text"
+                name="documentNumber"
+                value={formData.documentNumber}
+                onChange={handleDocumentNumberChange}
+                placeholder="74218601"
+                maxLength={formData.documentType === "RUC" ? 11 : 15}
+                error={errors.documentNumber}
+              />
+            </div>
+
+            {/* Nombre y apellido */}
+            <div>
+              <Input
+                label="Nombre y apellido *"
+                type="text"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                placeholder="Nombres Apellidos"
+                error={errors.fullName}
+              />
+            </div>
+
+            {/* Botón Guardar */}
+            <Button size="md" className="w-full" type="submit">
+              Guardar autorización
+            </Button>
+          </form>
+        </div>
+      </div>
+    </Layout>
+  );
+}
