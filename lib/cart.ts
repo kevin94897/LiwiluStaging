@@ -31,6 +31,7 @@ export interface CartProduct {
     variationAttributes?: any[]; // Added
     variationPriceWithTax?: number | null; // Added
     queryString?: string; // Query string for variation-specific URLs
+    availableForOrder?: boolean;
 }
 
 /**

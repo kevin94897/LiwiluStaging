@@ -751,13 +751,13 @@ export default function Tienda() {
                             )}
                           </button>
                           <div className="relative w-full h-44 lg:h-48 xl:h-56 bg-gray-100 overflow-hidden">
-                            {/* {(product.quantity ?? 0) <= 0 && (
-                              <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 pointer-events-none">
-                                <span className="bg-red-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg transform -rotate-12 scale-110">
-                                  AGOTADO
+                            {product.availableForOrder === false && (
+                              <div className="absolute bottom-0 left-0 right-0 z-10 bg-amber-500/90 px-2 py-1 pointer-events-none">
+                                <span className="text-white text-[10px] font-semibold uppercase tracking-wide">
+                                  Solo retiro en tienda
                                 </span>
                               </div>
-                            )} */}
+                            )}
                             <Image
                               src={imageUrl}
                               alt={getProductName(product)}

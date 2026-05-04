@@ -75,6 +75,9 @@ export default function CartItem({
   const precioUnitario = effectivePrice;
   const precioTotal = precioUnitario * item.quantity;
 
+  const notAvailableForDelivery =
+    metodoEnvio === "delivery" && item.product.availableForOrder === false;
+
   // Determine the stock status for the item: available, outOfStock, or neutral
   const itemStockStatus = (() => {
     // Show neutral while validating to avoid flickering (handled by loader UI)
@@ -109,12 +112,24 @@ export default function CartItem({
 
   return (
     <div
-      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${itemStockStatus === "available"
-        ? "border-2 border-primary"
-        : "border-2 border-transparent"
+      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${notAvailableForDelivery
+          ? "border-2 border-amber-400 opacity-75"
+          : itemStockStatus === "available"
+            ? "border-2 border-primary"
+            : "border-2 border-transparent"
         }`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
+      {/* No disponible para delivery banner */}
+      {notAvailableForDelivery && (
+        <div className="absolute top-0 left-0 right-0 bg-amber-50 border-b border-amber-200 px-4 py-1.5 flex items-center gap-2 z-10">
+          <FaRegClock size={13} className="text-amber-600 shrink-0" />
+          <span className="text-xs font-semibold text-amber-700">
+            No disponible para delivery
+          </span>
+        </div>
+      )}
+
       {/* Overlay Loader */}
       {itemStockStatus === "loading" && (
         <div className="absolute inset-0 bg-white/80 z-20 flex flex-col items-center justify-center rounded-sm backdrop-blur-[1px] transition-all duration-300">
@@ -136,7 +151,7 @@ export default function CartItem({
         </div>
       )}
 
-      <div className="w-full">
+      <div className={`w-full ${notAvailableForDelivery ? "mt-6" : ""}`}>
         {metodoEnvio === "retiro" &&
           tiendaSeleccionada &&
           infoTiendaSeleccionada && (

@@ -52,6 +52,8 @@ interface CartSummaryProps {
   }) => void;
   /** Called after balance is applied/removed to trigger a full cart sync */
   onAfterBalanceApply?: () => void;
+  /** True when delivery is selected and ≥1 product is not available for delivery */
+  hasNonDeliverableItems?: boolean;
 }
 
 export default function CartSummary({
@@ -77,6 +79,7 @@ export default function CartSummary({
   balanceAmount,
   balanceInstallments,
   onAfterBalanceApply,
+  hasNonDeliverableItems = false,
 }: CartSummaryProps) {
   const [isTrimegisto, setIsTrimegisto] = useState(false);
   const [trimegistoApplied, setTrimegistoApplied] = useState(0);
@@ -487,6 +490,18 @@ export default function CartSummary({
           </div>
         )}
 
+        {/* Aviso productos no disponibles para delivery */}
+        {hasNonDeliverableItems && metodoEnvio === "delivery" && (
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-sm px-3 py-2 mb-3 text-xs text-amber-800">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>
+              Tienes productos <strong>no disponibles para delivery</strong>.
+            </span>
+          </div>
+        )}
+
         {/* CTA */}
         <Button
           variant="primary"
@@ -495,7 +510,8 @@ export default function CartSummary({
           disabled={
             (metodoEnvio === "retiro" && !tiendaSeleccionada) ||
             isValidatingStock ||
-            isSubmitting
+            isSubmitting ||
+            hasNonDeliverableItems
           }
           onClick={() => {
             if (trimegistoPending && !pendingDismissed) {

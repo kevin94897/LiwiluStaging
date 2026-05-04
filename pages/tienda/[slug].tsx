@@ -1225,6 +1225,16 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                   </span> */}
                     </div>
 
+                    {/* Aviso: no disponible para delivery */}
+                    {variationsData?.base?.stock?.availableForOrder === false && (
+                      <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 text-xs mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Este producto no está disponible para delivery. Puede adquirirse con <strong>retiro en tienda</strong>.</span>
+                      </div>
+                    )}
+
                     {/* Botones de acción */}
                     <div className="flex gap-2 md:gap-4">
                       <Button

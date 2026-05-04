@@ -1763,6 +1763,18 @@ export default function Carrito() {
 
     // Savar Stock Check for Delivery
     if (metodoEnvio === "delivery") {
+      const notDeliverable = items.filter(
+        (item) => item.product.availableForOrder === false,
+      );
+      if (notDeliverable.length > 0) {
+        const names = notDeliverable.map((i) => i.product.name).join(", ");
+        showToast(
+          `Retira del carrito los productos no disponibles para delivery: ${names}`,
+          "error",
+        );
+        return;
+      }
+
       if (editandoDireccion) {
         showToast("Debes guardar tu dirección para continuar.", "error");
         return;
@@ -1979,6 +1991,10 @@ export default function Carrito() {
   // al componente CartSummary como "subtotal" para que la operación visual sea:
   // Subtotal (Regular) - Descuentos + Envío = Total
   const total = effectiveSubtotal + envio;
+
+  const hasNonDeliverableItems =
+    metodoEnvio === "delivery" &&
+    items.some((item) => item.product.availableForOrder === false);
 
   const infoTiendaSeleccionada = mapWarehouses.find(
     (w) => w.idAlmacen.toString() === tiendaSeleccionada,
@@ -2791,6 +2807,7 @@ export default function Carrito() {
             balanceAmount={totals.balanceAmount}
             balanceInstallments={totals.balanceInstallments}
             onAfterBalanceApply={syncCart}
+            hasNonDeliverableItems={hasNonDeliverableItems}
           />
         </div>
       </div>

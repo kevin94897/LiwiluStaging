@@ -28,6 +28,7 @@ export interface Product {
     idVariation?: number | null; // ID for variation-specific cart operations
     hasVariations?: boolean;
     variationAttributes?: any[];
+    availableForOrder?: boolean;
     defaultVariation?: {
         prestashopCombinationId: number;
         name: string;
@@ -69,6 +70,7 @@ export interface CatalogProduct {
     condition: string;
     coverImage: string;
     hasVariations?: boolean;
+    availableForOrder?: boolean;
     defaultVariation?: {
         prestashopCombinationId: number;
         name: string;
