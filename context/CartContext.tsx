@@ -178,6 +178,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       promoCodes: cartProduct.promoCodes,
       // @ts-ignore: Adding extra properties for utils compatibility
       promoDiscount: cartProduct.promoDiscount,
+      availableForOrder: cartProduct.availableForOrder,
     } as unknown as Product;
   };
 
