@@ -179,6 +179,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // @ts-ignore: Adding extra properties for utils compatibility
       promoDiscount: cartProduct.promoDiscount,
       availableForOrder: cartProduct.availableForOrder,
+      mayorista: (cartProduct as any).mayorista,
     } as unknown as Product;
   };
 

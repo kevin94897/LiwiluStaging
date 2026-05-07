@@ -48,13 +48,19 @@ interface QueryParams {
   sortBy?: string;
   page?: string;
   search?: string;
+  mayorista?: string;
 }
 
-export const getServerSideProps: GetServerSideProps = async () => {
-  return { props: {} };
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { mayorista } = context.query;
+  return {
+    props: {
+      initialWholesale: mayorista === 'true'
+    }
+  };
 };
 
-export default function Tienda() {
+export default function Tienda({ initialWholesale }: { initialWholesale: boolean }) {
   const router = useRouter();
 
   // Data state (fetched client-side to send token/sessionId)
@@ -102,7 +108,8 @@ export default function Tienda() {
           inStock: q.inStock === "true",
           sortBy: q.sortBy,
           search: q.search,
-          limit: 20,
+          mayorista: q.mayorista === "true",
+          limit: 21,
         });
         setProducts(response.data || []);
         setPagination(response.pagination || null);
@@ -314,6 +321,7 @@ export default function Tienda() {
       const cartProduct = {
         ...producto,
         prestashopCombinationId: combinationId,
+        mayorista: router.query.mayorista === "true"
       };
       addToCart(cartProduct, 1);
       setModalProduct(cartProduct);
@@ -661,6 +669,20 @@ export default function Tienda() {
                   <option value="oldest">Más Antiguos</option>
                 </select>
               </div>
+
+              {/* Wholesale Toggle */}
+              <div className="flex items-center gap-3 w-full md:w-auto justify-end sm:justify-start">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={router.query.mayorista === "true"}
+                    onChange={(e) => updateFilters({ mayorista: e.target.checked ? "true" : undefined })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  <span className="ml-3 text-sm font-medium text-gray-700">Modo Mayorista</span>
+                </label>
+              </div>
             </div>
 
             {/* Loading skeleton */}
@@ -724,7 +746,10 @@ export default function Tienda() {
                   return (
                     <Link
                       key={product.id}
-                      href={`/tienda/${product.linkRewrite || product.id}`}
+                      href={{
+                        pathname: `/tienda/${product.linkRewrite || product.id}`,
+                        query: router.query.mayorista === "true" ? { mayorista: "true" } : {},
+                      }}
                       className="block animate-fade-in-up"
                       style={{ animationDelay: `${index * 100}ms` }}
                     >

@@ -73,7 +73,21 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
 
-  const [quantity, setQuantity] = useState(1);
+  const isWholesale = router.query.mayorista === 'true';
+  const step = isWholesale ? 3 : 1;
+  const minQuantity = isWholesale ? 3 : 1;
+
+  const [quantity, setQuantity] = useState(minQuantity);
+
+  // Sync quantity with wholesale mode changes
+  useEffect(() => {
+    if (isWholesale && quantity < 3) {
+      setQuantity(3);
+    } else if (!isWholesale && quantity === 3 && step === 1) {
+       // Optional: reset to 1 if coming back from wholesale and quantity is exactly 3? 
+       // Maybe just leave it. The instruction says handleDecrease should max at minQuantity.
+    }
+  }, [isWholesale]);
   const [selectedAttributes, setSelectedAttributes] = useState<
     Record<string, number>
   >({});
@@ -84,6 +98,14 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [loadingFavorite, setLoadingFavorite] = useState(false);
+  
+  const currentSpecificPrice = useMemo(() => {
+    if (!isWholesale || !variationsData?.specificPrices) return null;
+    // Buscamos el precio específico que aplique a la cantidad actual (el mayor from_quantity <= quantity)
+    return [...variationsData.specificPrices]
+      .filter(sp => quantity >= sp.from_quantity)
+      .sort((a, b) => b.from_quantity - a.from_quantity)[0];
+  }, [isWholesale, variationsData?.specificPrices, quantity]);
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
 
@@ -360,12 +382,14 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   };
 
   const handleIncrease = () => {
-    if (quantity < getAvailableQuantity) {
-      setQuantity((q) => q + 1);
+    if (quantity + step <= getAvailableQuantity) {
+      setQuantity((q) => q + step);
+    } else if (quantity < getAvailableQuantity) {
+      setQuantity(getAvailableQuantity);
     }
   };
 
-  const handleDecrease = () => setQuantity((q) => Math.max(1, q - 1));
+  const handleDecrease = () => setQuantity((q) => Math.max(minQuantity, q - step));
 
   const handleAddToCart = async () => {
     if (!basicData || !variationsData) return;
@@ -431,6 +455,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
           ? { categories: [{ id: basicData.defaultCategory.name }] }
           : {}),
       },
+      mayorista: isWholesale,
     };
 
     // Add to cart (works for both authenticated and guest users)
@@ -1232,6 +1257,18 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span>Este producto no está disponible para delivery. Puede adquirirse con <strong>retiro en tienda</strong>.</span>
+                      </div>
+                    )}
+
+                    {/* Información de precio mayorista */}
+                    {isWholesale && currentSpecificPrice && (
+                      <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-sm mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>
+                          Comprando <strong>{quantity} {quantity === 1 ? 'unidad' : 'unidades'}</strong> el precio es <strong>{formatPrice(currentSpecificPrice.price)}</strong> por unidad
+                        </span>
                       </div>
                     )}
 

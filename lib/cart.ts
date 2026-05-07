@@ -618,7 +618,7 @@ export interface StockValidationResponse {
  */
 export async function validateStock(
     idAlmacenes: number[],
-    products: { reference: string; quantity: number }[]
+    products: { reference: string; quantity: number; mayorista?: boolean }[]
 ): Promise<StockValidationResponse> {
     try {
         const response = await apiPost('/orders/validar-stock', {

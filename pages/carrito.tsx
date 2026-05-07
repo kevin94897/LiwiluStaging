@@ -1358,6 +1358,7 @@ export default function Carrito() {
         .map((item) => ({
           reference: item.product.reference as string,
           quantity: item.quantity,
+          mayorista: item.product.mayorista,
         }));
 
     if (productsToValidate.length === 0) {
