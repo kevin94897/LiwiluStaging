@@ -1366,6 +1366,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               isOpen={!!modalProduct}
               onClose={() => setModalProduct(null)}
               product={modalProduct}
+              quantity={quantity}
             />
           )}
         </>

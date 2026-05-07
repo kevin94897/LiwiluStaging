@@ -18,12 +18,14 @@ interface AddToCartModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: Product;
+  quantity?: number;
 }
 
 export default function AddToCartModal({
   isOpen,
   onClose,
   product,
+  quantity = 1,
 }: AddToCartModalProps) {
   // Cerrar con tecla ESC
   useEffect(() => {
@@ -131,15 +133,25 @@ export default function AddToCartModal({
                   {product.defaultVariation?.name || getProductName(product)}
                 </h4>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold text-primary-dark">
-                    {formatPrice(
-                      getSalePrice(product) || getRegularPrice(product),
-                    )}
-                  </span>
-                  {hasDiscount(product) && (
-                    <span className="text-sm text-gray-400 line-through">
-                      {formatPrice(getRegularPrice(product))}
+                  {product.mayorista ? (
+                    <span className="text-2xl font-semibold text-primary-dark">
+                      {formatPrice(
+                        (getSalePrice(product) || getRegularPrice(product)) * quantity
+                      )}
                     </span>
+                  ) : (
+                    <>
+                      <span className="text-2xl font-semibold text-primary-dark">
+                        {formatPrice(
+                          getSalePrice(product) || getRegularPrice(product),
+                        )}
+                      </span>
+                      {hasDiscount(product) && (
+                        <span className="text-sm text-gray-400 line-through">
+                          {formatPrice(getRegularPrice(product))}
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
