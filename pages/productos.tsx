@@ -323,7 +323,7 @@ export default function Tienda({ initialWholesale }: { initialWholesale: boolean
         prestashopCombinationId: combinationId,
         mayorista: router.query.mayorista === "true"
       };
-      addToCart(cartProduct, 1);
+      addToCart(cartProduct, 1, initialWholesale);
       setModalProduct(cartProduct);
     } catch (error) {
       logger.error("Error al agregar al carrito:", error);

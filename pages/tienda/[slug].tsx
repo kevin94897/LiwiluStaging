@@ -84,8 +84,8 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
     if (isWholesale && quantity < 3) {
       setQuantity(3);
     } else if (!isWholesale && quantity === 3 && step === 1) {
-       // Optional: reset to 1 if coming back from wholesale and quantity is exactly 3? 
-       // Maybe just leave it. The instruction says handleDecrease should max at minQuantity.
+      // Optional: reset to 1 if coming back from wholesale and quantity is exactly 3? 
+      // Maybe just leave it. The instruction says handleDecrease should max at minQuantity.
     }
   }, [isWholesale]);
   const [selectedAttributes, setSelectedAttributes] = useState<
@@ -98,7 +98,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [loadingFavorite, setLoadingFavorite] = useState(false);
-  
+
   const currentSpecificPrice = useMemo(() => {
     if (!isWholesale || !variationsData?.specificPrices) return null;
     // Buscamos el precio específico que aplique a la cantidad actual (el mayor from_quantity <= quantity)
@@ -439,7 +439,9 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
         ? currentVariation.prestashopCombinationId
         : null,
       name: productName,
-      price: priceInfo.salePrice, // Use sale price as the actual selling price
+      price: isWholesale && currentSpecificPrice
+        ? currentSpecificPrice.price
+        : priceInfo.salePrice, // Use specific price in wholesale mode, otherwise sale price
       originalPrice:
         priceInfo.regularPrice !== priceInfo.salePrice
           ? priceInfo.regularPrice
@@ -471,7 +473,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
     }
 
     try {
-      await addToCart(finalProduct, quantity);
+      await addToCart(finalProduct, quantity, isWholesale);
       setModalProduct(finalProduct);
     } catch (error: any) {
       console.error("Error adding to cart:", error);

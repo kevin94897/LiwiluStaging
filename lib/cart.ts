@@ -32,6 +32,7 @@ export interface CartProduct {
     variationPriceWithTax?: number | null; // Added
     queryString?: string; // Query string for variation-specific URLs
     availableForOrder?: boolean;
+    mayorista?: boolean;
 }
 
 /**
@@ -142,15 +143,18 @@ export interface AddToCartRequest {
     productId: number;
     quantity: number;
     prestashopCombinationId: number | null;
+    mayorista?: boolean;
 }
 
 /**
  * Add a product to the cart
  * @param productId - The ID of the product to add
  * @param quantity - The quantity to add
+ * @param prestashopCombinationId - The combination ID for variations
+ * @param mayorista - Whether this is a wholesale purchase
  * @returns Promise with the cart response
  */
-export async function addToCart(productId: number, quantity: number, prestashopCombinationId: number | null = null): Promise<AddToCartResponse> {
+export async function addToCart(productId: number, quantity: number, prestashopCombinationId: number | null = null, mayorista: boolean = false): Promise<AddToCartResponse> {
     try {
         // Check if user is authenticated
         const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -158,7 +162,8 @@ export async function addToCart(productId: number, quantity: number, prestashopC
         const response = await apiPost('/cart/add', {
             productId,
             quantity,
-            prestashopCombinationId
+            prestashopCombinationId,
+            mayorista
         }, {
             skipAuth: !accessToken // Skip auth if no token (guest mode)
         });
