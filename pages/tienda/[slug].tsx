@@ -1059,14 +1059,28 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
 
                     {/* Precio */}
                     <div className="flex items-center gap-4 mb-6">
-                      {priceInfo.salePrice < priceInfo.regularPrice && (
-                        <span className="text-lg text-[#D3D3D3] line-through font-semibold">
-                          {formatPrice(priceInfo.regularPrice)}
-                        </span>
+                      {isWholesale && currentSpecificPrice ? (
+                        <>
+                          {/* Precio total mayorista: specificPrice × cantidad */}
+                          {/*                           <span className="text-lg text-[#D3D3D3] line-through font-semibold">
+                            {formatPrice(priceInfo.salePrice)}
+                          </span> */}
+                          <span className="md:text-4xl text-2xl font-semibold text-primary-dark">
+                            {formatPrice(currentSpecificPrice.price * quantity)}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          {priceInfo.salePrice < priceInfo.regularPrice && (
+                            <span className="text-lg text-[#D3D3D3] line-through font-semibold">
+                              {formatPrice(priceInfo.regularPrice)}
+                            </span>
+                          )}
+                          <span className="md:text-4xl text-2xl font-semibold text-primary-dark">
+                            {formatPrice(priceInfo.salePrice)}
+                          </span>
+                        </>
                       )}
-                      <span className="md:text-4xl text-2xl font-semibold text-primary-dark">
-                        {formatPrice(priceInfo.salePrice)}
-                      </span>
                     </div>
 
                     {/* Opciones de personalización (Atributos) */}
@@ -1269,7 +1283,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span>
-                          Comprando <strong>{quantity} {quantity === 1 ? 'unidad' : 'unidades'}</strong> el precio es <strong>{formatPrice(currentSpecificPrice.price)}</strong> por unidad
+                          <strong>Precio de Unidad:</strong> {formatPrice(priceInfo.salePrice)} — Comprando <strong>{quantity} {quantity === 1 ? 'unidad' : 'unidades'}</strong> el precio mayorista es <strong>{formatPrice(currentSpecificPrice.price)}</strong> por unidad
                         </span>
                       </div>
                     )}
