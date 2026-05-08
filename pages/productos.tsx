@@ -808,23 +808,44 @@ export default function Tienda({ initialWholesale }: { initialWholesale: boolean
                             {getProductName(product)}
                           </h3>
 
-                          <div className="flex items-center gap-1 mb-0">
-                            <div className="flex text-yellow-400 text-sm">
-                              {"★".repeat(5)}
+
+                          <div className="flex items-center gap-2 mb-2">
+                            <div>
+                              <div className="flex items-center gap-1 mb-0">
+                                <div className="flex text-yellow-400 text-sm">
+                                  {"★".repeat(5)}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {hasDiscount(product) && (
+                                  <span className="text-white text-sm line-through opacity-70">
+                                    {formatPrice(getRegularPrice(product))}
+                                  </span>
+                                )}
+                                <span className="text-white font-semibold text-xl">
+                                  {formatPrice(getEffectivePrice(product))}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 mb-2 lg:mb-4 xl:mb-6">
-                            {hasDiscount(product) && (
-                              <span className="text-white text-sm line-through opacity-70">
-                                {formatPrice(getRegularPrice(product))}
-                              </span>
+                            {router.query.mayorista === 'true' && (product as any).specificPrices?.length > 0 && (
+                              <div className="mt-1">
+                                <span className="text-[12px] bg-amber-50 border border-amber-200 text-amber-500 px-2 py-1 rounded-md font-bold flex flex-col items-center leading-tight">
+                                  {(() => {
+                                    const prices = (product as any).specificPrices;
+                                    const maxPriceObj = prices.reduce((prev: any, current: any) =>
+                                      (prev.from_quantity > current.from_quantity) ? prev : current
+                                    );
+                                    return (
+                                      <>
+                                        <span>A partir de {maxPriceObj.from_quantity} Und</span>
+                                        <span>{formatPrice(maxPriceObj.price)}</span>
+                                      </>
+                                    );
+                                  })()}
+                                </span>
+                              </div>
                             )}
-                            <span className="text-white font-semibold text-xl">
-                              {formatPrice(getEffectivePrice(product))}
-                            </span>
                           </div>
-
                           <button
                             className={`w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 transform ${(product.quantity ?? 0) <= 0
                               ? "opacity-50 cursor-not-allowed"

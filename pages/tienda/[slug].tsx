@@ -1083,6 +1083,18 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                       )}
                     </div>
 
+                    {/* Información de precio mayorista */}
+                    {isWholesale && currentSpecificPrice && (
+                      <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-sm mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>
+                          <strong>Precio de Unidad:</strong> {formatPrice(priceInfo.salePrice)} — Comprando <strong>{quantity} {quantity === 1 ? 'unidad' : 'unidades'}</strong> el precio mayorista es <strong>{formatPrice(currentSpecificPrice.price)}</strong> por unidad
+                        </span>
+                      </div>
+                    )}
+
                     {/* Opciones de personalización (Atributos) */}
                     {sortedAttributesList.length > 0 && (
                       <div className="flex flex-col gap-6 mb-6">
@@ -1273,18 +1285,6 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span>Este producto no está disponible para delivery. Puede adquirirse con <strong>retiro en tienda</strong>.</span>
-                      </div>
-                    )}
-
-                    {/* Información de precio mayorista */}
-                    {isWholesale && currentSpecificPrice && (
-                      <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-sm mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>
-                          <strong>Precio de Unidad:</strong> {formatPrice(priceInfo.salePrice)} — Comprando <strong>{quantity} {quantity === 1 ? 'unidad' : 'unidades'}</strong> el precio mayorista es <strong>{formatPrice(currentSpecificPrice.price)}</strong> por unidad
-                        </span>
                       </div>
                     )}
 
