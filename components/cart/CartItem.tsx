@@ -37,6 +37,7 @@ interface CartItemProps {
   onRemove: (productId: string) => void;
   onUpdateQuantity: (productId: string, quantity: number) => void;
   appliedPromotions?: AppliedPromotion[];
+  hasMixedItems?: boolean;
 }
 
 export default function CartItem({
@@ -53,6 +54,7 @@ export default function CartItem({
   onRemove,
   onUpdateQuantity,
   appliedPromotions = [],
+  hasMixedItems = false,
 }: CartItemProps) {
   // Prioritize the direct coverImage property if available (new logic)
   // Otherwise fall back to associations (legacy logic)
@@ -110,22 +112,45 @@ export default function CartItem({
     return "neutral";
   })();
 
+  const isRetailInMixedCart = hasMixedItems && !item.product.mayorista;
+
   return (
     <div
-      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${notAvailableForDelivery
-          ? "border-2 border-amber-400 opacity-75"
-          : itemStockStatus === "available"
-            ? "border-2 border-primary"
-            : "border-2 border-transparent"
+      className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${isRetailInMixedCart
+          ? "border-2 border-red-500 bg-red-50/30"
+          : notAvailableForDelivery
+            ? "border-2 border-amber-400 opacity-75"
+            : itemStockStatus === "available"
+              ? "border-2 border-primary"
+              : "border-2 border-transparent"
         }`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
       {/* No disponible para delivery banner */}
-      {notAvailableForDelivery && (
+      {notAvailableForDelivery && !isRetailInMixedCart && (
         <div className="absolute top-0 left-0 right-0 bg-amber-50 border-b border-amber-200 px-4 py-1.5 flex items-center gap-2 z-10">
           <FaRegClock size={13} className="text-amber-600 shrink-0" />
           <span className="text-xs font-semibold text-amber-700">
             No disponible para delivery
+          </span>
+        </div>
+      )}
+
+      {item.product.mayorista && (
+        <div className="absolute top-2 right-2 bg-blue-50 border-b px-4 py-1.5 flex items-center gap-2 z-10 rounded-md border border-blue-300">
+          <FaRegClock size={13} className="text-blue-600 shrink-0" />
+          <span className="text-xs font-semibold text-blue-700">
+            Producto para pedido mayorista
+          </span>
+        </div>
+      )}
+
+      {/* Retirar para pedido mayorista banner */}
+      {isRetailInMixedCart && (
+        <div className="absolute top-0 left-0 right-0 bg-red-100 border-b border-red-200 px-4 py-1.5 flex items-center gap-2 z-10">
+          <FaRegTrashAlt size={13} className="text-red-600 shrink-0" />
+          <span className="text-xs font-semibold text-red-700">
+            Debes retirar este producto para tu pedido mayorista
           </span>
         </div>
       )}
@@ -428,12 +453,13 @@ export default function CartItem({
               {/* Cantidad */}
               <div className="flex items-center border border-gray-300 rounded-xs">
                 <button
-                  onClick={() =>
+                  onClick={() => {
+                    const step = item.product.mayorista ? 3 : 1;
                     onUpdateQuantity(
                       item.product.id.toString(),
-                      item.quantity - 1,
-                    )
-                  }
+                      item.quantity - step,
+                    );
+                  }}
                   className="px-3 py-1 hover:bg-gray-100 transition"
                 >
                   -
@@ -442,12 +468,13 @@ export default function CartItem({
                 <span className="px-4 py-1 border-x">{item.quantity}</span>
 
                 <button
-                  onClick={() =>
+                  onClick={() => {
+                    const step = item.product.mayorista ? 3 : 1;
                     onUpdateQuantity(
                       item.product.id.toString(),
-                      item.quantity + 1,
-                    )
-                  }
+                      item.quantity + step,
+                    );
+                  }}
                   className="px-3 py-1 hover:bg-gray-100 transition"
                 >
                   +
