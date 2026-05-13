@@ -29,6 +29,7 @@ export interface Product {
     hasVariations?: boolean;
     variationAttributes?: any[];
     availableForOrder?: boolean;
+    mayorista?: boolean;
     defaultVariation?: {
         prestashopCombinationId: number;
         name: string;
@@ -114,6 +115,7 @@ export interface FilterParams {
     minPrice?: number;
     maxPrice?: number;
     search?: string;
+    mayorista?: boolean;
 }
 
 /**
@@ -135,6 +137,7 @@ export async function searchProducts(params: FilterParams = {}): Promise<Catalog
     if (params.sortBy) queryParts.push(`sortBy=${params.sortBy}`);
     if (params.sortOrder) queryParts.push(`sortOrder=${params.sortOrder}`);
     if (params.search) queryParts.push(`search=${encodeURIComponent(params.search)}`);
+    if (params.mayorista !== undefined) queryParts.push(`mayorista=${params.mayorista}`);
 
     // Ensure we have a base URL
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -519,6 +522,7 @@ export interface ProductVariationsData {
     attributes: ProductAttribute[];
     variations: ProductVariation[];
     availabilityMatrix: Record<string, boolean>;
+    specificPrices?: any[];
     metadata: {
         totalVariations: number;
         activeVariations: number;

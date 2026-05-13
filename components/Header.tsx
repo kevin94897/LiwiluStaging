@@ -187,6 +187,9 @@ function QuickActions({
     return (
       <div className="flex items-center gap-4">
         {/* <FaBoxes size={20} /> */}
+        <Link href="/productos?mayorista=true" className="relative">
+          <FaBoxes size={20} />
+        </Link>
         <Link href="/rastreo" className="relative">
           <FaTruck size={20} />
         </Link>
@@ -266,6 +269,12 @@ function QuickActions({
 
   return (
     <div className="flex items-center gap-6 text-sm relative" ref={loginRef}>
+      <Link
+        href="/productos?mayorista=true"
+        className="relative flex items-center gap-2 hover:text-green-400 transition"
+      >
+        <FaBoxes /> Compra Mayorista
+      </Link>
       <Link
         href="/rastreo"
         className="flex items-center gap-2 hover:text-green-400 transition"
@@ -713,10 +722,10 @@ export default function Header() {
                     <div className="absolute left-0 top-full mt-3 w-72 z-50 rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] overflow-hidden">
                       <ul className="divide-y divide-gray-200">
                         {menuCategories.filter(c => {
-                        if (c.isTrimegistoGate) return !isTrimegistoUser;
-                        if (c.linkRewrite === "trimegisto") return isTrimegistoUser;
-                        return true;
-                      }).map((c) => (
+                          if (c.isTrimegistoGate) return !isTrimegistoUser;
+                          if (c.linkRewrite === "trimegisto") return isTrimegistoUser;
+                          return true;
+                        }).map((c) => (
                           <li key={c.label}>
                             <Link
                               href={c.href}

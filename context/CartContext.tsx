@@ -24,7 +24,7 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, quantity?: number) => Promise<void>;
+  addToCart: (product: Product, quantity?: number, isMayorista?: boolean) => Promise<void>;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -179,6 +179,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // @ts-ignore: Adding extra properties for utils compatibility
       promoDiscount: cartProduct.promoDiscount,
       availableForOrder: cartProduct.availableForOrder,
+      mayorista: cartProduct.mayorista,
     } as unknown as Product;
   };
 
@@ -240,7 +241,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   /**
    * Add product to cart (with backend sync)
    */
-  const addToCart = async (product: Product, quantity: number = 1) => {
+  const addToCart = async (product: Product, quantity: number = 1, isMayorista?: boolean) => {
     setIsLoading(true);
 
     try {
@@ -258,8 +259,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw new Error("ID de producto no válido");
       }
 
+      // isMayorista param takes priority; fallback to product.mayorista for backwards compat
+      const mayorista = isMayorista !== undefined ? isMayorista : (product.mayorista || false);
+
       console.log(
-        `🛒 Adding to cart: ID ${productId}, Combination ID ${product.prestashopCombinationId ?? null}, Quantity ${cleanQuantity}`,
+        `🛒 Adding to cart: ID ${productId}, Combination ID ${product.prestashopCombinationId ?? null}, Quantity ${cleanQuantity}, Mayorista ${mayorista}`,
       );
 
       // Call backend API
@@ -267,6 +271,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         productId,
         cleanQuantity,
         product.prestashopCombinationId ?? null,
+        mayorista,
       );
 
       if (response.success) {

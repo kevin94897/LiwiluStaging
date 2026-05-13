@@ -48,13 +48,19 @@ interface QueryParams {
   sortBy?: string;
   page?: string;
   search?: string;
+  mayorista?: string;
 }
 
-export const getServerSideProps: GetServerSideProps = async () => {
-  return { props: {} };
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { mayorista } = context.query;
+  return {
+    props: {
+      initialWholesale: mayorista === 'true'
+    }
+  };
 };
 
-export default function Tienda() {
+export default function Tienda({ initialWholesale }: { initialWholesale: boolean }) {
   const router = useRouter();
 
   // Data state (fetched client-side to send token/sessionId)
@@ -102,7 +108,8 @@ export default function Tienda() {
           inStock: q.inStock === "true",
           sortBy: q.sortBy,
           search: q.search,
-          limit: 20,
+          mayorista: q.mayorista === "true",
+          limit: 21,
         });
         setProducts(response.data || []);
         setPagination(response.pagination || null);
@@ -314,8 +321,9 @@ export default function Tienda() {
       const cartProduct = {
         ...producto,
         prestashopCombinationId: combinationId,
+        mayorista: router.query.mayorista === "true"
       };
-      addToCart(cartProduct, 1);
+      addToCart(cartProduct, 1, initialWholesale);
       setModalProduct(cartProduct);
     } catch (error) {
       logger.error("Error al agregar al carrito:", error);
@@ -661,6 +669,20 @@ export default function Tienda() {
                   <option value="oldest">Más Antiguos</option>
                 </select>
               </div>
+
+              {/* Wholesale Toggle */}
+              <div className="flex items-center gap-3 w-full md:w-auto justify-end sm:justify-start">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={router.query.mayorista === "true"}
+                    onChange={(e) => updateFilters({ mayorista: e.target.checked ? "true" : undefined })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  <span className="ml-3 text-sm font-medium text-gray-700">Modo Mayorista</span>
+                </label>
+              </div>
             </div>
 
             {/* Loading skeleton */}
@@ -724,7 +746,10 @@ export default function Tienda() {
                   return (
                     <Link
                       key={product.id}
-                      href={`/tienda/${product.linkRewrite || product.id}`}
+                      href={{
+                        pathname: `/tienda/${product.linkRewrite || product.id}`,
+                        query: router.query.mayorista === "true" ? { mayorista: "true" } : {},
+                      }}
                       className="block animate-fade-in-up"
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
@@ -783,23 +808,44 @@ export default function Tienda() {
                             {getProductName(product)}
                           </h3>
 
-                          <div className="flex items-center gap-1 mb-0">
-                            <div className="flex text-yellow-400 text-sm">
-                              {"★".repeat(5)}
+
+                          <div className="flex items-center gap-2 mb-2">
+                            <div>
+                              <div className="flex items-center gap-1 mb-0">
+                                <div className="flex text-yellow-400 text-sm">
+                                  {"★".repeat(5)}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {hasDiscount(product) && (
+                                  <span className="text-white text-sm line-through opacity-70">
+                                    {formatPrice(getRegularPrice(product))}
+                                  </span>
+                                )}
+                                <span className="text-white font-semibold text-xl">
+                                  {formatPrice(getEffectivePrice(product))}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 mb-2 lg:mb-4 xl:mb-6">
-                            {hasDiscount(product) && (
-                              <span className="text-white text-sm line-through opacity-70">
-                                {formatPrice(getRegularPrice(product))}
-                              </span>
+                            {router.query.mayorista === 'true' && (product as any).specificPrices?.length > 0 && (
+                              <div className="mt-1">
+                                <span className="text-[12px] bg-amber-50 border border-amber-200 text-amber-500 px-2 py-1 rounded-md font-bold flex flex-col items-center leading-tight">
+                                  {(() => {
+                                    const prices = (product as any).specificPrices;
+                                    const maxPriceObj = prices.reduce((prev: any, current: any) =>
+                                      (prev.from_quantity > current.from_quantity) ? prev : current
+                                    );
+                                    return (
+                                      <>
+                                        <span>A partir de {maxPriceObj.from_quantity} Und</span>
+                                        <span>{formatPrice(maxPriceObj.price)}</span>
+                                      </>
+                                    );
+                                  })()}
+                                </span>
+                              </div>
                             )}
-                            <span className="text-white font-semibold text-xl">
-                              {formatPrice(getEffectivePrice(product))}
-                            </span>
                           </div>
-
                           <button
                             className={`w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 transform ${(product.quantity ?? 0) <= 0
                               ? "opacity-50 cursor-not-allowed"
