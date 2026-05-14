@@ -300,7 +300,7 @@ export default function Carrito() {
     if (metodoEnvio === "delivery" && items.length > 0) {
       performSavarStockValidation();
     }
-  }, [metodoEnvio, items.length, direccionEnvio.distrito, guestData.distrito]);
+  }, [metodoEnvio, items, direccionEnvio.distrito, guestData.distrito]);
   // Sync delivery price with backend when district changes
   useEffect(() => {
     const syncDeliveryPrice = async () => {
