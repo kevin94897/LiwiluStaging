@@ -133,6 +133,17 @@ export default function CartSummary({
     }
   }, [activeTotals.shipping, metodoEnvio]);
 
+  // Reset balance when cart total decreases (e.g. product removed)
+  const prevSubtotalRef = useRef(totals.subtotal);
+  useEffect(() => {
+    if (totals.subtotal < prevSubtotalRef.current) {
+      setBalanceResetTrigger((prev) => prev + 1);
+      setTrimegistoApplied(0);
+      setTrimegistoCuotas(1);
+    }
+    prevSubtotalRef.current = totals.subtotal;
+  }, [totals.subtotal]);
+
   // Whenever the cart prop totals change (full sync), clear the local override
   useEffect(() => {
     setOverrideTotals(null);

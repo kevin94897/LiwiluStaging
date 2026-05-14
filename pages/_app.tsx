@@ -2,6 +2,7 @@ import '@/styles/globals.css';
 import '@/styles/slider.css';
 import type { AppProps } from 'next/app';
 import { CartProvider } from '@/context/CartContext';
+import { MayoristaProvider } from '@/context/MayoristaContext';
 import { Toaster } from 'react-hot-toast'; // Opcional
 import { useEffect } from 'react';
 import { initializeAuth } from '@/lib/auth/tokenManager';
@@ -20,6 +21,7 @@ export default function App({ Component, pageProps }: AppProps) {
 	}, []);
 
 	return (
+		<MayoristaProvider>
 		<CartProvider>
 			<main className={`${outfit.variable} font-sans`}>
 				<Component {...pageProps} />
@@ -33,5 +35,6 @@ export default function App({ Component, pageProps }: AppProps) {
 				}}
 			/>
 		</CartProvider>
+		</MayoristaProvider>
 	);
 }

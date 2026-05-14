@@ -1732,7 +1732,7 @@ export default function Carrito() {
       setIsInitiatingTrimegisto(true);
       try {
         const response = await initiateTrismegistoPayment(
-          totals.trismegistoBalance!,
+          Math.round(totals.trismegistoBalance! * 100) / 100,
           totals.balanceInstallments ?? 1,
         );
         setTrismegistoPreOrderId(response.preOrderId);

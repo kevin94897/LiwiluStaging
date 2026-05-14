@@ -10,6 +10,7 @@ import BannerPublicidad from "@/components/BannerPublicidad";
 import { FaPlus, FaMinus } from "react-icons/fa";
 import ProductosRelacionados from "@/components/ProductosRelacionados";
 import { useCart } from "@/context/CartContext";
+import { useMayorista } from "@/context/MayoristaContext";
 import AddToCartModal from "@/components/AddToCartModal";
 import { useAuth } from "@/hooks/useAuth";
 import { showToast } from "@/lib/notifications";
@@ -73,7 +74,16 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
 
-  const isWholesale = router.query.mayorista === 'true';
+  const { isMayorista, enableMayorista } = useMayorista();
+
+  // Activate from URL param (deep-link / share)
+  useEffect(() => {
+    if (router.isReady && router.query.mayorista === 'true') {
+      enableMayorista();
+    }
+  }, [router.isReady]);
+
+  const isWholesale = isMayorista;
   const step = isWholesale ? 3 : 1;
   const minQuantity = isWholesale ? 3 : 1;
 

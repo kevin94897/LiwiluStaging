@@ -123,6 +123,14 @@ export interface FilterParams {
  * This can be used both client-side and server-side (if using fetch polyfill or node env, but authenticatedFetch is client-side).
  * For Server-Side Props, we should use a direct fetch if authentication is not required or handled differently.
  */
+function normalizeSearch(text: string): string {
+    return text
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '');
+}
+
 export async function searchProducts(params: FilterParams = {}): Promise<CatalogResponse> {
 
     // Construct query string
@@ -136,7 +144,7 @@ export async function searchProducts(params: FilterParams = {}): Promise<Catalog
     if (params.inStock !== undefined) queryParts.push(`inStock=${params.inStock}`);
     if (params.sortBy) queryParts.push(`sortBy=${params.sortBy}`);
     if (params.sortOrder) queryParts.push(`sortOrder=${params.sortOrder}`);
-    if (params.search) queryParts.push(`search=${encodeURIComponent(params.search)}`);
+    if (params.search) queryParts.push(`search=${encodeURIComponent(normalizeSearch(params.search))}`);
     if (params.mayorista !== undefined) queryParts.push(`mayorista=${params.mayorista}`);
 
     // Ensure we have a base URL

@@ -15,6 +15,7 @@ import CategorySlider from "@/components/CategorySlider";
 import { motion } from "framer-motion";
 
 import { useCart } from "@/context/CartContext";
+import { useMayorista } from "@/context/MayoristaContext";
 import {
   formatPrice,
   getProductName,
@@ -60,7 +61,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   };
 };
 
-export default function Tienda({ initialWholesale }: { initialWholesale: boolean }) {
+export default function Tienda() {
   const router = useRouter();
 
   // Data state (fetched client-side to send token/sessionId)
@@ -200,6 +201,24 @@ export default function Tienda({ initialWholesale }: { initialWholesale: boolean
   const productsPerPage = 20;
 
   const { addToCart } = useCart();
+  const { isMayorista, enableMayorista, disableMayorista } = useMayorista();
+
+  // Activate context from URL param (deep-link / share)
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.mayorista === 'true') enableMayorista();
+  }, [router.isReady]);
+
+  // Sync context → URL so product search and links work
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (isMayorista && router.query.mayorista !== 'true') {
+      router.push({ pathname: '/productos', query: { ...router.query, mayorista: 'true', page: '1' } }, undefined, { scroll: false });
+    } else if (!isMayorista && router.query.mayorista === 'true') {
+      const { mayorista, ...rest } = router.query;
+      router.push({ pathname: '/productos', query: { ...rest, page: '1' } }, undefined, { scroll: false });
+    }
+  }, [isMayorista, router.isReady]);
 
   // Animación de entrada
   useEffect(() => {
@@ -321,9 +340,9 @@ export default function Tienda({ initialWholesale }: { initialWholesale: boolean
       const cartProduct = {
         ...producto,
         prestashopCombinationId: combinationId,
-        mayorista: router.query.mayorista === "true"
+        mayorista: isMayorista,
       };
-      addToCart(cartProduct, 1, initialWholesale);
+      addToCart(cartProduct, 1, isMayorista);
       setModalProduct(cartProduct);
     } catch (error) {
       logger.error("Error al agregar al carrito:", error);
@@ -671,18 +690,24 @@ export default function Tienda({ initialWholesale }: { initialWholesale: boolean
               </div>
 
               {/* Wholesale Toggle */}
-              <div className="flex items-center gap-3 w-full md:w-auto justify-end sm:justify-start">
+              {/* <div className="flex items-center gap-3 w-full md:w-auto justify-end sm:justify-start">
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={router.query.mayorista === "true"}
-                    onChange={(e) => updateFilters({ mayorista: e.target.checked ? "true" : undefined })}
+                    checked={isMayorista}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        enableMayorista();
+                      } else {
+                        disableMayorista();
+                      }
+                    }}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                   <span className="ml-3 text-sm font-medium text-gray-700">Modo Mayorista</span>
                 </label>
-              </div>
+              </div> */}
             </div>
 
             {/* Loading skeleton */}
@@ -748,7 +773,7 @@ export default function Tienda({ initialWholesale }: { initialWholesale: boolean
                       key={product.id}
                       href={{
                         pathname: `/tienda/${product.linkRewrite || product.id}`,
-                        query: router.query.mayorista === "true" ? { mayorista: "true" } : {},
+                        query: isMayorista ? { mayorista: "true" } : {},
                       }}
                       className="block animate-fade-in-up"
                       style={{ animationDelay: `${index * 100}ms` }}
@@ -809,42 +834,42 @@ export default function Tienda({ initialWholesale }: { initialWholesale: boolean
                           </h3>
 
 
-                          <div className="flex items-center gap-2 mb-2">
-                            <div>
+                          <div className="flex items-end gap-2 mb-4">
+                            <div className="w-1/2">
                               <div className="flex items-center gap-1 mb-0">
                                 <div className="flex text-yellow-400 text-sm">
                                   {"★".repeat(5)}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 w-max">
                                 {hasDiscount(product) && (
                                   <span className="text-white text-sm line-through opacity-70">
                                     {formatPrice(getRegularPrice(product))}
                                   </span>
                                 )}
                                 <span className="text-white font-semibold text-xl">
-                                  {formatPrice(getEffectivePrice(product))}
+                                  {formatPrice(getEffectivePrice(product))} c/u
                                 </span>
                               </div>
                             </div>
-                            {router.query.mayorista === 'true' && (product as any).specificPrices?.length > 0 && (
-                              <div className="mt-1">
-                                <span className="text-[12px] bg-amber-50 border border-amber-200 text-amber-500 px-2 py-1 rounded-md font-bold flex flex-col items-center leading-tight">
-                                  {(() => {
-                                    const prices = (product as any).specificPrices;
-                                    const maxPriceObj = prices.reduce((prev: any, current: any) =>
-                                      (prev.from_quantity > current.from_quantity) ? prev : current
-                                    );
-                                    return (
-                                      <>
-                                        <span>A partir de {maxPriceObj.from_quantity} Und</span>
-                                        <span>{formatPrice(maxPriceObj.price)}</span>
-                                      </>
-                                    );
-                                  })()}
-                                </span>
-                              </div>
-                            )}
+
+                            <div className="w-1/2">
+                              {isMayorista && (product as any).specificPrices?.length > 0 && (
+                                <div className="">
+                                  <span className="text-[12px] bg-[#0c4848cc] p-2 text-white rounded-[6px] font-normal flex flex-col items-center leading-tight text-right">
+                                    {(() => {
+                                      const prices = (product as any).specificPrices;
+                                      const maxPriceObj = prices.reduce((prev: any, current: any) =>
+                                        prev.from_quantity > current.from_quantity ? prev : current
+                                      );
+                                      return (
+                                        <span>Comprando al por mayor, tan sólo a {formatPrice(maxPriceObj.price)}</span>
+                                      );
+                                    })()}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <button
                             className={`w-full bg-white text-primary font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 transform ${(product.quantity ?? 0) <= 0

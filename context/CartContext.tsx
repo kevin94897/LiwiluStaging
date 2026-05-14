@@ -180,6 +180,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       promoDiscount: cartProduct.promoDiscount,
       availableForOrder: cartProduct.availableForOrder,
       mayorista: cartProduct.mayorista,
+      // @ts-ignore: specificPrices from backend for wholesale price display
+      specificPrices: cartProduct.specificPrices,
     } as unknown as Product;
   };
 

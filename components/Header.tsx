@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import logger from "@/lib/logger";
+import { useMayorista } from "@/context/MayoristaContext";
+import MayoristaBanner from "@/components/MayoristaBanner";
 import { IoMenu } from "react-icons/io5";
 import { HiChevronRight } from "react-icons/hi";
 import { useCart } from "@/context/CartContext";
@@ -26,6 +28,8 @@ import {
   FaShoppingBag,
   FaHeart,
   FaUserCircle,
+  FaTimes,
+  FaHistory,
 } from "react-icons/fa";
 import logo from "../public/images/liwilu_logo.png";
 import Button from "./ui/Button";
@@ -68,53 +72,152 @@ function Logo({ className = "", width = 120, height = 48 }: LogoProps) {
   );
 }
 
+const SEARCH_HISTORY_KEY = 'liwilu_search_history';
+const MAX_HISTORY = 8;
+
+function getSearchHistory(): string[] {
+  try { return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); } catch { return []; }
+}
+
+function saveSearchHistory(term: string, current: string[]): string[] {
+  const next = [term, ...current.filter(h => h !== term)].slice(0, MAX_HISTORY);
+  localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
+  return next;
+}
+
 function SearchBar({ isMobile = false }) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [history, setHistory] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const skipDebounce = useRef(false);
 
-  // Sincronizar el campo de búsqueda con la URL
+  // Sync field with URL
   useEffect(() => {
     if (router.isReady) {
-      const querySearch = router.query.search as string;
-      setSearchQuery(querySearch || "");
+      skipDebounce.current = true;
+      setSearchQuery((router.query.search as string) || "");
     }
   }, [router.isReady, router.query.search]);
 
+  // Debounced live search — only fires on /productos
+  useEffect(() => {
+    if (skipDebounce.current) { skipDebounce.current = false; return; }
+    const q = searchQuery.trim();
+    if (!q || router.pathname !== '/productos') return;
+    const timer = setTimeout(() => {
+      router.push(`/productos?search=${encodeURIComponent(q)}`, undefined, { scroll: false });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowHistory(false);
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, []);
+
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(
-        `/productos?search=${encodeURIComponent(searchQuery.trim())}`,
-      );
-    }
+    const q = searchQuery.trim();
+    if (!q) return;
+    setHistory(prev => saveSearchHistory(q, prev));
+    setShowHistory(false);
+    router.push(`/productos?search=${encodeURIComponent(q)}`);
   };
 
+  const handleHistoryClick = (term: string) => {
+    setSearchQuery(term);
+    setHistory(prev => saveSearchHistory(term, prev));
+    setShowHistory(false);
+    router.push(`/productos?search=${encodeURIComponent(term)}`);
+  };
+
+  const handleFocus = () => {
+    setHistory(getSearchHistory());
+    setShowHistory(true);
+  };
+
+  const visibleHistory = history.filter(h =>
+    !searchQuery.trim() || h.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <form
-      onSubmit={handleSearch}
-      className={`flex items-center bg-white rounded-full ${isMobile
-        ? "px-4 py-2"
-        : "px-3 py-1 w-full max-w-md xl:min-w-[300px] lg:max-w-[250px]"
-        }`}
+    <div
+      ref={containerRef}
+      className={`relative ${isMobile ? '' : 'w-full max-w-md xl:min-w-[300px] lg:max-w-[250px]'}`}
     >
-      <input
-        type="search"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="¿Qué estás buscando?"
-        className={`flex-grow px-2 outline-none bg-transparent ${isMobile
-          ? "text-[15px] placeholder-gray-400 text-gray-800"
-          : "py-1 text-sm text-gray-700"
-          }`}
-      />
-      <button
-        type="submit"
-        className={`${isMobile ? "ml-2 hover:text-primary-light" : ""
-          } text-gray-700 transition-colors`}
+      <form
+        onSubmit={handleSearch}
+        className={`flex items-center bg-white rounded-full ${isMobile ? "px-4 py-2" : "px-3 py-1 w-full"}`}
       >
-        <FaSearch size={18} />
-      </button>
-    </form>
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={handleFocus}
+          placeholder="¿Qué estás buscando?"
+          className={`flex-grow px-2 outline-none bg-transparent ${isMobile
+            ? "text-[15px] placeholder-gray-400 text-gray-800"
+            : "py-1 text-sm text-gray-700"
+            }`}
+        />
+        <button
+          type="submit"
+          className={`${isMobile ? "ml-2 hover:text-primary-light" : ""} text-gray-700 transition-colors`}
+        >
+          <FaSearch size={18} />
+        </button>
+      </form>
+
+      {showHistory && visibleHistory.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-md shadow-lg border border-gray-100 overflow-hidden z-50">
+          <div className="px-3 py-2 flex items-center justify-between border-b border-gray-50">
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Búsquedas recientes</span>
+            <button
+              onClick={() => {
+                localStorage.removeItem(SEARCH_HISTORY_KEY);
+                setHistory([]);
+                setShowHistory(false);
+              }}
+              className="text-[11px] text-gray-400 hover:text-red-500 transition"
+            >
+              Limpiar
+            </button>
+          </div>
+          <ul>
+            {visibleHistory.map((term) => (
+              <li key={term} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer group">
+                <FaHistory size={11} className="text-gray-300 shrink-0" />
+                <button
+                  className="flex-1 text-left text-sm text-gray-700 truncate"
+                  onClick={() => handleHistoryClick(term)}
+                >
+                  {term}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const next = history.filter(h => h !== term);
+                    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
+                    setHistory(next);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition p-0.5"
+                >
+                  <FaTimes size={10} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -183,13 +286,20 @@ function QuickActions({
     );
   }
 
+  const { isMayorista, enableMayorista } = useMayorista();
+  const router = useRouter();
+
+  const handleMayoristaClick = () => {
+    enableMayorista();
+    router.push('/productos');
+  };
+
   if (isMobile) {
     return (
       <div className="flex items-center gap-4">
-        {/* <FaBoxes size={20} /> */}
-        <Link href="/productos?mayorista=true" className="relative">
+        <button onClick={handleMayoristaClick} className={`relative ${isMayorista ? 'text-primary' : ''}`}>
           <FaBoxes size={20} />
-        </Link>
+        </button>
         <Link href="/rastreo" className="relative">
           <FaTruck size={20} />
         </Link>
@@ -269,12 +379,15 @@ function QuickActions({
 
   return (
     <div className="flex items-center gap-6 text-sm relative" ref={loginRef}>
-      <Link
-        href="/productos?mayorista=true"
-        className="relative flex items-center gap-2 hover:text-green-400 transition"
+      <button
+        onClick={handleMayoristaClick}
+        className={`relative flex items-center gap-2 transition font-medium ${isMayorista
+            ? 'text-primary'
+            : 'hover:text-green-400'
+          }`}
       >
-        <FaBoxes /> Compra Mayorista
-      </Link>
+        <FaBoxes /> {isMayorista ? 'Mayorista ✓' : 'Compra Mayorista'}
+      </button>
       <Link
         href="/rastreo"
         className="flex items-center gap-2 hover:text-green-400 transition"
@@ -443,6 +556,7 @@ interface MenuCategory {
 
 export default function Header() {
   const { isAuthenticated, user } = useAuth();
+  const { isMayorista } = useMayorista();
   const isTrimegistoUser = isAuthenticated && (
     (user?.role || "").toUpperCase() === "TRIMEGISTO" ||
     (user?.role || "").toUpperCase() === "TRISMEGISMO"
@@ -633,8 +747,7 @@ export default function Header() {
         </div>
 
         <div
-          className={`py-3 transition-all duration-300 ${isSticky ? "bg-[#0b2d2d]/95 shadow-xl" : "bg-[#0b2d2d]"
-            }`}
+          className={`py-3 transition-all duration-300 ${isSticky ? "bg-[#0b2d2d]/95 shadow-xl" : "bg-[#0b2d2d]"} ${isMayorista ? "border-b-2 border-primary" : ""}`}
         >
           <div className="max-w-7xl mx-auto px-4">
             {/* ===== MOBILE ===== */}
@@ -765,6 +878,8 @@ export default function Header() {
             </div>
           </div>
         </div>
+
+        <MayoristaBanner />
 
         <style jsx global>{`
           .no-scrollbar::-webkit-scrollbar {

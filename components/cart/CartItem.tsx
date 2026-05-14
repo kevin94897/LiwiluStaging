@@ -5,6 +5,7 @@ import {
   FaCheckCircle,
   FaRegClock,
   FaRegTrashAlt,
+  FaBoxes,
 } from "react-icons/fa";
 import {
   formatPrice,
@@ -117,12 +118,12 @@ export default function CartItem({
   return (
     <div
       className={`bg-white rounded-sm shadow-md p-6 flex gap-4 animate-fade-in-up relative overflow-hidden transition-all ${isRetailInMixedCart
-          ? "border-2 border-red-500 bg-red-50/30"
-          : notAvailableForDelivery
-            ? "border-2 border-amber-400 opacity-75"
-            : itemStockStatus === "available"
-              ? "border-2 border-primary"
-              : "border-2 border-transparent"
+        ? "border-2 border-red-500 bg-red-50/30"
+        : notAvailableForDelivery
+          ? "border-2 border-amber-400 opacity-75"
+          : itemStockStatus === "available"
+            ? "border-2 border-primary"
+            : "border-2 border-transparent"
         }`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
@@ -496,6 +497,20 @@ export default function CartItem({
                 <p className="text-xs text-gray-500">
                   {formatPrice(precioUnitario.toString())} c/u
                 </p>
+
+                {item.product.mayorista && (item.product as any).specificPrices?.length > 0 && (() => {
+                  const prices = (item.product as any).specificPrices;
+                  const maxPriceObj = prices.reduce((prev: any, current: any) =>
+                    prev.from_quantity > current.from_quantity ? prev : current
+                  );
+                  return (
+                    <div className="mt-1.5 flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[11px]">
+                      <span>
+                        <strong>Precio de Unidad:</strong> {formatPrice(precioUnitario.toString())} — Comprando <strong>{item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}</strong> el precio mayorista es <strong>{formatPrice(maxPriceObj.price)}</strong> por unidad
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

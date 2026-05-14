@@ -33,6 +33,7 @@ export interface CartProduct {
     queryString?: string; // Query string for variation-specific URLs
     availableForOrder?: boolean;
     mayorista?: boolean;
+    specificPrices?: any[];
 }
 
 /**
