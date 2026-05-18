@@ -5,7 +5,9 @@
       "Bash(find 'c:/Users/Usuario/Desktop/Kevin DATA/liwilu' -type f -name *[token]* -o -name *token*)",
       "Bash(php artisan:*)",
       "Bash(php --version)",
-      "Read(//c/laragon/bin/php/**)"
+      "Read(//c/laragon/bin/php/**)",
+      "Bash(npx tsc *)",
+      "Bash(node_modules/.bin/tsc --noEmit -p tsconfig.json)"
     ]
   }
 }

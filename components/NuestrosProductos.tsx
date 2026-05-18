@@ -26,6 +26,7 @@ import Button from "./ui/Button";
 import AddToCartModal from "@/components/AddToCartModal";
 import { FaHeart, FaShoppingCart } from "react-icons/fa";
 import { showToast } from "@/lib/notifications";
+import { useMayorista } from "@/context/MayoristaContext";
 
 interface NuestrosProductosProps {
   productos?: Product[];
@@ -41,6 +42,7 @@ export default function NuestrosProductos({
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
   const { addToCart } = useCart();
   const router = useRouter();
+  const { isMayorista } = useMayorista();
 
   const [emblaRef] = useEmblaCarousel(
     {
@@ -206,15 +208,26 @@ export default function NuestrosProductos({
             <h3 className="font-semibold leading-tight text-lg mb-2 line-clamp-2 h-12 text-white">
               {getProductName(producto)}
             </h3>
-            <div className="flex justify-between items-center mb-2">
-              {hasDiscount(producto) && (
-                <span className="text-white text-sm line-through">
-                  {formatPrice(getRegularPrice(producto))}
+            <div className="flex justify-between items-end mb-2">
+              <div>
+                {hasDiscount(producto) && (
+                  <span className="text-white text-sm line-through block">
+                    {formatPrice(getRegularPrice(producto))}
+                  </span>
+                )}
+                <span className="text-white font-semibold text-lg">
+                  {formatPrice(getEffectivePrice(producto))}
+                </span>
+              </div>
+              {isMayorista && (producto as any).specificPrices?.length > 0 && (
+                <span className="text-[12px] bg-[#0c4848cc] px-2 py-1 text-white rounded-xs font-normal leading-tight text-right max-w-[110px]">
+                  {(() => {
+                    const prices = (producto as any).specificPrices;
+                    const max = prices.reduce((p: any, c: any) => p.from_quantity > c.from_quantity ? p : c);
+                    return <>Al por mayor: {formatPrice(max.price)}</>;
+                  })()}
                 </span>
               )}
-              <span className="text-white font-semibold text-lg">
-                {formatPrice(getEffectivePrice(producto))}
-              </span>
             </div>
             <Button
               size="sm"

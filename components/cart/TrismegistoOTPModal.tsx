@@ -117,10 +117,20 @@ export default function TrismegistoOTPModal({
       onSuccess(data);
     } catch (err: any) {
       logger.error("[OTP Modal] Verification error:", err);
-      setError(err.message || "Código OTP inválido o expirado");
-      // Clear input for retry
-      setOtpDigits(Array(OTP_LENGTH).fill(""));
-      setTimeout(() => inputRefs.current[0]?.focus(), 50);
+      if (err?.autoProcessFailed) {
+        // OTP correcto, pero falló el procesamiento del pago (ej. integrador SO-TP caído).
+        // El backend mantiene el OTP válido para que el usuario pueda reintentar sin
+        // volver a recibir otro correo: dejamos los dígitos intactos.
+        setError(
+          "No pudimos completar el pago con tu saldo Trimegisto en este momento. " +
+          "Tu código sigue siendo válido — espera unos segundos y vuelve a intentar."
+        );
+      } else {
+        setError(err.message || "Código OTP inválido o expirado");
+        // OTP inválido o expirado: limpiar input para que el usuario reingrese.
+        setOtpDigits(Array(OTP_LENGTH).fill(""));
+        setTimeout(() => inputRefs.current[0]?.focus(), 50);
+      }
     } finally {
       setIsVerifying(false);
     }

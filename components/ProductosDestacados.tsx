@@ -26,6 +26,7 @@ import { isAuthenticated } from "@/lib/auth/authUtils";
 import Button from "./ui/Button";
 import { useRouter } from "next/router";
 import { showToast } from "@/lib/notifications";
+import { useMayorista } from "@/context/MayoristaContext";
 
 interface ProductProps {
   featuredProducts: Product[];
@@ -42,6 +43,7 @@ export default function ProductosDestacados({
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
   const { addToCart } = useCart();
   const router = useRouter();
+  const { isMayorista } = useMayorista();
 
   const activeProducts = featuredProducts.filter((p) => (p.quantity ?? 0) > 0);
 
@@ -200,15 +202,26 @@ export default function ProductosDestacados({
             <h3 className="font-semibold leading-tight text-lg mb-2 line-clamp-2 h-12 text-white">
               {getProductName(product)}
             </h3>
-            <div className="flex justify-between items-center mb-2">
-              {hasDiscount(product) && (
-                <span className="text-white text-sm line-through">
-                  {formatPrice(getRegularPrice(product))}
+            <div className="flex justify-between items-end mb-2">
+              <div>
+                {hasDiscount(product) && (
+                  <span className="text-white text-sm line-through block">
+                    {formatPrice(getRegularPrice(product))}
+                  </span>
+                )}
+                <span className="text-white font-semibold text-lg">
+                  {formatPrice(getEffectivePrice(product))}
+                </span>
+              </div>
+              {isMayorista && (product as any).specificPrices?.length > 0 && (
+                <span className="text-[12px] bg-[#0c4848cc] px-2 py-1 text-white rounded-xs font-normal leading-tight text-right max-w-[110px]">
+                  {(() => {
+                    const prices = (product as any).specificPrices;
+                    const max = prices.reduce((p: any, c: any) => p.from_quantity > c.from_quantity ? p : c);
+                    return <>Al por mayor: {formatPrice(max.price)}</>;
+                  })()}
                 </span>
               )}
-              <span className="text-white font-semibold text-lg">
-                {formatPrice(getEffectivePrice(product))}
-              </span>
             </div>
             <Button
               size="sm"

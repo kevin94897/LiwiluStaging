@@ -415,9 +415,17 @@ export async function verifyTrismegistoOTP(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       logger.error('[Trimegisto] OTP verification failed:', errorData);
-      throw new Error(
-        errorData.message || errorData.error || 'Código OTP inválido o expirado'
-      );
+      const message =
+        errorData.message || errorData.error || 'Código OTP inválido o expirado';
+      const err: any = new Error(message);
+      // El backend devuelve este flag cuando el OTP fue validado correctamente
+      // pero el auto-procesamiento del pago (ej. SO-TP) falló. El OTP sigue siendo
+      // reusable porque el backend dejó el PreOrder en PENDING.
+      if (errorData.autoProcessFailed) {
+        err.autoProcessFailed = true;
+        err.preOrderId = errorData.preOrderId;
+      }
+      throw err;
     }
 
     const data = await response.json() as VerifyOTPResponse;

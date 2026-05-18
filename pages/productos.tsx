@@ -853,6 +853,7 @@ export default function Tienda() {
                               </div>
                             </div>
 
+                            {/*cuadro de mayorista*/}
                             <div className="w-1/2">
                               {isMayorista && (product as any).specificPrices?.length > 0 && (
                                 <div className="">
