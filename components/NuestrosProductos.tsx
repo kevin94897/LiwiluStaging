@@ -83,7 +83,10 @@ export default function NuestrosProductos({
     loadFavorites();
   }, []);
 
-  const productosAMostrar = productos.length > 0 ? productos.slice(0, 8) : [];
+  const productosFiltrados = isMayorista
+    ? productos.filter((p) => p.mayorista === true)
+    : productos;
+  const productosAMostrar = productosFiltrados.length > 0 ? productosFiltrados.slice(0, 8) : [];
 
   const toggleFavorito = async (id: string) => {
     try {

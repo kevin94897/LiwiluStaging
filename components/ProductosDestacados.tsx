@@ -45,7 +45,9 @@ export default function ProductosDestacados({
   const router = useRouter();
   const { isMayorista } = useMayorista();
 
-  const activeProducts = featuredProducts.filter((p) => (p.quantity ?? 0) > 0);
+  const activeProducts = featuredProducts
+    .filter((p) => (p.quantity ?? 0) > 0)
+    .filter((p) => !isMayorista || p.mayorista === true);
 
   // Configuración del carousel mejorada
   const [emblaRef] = useEmblaCarousel(
