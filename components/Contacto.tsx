@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useDocumentLookup } from "@/hooks/useDocumentLookup";
 import logger from "@/lib/logger";
 import Image from "next/image";
+import Link from "next/link";
 import Button from "./ui/Button";
 import {
   contactoSchema,
@@ -145,7 +146,7 @@ export default function Contacto() {
   return (
     <section className="relative md:min-h-screen flex flex-col md:flex-row bg-primary">
       {/* Lado Izquierdo */}
-      <div className="relative w-full md:w-1/2 flex items-start justify-center px-8 py-16 overflow-hidden">
+      <Link href="/productos?mayorista=true" className="relative w-full md:w-1/2 flex items-start justify-center px-8 py-16 overflow-hidden cursor-pointer">
         {/* Imagen de fondo */}
         <Image
           src="/images/liwilu_contacto_banner.png"
@@ -172,7 +173,7 @@ export default function Contacto() {
             MAYOR
           </h1>
         </div>
-      </div>
+      </Link>
 
       {/* Lado Derecho - Formulario */}
       <div className="relative w-full md:w-1/2 bg-primary flex items-center justify-center p-10 md:-ml-12 z-20 rounded-tl-xl rounded-bl-xl">

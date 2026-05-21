@@ -203,18 +203,25 @@ export default function Tienda() {
   const { addToCart } = useCart();
   const { isMayorista, enableMayorista, disableMayorista } = useMayorista();
 
-  // Activate context from URL param (deep-link / share)
+  // URL → context: activate mayorista mode from deep-link/share
   useEffect(() => {
     if (!router.isReady) return;
     if (router.query.mayorista === 'true') enableMayorista();
   }, [router.isReady]);
 
-  // Sync context → URL so product search and links work
+  // context → URL: only sync when mayorista transitions true→false (user disabled it)
+  // or when it's true and URL doesn't reflect it. Never remove mayorista from URL
+  // while context is still initializing (race condition on page load).
+  const wasMayorista = useRef(false);
   useEffect(() => {
     if (!router.isReady) return;
-    if (isMayorista && router.query.mayorista !== 'true') {
-      router.push({ pathname: '/productos', query: { ...router.query, mayorista: 'true', page: '1' } }, undefined, { scroll: false });
-    } else if (!isMayorista && router.query.mayorista === 'true') {
+    if (isMayorista) {
+      wasMayorista.current = true;
+      if (router.query.mayorista !== 'true') {
+        router.push({ pathname: '/productos', query: { ...router.query, mayorista: 'true', page: '1' } }, undefined, { scroll: false });
+      }
+    } else if (wasMayorista.current) {
+      wasMayorista.current = false;
       const { mayorista, ...rest } = router.query;
       router.push({ pathname: '/productos', query: { ...rest, page: '1' } }, undefined, { scroll: false });
     }
@@ -869,6 +876,25 @@ export default function Tienda() {
                                     })()}
                                   </span>
                                 </div>
+                              )}
+                              {!isMayorista && (product as any).specificPrices?.length > 0 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    enableMayorista();
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.07)'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                                  style={{ transition: 'transform 0.18s ease' }}
+                                  className="w-full text-[11px] bg-[#0c4848cc] hover:bg-[#0c4848] px-2 py-2 text-white rounded-[6px] font-normal leading-tight text-center"
+                                >
+                                  {(() => {
+                                    const prices = (product as any).specificPrices;
+                                    const minPrice = Math.min(...prices.map((p: any) => p.price));
+                                    return `Precio mayorista desde ${formatPrice(minPrice)} ¡Ingresa aquí!`;
+                                  })()}
+                                </button>
                               )}
                             </div>
                           </div>

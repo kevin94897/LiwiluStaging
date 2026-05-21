@@ -1105,6 +1105,26 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                       </div>
                     )}
 
+                    {/* Botón para activar modo mayorista */}
+                    {!isWholesale && !!variationsData?.specificPrices?.length && (
+                      <button
+                        onClick={() => {
+                          enableMayorista();
+                          router.push({ pathname: router.pathname, query: { ...router.query, mayorista: 'true' } }, undefined, { scroll: false });
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.04)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                        style={{ transition: 'transform 0.18s ease' }}
+                        className="w-full flex items-center justify-center gap-2 bg-[#0c4848] hover:bg-[#0a3838] text-white text-sm font-medium px-4 py-2.5 rounded-full transition-colors duration-200 mb-4"
+                      >
+                        {(() => {
+                          const prices = variationsData!.specificPrices!;
+                          const minPrice = Math.min(...prices.map((p: any) => p.price));
+                          return `Precio mayorista desde ${formatPrice(minPrice)} ¡Ingresa aquí!`;
+                        })()}
+                      </button>
+                    )}
+
                     {/* Opciones de personalización (Atributos) */}
                     {sortedAttributesList.length > 0 && (
                       <div className="flex flex-col gap-6 mb-6">
