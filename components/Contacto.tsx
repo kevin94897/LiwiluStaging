@@ -104,7 +104,7 @@ export default function Contacto() {
         aceptaPoliticasPrivacidad: formData.aceptaPrivacidad,
       };
 
-      const response = await apiPost("/general/solicitud-mayorista", payload);
+      const response = await apiPost("/general/solicitud-mayorista", payload, { skipAuth: true });
 
       if (response.ok) {
         showToast(
