@@ -87,6 +87,7 @@ function saveSearchHistory(term: string, current: string[]): string[] {
 
 function SearchBar({ isMobile = false }) {
   const router = useRouter();
+  const { isMayorista } = useMayorista();
   const [searchQuery, setSearchQuery] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -107,7 +108,8 @@ function SearchBar({ isMobile = false }) {
     const q = searchQuery.trim();
     if (!q || router.pathname !== '/productos') return;
     const timer = setTimeout(() => {
-      router.push(`/productos?search=${encodeURIComponent(q)}`, undefined, { scroll: false });
+      const qs = isMayorista ? `&mayorista=true` : '';
+      router.push(`/productos?search=${encodeURIComponent(q)}${qs}`, undefined, { scroll: false });
     }, 350);
     return () => clearTimeout(timer);
   }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -129,14 +131,16 @@ function SearchBar({ isMobile = false }) {
     if (!q) return;
     setHistory(prev => saveSearchHistory(q, prev));
     setShowHistory(false);
-    router.push(`/productos?search=${encodeURIComponent(q)}`);
+    const qs = isMayorista ? `&mayorista=true` : '';
+    router.push(`/productos?search=${encodeURIComponent(q)}${qs}`);
   };
 
   const handleHistoryClick = (term: string) => {
     setSearchQuery(term);
     setHistory(prev => saveSearchHistory(term, prev));
     setShowHistory(false);
-    router.push(`/productos?search=${encodeURIComponent(term)}`);
+    const qs = isMayorista ? `&mayorista=true` : '';
+    router.push(`/productos?search=${encodeURIComponent(term)}${qs}`);
   };
 
   const handleFocus = () => {
@@ -291,7 +295,7 @@ function QuickActions({
 
   const handleMayoristaClick = () => {
     enableMayorista();
-    router.push('/productos');
+    router.push('/productos?mayorista=true');
   };
 
   if (isMobile) {

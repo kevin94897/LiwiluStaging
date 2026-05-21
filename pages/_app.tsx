@@ -18,6 +18,8 @@ export default function App({ Component, pageProps }: AppProps) {
 	// 🆕 Inicializar sistema de renovación de tokens al cargar la app
 	useEffect(() => {
 		initializeAuth();
+		// Expone --font-outfit en <html> para que los portals (fuera de <main>) hereden la fuente
+		document.documentElement.classList.add(outfit.variable);
 	}, []);
 
 	return (
