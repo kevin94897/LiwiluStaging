@@ -27,13 +27,13 @@ export default function ComoComprar() {
 			image: "/videos/liwilu_recojo_tienda.webm",
 			alt: "Entrega en tienda - compra online y recoge en tienda",
 			title: "ENTREGA EN TIENDA",
-			description: "compra online y recoge en tienda",
+			description: "Compra online y recoge en tienda",
 		},
 		{
 			image: "/videos/liwilu_call_center.webm",
 			alt: "Call Center - Llámanos al (01) 7028086",
 			title: "CALL CENTER",
-			description: "Llámanos al (01) 7028086 / Opción 2",
+			description: "Llámanos al (01) 7028086 / Opción 2<br/><span class='text-primary-dark'>+51 981 022 962</span> - Ventas solo WhatsApp<br/><span class='text-primary-dark'>+51 902 727 658</span> - Postventas solo WhatsApp",
 		},
 	];
 
@@ -80,9 +80,10 @@ export default function ComoComprar() {
 									<h3 className="text-lg sm:text-xl md:text-2xl font-semibold text-neutral-gray mb-2 sm:mb-3 leading-tight">
 										{option.title}
 									</h3>
-									<p className="text-sm sm:text-base text-neutral-gray font-semibold leading-relaxed max-w-[280px]">
-										{option.description}
-									</p>
+									<p
+										className="text-sm sm:text-base text-neutral-gray font-semibold leading-relaxed max-w-[300px]"
+										dangerouslySetInnerHTML={{ __html: option.description }}
+									/>
 								</div>
 							</div>
 						</div>
