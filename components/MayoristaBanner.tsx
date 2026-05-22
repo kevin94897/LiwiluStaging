@@ -1,82 +1,48 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FaTimes, FaBoxes, FaStore, FaChevronUp, FaChevronDown } from 'react-icons/fa';
+import { FaTimes, FaBoxes, FaStore } from 'react-icons/fa';
 import { useMayorista } from '@/context/MayoristaContext';
 import { useRouter } from 'next/router';
 
 function FloatingButton() {
   const { disableMayorista } = useMayorista();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   return createPortal(
-    <>
-      <div
-        ref={ref}
-        style={{ position: 'fixed', right: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 9999 }}
-        className="font-sans flex flex-col items-end gap-2"
-      >
-        {/* Panel de opciones */}
-        {open && (
-          <div className="bg-[#0c4848] border border-primary/40 rounded-lg shadow-2xl p-3 flex flex-col gap-2 min-w-[160px] animate-mayorista-panel">
-            {/* <p className="text-[10px] text-white/50 uppercase tracking-widest px-1 mb-1">Modo Mayorista</p> */}
-            <button
-              onClick={() => { router.push('/productos?mayorista=true'); setOpen(false); }}
-              className="flex items-center gap-2 text-[13px] font-semibold text-white bg-primary hover:brightness-110 px-3 py-2 rounded-lg transition-all duration-200 w-full"
-            >
-              {/* <FaStore size={12} /> */}
-              Ver tienda
-            </button>
-            <button
-              onClick={() => {
-                disableMayorista();
-                const { mayorista, ...rest } = router.query;
-                router.replace({ pathname: router.pathname, query: rest }, undefined, { scroll: false });
-                setOpen(false);
-              }}
-              className="flex items-center gap-2 text-[13px] font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg transition-all duration-200 w-full"
-            >
-              {/* <FaTimes size={12} /> */}
-              Salir del modo
-            </button>
-          </div>
-        )}
-
-        {/* Botón trigger vertical */}
+    <div
+      style={{ position: 'fixed', right: '10px', top: '50%', transform: 'translateY(-50%)', zIndex: 9999 }}
+      className="font-sans flex items-center gap-1 md:gap-2 flex-col"
+    >
+      {/* Botones de acción en vertical */}
+      <div className="flex flex-col gap-1.5 md:gap-2">
         <button
-          onClick={() => setOpen(v => !v)}
-          className="font-sans flex flex-col items-center gap-2 bg-[#0c4848] text-white px-4 py-5 rounded-full shadow-2xl hover:brightness-110 transition-all duration-200"
+          onClick={() => router.push('/productos?mayorista=true')}
+          title="Ver tienda"
+          className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 text-white bg-[#0c4848] border border-white/10 hover:brightness-110 rounded-full shadow-2xl transition-all duration-200 hover:scale-110"
         >
-          {open ? <FaChevronDown size={12} /> : <FaChevronUp size={12} />}
-          <span className="md:text-[15px] text-[11px] font-bold tracking-widest [writing-mode:vertical-rl] rotate-180 uppercase">
-            Mayorista
-          </span>
-
-          <FaBoxes size={20} />
+          <FaStore className="w-[16px] h-[16px] md:w-[18px] md:h-[18px]" />
+        </button>
+        <button
+          onClick={() => {
+            disableMayorista();
+            const { mayorista, ...rest } = router.query;
+            router.replace({ pathname: router.pathname, query: rest }, undefined, { scroll: false });
+          }}
+          title="Salir del modo mayorista"
+          className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 text-white bg-red-600 hover:bg-red-700 rounded-full shadow-2xl transition-all duration-200 hover:scale-110"
+        >
+          <FaTimes className="w-[16px] h-[16px] md:w-[18px] md:h-[18px]" />
         </button>
       </div>
 
-      <style jsx global>{`
-        @keyframes mayorista-panel-in {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .animate-mayorista-panel {
-          animation: mayorista-panel-in 0.18s ease forwards;
-        }
-      `}</style>
-    </>,
+      {/* Botón Mayorista (Etiqueta indicadora) */}
+      <div className="font-sans flex flex-col items-center gap-2 bg-[#0c4848] text-white w-10 md:w-12 py-3 md:py-5 rounded-full shadow-2xl">
+        <span className="md:text-[15px] text-[11px] font-bold tracking-widest [writing-mode:vertical-rl] rotate-180 uppercase">
+          Mayorista
+        </span>
+        <FaBoxes className="w-[16px] h-[16px] md:w-5 md:h-5" />
+      </div>
+    </div>,
     document.body
   );
 }
@@ -103,7 +69,7 @@ export default function MayoristaBanner() {
       </div>
 
       {/* Botón flotante via portal (evita herencia de transform del header) */}
-      {mounted && <FloatingButton />}
+      {/* {mounted && <FloatingButton />} */}
 
       <style jsx>{`
         @keyframes marquee {

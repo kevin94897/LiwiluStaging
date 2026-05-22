@@ -236,12 +236,30 @@ function QuickActions({
   onOpenLogin,
   onOpenRegister,
 }: QuickActionsProps) {
-  const { getCartCount } = useCart();
+  const { getCartCount, clearCart } = useCart();
   const { user, isAuthenticated, logout, isLoading } = useAuth();
   const cartCount = getCartCount();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const loginRef = useRef<HTMLDivElement | null>(null);
+
+  const { isMayorista, enableMayorista, disableMayorista } = useMayorista();
+  const router = useRouter();
+  const [mayoristaMenuOpen, setMayoristaMenuOpen] = useState(false);
+  const mayoristaRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        mayoristaRef.current &&
+        !mayoristaRef.current.contains(event.target as Node)
+      ) {
+        setMayoristaMenuOpen(false);
+      }
+    }
+    if (mayoristaMenuOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [mayoristaMenuOpen]);
 
   // 🔹 DEBUG: Log para verificar el estado
   // useEffect(() => {
@@ -290,20 +308,46 @@ function QuickActions({
     );
   }
 
-  const { isMayorista, enableMayorista } = useMayorista();
-  const router = useRouter();
-
   const handleMayoristaClick = () => {
-    enableMayorista();
-    router.push('/productos?mayorista=true');
+    if (isMayorista) {
+      setMayoristaMenuOpen(!mayoristaMenuOpen);
+    } else {
+      clearCart();
+      enableMayorista();
+      router.push('/productos?mayorista=true');
+    }
   };
 
   if (isMobile) {
     return (
       <div className="flex items-center gap-4">
-        <button onClick={handleMayoristaClick} className={`relative ${isMayorista ? 'text-primary' : ''}`}>
-          <FaBoxes size={20} />
-        </button>
+        <div className="relative" ref={mayoristaRef}>
+          <button onClick={handleMayoristaClick} className={`relative flex items-center justify-center ${isMayorista ? 'text-primary' : ''}`}>
+            <div className="relative">
+              <FaBoxes size={20} />
+              <span className="absolute -top-1 -right-1.5 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+              </span>
+            </div>
+          </button>
+          {isMayorista && mayoristaMenuOpen && (
+            <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-xl z-50">
+              <button
+                onClick={() => {
+                  clearCart();
+                  disableMayorista();
+                  setMayoristaMenuOpen(false);
+                  const { mayorista, ...rest } = router.query;
+                  router.replace({ pathname: router.pathname, query: rest }, undefined, { scroll: false });
+                }}
+                className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-lg transition-colors"
+              >
+                <FaTimes /> Salir
+              </button>
+            </div>
+          )}
+        </div>
         <Link href="/rastreo" className="relative">
           <FaTruck size={20} />
         </Link>
@@ -383,15 +427,40 @@ function QuickActions({
 
   return (
     <div className="flex items-center gap-6 text-sm relative" ref={loginRef}>
-      <button
-        onClick={handleMayoristaClick}
-        className={`relative flex items-center gap-2 transition font-medium ${isMayorista
+      <div className="relative" ref={mayoristaRef}>
+        <button
+          onClick={handleMayoristaClick}
+          className={`relative flex items-center gap-2 transition font-medium ${isMayorista
             ? 'text-primary'
             : 'hover:text-green-400'
-          }`}
-      >
-        <FaBoxes /> {isMayorista ? 'Mayorista ✓' : 'Compra Mayorista'}
-      </button>
+            }`}
+        >
+          <div className="relative flex items-center justify-center">
+            <FaBoxes size={18} />
+            <span className="absolute -top-1.5 -right-2 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+            </span>
+          </div>
+          <span>{isMayorista ? 'Mayorista ✓' : 'Compra Mayorista'}</span>
+        </button>
+        {isMayorista && mayoristaMenuOpen && (
+          <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-xl z-50 transition-all duration-200">
+            <button
+              onClick={() => {
+                clearCart();
+                disableMayorista();
+                setMayoristaMenuOpen(false);
+                const { mayorista, ...rest } = router.query;
+                router.replace({ pathname: router.pathname, query: rest }, undefined, { scroll: false });
+              }}
+              className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-lg transition-colors"
+            >
+              <FaTimes /> Salir
+            </button>
+          </div>
+        )}
+      </div>
       <Link
         href="/rastreo"
         className="flex items-center gap-2 hover:text-green-400 transition"
