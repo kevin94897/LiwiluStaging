@@ -215,7 +215,7 @@ export default function ProductosDestacados({
                   {formatPrice(getEffectivePrice(product))}
                 </span>
               </div>
-              {isMayorista && (product as any).specificPrices?.length > 0 && (
+              {isMayorista && product.mayorista === true && (product as any).specificPrices?.length > 0 && (
                 <span className="text-[12px] bg-[#0c4848cc] px-2 py-1 text-white rounded-xs font-normal leading-tight text-right max-w-[110px]">
                   {(() => {
                     const prices = (product as any).specificPrices;

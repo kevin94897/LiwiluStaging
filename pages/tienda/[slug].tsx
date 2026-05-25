@@ -110,7 +110,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const [loadingFavorite, setLoadingFavorite] = useState(false);
 
   const currentSpecificPrice = useMemo(() => {
-    if (!isWholesale || !variationsData?.specificPrices) return null;
+    if (!isWholesale || !variationsData?.mayorista || !variationsData?.specificPrices) return null;
     // Buscamos el precio específico que aplique a la cantidad actual (el mayor from_quantity <= quantity)
     return [...variationsData.specificPrices]
       .filter(sp => quantity >= sp.from_quantity)
@@ -1106,7 +1106,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                     )}
 
                     {/* Botón para activar modo mayorista */}
-                    {!isWholesale && !!variationsData?.specificPrices?.length && (
+                    {!isWholesale && variationsData?.mayorista === true && !!variationsData?.specificPrices?.length && (
                       <button
                         onClick={() => {
                           enableMayorista();

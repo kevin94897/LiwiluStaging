@@ -862,7 +862,7 @@ export default function Tienda() {
 
                             {/*cuadro de mayorista*/}
                             <div className="w-1/2">
-                              {isMayorista && (product as any).specificPrices?.length > 0 && (
+                              {isMayorista && product.mayorista === true && (product as any).specificPrices?.length > 0 && (
                                 <div className="">
                                   <span className="text-[12px] bg-[#0c4848cc] p-2 text-white rounded-[6px] font-normal flex flex-col items-center leading-tight text-right">
                                     {(() => {
@@ -877,7 +877,7 @@ export default function Tienda() {
                                   </span>
                                 </div>
                               )}
-                              {!isMayorista && (product as any).specificPrices?.length > 0 && (
+                              {!isMayorista && product.mayorista === true && (product as any).specificPrices?.length > 0 && (
                                 <button
                                   onClick={(e) => {
                                     e.preventDefault();

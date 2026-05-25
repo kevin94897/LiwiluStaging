@@ -531,6 +531,7 @@ export interface ProductVariationsData {
     variations: ProductVariation[];
     availabilityMatrix: Record<string, boolean>;
     specificPrices?: any[];
+    mayorista?: boolean;
     metadata: {
         totalVariations: number;
         activeVariations: number;
