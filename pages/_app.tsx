@@ -6,6 +6,7 @@ import { MayoristaProvider } from '@/context/MayoristaContext';
 import { Toaster } from 'react-hot-toast'; // Opcional
 import { useEffect } from 'react';
 import { initializeAuth } from '@/lib/auth/tokenManager';
+import { WhatsAppFloatButton } from '@/components/WhatsAppFloatButton';
 
 import { Outfit } from 'next/font/google';
 
@@ -28,6 +29,8 @@ export default function App({ Component, pageProps }: AppProps) {
 			<main className={`${outfit.variable} font-sans`}>
 				<Component {...pageProps} />
 			</main>
+			{/* Botón flotante WhatsApp */}
+			<WhatsAppFloatButton />
 			{/* Opcional: Notificaciones toast */}
 			<Toaster
 				position="bottom-right"
