@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import logger from "@/lib/logger";
 import Layout from "@/components/Layout";
 import Link from "next/link";
@@ -6,13 +6,14 @@ import Image from "next/image";
 import Button from "@/components/ui/Button";
 import AccountSidebar from "@/components/AccountSidebar";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ProductReviewModal from "@/components/ProductReviewModal";
 import {
   getMyOrders,
   getPackageStatus,
   getPickupStatus,
   Order,
 } from "@/lib/orders";
-import { FaCheckCircle, FaClock, FaTruck, FaBox, FaHome, FaWallet, FaFileDownload } from "react-icons/fa";
+import { FaCheckCircle, FaClock, FaTruck, FaBox, FaHome, FaWallet, FaFileDownload, FaStar } from "react-icons/fa";
 
 // ─── Tracking helpers (mirrors rastreo/[id].tsx) ────────────────────────────
 
@@ -202,6 +203,32 @@ function mapPickupToSteps(pickupData: any[]): TrackingStep[] {
   });
 }
 
+function formatReviewDate(isoDate?: string): string {
+  if (!isoDate) return "";
+
+  return new Intl.DateTimeFormat("es-PE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(isoDate));
+}
+
+function ReviewStars({ rating }: { rating: number }) {
+  const normalizedRating = Math.max(0, Math.min(5, Math.round(rating || 0)));
+
+  return (
+    <div className="flex items-center gap-0.5" aria-label={`${normalizedRating} de 5 estrellas`}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <FaStar
+          key={star}
+          size={12}
+          className={star <= normalizedRating ? "text-yellow-400" : "text-gray-300"}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function MisPedidos() {
@@ -209,6 +236,15 @@ export default function MisPedidos() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
+
+  // Review modal state
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedReviewProduct, setSelectedReviewProduct] = useState<{
+    orderId: number;
+    productId: number;
+    productName: string;
+    productImage?: string;
+  } | null>(null);
 
   // Per-order tracking state
   const [trackingSteps, setTrackingSteps] = useState<
@@ -220,6 +256,39 @@ export default function MisPedidos() {
   const [trackingError, setTrackingError] = useState<Record<number, string>>(
     {},
   );
+
+  const openReviewModal = (
+    orderId: number,
+    productId: number,
+    productName: string,
+    productImage?: string
+  ) => {
+    setSelectedReviewProduct({
+      orderId,
+      productId,
+      productName,
+      productImage,
+    });
+    setReviewModalOpen(true);
+  };
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getMyOrders();
+      if (response.success) {
+        setOrders(response.data);
+        setError(null);
+      } else {
+        setError("No se pudieron cargar los pedidos");
+      }
+    } catch (err: any) {
+      logger.error("Error fetching orders:", err);
+      setError(err.message || "Error al cargar los pedidos");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const toggleOrderDetails = async (orderId: number, order: Order) => {
     if (expandedOrderId === orderId) {
@@ -257,25 +326,8 @@ export default function MisPedidos() {
   };
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        const response = await getMyOrders();
-        if (response.success) {
-          setOrders(response.data);
-        } else {
-          setError("No se pudieron cargar los pedidos");
-        }
-      } catch (err: any) {
-        logger.error("Error fetching orders:", err);
-        setError(err.message || "Error al cargar los pedidos");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
 
   const getEstadoBadge = (status: string) => {
     const badges: Record<string, string> = {
@@ -430,7 +482,7 @@ export default function MisPedidos() {
                               {order.items.map((item, idx) => (
                                 <div
                                   key={`${order.id}-item-${idx}`}
-                                  className="flex gap-4 items-center"
+                                  className="flex gap-4 items-start pb-4 border-b last:border-b-0 last:pb-0"
                                 >
                                   <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-sm overflow-hidden flex-shrink-0 bg-gray-50 border">
                                     <Image
@@ -455,6 +507,43 @@ export default function MisPedidos() {
                                     <p className="font-bold text-primary text-sm md:text-base">
                                       S/ {item.price.toFixed(2)}
                                     </p>
+                                    {order.paymentStatus === "COMPLETED" && (
+                                      item.hasReview && item.review ? (
+                                        <div className="mt-3 rounded-md border border-yellow-100 bg-yellow-50/60 px-3 py-2">
+                                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                            <ReviewStars rating={item.review.rating} />
+                                            <span className="text-xs font-semibold text-primary-dark">
+                                              Tu reseña
+                                            </span>
+                                            {item.review.createdAt && (
+                                              <span className="text-[10px] text-gray-500">
+                                                {formatReviewDate(item.review.createdAt)}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {item.review.comment && (
+                                            <p className="mt-1 text-xs text-gray-700 whitespace-pre-line">
+                                              {item.review.comment.trim()}
+                                            </p>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <button
+                                          onClick={() =>
+                                            openReviewModal(
+                                              order.id,
+                                              item.prestashopId,
+                                              item.name,
+                                              item.image
+                                            )
+                                          }
+                                          className="mt-2 inline-flex items-center gap-1 text-xs md:text-sm text-primary hover:text-primary-dark font-semibold transition"
+                                        >
+                                          <FaStar size={12} />
+                                          Dejar reseña
+                                        </button>
+                                      )
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -734,6 +823,26 @@ export default function MisPedidos() {
             animation: slide-in 0.4s ease-out both;
           }
         `}</style>
+
+        {/* Review Modal */}
+        {selectedReviewProduct && (
+          <ProductReviewModal
+            isOpen={reviewModalOpen}
+            onClose={() => {
+              setReviewModalOpen(false);
+              setSelectedReviewProduct(null);
+            }}
+            orderId={selectedReviewProduct.orderId}
+            productId={selectedReviewProduct.productId}
+            productName={selectedReviewProduct.productName}
+            productImage={selectedReviewProduct.productImage}
+            onReviewSubmitted={async () => {
+              await fetchOrders();
+              setReviewModalOpen(false);
+              setSelectedReviewProduct(null);
+            }}
+          />
+        )}
       </Layout>
     </ProtectedRoute>
   );

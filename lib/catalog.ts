@@ -412,12 +412,18 @@ export interface ProductBasicData {
     id: number;
     name: string;
     condition: string;
-    sku: string;
+    sku: string | null;
     description: string;
     resume: string;
     metaTitle: string;
     metaDescription: string;
     linkRewrite: string;
+    rating: {
+        average: number;
+        count: number;
+    } | null;
+    averageRating?: number | null;
+    reviewCount?: number | null;
     defaultCategory: {
         name: string;
         linkRewrite: string;
