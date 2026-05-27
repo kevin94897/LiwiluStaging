@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MessageCircle, Loader } from 'lucide-react';
+import { FaWhatsapp, FaCircleNotch } from 'react-icons/fa';
 
 interface WhatsAppData {
   numero_whatsapp: string | number;
@@ -53,7 +53,7 @@ export const WhatsAppFloatButton = () => {
         className="flex items-center justify-center w-16 h-16 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
         title="Contáctanos por WhatsApp"
       >
-        <MessageCircle size={28} />
+        <FaWhatsapp size={28} />
       </a>
 
       {/* Tooltip opcional */}
