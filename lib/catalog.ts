@@ -30,6 +30,12 @@ export interface Product {
     variationAttributes?: any[];
     availableForOrder?: boolean;
     mayorista?: boolean;
+    averageRating?: number | null;
+    reviewCount?: number | null;
+    rating?: {
+        average: number;
+        count: number;
+    } | null;
     defaultVariation?: {
         prestashopCombinationId: number;
         name: string;
@@ -72,6 +78,12 @@ export interface CatalogProduct {
     coverImage: string;
     hasVariations?: boolean;
     availableForOrder?: boolean;
+    averageRating?: number | null;
+    reviewCount?: number | null;
+    rating?: {
+        average: number;
+        count: number;
+    } | null;
     defaultVariation?: {
         prestashopCombinationId: number;
         name: string;

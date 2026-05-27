@@ -852,6 +852,10 @@ export default function Tienda() {
                         product.associations.images[0].id,
                       )
                       : "/images/productos/placeholder_liwilu.png");
+                  const averageRating =
+                    product.averageRating ?? product.rating?.average ?? 0;
+                  const reviewCount =
+                    product.reviewCount ?? product.rating?.count ?? 0;
 
                   return (
                     <Link
@@ -922,8 +926,22 @@ export default function Tienda() {
                           <div className="flex items-end gap-2 mb-4">
                             <div className="w-1/2">
                               <div className="flex items-center gap-1 mb-0">
-                                <div className="flex text-yellow-400 text-sm">
-                                  {"★".repeat(5)}
+                                <div className="flex items-center gap-1 text-sm">
+                                  <div
+                                    className="flex text-yellow-400"
+                                    aria-label={`${averageRating.toFixed(1)} de 5 estrellas`}
+                                  >
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <span key={star}>
+                                        {star <= Math.round(averageRating) ? "★" : "☆"}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {reviewCount > 0 && (
+                                    <span className="text-[11px] text-white/80">
+                                      ({reviewCount})
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 w-max">
