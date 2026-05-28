@@ -768,6 +768,9 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
     return true;
   });
 
+  const averageRating = basicData?.averageRating ?? basicData?.rating?.average ?? 0;
+  const reviewCount = basicData?.reviewCount ?? basicData?.rating?.count ?? 0;
+
   return (
     <Layout
       title={loading ? "Cargando... - Liwilu" : error ? "Error - Liwilu" : `${basicData!.name} - Liwilu`}
@@ -1059,12 +1062,27 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                     {/* Rating y SKU */}
                     <div className="flex items-center gap-5 mb-4">
                       <div className="flex items-center gap-2">
-                        <div className="flex text-yellow-400">{"★".repeat(5)}</div>
-                        <span className="text-sm text-gray-600">(4.8/5)</span>
+                        <div className="flex text-yellow-400">
+                          {[...Array(5)].map((_, i) => (
+                            <span key={i}>
+                              {i < Math.round(averageRating) ? "★" : "☆"}
+                            </span>
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-600">
+                          ({averageRating.toFixed(1)}/5)
+                          {reviewCount > 0 && (
+                            <span className="ml-1 text-xs text-gray-500">
+                              {reviewCount} {reviewCount === 1 ? "reseña" : "reseñas"}
+                            </span>
+                          )}
+                        </span>
                       </div>
-                      <span className="text-gray-600 text-sm">
-                        SKU: {basicData.sku}
-                      </span>
+                      {basicData.sku && (
+                        <span className="text-gray-600 text-sm">
+                          SKU: {basicData.sku}
+                        </span>
+                      )}
                     </div>
 
                     {/* Precio */}

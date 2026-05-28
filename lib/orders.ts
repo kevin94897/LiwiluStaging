@@ -1,17 +1,25 @@
 // lib/orders.ts
-import { apiGet } from './auth/apiClient';
+import { apiGet, apiPost } from './auth/apiClient';
 import logger from './logger';
 
 export interface OrderItem {
     reference: string;
     prestashopId: number;
-    prestashopCombinationId: number;
+    prestashopCombinationId: number | null;
     name: string;
     price: number;
     quantity: number;
     quantityExistenteERP: number | null;
-    quantityExistenteSavar: number;
+    quantityExistenteSavar: number | null;
     image?: string;
+    hasReview?: boolean;
+    review?: {
+        id: string;
+        rating: number;
+        comment?: string | null;
+        createdAt: string;
+        updatedAt: string;
+    } | null;
 }
 
 export interface PersonalData {
@@ -282,6 +290,38 @@ export async function getDeliveryType(orderId: string): Promise<DeliveryTypeResp
         return await response.json();
     } catch (error: any) {
         logger.error('Error in getDeliveryType:', error);
+        throw error;
+    }
+}
+
+/**
+ * Creates a product review for a purchased item
+ * @param orderId - The order ID
+ * @param prestashopId - The product ID
+ * @param rating - Rating from 1-5
+ * @param comment - Optional review comment
+ */
+export async function createProductReview(
+    orderId: number,
+    prestashopId: number,
+    rating: number,
+    comment?: string
+): Promise<{ success: boolean; message: string }> {
+    try {
+        const response = await apiPost(`/orders/${orderId}/reviews`, {
+            prestashopId,
+            rating,
+            comment: comment || null,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error creating review: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error: any) {
+        logger.error('Error in createProductReview:', error);
         throw error;
     }
 }

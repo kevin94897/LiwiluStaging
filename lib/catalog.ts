@@ -30,6 +30,12 @@ export interface Product {
     variationAttributes?: any[];
     availableForOrder?: boolean;
     mayorista?: boolean;
+    averageRating?: number | null;
+    reviewCount?: number | null;
+    rating?: {
+        average: number;
+        count: number;
+    } | null;
     defaultVariation?: {
         prestashopCombinationId: number;
         name: string;
@@ -72,6 +78,12 @@ export interface CatalogProduct {
     coverImage: string;
     hasVariations?: boolean;
     availableForOrder?: boolean;
+    averageRating?: number | null;
+    reviewCount?: number | null;
+    rating?: {
+        average: number;
+        count: number;
+    } | null;
     defaultVariation?: {
         prestashopCombinationId: number;
         name: string;
@@ -412,12 +424,18 @@ export interface ProductBasicData {
     id: number;
     name: string;
     condition: string;
-    sku: string;
+    sku: string | null;
     description: string;
     resume: string;
     metaTitle: string;
     metaDescription: string;
     linkRewrite: string;
+    rating: {
+        average: number;
+        count: number;
+    } | null;
+    averageRating?: number | null;
+    reviewCount?: number | null;
     defaultCategory: {
         name: string;
         linkRewrite: string;

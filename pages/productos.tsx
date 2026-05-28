@@ -33,8 +33,10 @@ import {
   toggleFavorite,
   getFavorites,
   checkMultipleFavorites,
+  getProductVariations,
   HierarchyResponse,
   CategoryLevelTwo,
+  ProductVariationsData,
 } from "@/lib/catalog";
 import { FaRegHeart, FaPlus, FaMinus, FaHeart, FaFilter, FaTimes } from "react-icons/fa";
 import { fadeInUp, slideInRight } from "@/lib/motionVariants";
@@ -198,6 +200,13 @@ export default function Tienda() {
   const [togglingFavorite, setTogglingFavorite] = useState<string | null>(null);
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  
+  // Modal de selección de variaciones
+  const [selectedProductForVariations, setSelectedProductForVariations] = useState<Product | null>(null);
+  const [variationsDataForSelection, setVariationsDataForSelection] = useState<ProductVariationsData | null>(null);
+  const [variationsLoading, setVariationsLoading] = useState(false);
+  const [selectedAttributesModal, setSelectedAttributesModal] = useState<Record<string, number>>({});
+  
   const productsPerPage = 20;
 
   const { addToCart } = useCart();
@@ -336,9 +345,27 @@ export default function Tienda() {
     e.stopPropagation();
 
     try {
-      setLoadingCart(producto.id.toString());
+      // Check if product has variations/attributes
+      if (producto.hasVariations) {
+        // Load variations and show modal
+        setLoadingCart(producto.id.toString());
+        setVariationsLoading(true);
+        
+        const variations = await getProductVariations(producto.id.toString());
+        
+        if (variations && variations.attributes && variations.attributes.length > 0) {
+          setSelectedProductForVariations(producto);
+          setVariationsDataForSelection(variations);
+          setSelectedAttributesModal({});
+          return;
+        } else {
+          // No variations found, add directly
+          setVariationsLoading(false);
+          setLoadingCart(null);
+        }
+      }
 
-      // Check if product has default variation
+      // Add to cart if no variations or variations loading failed
       let combinationId = producto.prestashopCombinationId ?? null;
       if (producto.hasVariations && producto.defaultVariation) {
         combinationId = producto.defaultVariation.prestashopCombinationId;
@@ -356,7 +383,58 @@ export default function Tienda() {
       showToast("Error al agregar el producto al carrito", "error");
     } finally {
       setLoadingCart(null);
+      setVariationsLoading(false);
     }
+  };
+
+  const handleSelectAttribute = (type: string, valueId: number) => {
+    setSelectedAttributesModal((prev) => ({
+      ...prev,
+      [type]: valueId,
+    }));
+  };
+
+  const handleConfirmVariationSelection = async () => {
+    if (!selectedProductForVariations || !variationsDataForSelection) return;
+
+    try {
+      // Find variation matching selected attributes
+      const matchingVariation = variationsDataForSelection.variations?.find((v) => {
+        if (!v.attributes || v.attributes.length === 0) return false;
+        return v.attributes.every(
+          (attr) => selectedAttributesModal[attr.type] === attr.id
+        );
+      });
+
+      if (!matchingVariation) {
+        showToast("Por favor selecciona todas las opciones", "error");
+        return;
+      }
+
+      // Add to cart with selected variation
+      const cartProduct = {
+        ...selectedProductForVariations,
+        prestashopCombinationId: matchingVariation.prestashopCombinationId,
+        mayorista: isMayorista,
+      };
+
+      addToCart(cartProduct, 1, isMayorista);
+      setModalProduct(cartProduct);
+
+      // Close variation modal
+      setSelectedProductForVariations(null);
+      setVariationsDataForSelection(null);
+      setSelectedAttributesModal({});
+    } catch (error) {
+      logger.error("Error confirming variation selection:", error);
+      showToast("Error al seleccionar opciones", "error");
+    }
+  };
+
+  const closeVariationModal = () => {
+    setSelectedProductForVariations(null);
+    setVariationsDataForSelection(null);
+    setSelectedAttributesModal({});
   };
 
   const currentProducts = products;
@@ -774,6 +852,10 @@ export default function Tienda() {
                         product.associations.images[0].id,
                       )
                       : "/images/productos/placeholder_liwilu.png");
+                  const averageRating =
+                    product.averageRating ?? product.rating?.average ?? 0;
+                  const reviewCount =
+                    product.reviewCount ?? product.rating?.count ?? 0;
 
                   return (
                     <Link
@@ -844,8 +926,22 @@ export default function Tienda() {
                           <div className="flex items-end gap-2 mb-4">
                             <div className="w-1/2">
                               <div className="flex items-center gap-1 mb-0">
-                                <div className="flex text-yellow-400 text-sm">
-                                  {"★".repeat(5)}
+                                <div className="flex items-center gap-1 text-sm">
+                                  <div
+                                    className="flex text-yellow-400"
+                                    aria-label={`${averageRating.toFixed(1)} de 5 estrellas`}
+                                  >
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <span key={star}>
+                                        {star <= Math.round(averageRating) ? "★" : "☆"}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {reviewCount > 0 && (
+                                    <span className="text-[11px] text-white/80">
+                                      ({reviewCount})
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 w-max">
@@ -1009,6 +1105,97 @@ export default function Tienda() {
       </div>
 
       <Contacto />
+
+      {/* Modal de selección de variaciones */}
+      {selectedProductForVariations && variationsDataForSelection && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-6 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-800">Selecciona las opciones</h2>
+              <button
+                onClick={closeVariationModal}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <FaTimes className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* Producto Info */}
+              <div className="flex gap-4 mb-8 pb-8 border-b">
+                <div className="w-24 h-24 relative flex-shrink-0">
+                  <Image
+                    src={selectedProductForVariations.coverImage ?? "/images/placeholder-product.jpg"}
+                    alt={getProductName(selectedProductForVariations)}
+                    fill
+                    className="object-cover rounded-lg"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                    {getProductName(selectedProductForVariations)}
+                  </h3>
+                  <p className="text-primary font-bold text-xl">
+                    {formatPrice(getSalePrice(selectedProductForVariations) ?? 0)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Atributos / Variaciones */}
+              {variationsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              ) : variationsDataForSelection.attributes && variationsDataForSelection.attributes.length > 0 ? (
+                <div className="space-y-6">
+                  {variationsDataForSelection.attributes.map((attrGroup) => (
+                    <div key={attrGroup.type}>
+                      <label className="text-sm font-semibold text-gray-700 mb-3 block">
+                        {attrGroup.name || attrGroup.type}
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        {(attrGroup.values ?? []).map((value) => (
+                          <button
+                            key={value.id}
+                            onClick={() => handleSelectAttribute(attrGroup.type, value.id)}
+                            className={`py-2 px-3 text-sm font-semibold rounded-md border transition-all ${
+                              selectedAttributesModal[attrGroup.type] === value.id
+                                ? "bg-primary text-white border-primary"
+                                : "bg-white text-gray-700 border-gray-300 hover:border-primary"
+                            }`}
+                          >
+                            {value.value || value.id}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">No hay opciones disponibles para este producto.</p>
+              )}
+
+              {/* Botones */}
+              <div className="flex gap-3 mt-8 pt-8 border-t">
+                <button
+                  onClick={closeVariationModal}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmVariationSelection}
+                  disabled={variationsLoading || Object.keys(selectedAttributesModal).length === 0}
+                  className="flex-1 px-4 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <FaPlus className="w-4 h-4" />
+                  Agregar al carrito
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalProduct && (
         <AddToCartModal
