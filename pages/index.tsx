@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { GetServerSideProps } from "next";
+import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
 // import 'slick-carousel/slick/slick.css';
@@ -21,6 +22,7 @@ import {
   CategoryLevelTwo,
 } from "@/lib/catalog";
 import HeroSlider from "@/components/HeroSlider";
+import { useMayorista } from "@/context/MayoristaContext";
 
 interface HomeProps {
   featuredProducts: Product[];
@@ -117,14 +119,27 @@ export default function Home({
   categories = [],
   error,
 }: HomeProps) {
+  const { isMayorista } = useMayorista();
+  const [displayCategories, setDisplayCategories] = useState<CategoryLevelTwo[]>(categories);
+
+  useEffect(() => {
+    async function fetchCategories() {
+      const cats = await getLevelTwoCategories(isMayorista);
+      setDisplayCategories(cats.slice(0, 7));
+    }
+    fetchCategories();
+  }, [isMayorista]);
+
   // Obtener los 2 últimos productos ingresados (asumiendo que el ID mayor es el más reciente)
   const latestProducts = [...allProducts]
     .sort((a, b) => Number(b.id) - Number(a.id))
     .slice(0, 2);
 
+  const mayoristaQs = isMayorista ? '&mayorista=true' : '';
+
   // Procesar categorías: Buscar la de posición 0 para el slot grande, y otras 4 para el grid
-  const mainCategory = categories.find((c) => c.position === 0) || categories[0];
-  const otherCategories = categories
+  const mainCategory = displayCategories.find((c) => c.position === 0) || displayCategories[0];
+  const otherCategories = displayCategories
     .filter((c) => c.id !== mainCategory?.id)
     .slice(0, 4);
 
@@ -146,7 +161,7 @@ export default function Home({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6">
           {/* Columna izquierda (1 imagen grande - Categoría posición 0) */}
           {mainCategory && (
-            <Link href={`/productos?categoryIds=${mainCategory.id}`}>
+            <Link href={`/productos?categoryIds=${mainCategory.id}${mayoristaQs}`}>
               <motion.div
                 className="relative aspect-video md:aspect-square cursor-pointer"
                 variants={scaleIn}
@@ -180,7 +195,7 @@ export default function Home({
             {otherCategories.map((category) => (
               <Link
                 key={category.id}
-                href={`/productos?categoryIds=${category.id}`}
+                href={`/productos?categoryIds=${category.id}${mayoristaQs}`}
               >
                 <motion.div
                   className="relative h-40 md:h-auto md:aspect-square cursor-pointer"

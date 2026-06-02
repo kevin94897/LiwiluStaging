@@ -82,12 +82,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // 2. Cargar sessionId existente
-    const currentSessionId = localStorage.getItem("liwilu_session_id");
-    if (currentSessionId) {
-      console.log("📄 Loaded Existing Session ID:", currentSessionId);
-      setSessionId(currentSessionId);
+    // 2. Cargar sessionId existente o generar uno nuevo inmediatamente.
+    // Generarlo en cliente evita la race condition donde dos pestañas abren
+    // simultáneamente sin sessionId y el backend crea dos carritos distintos.
+    let currentSessionId = localStorage.getItem("liwilu_session_id");
+    if (!currentSessionId) {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      currentSessionId = `guest_${Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')}`;
+      localStorage.setItem("liwilu_session_id", currentSessionId);
     }
+    setSessionId(currentSessionId);
 
     // 3. Sincronizar con el backend
     const accessToken = localStorage.getItem("accessToken");
@@ -293,26 +298,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       console.error("Error adding to cart via API:", error);
 
-      // Fallback to local cart if API fails
+      // Cart mode conflict: show message, do NOT fall back to local state
+      const status = error?.response?.status ?? error?.status;
+      const serverMessage = error?.response?.data?.message ?? error?.message ?? '';
+      if (status === 409 || serverMessage.includes('carrito mayorista') || serverMessage.includes('carrito minorista')) {
+        import("@/lib/notifications").then(({ showToast }) => {
+          showToast(serverMessage || 'No puedes mezclar productos mayoristas y minoristas en el mismo carrito.', 'error');
+        });
+        return;
+      }
+
+      // Fallback to local cart for other API failures
       setItems((prevItems) => {
         const existingItem = prevItems.find(
           (item) => String(item.product.id) === String(product.id),
         );
 
         if (existingItem) {
-          // Si el producto ya existe, aumentar la cantidad
           return prevItems.map((item) =>
             String(item.product.id) === String(product.id)
               ? { ...item, quantity: item.quantity + quantity }
               : item,
           );
         } else {
-          // Si es nuevo, agregarlo
           return [...prevItems, { product, quantity }];
         }
       });
 
-      // Don't re-throw error - allow fallback to work silently
       console.log("Using local cart fallback");
     } finally {
       setIsLoading(false);

@@ -78,23 +78,6 @@ export default function Tienda() {
   const productsTopRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
 
-  // Fetch categories and hierarchy once on mount
-  useEffect(() => {
-    async function fetchMeta() {
-      try {
-        const [cats, hier] = await Promise.all([
-          getLevelTwoCategories(),
-          getCatalogHierarchy(),
-        ]);
-        setLevelTwoCategories(cats);
-        setHierarchy(hier);
-      } catch (err) {
-        logger.error("Error loading categories/hierarchy:", err);
-      }
-    }
-    fetchMeta();
-  }, []);
-
   // Fetch products on every query change (sends token/sessionId)
   useEffect(() => {
     if (!router.isReady) return;
@@ -211,6 +194,23 @@ export default function Tienda() {
 
   const { addToCart } = useCart();
   const { isMayorista, enableMayorista, disableMayorista } = useMayorista();
+
+  // Fetch categories and hierarchy; re-fetch when mayorista mode changes
+  useEffect(() => {
+    async function fetchMeta() {
+      try {
+        const [cats, hier] = await Promise.all([
+          getLevelTwoCategories(isMayorista),
+          getCatalogHierarchy(isMayorista),
+        ]);
+        setLevelTwoCategories(cats);
+        setHierarchy(hier);
+      } catch (err) {
+        logger.error("Error loading categories/hierarchy:", err);
+      }
+    }
+    fetchMeta();
+  }, [isMayorista]);
 
   // URL → context: activate mayorista mode from deep-link/share
   useEffect(() => {

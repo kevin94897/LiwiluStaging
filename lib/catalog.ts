@@ -283,9 +283,9 @@ export interface LevelTwoCategoriesResponse {
 /**
  * Fetch catalog hierarchy (filters structure).
  */
-export async function getCatalogHierarchy(): Promise<HierarchyResponse | null> {
+export async function getCatalogHierarchy(mayorista?: boolean): Promise<HierarchyResponse | null> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const url = `${baseUrl}/catalog/hierarchy`;
+    const url = `${baseUrl}/catalog/hierarchy${mayorista ? '?mayorista=true' : ''}`;
 
     logger.log('Fetching hierarchy from:', url);
 
@@ -1197,9 +1197,9 @@ export async function getProductVariations(productId: string | number): Promise<
 /**
  * Fetch level two categories (main categories for buttons).
  */
-export async function getLevelTwoCategories(): Promise<CategoryLevelTwo[]> {
+export async function getLevelTwoCategories(mayorista?: boolean): Promise<CategoryLevelTwo[]> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const url = `${baseUrl}/catalog/categories/level-two`;
+    const url = `${baseUrl}/catalog/categories/level-two${mayorista ? '?mayorista=true' : ''}`;
 
     logger.log('Fetching level two categories from:', url);
 

@@ -640,10 +640,11 @@ export default function Header() {
     async function fetchCategories() {
       try {
         const { getLevelTwoCategories } = await import("@/lib/catalog");
-        const cats = await getLevelTwoCategories();
+        const cats = await getLevelTwoCategories(isMayorista);
 
+        const mayoristaQs = isMayorista ? '&mayorista=true' : '';
         const formattedCats: MenuCategory[] = cats.map((c) => ({
-          href: `/productos?categoryIds=${c.id}`,
+          href: `/productos?categoryIds=${c.id}${mayoristaQs}`,
           label: c.name,
           isModal: false,
           highlight: false,
@@ -666,7 +667,7 @@ export default function Header() {
       }
     }
     fetchCategories();
-  }, []);
+  }, [isMayorista]);
 
   const [mobileCatsOpen, setMobileCatsOpen] = useState(false);
   const [isSticky, setIsSticky] = useState(false);
