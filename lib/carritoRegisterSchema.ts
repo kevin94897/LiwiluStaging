@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { DNI_REGEX, RUC_REGEX, CE_REGEX, PASSPORT_REGEX } from "./validations";
 
-const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s,.-]+$/;
+const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñÜüÏïÄäÖö\s,.-]+$/;
 
 
 export const carritoRegisterSchema = z.object({

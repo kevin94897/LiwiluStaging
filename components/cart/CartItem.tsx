@@ -138,7 +138,7 @@ export default function CartItem({
       )}
 
       {item.product.mayorista && (
-        <div className="absolute top-2 right-2 bg-blue-50 border-b px-4 py-1.5 flex items-center gap-2 z-10 rounded-md border border-blue-300">
+        <div className="absolute top-4 right-4 bg-blue-50 border-b px-4 py-1.5 flex items-center gap-2 z-10 rounded-md border border-blue-300">
           <FaRegClock size={13} className="text-blue-600 shrink-0" />
           <span className="text-xs font-semibold text-blue-700">
             Producto para pedido mayorista
@@ -504,7 +504,7 @@ export default function CartItem({
                     prev.from_quantity > current.from_quantity ? prev : current
                   );
                   return (
-                    <div className="mt-1.5 flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[11px]">
+                    <div className="mt-1.5 flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[11px] max-w-xs">
                       <span>
                         <strong>Precio de Unidad:</strong> {formatPrice(precioUnitario.toString())} — Comprando <strong>{item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}</strong> el precio mayorista es <strong>{formatPrice(maxPriceObj.price)}</strong> por unidad
                       </span>

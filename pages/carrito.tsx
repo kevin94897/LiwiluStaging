@@ -2791,7 +2791,7 @@ export default function Carrito() {
             </div>
 
             {/* === SUGERENCIAS DE PROMOCIONES === */}
-            {(promoSuggestions.length > 0 || appliedPromotions.length > 0) && (
+            {!hasWholesaleItems && (promoSuggestions.length > 0 || appliedPromotions.length > 0) && (
               <PromoSuggestions
                 suggestions={promoSuggestions}
                 appliedPromotions={appliedPromotions}

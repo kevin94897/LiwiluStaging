@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s,.-]+$/;
+const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñÜüÏïÄäÖö\s,.-]+$/;
 
 
 export const trimegistoRegisterSchema = z.object({
@@ -35,8 +35,12 @@ export const trimegistoRegisterSchema = z.object({
     signatureFile: z.any()
         .refine((v) => v, "La firma es obligatoria")
         .refine(
-            (file) => !file || file.size <= 1048576,
-            "El archivo de la firma no debe superar 1 MB"
+            (file) => !file || (file.type && file.type.startsWith("image/")),
+            "Solo se permiten imágenes (PNG, JPG)"
+        )
+        .refine(
+            (file) => !file || file.size <= 716800,
+            "El archivo de la firma no debe superar 700 KB"
         ),
 
     contactNumber: z.string().min(1, "Ingresa un número"),

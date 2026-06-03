@@ -8,14 +8,14 @@ export const misDatosSchema = z.object({
         .min(1, "El nombre es obligatorio")
         .min(2, "El nombre debe tener al menos 2 caracteres")
         .max(50, "El nombre no puede exceder 50 caracteres")
-        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s,.-]+$/, "El nombre solo puede contener letras, puntos, comas y guiones"),
+        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜïÏäÄöÖ\s,.-]+$/, "El nombre solo puede contener letras, puntos, comas y guiones"),
 
 
     apellido: z
         .string()
         .min(2, "El apellido debe tener al menos 2 caracteres")
         .max(50, "El apellido no puede exceder 50 caracteres")
-        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s,.-]+$/, "El apellido solo puede contener letras, puntos, comas y guiones")
+        .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜïÏäÄöÖ\s,.-]+$/, "El apellido solo puede contener letras, puntos, comas y guiones")
         .optional()
         .or(z.literal("")),
 

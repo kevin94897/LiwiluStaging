@@ -346,8 +346,22 @@ export function TrimegistoRegisterModal({
   const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
 
-    if (file && file.size > 1048576) {
-      setErrors((prev) => ({ ...prev, signatureFile: "El archivo no debe superar 1 MB" }));
+    if (!file) {
+      setSignaturePreviewUrl(null);
+      setFormData((prev) => ({ ...prev, signatureFile: null }));
+      return;
+    }
+
+    // 1. Validar Tipo de Archivo estrictamente
+    if (!file.type.startsWith("image/")) {
+      setErrors((prev) => ({ ...prev, signatureFile: "Solo se permiten imágenes (PNG, JPG)" }));
+      e.target.value = "";
+      return;
+    }
+
+    // 2. Validar tamaño (Reducido a 700KB para evitar el límite de 1MB en Base64)
+    if (file.size > 716800) {
+      setErrors((prev) => ({ ...prev, signatureFile: "La imagen pesa demasiado. Máximo 700 KB." }));
       e.target.value = "";
       return;
     }
@@ -355,14 +369,8 @@ export function TrimegistoRegisterModal({
     // Revocar URL anterior para liberar memoria
     if (signaturePreviewUrl) URL.revokeObjectURL(signaturePreviewUrl);
 
-    if (file) {
-      const isImage = file.type.startsWith("image/");
-      setSignaturePreviewUrl(isImage ? URL.createObjectURL(file) : null);
-      setErrors((prev) => ({ ...prev, signatureFile: undefined }));
-    } else {
-      setSignaturePreviewUrl(null);
-    }
-
+    setSignaturePreviewUrl(URL.createObjectURL(file));
+    setErrors((prev) => ({ ...prev, signatureFile: undefined }));
     setFormData((prev) => ({ ...prev, signatureFile: file }));
   };
 
