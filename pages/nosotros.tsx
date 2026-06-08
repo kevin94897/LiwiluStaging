@@ -1,11 +1,113 @@
 // pages/nosotros.tsx
-"use client";
-
+import { GetServerSideProps } from "next";
 import Layout from "@/components/Layout";
 import Button from "@/components/ui/Button";
 import Image from "next/image";
 
-export default function Nosotros() {
+interface ValorItem {
+  lista_valores_titulo?: string;
+  lista_valores_descrip?: string;
+  lista_valores_imagen?: string;
+}
+
+interface NosotrosData {
+  nosotros_banner?: string;
+  nosotros_titulo?: string;
+  nosotros_contenido?: string;
+  mision?: {
+    mision_titulo?: string;
+    mision_contenido?: string;
+  };
+  vision?: {
+    vision_titulo?: string;
+    vision_contenido?: string;
+  };
+  valores?: {
+    valores_titulo?: string;
+    lista_valores?: ValorItem[];
+  };
+  cta_trabaja?: {
+    cta_trabaja_titulo?: string;
+    cta_trabaja_descrip?: string;
+    cta_trabaja_contacto?: string | { url?: string; text?: string };
+    cta_ver_catalogo?: string | { url?: string; text?: string };
+  };
+}
+
+interface NosotrosProps {
+  data: NosotrosData;
+}
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  let acfData: NosotrosData = {};
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const res = await fetch(`${apiUrl}/acf/values?group=nosotros`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        acfData = json.data;
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching nosotros ACF data:", error);
+  }
+
+  return {
+    props: {
+      data: acfData,
+    },
+  };
+};
+
+export default function Nosotros({ data }: NosotrosProps) {
+  const getImageUrl = (url?: string): string => {
+    if (!url) return "";
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  const resolveLink = (val: any): string | null => {
+    if (!val) return null;
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object' && val.url) return val.url;
+    return null;
+  };
+
+  // Sección intro
+  const bannerUrl = data?.nosotros_banner
+    ? getImageUrl(data.nosotros_banner)
+    : "/images/liwilu-nosotros-banner.png";
+  const title = data?.nosotros_titulo;
+  const content = data?.nosotros_contenido;
+  const hasIntro = !!(title || content);
+
+  // Sección misión
+  const misionTitulo = data?.mision?.mision_titulo;
+  const misionContenido = data?.mision?.mision_contenido;
+  const hasMision = !!(misionTitulo || misionContenido);
+
+  // Sección visión
+  const visionTitulo = data?.vision?.vision_titulo;
+  const visionContenido = data?.vision?.vision_contenido;
+  const hasVision = !!(visionTitulo || visionContenido);
+
+  const hasMisionVision = hasMision || hasVision;
+
+  // Sección valores
+  const valoresTitulo = data?.valores?.valores_titulo;
+  const listaValores = data?.valores?.lista_valores?.filter(
+    (v) => v.lista_valores_titulo || v.lista_valores_descrip || v.lista_valores_imagen
+  ) ?? [];
+  const hasValores = listaValores.length > 0;
+
+  // Sección CTA
+  const ctaTitulo = data?.cta_trabaja?.cta_trabaja_titulo;
+  const ctaDescrip = data?.cta_trabaja?.cta_trabaja_descrip;
+  const ctaContacto = resolveLink(data?.cta_trabaja?.cta_trabaja_contacto);
+  const ctaCatalogo = resolveLink(data?.cta_trabaja?.cta_ver_catalogo);
+  const hasCta = !!(ctaTitulo || ctaDescrip || ctaContacto || ctaCatalogo);
+
   return (
     <Layout
       title="Nosotros - Liwilu"
@@ -13,256 +115,170 @@ export default function Nosotros() {
       background={true}
     >
       <div className="min-h-screen bg-gray-50">
-        {/* Hero Section */}
+        {/* Banner */}
         <div className="relative md:h-[200px] h-[150px] z-10">
           <Image
-            src="/images/liwilu-nosotros-banner.png"
-            alt="Políticas de envío y recojo de productos"
-            width={1438}
-            height={201}
+            src={bannerUrl}
+            alt="Nosotros Liwilu Banner"
+            fill
             className="w-full h-full object-cover"
+            unoptimized
           />
         </div>
-        <div className="relative py-16 px-4 overflow-hidden">
-          {/* Decoración de fondo con círculos */}
-          <div className="absolute top-10 right-10 w-32 h-32 border-2 border-green-200 rounded-full opacity-50"></div>
-          <div className="absolute top-32 right-32 w-20 h-20 border-2 border-green-200 rounded-full opacity-30"></div>
-          <div className="absolute bottom-20 right-20 w-40 h-40 border-2 border-green-200 rounded-full opacity-40"></div>
 
-          <div className="max-w-6xl mx-auto relative z-10">
-            <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 text-center mb-8">
-              ¿Quiénes somos?
-            </h1>
+        {/* Título y contenido */}
+        {hasIntro && (
+          <div className="relative py-16 px-4 overflow-hidden">
+            <div className="absolute top-10 right-10 w-32 h-32 border-2 border-green-200 rounded-full opacity-50"></div>
+            <div className="absolute top-32 right-32 w-20 h-20 border-2 border-green-200 rounded-full opacity-30"></div>
+            <div className="absolute bottom-20 right-20 w-40 h-40 border-2 border-green-200 rounded-full opacity-40"></div>
 
-            <div className="space-y-6 text-gray-700 text-lg leading-relaxed">
-              <p>
-                LIWILU es una distribuidora especializada en soluciones
-                integrales para empresas, instituciones y hogares.
-                Comercializamos uniformes, libros, útiles de escritorio,
-                productos de limpieza, equipos de protección personal, artículos
-                de aseo y productos para el hogar. Nuestra fortaleza radica en
-                la calidad, puntualidad y atención personalizada, construyendo
-                relaciones de confianza con cada cliente.
-              </p>
-              <p>
-                Desarrollamos soluciones adaptadas a las necesidades
-                particulares de cada organización, reduciendo tiempos, costos y
-                riesgos operativos para nuestros clientes. Nos impulsa la
-                innovación constante y la mejora continua, siendo flexibles y
-                competitivos con la determinación de consolidarnos como una
-                alternativa confiable en el mercado nacional.{" "}
-              </p>
-
-              <p>
-                Elegir LIWILU significa optar por un socio estratégico que
-                entiende sus necesidades, cumple sus promesas y trabaja para
-                agregar valor a su organización.
-              </p>
-
-              <p className="font-semibold">
-                En LIWILU, más que vender productos, construimos relaciones de
-                confianza que generan valor a largo plazo.
-              </p>
+            <div className="max-w-6xl mx-auto relative z-10">
+              {title && (
+                <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 text-center mb-8">
+                  {title}
+                </h1>
+              )}
+              {content && (
+                <div
+                  className="richtext-content space-y-6 text-gray-700 text-lg leading-relaxed [&_p]:mb-4 [&_strong]:font-semibold"
+                  dangerouslySetInnerHTML={{ __html: content }}
+                />
+              )}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Misión y Visión Section */}
-        <div className="max-w-6xl mx-auto px-4 py-16">
-          <div className="grid md:grid-cols-2 gap-12 items-start">
-            {/* Imagen del equipo */}
-            <div className="relative rounded-2xl">
-              <Image
-                src="/images/liwilu-nosotros-image.png"
-                alt="Equipo Liwilu"
-                width={584}
-                height={597}
-                className="object-cover rounded-2xl"
-                unoptimized
-              />
-            </div>
-
-            {/* Misión y Visión */}
-            <div className="space-y-10">
-              {/* Misión */}
-              <div id="mision">
-                <div className="mb-4">
-                  <h2 className="text-3xl md:text-4xl font-semibold text-primary-dark relative inline-block">
-                    Nuestra Misión
-                    <span className="absolute -bottom-2 left-0 w-full h-1 bg-primary-dark"></span>
-                  </h2>
-                </div>
-                <p className="text-gray-700 text-lg leading-relaxed">
-                  Brindamos soluciones integrales en venta de uniformes, libros,
-                  útiles, productos para el hogar y limpieza, ofreciendo
-                  calidad, puntualidad y atención personalizada que generan
-                  confianza y satisfacción en cada cliente.
-                </p>
+        {/* Misión y Visión */}
+        {hasMisionVision && (
+          <div className="max-w-6xl mx-auto px-4 py-16">
+            <div className="grid md:grid-cols-2 gap-12 items-start">
+              <div className="relative rounded-2xl aspect-square md:aspect-auto md:h-full min-h-[400px]">
+                <Image
+                  src="/images/liwilu-nosotros-image.png"
+                  alt="Equipo Liwilu"
+                  fill
+                  className="object-cover rounded-2xl"
+                  unoptimized
+                />
               </div>
 
-              {/* Visión */}
-              <div id="vision">
-                <div className="mb-4">
-                  <h2 className="text-3xl md:text-4xl font-semibold text-primary-dark relative inline-block">
-                    Nuestra Visión
-                    <span className="absolute -bottom-2 left-0 w-full h-1 bg-primary-dark"></span>
-                  </h2>
-                </div>
-                <p className="text-gray-700 text-lg leading-relaxed">
-                  Ser reconocidos como un socio estratégico líder a nivel
-                  nacional, destacado por su atención oportuna, eficiencia,
-                  confiabilidad y capacidad de adaptación a las necesidades de
-                  nuestros clientes.
-                </p>
+              <div className="space-y-10">
+                {hasMision && (
+                  <div id="mision">
+                    {misionTitulo && (
+                      <div className="mb-4">
+                        <h2 className="text-3xl md:text-4xl font-semibold text-primary-dark relative inline-block">
+                          {misionTitulo}
+                          <span className="absolute -bottom-2 left-0 w-full h-1 bg-primary-dark"></span>
+                        </h2>
+                      </div>
+                    )}
+                    {misionContenido && (
+                      <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-wrap">
+                        {misionContenido}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {hasVision && (
+                  <div id="vision">
+                    {visionTitulo && (
+                      <div className="mb-4">
+                        <h2 className="text-3xl md:text-4xl font-semibold text-primary-dark relative inline-block">
+                          {visionTitulo}
+                          <span className="absolute -bottom-2 left-0 w-full h-1 bg-primary-dark"></span>
+                        </h2>
+                      </div>
+                    )}
+                    {visionContenido && (
+                      <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-wrap">
+                        {visionContenido}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Valores Section */}
-        <div className="py-16 px-4">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 text-center mb-12">
-              Nuestros Valores
-            </h2>
+        {/* Valores */}
+        {hasValores && (
+          <div className="py-16 px-4">
+            <div className="max-w-6xl mx-auto">
+              {valoresTitulo && (
+                <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 text-center mb-12">
+                  {valoresTitulo}
+                </h2>
+              )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              {/* Valor 1 */}
-              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
-                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4 mx-auto">
-                  <svg
-                    className="w-8 h-8 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">
-                  Compromiso
-                </h3>
-                <p className="text-gray-700 text-center">
-                  Trabajamos arduamente con esfuerzo, dedicación y puntualidad,
-                  cumpliendo las políticas de nuestra organización. Actuamos de
-                  manera colaborativa, con respeto y transparencia, tanto dentro
-                  del equipo como con nuestros clientes y proveedores.
-                </p>
-              </div>
-
-              {/* Valor 2 */}
-              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
-                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4 mx-auto">
-                  <svg
-                    className="w-8 h-8 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">
-                  Excelencia
-                </h3>
-                <p className="text-gray-700 text-center">
-                  Nos trazamos metas que representan un desafío por cumplir con
-                  las necesidades de nuestros clientes. Con profesionalismo y
-                  responsabilidad les hacemos llegar productos que superen sus
-                  expectativas de calidad.
-                </p>
-              </div>
-
-              {/* Valor 3 */}
-              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
-                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4 mx-auto">
-                  <svg
-                    className="w-8 h-8 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">
-                  Innovación
-                </h3>
-                <p className="text-gray-700 text-center">
-                  Nuestra tecnología, desarrollo y gestión del talento humano,
-                  son los pilares que nos hace una organización con altas
-                  expectativas de crecimiento.
-                </p>
-              </div>
-
-              {/* Valor 4 */}
-              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
-                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4 mx-auto">
-                  <svg
-                    className="w-8 h-8 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">
-                  Mejora continua
-                </h3>
-                <p className="text-gray-700 text-center">
-                  Generamos ideas y soluciones que agregan valor a nuestra
-                  organización y a nuestros clientes. Somos flexibles y
-                  competitivos, comprendiendo las necesidades desde su
-                  perspectiva para desarrollar soluciones que realmente
-                  facilitan su día a día, siempre mirando hacia el futuro y
-                  apuntando al posicionamiento en el mercado.
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                {listaValores.map((valor, idx) => (
+                  <div key={idx} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow flex flex-col items-center">
+                    <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4 mx-auto">
+                      {valor.lista_valores_imagen ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={getImageUrl(valor.lista_valores_imagen)}
+                          alt={valor.lista_valores_titulo || `Valor ${idx + 1}`}
+                          className="w-6 h-6 object-contain"
+                        />
+                      ) : (
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      )}
+                    </div>
+                    {valor.lista_valores_titulo && (
+                      <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">
+                        {valor.lista_valores_titulo}
+                      </h3>
+                    )}
+                    {valor.lista_valores_descrip && (
+                      <p className="text-gray-700 text-center whitespace-pre-wrap">
+                        {valor.lista_valores_descrip}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* CTA Section */}
-        <div className="max-w-6xl mx-auto px-4 py-16">
-          <div className="bg-primary rounded-3xl p-8 md:p-12 text-center shadow-2xl">
-            <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4">
-              ¿Listo para trabajar con nosotros?
-            </h2>
-            <p className="text-green-50 text-lg mb-8 max-w-2xl mx-auto">
-              Únete a los cientos de clientes satisfechos que confían en LIWILU
-              para sus necesidades de uniformes, EPPs y artículos escolares.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="secondary" size="md" href="/trabajemos-juntos">
-                Contáctanos
-              </Button>
-              <Button variant="secondary" size="md" href="/productos">
-                Ver catálogo
-              </Button>
+        {/* CTA */}
+        {hasCta && (
+          <div className="max-w-6xl mx-auto px-4 py-16">
+            <div className="bg-primary rounded-3xl p-8 md:p-12 text-center shadow-2xl">
+              {ctaTitulo && (
+                <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4">
+                  {ctaTitulo}
+                </h2>
+              )}
+              {ctaDescrip && (
+                <p className="text-green-50 text-lg mb-8 max-w-2xl mx-auto whitespace-pre-wrap">
+                  {ctaDescrip}
+                </p>
+              )}
+              {(ctaContacto || ctaCatalogo) && (
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  {ctaContacto && (
+                    <Button variant="secondary" size="md" href={ctaContacto}>
+                      Contáctanos
+                    </Button>
+                  )}
+                  {ctaCatalogo && (
+                    <Button variant="secondary" size="md" href={ctaCatalogo}>
+                      Ver catálogo
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </Layout>
   );

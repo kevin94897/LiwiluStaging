@@ -26,6 +26,7 @@ import {
   toggleFavorite,
   checkMultipleFavorites,
 } from "@/lib/catalog";
+import { fetchConfiguracionProductosAcf, ConfiguracionProductosAcfData } from "@/lib/acf-home";
 import { formatPrice } from "@/lib/utils";
 import Button from "@/components/ui/Button";
 
@@ -75,6 +76,11 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const [error, setError] = useState<string | undefined>(undefined);
 
   const { isMayorista, enableMayorista } = useMayorista();
+
+  const [acfConfig, setAcfConfig] = useState<ConfiguracionProductosAcfData>({});
+  useEffect(() => {
+    fetchConfiguracionProductosAcf().then(setAcfConfig).catch(() => {});
+  }, []);
 
   // Activate from URL param (deep-link / share)
   useEffect(() => {
@@ -686,7 +692,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
       <div className="space-y-6">
         {basicData?.description && (
           <div
-            className="prose prose-sm max-w-none text-gray-600 space-y-4"
+            className="richtext-content prose prose-sm max-w-none text-gray-600 space-y-4"
             dangerouslySetInnerHTML={{
               __html: xss(basicData.description),
             }}
@@ -718,7 +724,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
       <div className="space-y-6">
         {basicData?.resume && (
           <div
-            className="prose prose-sm max-w-none text-gray-600"
+            className="richtext-content prose prose-sm max-w-none text-gray-600"
             dangerouslySetInnerHTML={{
               __html: xss(basicData.resume),
             }}
@@ -1135,9 +1141,20 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span>
-                          <strong>Precio de Unidad:</strong> {formatPrice(priceInfo.salePrice)} — Comprando <strong>{quantity} {quantity === 1 ? 'unidad' : 'unidades'}</strong> el precio mayorista es <strong>{formatPrice(currentSpecificPrice.price)}</strong> por unidad
-                        </span>
+                        {acfConfig?.opcionesMayorista?.botonActivo ? (
+                          <span dangerouslySetInnerHTML={{
+                            __html: xss(
+                              acfConfig.opcionesMayorista.botonActivo
+                                .replace('[precio]', formatPrice(priceInfo.salePrice))
+                                .replace('[unidades_mayorista]', String(quantity))
+                                .replace('[precio_mayorista]', formatPrice(currentSpecificPrice.price))
+                            )
+                          }} />
+                        ) : (
+                          <span>
+                            <strong>Precio de Unidad:</strong> {formatPrice(priceInfo.salePrice)} — Comprando <strong>{quantity} {quantity === 1 ? 'unidad' : 'unidades'}</strong> el precio mayorista es <strong>{formatPrice(currentSpecificPrice.price)}</strong> por unidad
+                          </span>
+                        )}
                       </div>
                     )}
 
@@ -1156,7 +1173,10 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                         {(() => {
                           const prices = variationsData!.specificPrices!;
                           const minPrice = Math.min(...prices.map((p: any) => p.price));
-                          return `Precio mayorista desde ${formatPrice(minPrice)} ¡Ingresa aquí!`;
+                          const template = acfConfig?.opcionesMayorista?.botonInactivo;
+                          return template
+                            ? template.replace('[precio_mayorista]', formatPrice(minPrice))
+                            : `Precio mayorista desde ${formatPrice(minPrice)} ¡Ingresa aquí!`;
                         })()}
                       </button>
                     )}

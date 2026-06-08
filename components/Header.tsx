@@ -33,33 +33,31 @@ import {
 } from "react-icons/fa";
 import logo from "../public/images/liwilu_logo.png";
 import Button from "./ui/Button";
+import { fetchHeaderAcf, HeaderAcfData } from "@/lib/acf-home";
 
-const topLinks = [
-  { href: "/nosotros", label: "Nosotros" },
-  { href: "/campanas", label: "Tiendas campañas 2026" },
-  { href: "/login?redirect=/registro", label: "Regístrate" },
-  {
-    href: "/mi-cuenta/mis-favoritos",
-    label: "Mis favoritos",
-    icon: <FaRegHeart size={12} />,
-  },
-  { href: "/terminos-y-condiciones", label: "Políticas de compra" },
-];
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+function resolveImgUrl(url?: string) {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 interface LogoProps {
   className?: string;
   width?: number;
   height?: number;
+  acfLogoUrl?: string;
 }
 
-function Logo({ className = "", width = 120, height = 48 }: LogoProps) {
+function Logo({ className = "", width = 120, height = 48, acfLogoUrl }: LogoProps) {
+  const src = acfLogoUrl ? resolveImgUrl(acfLogoUrl) : logo;
   return (
     <Link
       href="/"
       className={`flex items-center max-w-[90px] md:max-w-[120px] ${className}`}
     >
       <Image
-        src={logo}
+        src={src}
         alt="Liwilu Logo"
         width={width}
         height={height}
@@ -67,6 +65,7 @@ function Logo({ className = "", width = 120, height = 48 }: LogoProps) {
         sizes="(max-width: 640px) 96px, 120px"
         className="h-auto"
         style={{ height: "auto", maxWidth: width }}
+        unoptimized={!!acfLogoUrl}
       />
     </Link>
   );
@@ -229,12 +228,14 @@ interface QuickActionsProps {
   isMobile?: boolean;
   onOpenLogin: () => void;
   onOpenRegister: () => void;
+  acfMain?: { mayorista?: boolean; mayoristaTitulo?: string; enlace?: { url: string; text?: string } };
 }
 
 function QuickActions({
   isMobile = false,
   onOpenLogin,
   onOpenRegister,
+  acfMain,
 }: QuickActionsProps) {
   const { getCartCount, clearCart } = useCart();
   const { user, isAuthenticated, logout, isLoading } = useAuth();
@@ -348,7 +349,7 @@ function QuickActions({
             </div>
           )}
         </div>
-        <Link href="/rastreo" className="relative">
+        <Link href={acfMain?.enlace?.url || '/rastreo'} className="relative">
           <FaTruck size={20} />
         </Link>
         {isAuthenticated ? (
@@ -428,22 +429,21 @@ function QuickActions({
   return (
     <div className="flex items-center gap-6 text-sm relative" ref={loginRef}>
       <div className="relative" ref={mayoristaRef}>
-        <button
-          onClick={handleMayoristaClick}
-          className={`relative flex items-center gap-2 transition font-medium ${isMayorista
-            ? 'text-primary'
-            : 'hover:text-green-400'
-            }`}
-        >
-          <div className="relative flex items-center justify-center">
-            <FaBoxes size={18} />
-            <span className="absolute -top-1.5 -right-2 flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isMayorista ? 'bg-red-500' : 'bg-primary'}`}></span>
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${isMayorista ? 'bg-red-500' : 'bg-primary'}`}></span>
-            </span>
-          </div>
-          <span>{isMayorista ? 'Mayorista ✓' : 'Compra Mayorista'}</span>
-        </button>
+        {acfMain?.mayorista !== false && (
+          <button
+            onClick={handleMayoristaClick}
+            className={`relative flex items-center gap-2 transition font-medium ${isMayorista ? 'text-primary' : 'hover:text-green-400'}`}
+          >
+            <div className="relative flex items-center justify-center">
+              <FaBoxes size={18} />
+              <span className="absolute -top-1.5 -right-2 flex h-2 w-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isMayorista ? 'bg-red-500' : 'bg-primary'}`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isMayorista ? 'bg-red-500' : 'bg-primary'}`}></span>
+              </span>
+            </div>
+            <span>{isMayorista ? `${acfMain?.mayoristaTitulo || 'Mayorista'} ✓` : (acfMain?.mayoristaTitulo || 'Compra Mayorista')}</span>
+          </button>
+        )}
         {isMayorista && mayoristaMenuOpen && (
           <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-xl z-50 transition-all duration-200">
             <button
@@ -461,12 +461,15 @@ function QuickActions({
           </div>
         )}
       </div>
-      <Link
-        href="/rastreo"
-        className="flex items-center gap-2 hover:text-green-400 transition"
-      >
-        <FaTruck /> Sigue tu pedido
-      </Link>
+      {acfMain?.enlace ? (
+        <Link href={acfMain.enlace.url} className="flex items-center gap-2 hover:text-green-400 transition">
+          <FaTruck /> {acfMain.enlace.text || acfMain.enlace.url}
+        </Link>
+      ) : (
+        <Link href="/rastreo" className="flex items-center gap-2 hover:text-green-400 transition">
+          <FaTruck /> Sigue tu pedido
+        </Link>
+      )}
 
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -635,6 +638,11 @@ export default function Header() {
     (user?.role || "").toUpperCase() === "TRISMEGISMO"
   );
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
+  const [acf, setAcf] = useState<HeaderAcfData>({});
+
+  useEffect(() => {
+    fetchHeaderAcf().then(setAcf).catch(() => {});
+  }, []);
 
   useEffect(() => {
     async function fetchCategories() {
@@ -775,48 +783,42 @@ export default function Header() {
         >
           <div className="max-w-3xl mx-auto flex justify-between items-center flex-wrap">
             <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-1">
-              {topLinks.map((link, i) => {
-                if (link.label === "Regístrate") {
-                  if (isAuthenticated) return null;
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setRegisterModalOpen(true)}
-                      className="flex items-center gap-1 hover:underline shrink-0 text-primary-dark"
-                    >
-                      {link.label}
-                    </button>
-                  );
-                }
-                if (link.label === "Tiendas campañas 2026") {
-                  return (
-                    <StoresModal
-                      key={i}
-                      buttonClassName="flex items-center gap-1 hover:underline shrink-0 text-primary-dark"
-                    />
-                  );
-                }
-                return (
-                  <Link
-                    key={i}
-                    href={link.href}
-                    className="flex items-center gap-1 hover:underline shrink-0 text-primary-dark"
-                    onClick={(e) => {
-                      if (link.label === "Mis favoritos" && !isAuthenticated) {
-                        e.preventDefault();
-                        setLoginModalOpen(true);
-                      }
-                    }}
-                  >
-                    {link.icon && link.icon}
-                    {link.label}
-                  </Link>
-                );
-              })}
+              {/* Enlace 1 */}
+              {acf.topHeader?.enlace && (
+                <Link href={acf.topHeader.enlace.url} className="flex items-center gap-1 hover:underline shrink-0 text-primary-dark">
+                  {acf.topHeader.enlace.text || acf.topHeader.enlace.url}
+                </Link>
+              )}
+              {/* Tiendas modal */}
+              {acf.topHeader?.tiendas && (
+                <StoresModal buttonClassName="flex items-center gap-1 hover:underline shrink-0 text-primary-dark" />
+              )}
+              {/* Regístrate */}
+              {!isAuthenticated && acf.topHeader?.boton1 && (
+                <button onClick={() => setRegisterModalOpen(true)} className="flex items-center gap-1 hover:underline shrink-0 text-primary-dark">
+                  Regístrate
+                </button>
+              )}
+              {/* Mis favoritos */}
+              {acf.topHeader?.boton2 && (
+                <Link
+                  href="/mi-cuenta/mis-favoritos"
+                  className="flex items-center gap-1 hover:underline shrink-0 text-primary-dark"
+                  onClick={(e) => { if (!isAuthenticated) { e.preventDefault(); setLoginModalOpen(true); } }}
+                >
+                  <FaRegHeart size={12} /> Mis favoritos
+                </Link>
+              )}
+              {/* Enlace 3 */}
+              {acf.topHeader?.enlace3 && (
+                <Link href={acf.topHeader.enlace3.url} className="flex items-center gap-1 hover:underline shrink-0 text-primary-dark">
+                  {acf.topHeader.enlace3.text || acf.topHeader.enlace3.url}
+                </Link>
+              )}
             </div>
-            <span className="hidden lg:block text-primary-dark">
-              Contáctanos: (01) 7020868 - Anexo 2
-            </span>
+            {acf.topHeader?.texto && (
+              <span className="hidden lg:block text-primary-dark">{acf.topHeader.texto}</span>
+            )}
           </div>
         </div>
 
@@ -827,11 +829,12 @@ export default function Header() {
             {/* ===== MOBILE ===== */}
             <div className="lg:hidden space-y-3">
               <div className="flex items-end md:items-center justify-between">
-                <Logo width={120} height={36} className="mr-5" />
+                <Logo width={120} height={36} className="mr-5" acfLogoUrl={acf.main?.logo} />
                 <QuickActions
                   isMobile
                   onOpenLogin={() => setLoginModalOpen(true)}
                   onOpenRegister={() => setRegisterModalOpen(true)}
+                  acfMain={acf.main}
                 />
               </div>
               <div className="flex items-center gap-1 md:gap-3">
@@ -944,16 +947,17 @@ export default function Header() {
 
                 <SearchBar />
               </div>
-              <Logo width={100} height={40} className="justify-center" />
+              <Logo width={100} height={40} className="justify-center" acfLogoUrl={acf.main?.logo} />
               <QuickActions
                 onOpenLogin={() => setLoginModalOpen(true)}
                 onOpenRegister={() => setRegisterModalOpen(true)}
+                acfMain={acf.main}
               />
             </div>
           </div>
         </div>
 
-        <MayoristaBanner />
+        <MayoristaBanner marquesina={acf.main?.mayoristaMarquesina} />
 
         <style jsx global>{`
           .no-scrollbar::-webkit-scrollbar {

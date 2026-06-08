@@ -15,7 +15,18 @@ import { PiWarningCircleFill } from "react-icons/pi";
 import { showToast } from "@/lib/notifications";
 import { apiPost } from "@/lib/auth/apiClient";
 
-export default function Contacto() {
+interface ContactoProps {
+  bannerMayor?: { imagen?: string; logo?: string; texto?: string; titulo?: string };
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+function resolveUrl(url?: string) {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+export default function Contacto({ bannerMayor }: ContactoProps) {
   const [formData, setFormData] = useState<ContactoSchemaType>({
     celular: "",
     documento: "",
@@ -148,30 +159,41 @@ export default function Contacto() {
       {/* Lado Izquierdo */}
       <Link href="/productos?mayorista=true" className="relative w-full md:w-1/2 flex items-start justify-center px-8 py-16 overflow-hidden cursor-pointer">
         {/* Imagen de fondo */}
-        <Image
-          src="/images/liwilu_contacto_banner.png"
-          alt="Productos de limpieza"
-          fill
-          className="object-cover"
-          priority
-        />
+        {(bannerMayor?.imagen || !bannerMayor) && (
+          <Image
+            src={bannerMayor?.imagen ? resolveUrl(bannerMayor.imagen) : '/images/liwilu_contacto_banner.png'}
+            alt="Productos de limpieza"
+            fill
+            className="object-cover"
+            priority
+            unoptimized
+          />
+        )}
 
         {/* Contenido */}
         <div className="relative z-10 text-white text-center flex flex-col items-center">
-          <Image
-            src="/images/liwilu_logo-xl.png"
-            alt="Liwilu"
-            width={195}
-            height={60}
-            className="mb-6 mx-auto md:mx-0"
-            priority
-          />
-          <h2 className="text-3xl md:text-4xl font-semibold leading-tight">
-            Compra al por
-          </h2>
-          <h1 className="text-5xl md:text-6xl font-extrabold leading-[65px] whitespace-nowrap">
-            MAYOR
-          </h1>
+          {(bannerMayor?.logo || !bannerMayor) && (
+            <Image
+              src={bannerMayor?.logo ? resolveUrl(bannerMayor.logo) : '/images/liwilu_logo-xl.png'}
+              alt="Liwilu"
+              width={195}
+              height={60}
+              className="mb-6 mx-auto md:mx-0"
+              priority
+              unoptimized
+            />
+          )}
+          {bannerMayor?.texto ? (
+            <div
+              className="richtext-content text-white text-3xl md:text-4xl font-semibold leading-tight"
+              dangerouslySetInnerHTML={{ __html: bannerMayor.texto }}
+            />
+          ) : (
+            <>
+              <h2 className="text-3xl md:text-4xl font-semibold leading-tight">Compra al por</h2>
+              <h1 className="text-5xl md:text-6xl font-extrabold leading-[65px] whitespace-nowrap">MAYOR</h1>
+            </>
+          )}
         </div>
       </Link>
 
@@ -181,9 +203,11 @@ export default function Contacto() {
           onSubmit={handleSubmit}
           className="w-full max-w-md text-white space-y-6"
         >
-          <h2 className="text-3xl md:text-6xl font-semibold text-white text-left md:text-left">
-            ¿Estás interesado(a)?
-          </h2>
+          {(bannerMayor?.titulo || !bannerMayor) && (
+            <h2 className="text-3xl md:text-6xl font-semibold text-white text-left md:text-left">
+              {bannerMayor?.titulo || '¿Estás interesado(a)?'}
+            </h2>
+          )}
 
           {/* Campo: Número de celular */}
           <div>

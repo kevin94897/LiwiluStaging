@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  turbopack: {},
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
@@ -34,6 +35,14 @@ const nextConfig = {
       {
         protocol: 'http',
         hostname: 'prestashop.liwilu.com.pe',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.liwilu.com.pe',
+      },
+      {
+        protocol: 'http',
+        hostname: 'api.liwilu.com.pe',
       },
     ],
   },

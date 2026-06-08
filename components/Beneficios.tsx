@@ -4,7 +4,19 @@ import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 
-export default function Beneficios() {
+interface BeneficiosProps {
+  items?: Array<{ imagen?: string; texto?: string }>;
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+function resolveUrl(url?: string) {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+export default function Beneficios({ items }: BeneficiosProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel(
     {
       loop: true,
@@ -16,28 +28,11 @@ export default function Beneficios() {
     [Autoplay({ delay: 3500, stopOnInteraction: false })],
   );
 
-  const features = [
-    {
-      icon: "/images/vectores/liwilu_beneficio_01.svg",
-      alt: "Envíos a domicilio",
-      text: "Envíos a Lima Metropolitana",
-    },
-    {
-      icon: "/images/vectores/liwilu_beneficio_02.svg",
-      alt: "Atención personalizada",
-      text: "Atención personalizada",
-    },
-    {
-      icon: "/images/vectores/liwilu_beneficio_03.svg",
-      alt: "Pago seguro",
-      text: "Pago seguro",
-    },
-    {
-      icon: "/images/vectores/liwilu_beneficio_04.svg",
-      alt: "Ofertas exclusivas",
-      text: "Ofertas exclusivas",
-    },
-  ];
+  const features = items
+    ? items.map((item) => ({ icon: resolveUrl(item.imagen), alt: item.texto || '', text: item.texto || '' })).filter((f) => f.icon || f.text)
+    : [];
+
+  if (features.length === 0) return null;
 
   return (
     <section className="py-8 sm:py-12 lg:py-16">

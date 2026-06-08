@@ -23,29 +23,34 @@ import {
 } from "@/lib/catalog";
 import HeroSlider from "@/components/HeroSlider";
 import { useMayorista } from "@/context/MayoristaContext";
+import { fetchHomeAcf, HomeAcfData } from "@/lib/acf-home";
 
 interface HomeProps {
   featuredProducts: Product[];
   allProducts?: Product[];
   categories: CategoryLevelTwo[];
+  acf: HomeAcfData;
   error?: string;
 }
 
 export const getServerSideProps: GetServerSideProps = async () => {
   try {
-    const [featuredProducts, searchResponse, categories] = await Promise.all([
+    const [featuredProducts, searchResponse, categories, acfRaw] = await Promise.all([
       getFeaturedProducts(),
       searchProducts({ limit: 8 }),
       getLevelTwoCategories(),
+      fetchHomeAcf(),
     ]);
 
     const allProducts = searchResponse.data || [];
+    const acf = JSON.parse(JSON.stringify(acfRaw));
 
     return {
       props: {
         featuredProducts,
         allProducts,
-        categories: categories.slice(0, 7), // Fetch more just in case, but we will limit to 5 in UI
+        categories: categories.slice(0, 7),
+        acf,
       },
     };
   } catch (error: unknown) {
@@ -56,6 +61,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
         featuredProducts: [],
         allProducts: [],
         categories: [],
+        acf: {},
         error: message,
       },
     };
@@ -95,12 +101,12 @@ const slideInRight = {
 };
 
 const staggerContainer = {
-  hidden: { opacity: 0 },
+  hidden: { opacity: 1 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.2,
-      delayChildren: 0.3,
+      staggerChildren: 0.15,
+      delayChildren: 0.1,
     },
   },
 };
@@ -110,6 +116,7 @@ const scaleIn = {
   visible: {
     opacity: 1,
     scale: 1,
+    transition: { duration: 0.4, ease: "easeOut" },
   },
 };
 
@@ -117,15 +124,21 @@ export default function Home({
   featuredProducts,
   allProducts = [],
   categories = [],
+  acf,
   error,
 }: HomeProps) {
   const { isMayorista } = useMayorista();
   const [displayCategories, setDisplayCategories] = useState<CategoryLevelTwo[]>(categories);
+  const [animateCategories, setAnimateCategories] = useState<"hidden" | "visible">("visible");
 
   useEffect(() => {
+    // Resetear animación → ocultar → cargar nuevas categorías → mostrar
+    setAnimateCategories("hidden");
     async function fetchCategories() {
       const cats = await getLevelTwoCategories(isMayorista);
       setDisplayCategories(cats.slice(0, 7));
+      // Pequeño delay para que el estado hidden se aplique antes de animar
+      setTimeout(() => setAnimateCategories("visible"), 50);
     }
     fetchCategories();
   }, [isMayorista]);
@@ -148,14 +161,13 @@ export default function Home({
       title="Liwilu - Tu compra, nuestro compromiso"
       description="Uniformes, útiles y más"
     >
-      <HeroSlider latestProducts={latestProducts} />
+      <HeroSlider latestProducts={latestProducts} banners={acf.banners} />
 
       {/* Categorías */}
       <motion.section
         className="max-w-7xl mx-auto px-6 pt-12"
         initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
+        animate={animateCategories}
         variants={staggerContainer}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6">
@@ -166,7 +178,6 @@ export default function Home({
                 className="relative aspect-video md:aspect-square cursor-pointer"
                 variants={scaleIn}
                 whileHover={{ scale: 1.02 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
               >
                 <Image
                   src={
@@ -179,7 +190,6 @@ export default function Home({
                   sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-cover rounded-md md:rounded-xl shadow-lg"
                 />
-
                 <div className="absolute bottom-2 right-2 text-white text-2xl md:text-4xl px-4 py-2 rounded-tl-lg font-semibold uppercase">
                   {mainCategory.name}
                 </div>
@@ -188,11 +198,8 @@ export default function Home({
           )}
 
           {/* Columna derecha (4 imágenes pequeñas) */}
-          <motion.div
-            className="grid grid-cols-2 grid-rows-2 gap-2 md:gap-4"
-            variants={staggerContainer}
-          >
-            {otherCategories.map((category) => (
+          <div className="grid grid-cols-2 grid-rows-2 gap-2 md:gap-4">
+            {otherCategories.map((category, index) => (
               <Link
                 key={category.id}
                 href={`/productos?categoryIds=${category.id}${mayoristaQs}`}
@@ -200,6 +207,7 @@ export default function Home({
                 <motion.div
                   className="relative h-40 md:h-auto md:aspect-square cursor-pointer"
                   variants={scaleIn}
+                  custom={index}
                   whileHover={{ scale: 1.05 }}
                 >
                   <Image
@@ -212,13 +220,13 @@ export default function Home({
                     sizes="(max-width: 768px) 100vw, 25vw"
                     className="object-cover rounded-md md:rounded-xl shadow-md"
                   />
-                  <div className="absolute bottom-1 left-1 text-white text-lg md:text-xl px-4 py-2 rounded-tl-lg font-semibold uppercase">
+                  <div className="absolute bottom-1 left-1 text-white text-md xs:text-lg md:text-xl px-4 py-2 rounded-tl-lg font-semibold uppercase leading-tight">
                     {category.name}
                   </div>
                 </motion.div>
               </Link>
             ))}
-          </motion.div>
+          </div>
         </div>
       </motion.section>
 
@@ -230,10 +238,13 @@ export default function Home({
         variants={fadeInUp}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <ProductosDestacados
-          featuredProducts={featuredProducts}
-          error={error}
-        />
+        {acf.productosDestacados?.mostrar !== false && (
+          <ProductosDestacados
+            featuredProducts={featuredProducts}
+            titulo={acf.productosDestacados?.titulo}
+            error={error}
+          />
+        )}
       </motion.div>
 
       {/* Beneficios */}
@@ -244,7 +255,7 @@ export default function Home({
         variants={fadeInUp}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <Beneficios />
+        <Beneficios items={acf.beneficios} />
       </motion.div>
 
       {/* Contacto */}
@@ -255,7 +266,7 @@ export default function Home({
         variants={fadeIn}
         transition={{ duration: 0.8 }}
       >
-        <Contacto />
+        <Contacto bannerMayor={acf.bannerMayor} />
       </motion.div>
 
       {/* Cómo Comprar */}
@@ -266,7 +277,7 @@ export default function Home({
         variants={fadeInUp}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <ComoComprar />
+        <ComoComprar items={acf.comoComprar} />
       </motion.div>
 
       {/* Nuestros Productos */}
@@ -277,7 +288,9 @@ export default function Home({
         variants={fadeInUp}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <NuestrosProductos productos={allProducts} />
+        {acf.nuestrosProductos?.mostrar !== false && (
+          <NuestrosProductos productos={allProducts} titulo={acf.nuestrosProductos?.titulo} />
+        )}
       </motion.div>
 
       {/* Aptitudes */}
@@ -288,7 +301,7 @@ export default function Home({
         variants={fadeInUp}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <Aptitudes />
+        <Aptitudes trayectoria={acf.trayectoria} />
       </motion.div>
     </Layout>
   );

@@ -4,7 +4,18 @@ import Image from 'next/image';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
 
-export default function ComoComprar() {
+interface ComoComprarProps {
+  items?: Array<{ video?: string; titulo?: string; descripcion?: string }>;
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+function resolveUrl(url?: string) {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+export default function ComoComprar({ items }: ComoComprarProps) {
 	const [emblaRef] = useEmblaCarousel(
 		{
 			loop: true,
@@ -16,26 +27,16 @@ export default function ComoComprar() {
 		[Autoplay({ delay: 3000, stopOnInteraction: false })]
 	);
 
-	const options = [
-		{
-			image: "/videos/liwilu_delivery.webm",
-			alt: "Delivery - Compra online con entrega a domicilio",
-			title: "DELIVERY",
-			description: "Compra online con entrega a domicilio",
-		},
-		{
-			image: "/videos/liwilu_recojo_tienda.webm",
-			alt: "Entrega en tienda - compra online y recoge en tienda",
-			title: "ENTREGA EN TIENDA",
-			description: "Compra online y recoge en tienda",
-		},
-		{
-			image: "/videos/liwilu_call_center.webm",
-			alt: "Call Center - Llámanos al (01) 7028086",
-			title: "CALL CENTER",
-			description: "Llámanos al (01) 7028086 / Opción 2<br/><span class='text-primary-dark'>+51 981 022 962</span> - Ventas solo WhatsApp<br/><span class='text-primary-dark'>+51 902 727 658</span> - Postventas solo WhatsApp",
-		},
-	];
+	const options = items
+		? items.map((item) => ({
+				image: resolveUrl(item.video),
+				alt: item.titulo || '',
+				title: item.titulo || '',
+				description: item.descripcion || '',
+		  })).filter((o) => o.image || o.title)
+		: [];
+
+	if (options.length === 0) return null;
 
 	return (
 		<section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16 lg:py-20">
@@ -80,8 +81,8 @@ export default function ComoComprar() {
 									<h3 className="text-lg sm:text-xl md:text-2xl font-semibold text-neutral-gray mb-2 sm:mb-3 leading-tight">
 										{option.title}
 									</h3>
-									<p
-										className="text-sm sm:text-base text-neutral-gray font-semibold leading-relaxed max-w-[300px]"
+									<div
+										className="richtext-content text-sm sm:text-base text-neutral-gray font-semibold leading-relaxed max-w-[300px]"
 										dangerouslySetInnerHTML={{ __html: option.description }}
 									/>
 								</div>

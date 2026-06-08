@@ -41,6 +41,16 @@ import {
 import { FaRegHeart, FaPlus, FaMinus, FaHeart, FaFilter, FaTimes } from "react-icons/fa";
 import { fadeInUp, slideInRight } from "@/lib/motionVariants";
 import Button from "@/components/ui/Button";
+import useEmblaCarousel from "embla-carousel-react";
+import Autoplay from "embla-carousel-autoplay";
+import { fetchTiendaAcf, TiendaAcfData, fetchConfiguracionProductosAcf, ConfiguracionProductosAcfData } from "@/lib/acf-home";
+
+const TIENDA_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+function resolveTiendaUrl(url?: string) {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${TIENDA_API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 // Definimos una interfaz para los parámetros de filtro esperados en el query
 interface QueryParams {
@@ -56,14 +66,74 @@ interface QueryParams {
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { mayorista } = context.query;
+  const [acfRaw, acfProductosRaw] = await Promise.all([fetchTiendaAcf(), fetchConfiguracionProductosAcf()]);
+  const acf = JSON.parse(JSON.stringify(acfRaw));
+  const acfProductos = JSON.parse(JSON.stringify(acfProductosRaw));
   return {
     props: {
-      initialWholesale: mayorista === 'true'
+      initialWholesale: mayorista === 'true',
+      acf,
+      acfProductos,
     }
   };
 };
 
-export default function Tienda() {
+function TiendaBannerSlider({ slides }: { slides: TiendaAcfData['bannerSliders'] }) {
+  const [emblaRef] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 5000, stopOnInteraction: false })]);
+
+  if (!slides || slides.length === 0) return null;
+
+  // Usa <img> nativo para respetar la proporción natural de la imagen
+  const content = (slide: NonNullable<TiendaAcfData['bannerSliders']>[number]) => (
+    <>
+      {slide.mobile && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={resolveTiendaUrl(slide.mobile)} alt={slide.alt || ''} className="w-full h-auto block md:hidden" />
+      )}
+      {slide.tablet && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={resolveTiendaUrl(slide.tablet)} alt={slide.alt || ''} className="w-full h-auto hidden md:block lg:hidden" />
+      )}
+      {(slide.desktop || (!slide.mobile && !slide.tablet)) && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={resolveTiendaUrl(slide.desktop || slide.tablet || slide.mobile)}
+          alt={slide.alt || ''}
+          className={`w-full h-auto ${slide.tablet || slide.mobile ? 'hidden lg:block' : 'block'}`}
+        />
+      )}
+    </>
+  );
+
+  const slideWrapper = (slide: NonNullable<TiendaAcfData['bannerSliders']>[number], children: React.ReactNode) =>
+    slide.url ? (
+      <a href={slide.url} target="_blank" rel="noopener noreferrer" className="block w-full">
+        {children}
+      </a>
+    ) : <>{children}</>;
+
+  if (slides.length === 1) {
+    return (
+      <div className="w-full">
+        {slideWrapper(slides[0], content(slides[0]))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden w-full" ref={emblaRef}>
+      <div className="flex">
+        {slides.map((slide, i) => (
+          <div key={i} className="flex-[0_0_100%] min-w-0">
+            {slideWrapper(slide, content(slide))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function Tienda({ acf, acfProductos }: { acf: TiendaAcfData; acfProductos: ConfiguracionProductosAcfData }) {
   const router = useRouter();
 
   // Data state (fetched client-side to send token/sessionId)
@@ -514,8 +584,13 @@ export default function Tienda() {
         </div>
       </section> */}
 
-      {/* Slider: Regreso a clases */}
-      <section className="relative text-white overflow-hidden md:min-h-[400px] flex items-center">
+      {/* ACF Banner Slider */}
+      {acf.bannerSliders && acf.bannerSliders.length > 0 && (
+        <TiendaBannerSlider slides={acf.bannerSliders} />
+      )}
+
+      {/* Slider TypeScript — cambiar false por true si el cliente quiere regresar al anterior */}
+      {false && (<section className="relative text-white overflow-hidden md:min-h-[400px] flex items-center">
         {/* Background */}
         <motion.div
           className="absolute inset-0 overflow-hidden"
@@ -672,7 +747,7 @@ export default function Tienda() {
             </motion.div>
           </motion.div>
         </div>
-      </section>
+      </section>)}
 
       {/* Breadcrumb y categorías circulares */}
       <CategorySlider
@@ -705,15 +780,18 @@ export default function Tienda() {
               className={`bg-white rounded-sm shadow-md mb-14 overflow-hidden transition-all duration-700 transform hover:shadow-xl ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
                 }`}
             >
+              {acf.bannerProductosImagen && (
               <div className="relative h-32 md:h-40">
                 <Image
-                  src="/images/productos/liwilu_banner_productos_grid.png"
+                  src={resolveTiendaUrl(acf.bannerProductosImagen)}
                   alt="Banner productos"
                   fill
                   className="object-cover [object-position:50%_20%] md:[object-position:50%_80%]"
                   priority
+                  unoptimized
                 />
               </div>
+              )}
             </div>
 
             {/* Sort selector and Mobile Filter Trigger */}
@@ -967,7 +1045,9 @@ export default function Tienda() {
                                         prev.from_quantity > current.from_quantity ? prev : current
                                       );
                                       return (
-                                        <span>Comprando al por mayor, tan sólo a {formatPrice(maxPriceObj.price)}</span>
+                                        <span>{acfProductos?.opcionesMayorista?.tienda
+                                          ? acfProductos.opcionesMayorista.tienda.replace('[precio_mayorista]', formatPrice(maxPriceObj.price))
+                                          : `Comprando al por mayor, tan sólo a ${formatPrice(maxPriceObj.price)}`}</span>
                                       );
                                     })()}
                                   </span>
@@ -988,7 +1068,10 @@ export default function Tienda() {
                                   {(() => {
                                     const prices = (product as any).specificPrices;
                                     const minPrice = Math.min(...prices.map((p: any) => p.price));
-                                    return `Precio mayorista desde ${formatPrice(minPrice)} ¡Ingresa aquí!`;
+                                    const template = acfProductos?.opcionesMayorista?.botonInactivo;
+                                    return template
+                                      ? template.replace('[precio_mayorista]', formatPrice(minPrice))
+                                      : `Precio mayorista desde ${formatPrice(minPrice)} ¡Ingresa aquí!`;
                                   })()}
                                 </button>
                               )}

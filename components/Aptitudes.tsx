@@ -4,7 +4,18 @@ import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 
-export default function Aptitudes() {
+interface AptitudesProps {
+  trayectoria?: { titulo?: string; lista?: Array<{ imagen?: string; descrip?: string }> };
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+function resolveUrl(url?: string) {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+export default function Aptitudes({ trayectoria }: AptitudesProps) {
   const [emblaRef] = useEmblaCarousel(
     {
       loop: true,
@@ -16,34 +27,19 @@ export default function Aptitudes() {
     [Autoplay({ delay: 3500, stopOnInteraction: false })],
   );
 
-  const features = [
-    {
-      icon: "/images/vectores/liwilu_aptitud_01.svg",
-      alt: "Clientes satisfechos",
-      text: "Más de 10 000 clientes satisfechos con nosotros",
-    },
-    {
-      icon: "/images/vectores/liwilu_aptitud_02.svg",
-      alt: "Despacho rápido",
-      text: "Despacho rápido y entregas puntuales en todo Lima Metropolitana",
-    },
-    {
-      icon: "/images/vectores/liwilu_aptitud_03.svg",
-      alt: "Experiencia",
-      text: "Catorce años de experiencia ofreciendo calidad y compromiso",
-    },
-    {
-      icon: "/images/vectores/liwilu_aptitud_04.svg",
-      alt: "Responsabilidad ambiental",
-      text: "Comprometidos con la responsabilidad ambiental y social",
-    },
-  ];
+  const features = trayectoria?.lista
+    ? trayectoria.lista.map((item) => ({ icon: resolveUrl(item.imagen), alt: item.descrip || '', text: item.descrip || '' }))
+    : [];
+
+  if (!trayectoria && features.length === 0) return null;
 
   return (
     <section className="bg-gray-50 py-8 sm:py-12 lg:py-16">
-      <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-6 sm:mb-8 lg:mb-12 text-primary-dark px-4 sm:px-6">
-        Tu confianza, nuestro compromiso
-      </h2>
+      {trayectoria?.titulo && (
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-6 sm:mb-8 lg:mb-12 text-primary-dark px-4 sm:px-6">
+          {trayectoria.titulo}
+        </h2>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="overflow-hidden" ref={emblaRef}>

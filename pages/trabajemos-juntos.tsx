@@ -1,46 +1,56 @@
-import React from 'react';
+import { GetServerSideProps } from 'next';
 import Layout from '@/components/Layout';
 import Image from 'next/image';
+import { fetchTrabajaAcf, TrabajaAcfData } from '@/lib/acf-home';
 
-const TrabajaConNosotros = () => {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+function resolveUrl(url?: string) {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
+interface TrabajaProps {
+  acf: TrabajaAcfData;
+}
 
-    return (
-        <Layout title="Rastreo de Pedido - Liwilu" description="Rastrea tu pedido" background={true}>
-
-            <div className="relative z-10 max-w-2xl mx-auto p-6 md:p-12 w-full my-24">
-
-                <h1 className="text-3xl md:text-4xl font-semibold text-gray-800 mb-12 text-center">
-                    Trabajemos juntos
-                </h1>
-
-                <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-16">
-
-                    <a
-                        href="https://pe.computrabajo.com/distribuidora-liwilu-sac"
-                        target="_blank"
-                        aria-label="Enlace a Plataforma de Contratación (Ct)"
-                    >
-                        <div className="flex flex-col items-center justify-center p-4">
-                            <Image src="/images/liwilu-logo-computrabajo.png" alt="Logo de Computrabajo" width={204} height={204} />
-                        </div>
-                    </a>
-
-                    <a
-                        href="https://www.linkedin.com/company/liwilu-sac"
-                        target="_blank"
-                        aria-label="Enlace a LinkedIn"
-                    >
-                        <div className="flex flex-col items-center justify-center p-4">
-                            <Image src="/images/liwilu-logo-linkdn.png" alt="Logo de LinkedIn" width={204} height={204} />
-                        </div>
-                    </a>
-
-                </div>
-
-            </div>
-        </Layout>
-    );
+export const getServerSideProps: GetServerSideProps<TrabajaProps> = async () => {
+  const raw = await fetchTrabajaAcf();
+  const acf = JSON.parse(JSON.stringify(raw));
+  return { props: { acf } };
 };
 
-export default TrabajaConNosotros;
+export default function TrabajaConNosotros({ acf }: TrabajaProps) {
+  const hasRedes = acf.redesEnlaces && acf.redesEnlaces.length > 0;
+
+  return (
+    <Layout title="Trabajemos Juntos - Liwilu" description="Trabaja con nosotros" background={true}>
+      <div className="relative z-10 max-w-2xl mx-auto p-6 md:p-12 w-full my-24">
+        {acf.titulo && (
+          <h1 className="text-3xl md:text-4xl font-semibold text-gray-800 mb-12 text-center">
+            {acf.titulo}
+          </h1>
+        )}
+
+        {hasRedes && (
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-16">
+            {acf.redesEnlaces!.map((red, i) =>
+              red.url && red.imagen ? (
+                <a key={i} href={red.url} target="_blank" rel="noopener noreferrer">
+                  <div className="flex flex-col items-center justify-center p-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={resolveUrl(red.imagen)}
+                      alt={`Red ${i + 1}`}
+                      className="w-[204px] h-[204px] object-contain"
+                    />
+                  </div>
+                </a>
+              ) : null
+            )}
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+}

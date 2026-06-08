@@ -1,7 +1,7 @@
 // components/Footer.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import logger from "@/lib/logger";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,8 +10,21 @@ import { PiWarningCircleFill } from "react-icons/pi";
 import StoresModal from "@/components/StoresModal";
 import { apiPost } from "@/lib/auth/apiClient";
 import { newsletterSchema, NewsletterSchemaType } from "@/lib/newsletterSchema";
+import { fetchFooterAcf, FooterAcfData } from "@/lib/acf-home";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+function resolveUrl(url?: string) {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 export default function Footer() {
+  const [acf, setAcf] = useState<FooterAcfData>({});
+
+  useEffect(() => {
+    fetchFooterAcf().then(setAcf).catch(() => {});
+  }, []);
   const [newsletterData, setNewsletterData] = useState<NewsletterSchemaType>({
     email: "",
   });
@@ -96,113 +109,73 @@ export default function Footer() {
         />
       </div>
       <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8 border-b border-white/20 pb-10 relative z-10">
-        {/* Columna 1 → 1/3 */}
+        {/* Columna 1 */}
         <div className="md:col-span-2 md:border-r border-white/50 md:pr-8">
-          {/* Columna 1: Logo + contacto */}
           <div className="space-y-3">
-            <Image
-              src="/images/liwilu_logo.png"
-              alt="Liwilu"
-              width={140}
-              height={40}
-              className="object-contain"
-            />
+            {acf.columna1?.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={resolveUrl(acf.columna1.logo)} alt="Liwilu" className="h-10 object-contain" />
+            ) : null}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Col 1: info + enlaces */}
               <div className="space-y-2">
-                <p className="text-sm text-gray-200">
-                  Calle Santa Lucía 359 <br />
-                  Urbanización La Aurora - Ate
-                </p>
-                <p className="text-sm text-gray-200">
-                  Call center (01) 7028086
-                </p>
-                <div className="text-sm">
-                  <p>
-                    <strong>Opción 1:</strong> Consultas y reclamos
-                  </p>
-                  <p>
-                    <strong>Opción 2:</strong> Compras y asesor de ventas
-                  </p>
-                </div>
-                <ul>
-                  <li>
-                    <Link href="/nosotros">Nosotros</Link>
-                  </li>
-                  <li>
-                    <Link href="/nosotros#mision">Misión</Link>
-                  </li>
-                  <li>
-                    <Link href="/nosotros#vision">Visión</Link>
-                  </li>
-                  <li>
-                    <Link href="#">Valores</Link>
-                  </li>
-                  <li>
-                    <Link href="/trabajemos-juntos">Trabaja con nosotros</Link>
-                  </li>
-                </ul>
+                {acf.columna1?.info && (
+                  <div
+                    className="richtext-content text-sm text-gray-200"
+                    dangerouslySetInnerHTML={{ __html: acf.columna1.info }}
+                  />
+                )}
+                {acf.columna1?.enlaces && acf.columna1.enlaces.length > 0 && (
+                  <ul className="space-y-1 text-sm text-gray-200">
+                    {acf.columna1.enlaces.map((link, i) => (
+                      <li key={i}>
+                        <Link href={link.url} className="hover:underline">
+                          {link.text || link.url}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
-              {/* Columna 2: Enlaces */}
-              <div>
-                <StoresModal />
-                <ul className="space-y-2 text-sm text-gray-200">
-                  <li>
-                    <Link href="/politicas/politica-de-cookies">
-                      Políticas de cookies
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/politicas/politica-de-privacidad">
-                      Políticas de privacidad y manejo de datos personales
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/politicas/politica-de-publicidad">
-                      Políticas de aceptación de envío publicidad y promociones
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/politicas/politica-de-devoluciones">
-                      Políticas de cambios y devoluciones
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/politicas/politica-de-envio-y-recojo-pedidos">
-                      Políticas de envíos y recojo en tienda
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/terminos-y-condiciones">
-                      Términos y Condiciones
-                    </Link>
-                  </li>
-                </ul>
+              {/* Col 2: tiendas modal + enlaces */}
+              <div className="space-y-2">
+                {acf.columna2?.modalTiendas && <StoresModal />}
+                {acf.columna2?.enlaces && acf.columna2.enlaces.length > 0 && (
+                  <ul className="space-y-2 text-sm text-gray-200">
+                    {acf.columna2.enlaces.map((link, i) => (
+                      <li key={i}>
+                        <Link href={link.url} className="hover:underline">
+                          {link.text || link.url}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Columna 2 → 2/3 */}
+        {/* Columna 3 */}
         <div className="md:col-span-1">
-          {/* Columna 3: Suscripción y redes */}
           <div className="space-y-4">
-            <Link
-              target="_blank"
-              href="https://libro-de-reclamaciones.liwilu.com.pe/"
-            >
-              <Image
-                src="/images/liwilu_libro_reclamaciones.png"
-                alt="Libro de reclamaciones"
-                width={90}
-                height={90}
-              />
-            </Link>
-            <div>
-              <h4 className="text-white font-semibold text-sm mb-2">
-                ¡Entérate de las últimas novedades!
-              </h4>
-              <form onSubmit={handleSubmit} className="space-y-2">
+            {acf.columna3?.libroUrl && (
+              <Link target="_blank" href={acf.columna3.libroUrl}>
+                <Image
+                  src="/images/liwilu_libro_reclamaciones.png"
+                  alt="Libro de reclamaciones"
+                  width={90}
+                  height={90}
+                />
+              </Link>
+            )}
+            {acf.columna3?.newsletter && (
+              <div>
+                <h4 className="text-white font-semibold text-sm mb-2">
+                  ¡Entérate de las últimas novedades!
+                </h4>
+                <form onSubmit={handleSubmit} className="space-y-2">
                 <div className="flex">
                   <input
                     type="email"
@@ -247,28 +220,23 @@ export default function Footer() {
                 )}
               </form>
             </div>
+            )}
 
             {/* Redes sociales */}
-            <div className="flex items-center gap-4 mt-6">
-              <Link
-                href="https://www.facebook.com/LiwiluPeru"
-                className="hover:opacity-80"
-              >
-                <FaFacebook className="w-6 h-6 hover:text-blue-400 transition" />
-              </Link>
-              <Link
-                href="https://www.instagram.com/liwiluperu/"
-                className="hover:opacity-80"
-              >
-                <FaInstagram className="w-6 h-6 hover:text-pink-400 transition" />
-              </Link>
-              <Link
-                href="https://www.tiktok.com/@liwilu.peru?lang=es"
-                className="hover:opacity-80"
-              >
-                <FaTiktok className="w-6 h-6 hover:text-gray-300 transition" />
-              </Link>
-            </div>
+            {acf.columna3?.redes && acf.columna3.redes.length > 0 && (
+              <div className="flex items-center gap-4 mt-6">
+                {acf.columna3.redes.map((url, i) => (
+                  <Link key={i} href={url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80">
+                    {url.includes('facebook') && <FaFacebook className="w-6 h-6 hover:text-blue-400 transition" />}
+                    {url.includes('instagram') && <FaInstagram className="w-6 h-6 hover:text-pink-400 transition" />}
+                    {url.includes('tiktok') && <FaTiktok className="w-6 h-6 hover:text-gray-300 transition" />}
+                    {!url.includes('facebook') && !url.includes('instagram') && !url.includes('tiktok') && (
+                      <span className="text-xs underline">{url}</span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
 
             {/* Medios de pago */}
             <div className="gap-3 mt-4">

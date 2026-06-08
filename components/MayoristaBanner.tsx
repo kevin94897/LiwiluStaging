@@ -47,7 +47,11 @@ function FloatingButton() {
   );
 }
 
-export default function MayoristaBanner() {
+interface MayoristaBannerProps {
+  marquesina?: string;
+}
+
+export default function MayoristaBanner({ marquesina }: MayoristaBannerProps) {
   const { isMayorista } = useMayorista();
   const [mounted, setMounted] = useState(false);
 
@@ -55,15 +59,15 @@ export default function MayoristaBanner() {
 
   if (!isMayorista) return null;
 
+  const marquesinaText = marquesina || '✦ MODO MAYORISTA ACTIVO &nbsp;&nbsp;&nbsp; Mínimo 3 unidades por producto &nbsp;&nbsp;&nbsp; Precios especiales al por mayor &nbsp;&nbsp;&nbsp;';
+
   return (
     <>
       {/* Marquesina superior */}
       <div className="bg-[#0c4848] border-b border-primary/30 overflow-hidden whitespace-nowrap py-1.5">
         <div className="inline-block animate-marquee text-xs font-semibold text-primary tracking-wide">
           {Array(6).fill(null).map((_, i) => (
-            <span key={i}>
-              ✦ MODO MAYORISTA ACTIVO &nbsp;&nbsp;&nbsp; Mínimo 3 unidades por producto &nbsp;&nbsp;&nbsp; Precios especiales al por mayor &nbsp;&nbsp;&nbsp;
-            </span>
+            <span key={i} dangerouslySetInnerHTML={{ __html: `${marquesinaText} &nbsp;&nbsp;&nbsp; ` }} />
           ))}
         </div>
       </div>

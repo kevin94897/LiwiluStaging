@@ -31,11 +31,13 @@ import { getProductVariations, ProductVariationsData } from "@/lib/catalog";
 
 interface ProductProps {
   featuredProducts: Product[];
+  titulo?: string;
   error?: string;
 }
 
 export default function ProductosDestacados({
   featuredProducts,
+  titulo,
   error,
 }: ProductProps) {
   const [favoritos, setFavoritos] = useState<string[]>([]);
@@ -347,9 +349,11 @@ export default function ProductosDestacados({
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16">
-      <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-6 sm:mb-8 md:mb-12 text-primary-dark">
-        Productos destacados
-      </h2>
+      {titulo && (
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-6 sm:mb-8 md:mb-12 text-primary-dark">
+          {titulo}
+        </h2>
+      )}
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">

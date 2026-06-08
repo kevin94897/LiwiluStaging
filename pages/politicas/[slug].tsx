@@ -1,39 +1,28 @@
-import { GetStaticPaths, GetStaticProps } from 'next';
-import { PolicyPage, getPolicyBySlug, getAllPolicySlugs } from '@/data/policies';
+import { GetServerSideProps } from 'next';
+import { PolicyPage, getAllPolicySlugs } from '@/data/policies';
 import PolicyPageComponent from '@/components/PolicyPage';
+import { fetchPolicyFromAcf } from '@/lib/acf-policies';
 
 interface PolicyPageProps {
-    policy: PolicyPage;
+  policy: PolicyPage;
 }
 
 export default function PolicyDynamicPage({ policy }: PolicyPageProps) {
-    return <PolicyPageComponent policy={policy} />;
+  return <PolicyPageComponent policy={policy} />;
 }
 
-export const getStaticPaths: GetStaticPaths = async () => {
-    const slugs = getAllPolicySlugs();
+export const getServerSideProps: GetServerSideProps<PolicyPageProps> = async ({ params }) => {
+  const slug = params?.slug as string;
 
-    return {
-        paths: slugs.map((slug) => ({
-            params: { slug },
-        })),
-        fallback: false, // 404 for non-existent slugs
-    };
-};
+  if (!getAllPolicySlugs().includes(slug)) {
+    return { notFound: true };
+  }
 
-export const getStaticProps: GetStaticProps<PolicyPageProps> = async ({ params }) => {
-    const slug = params?.slug as string;
-    const policy = getPolicyBySlug(slug);
+  const raw = await fetchPolicyFromAcf(slug);
+  // Next.js no serializa `undefined` — eliminamos esas keys del objeto
+  const policy = JSON.parse(JSON.stringify(raw));
 
-    if (!policy) {
-        return {
-            notFound: true,
-        };
-    }
-
-    return {
-        props: {
-            policy,
-        },
-    };
+  return {
+    props: { policy },
+  };
 };

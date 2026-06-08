@@ -31,10 +31,12 @@ import { getProductVariations, ProductVariationsData } from "@/lib/catalog";
 
 interface NuestrosProductosProps {
   productos?: Product[];
+  titulo?: string;
 }
 
 export default function NuestrosProductos({
   productos = [],
+  titulo,
 }: NuestrosProductosProps) {
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [loadingCart, setLoadingCart] = useState<string | null>(null);
@@ -372,16 +374,18 @@ export default function NuestrosProductos({
   return (
     <section className="bg-gray-50 py-8 sm:py-12 md:py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.h2
-          className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-6 sm:mb-8 md:mb-12 text-primary-dark"
-          initial="hidden"
-          whileInView="visible"
-          viewport={viewportConfig}
-          variants={fadeInUp}
-          transition={transitions.smooth}
-        >
-          Nuestros Productos
-        </motion.h2>
+        {titulo && (
+          <motion.h2
+            className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-6 sm:mb-8 md:mb-12 text-primary-dark"
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            variants={fadeInUp}
+            transition={transitions.smooth}
+          >
+            {titulo}
+          </motion.h2>
+        )}
 
         {/* Slider para Mobile */}
         {isMobile ? (
