@@ -5,7 +5,7 @@ import Layout from "@/components/Layout";
 import Link from "next/link";
 // import 'slick-carousel/slick/slick.css';
 // import 'slick-carousel/slick/slick-theme.css';
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 
 import Contacto from "@/components/Contacto";
 import Aptitudes from "@/components/Aptitudes";
@@ -111,7 +111,7 @@ const staggerContainer = {
   },
 };
 
-const scaleIn = {
+const scaleIn: Variants = {
   hidden: { opacity: 0, scale: 0.8 },
   visible: {
     opacity: 1,
