@@ -1,0 +1,59 @@
+/* Embla Carousel Styles */
+.embla {
+  overflow: hidden;
+}
+
+.embla__container {
+  display: flex;
+  touch-action: pan-y pinch-zoom;
+  margin-left: -1rem;
+  /* Gap compensation */
+}
+
+.embla__slide {
+  transform: translate3d(0, 0, 0);
+  flex: 0 0 100%;
+  min-width: 0;
+  padding-left: 1rem;
+  /* Gap */
+}
+
+/* Dots */
+.embla__dots {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.embla__dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background-color: #e5e7eb;
+  margin: 0 0.25rem;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
+.embla__dot--selected {
+  background-color: #10B981;
+}
+
+/* Navigation Buttons */
+.embla__button {
+  background-color: transparent;
+  touch-action: manipulation;
+  display: inline-flex;
+  text-decoration: none;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  z-index: 1;
+}
+
+.embla__button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

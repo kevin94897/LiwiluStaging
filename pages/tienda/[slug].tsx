@@ -1,0 +1,1464 @@
+import { GetServerSideProps } from "next";
+import { useState, useEffect, useMemo } from "react";
+import xss from "xss";
+import { useRouter } from "next/router";
+import Image from "next/image";
+import Link from "next/link";
+import Layout from "@/components/Layout";
+import Aptitudes from "@/components/Aptitudes";
+import BannerPublicidad from "@/components/BannerPublicidad";
+import { FaPlus, FaMinus } from "react-icons/fa";
+import ProductosRelacionados from "@/components/ProductosRelacionados";
+import { useCart } from "@/context/CartContext";
+import { useMayorista } from "@/context/MayoristaContext";
+import AddToCartModal from "@/components/AddToCartModal";
+import { useAuth } from "@/hooks/useAuth";
+import { showToast } from "@/lib/notifications";
+
+import {
+  getProductBasic,
+  getProductVariations,
+  getRelatedProducts,
+  ProductBasicData,
+  ProductVariationsData,
+  ProductVariation,
+  Product,
+  toggleFavorite,
+  checkMultipleFavorites,
+} from "@/lib/catalog";
+import { fetchConfiguracionProductosAcf, ConfiguracionProductosAcfData } from "@/lib/acf-home";
+import { formatPrice } from "@/lib/utils";
+import Button from "@/components/ui/Button";
+
+interface ProductDetailProps {
+  slug: string;
+}
+
+export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+  return {
+    props: {
+      slug: params?.slug as string,
+    },
+  };
+};
+
+// ✅ Función helper para validar imágenes
+// Updated to handle both string URLs and ProductImage objects if needed (though we expect objects mostly now)
+const isValidImageUrl = (
+  urlOrObj: string | any | null | undefined,
+): boolean => {
+  if (!urlOrObj) return false;
+  const url = typeof urlOrObj === "string" ? urlOrObj : urlOrObj?.url;
+  if (!url || typeof url !== "string") return false;
+  if (!url.startsWith("http")) return false;
+  if (url.includes("Array.jpg")) return false;
+  if (url.includes("undefined")) return false;
+  return true;
+};
+
+// Helper to extract URL string
+const getImageUrl = (urlOrObj: string | any | null | undefined): string => {
+  if (!urlOrObj) return "/images/placeholder-product.jpg";
+  return typeof urlOrObj === "string"
+    ? urlOrObj
+    : urlOrObj?.url || "/images/placeholder-product.jpg";
+};
+
+export default function ProductDetail({ slug }: ProductDetailProps) {
+  const router = useRouter();
+
+  // Data state (fetched client-side to send token/sessionId)
+  const [productId, setProductId] = useState<string>("");
+  const [basicData, setBasicData] = useState<ProductBasicData | null>(null);
+  const [variationsData, setVariationsData] = useState<ProductVariationsData | null>(null);
+  const [queryParams, setQueryParams] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | undefined>(undefined);
+
+  const { isMayorista, enableMayorista } = useMayorista();
+
+  const [acfConfig, setAcfConfig] = useState<ConfiguracionProductosAcfData>({});
+  useEffect(() => {
+    fetchConfiguracionProductosAcf().then(setAcfConfig).catch(() => {});
+  }, []);
+
+  // Activate from URL param (deep-link / share)
+  useEffect(() => {
+    if (router.isReady && router.query.mayorista === 'true') {
+      enableMayorista();
+    }
+  }, [router.isReady]);
+
+  // El modo mayorista solo aplica si el producto pertenece a una categoría mayorista
+  const isProductMayorista = variationsData?.mayorista === true;
+  const isWholesale = isMayorista && isProductMayorista;
+  const step = isWholesale ? 3 : 1;
+  const minQuantity = isWholesale ? 3 : 1;
+
+  const [quantity, setQuantity] = useState(minQuantity);
+
+  // Sync quantity with wholesale mode changes
+  useEffect(() => {
+    if (isWholesale && quantity < 3) {
+      setQuantity(3);
+    } else if (!isWholesale && quantity === 3 && step === 1) {
+      // Optional: reset to 1 if coming back from wholesale and quantity is exactly 3? 
+      // Maybe just leave it. The instruction says handleDecrease should max at minQuantity.
+    }
+  }, [isWholesale]);
+  const [selectedAttributes, setSelectedAttributes] = useState<
+    Record<string, number>
+  >({});
+  const [currentVariation, setCurrentVariation] =
+    useState<ProductVariation | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [thumbnailScrollPosition, setThumbnailScrollPosition] = useState(0);
+  const [modalProduct, setModalProduct] = useState<Product | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [loadingFavorite, setLoadingFavorite] = useState(false);
+
+  const currentSpecificPrice = useMemo(() => {
+    if (!isWholesale || !variationsData?.mayorista || !variationsData?.specificPrices) return null;
+    // Buscamos el precio específico que aplique a la cantidad actual (el mayor from_quantity <= quantity)
+    return [...variationsData.specificPrices]
+      .filter(sp => quantity >= sp.from_quantity)
+      .sort((a, b) => b.from_quantity - a.from_quantity)[0];
+  }, [isWholesale, variationsData?.specificPrices, quantity]);
+  const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
+
+  type TabKey =
+    | "Descripción del producto"
+    | "Especificaciones"
+    | "Guía de tallas";
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    "Descripción del producto",
+  );
+
+  // Fetch product data client-side (sends token/sessionId via authenticatedFetch)
+  useEffect(() => {
+    if (!router.isReady || !slug) return;
+
+    // Extract query params from URL (exclude slug)
+    const qp: Record<string, string> = {};
+    Object.keys(router.query).forEach((key) => {
+      if (key !== "slug" && typeof router.query[key] === "string") {
+        qp[key] = router.query[key] as string;
+      }
+    });
+    setQueryParams(qp);
+
+    async function fetchProduct() {
+      setLoading(true);
+      setError(undefined);
+      try {
+        const [basic, variations] = await Promise.all([
+          getProductBasic(slug),
+          getProductVariations(slug),
+        ]);
+        if (!basic || !variations) {
+          setError("Producto no encontrado");
+          setBasicData(null);
+          setVariationsData(null);
+          setProductId("");
+        } else {
+          setBasicData(basic);
+          setVariationsData(variations);
+          setProductId(variations.productId.toString());
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error desconocido");
+        setBasicData(null);
+        setVariationsData(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProduct();
+  }, [router.isReady, slug]);
+
+  // ✅ Inicializar variación por defecto o desde query params
+  useEffect(() => {
+    if (variationsData?.variations && variationsData.variations.length > 0) {
+      // Try to find variation matching query params first
+      if (queryParams && Object.keys(queryParams).length > 0) {
+        const matchingVariation = variationsData.variations.find((v) => {
+          if (!v.attributes || v.attributes.length === 0) return false;
+
+          // Check if all query params match this variation's attributes
+          return Object.keys(queryParams).every((paramKey) => {
+            const paramValue = queryParams[paramKey].toLowerCase();
+            return v.attributes.some(
+              (attr) =>
+                attr.type.toLowerCase() === paramKey.toLowerCase() &&
+                (attr.slug?.toLowerCase() === paramValue ||
+                  attr.value?.toLowerCase() === paramValue ||
+                  attr.id.toString() === paramValue),
+            );
+          });
+        });
+
+        if (matchingVariation) {
+          const initialAttrs: Record<string, number> = {};
+          matchingVariation.attributes.forEach((attr) => {
+            initialAttrs[attr.type] = attr.id;
+          });
+          setSelectedAttributes(initialAttrs);
+          setCurrentVariation(matchingVariation);
+          return;
+        }
+      }
+
+      // Fallback to default variation
+      const defaultVar =
+        variationsData.variations.find((v) => v.isDefault) ||
+        variationsData.variations[0];
+
+      if (defaultVar) {
+        const initialAttrs: Record<string, number> = {};
+        if (defaultVar.attributes && Array.isArray(defaultVar.attributes)) {
+          defaultVar.attributes.forEach((attr) => {
+            initialAttrs[attr.type] = attr.id;
+          });
+        }
+
+        setSelectedAttributes(initialAttrs);
+        setCurrentVariation(defaultVar);
+      }
+    }
+  }, [variationsData, queryParams]);
+
+  // ✅ Scroll to top when product page loads or slug changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [slug]);
+
+  // ✅ Verificar si es favorito al cargar
+  useEffect(() => {
+    const checkFavorite = async () => {
+      if (!productId) return;
+      try {
+        const result = await checkMultipleFavorites([parseInt(productId)]);
+        setIsFavorite(result[productId] || false);
+      } catch (error: any) {
+        // Si no hay sesión, simplemente no es favorito
+        if (error.message === "No hay sesión activa") {
+          setIsFavorite(false);
+          return;
+        }
+        console.error("Error checking favorite:", error);
+      }
+    };
+    checkFavorite();
+  }, [productId]);
+
+  // ✅ Obtener galería de la variación actual o galería general
+  const currentGallery = useMemo(() => {
+    const images: string[] = [];
+
+    // Si hay una variación seleccionada, usar sus imágenes
+    if (currentVariation?.images && currentVariation.images.length > 0) {
+      // New structure: images is ProductImage[]
+      const validVariationImages = currentVariation.images
+        .map((img) => img.url)
+        .filter((url) => isValidImageUrl(url));
+
+      if (validVariationImages.length > 0) {
+        return validVariationImages;
+      }
+    }
+
+    // Si no hay variación o no tiene imágenes válidas, usar galería general
+    // 1. Agregar coverImage si es válida
+    // New structure: variationsData.media.coverImage
+    if (
+      variationsData?.media?.coverImage &&
+      isValidImageUrl(variationsData.media.coverImage.url)
+    ) {
+      images.push(variationsData.media.coverImage.url);
+    }
+
+    // 2. Agregar gallery si existe
+    // New structure: variationsData.media.gallery
+    if (
+      variationsData?.media?.gallery &&
+      Array.isArray(variationsData.media.gallery)
+    ) {
+      const validGallery = variationsData.media.gallery
+        .map((img) => img.url)
+        .filter((url) => isValidImageUrl(url));
+      images.push(...validGallery);
+    }
+
+    // 3. Fallback: Check variations if main gallery empty (optional, depending on logic)
+    // Kept similar to before but adapted
+    if (images.length === 0 && variationsData?.variations) {
+      for (const variation of variationsData.variations) {
+        if (variation.images && variation.images.length > 0) {
+          const validImages = variation.images
+            .map((img) => img.url)
+            .filter((url) => isValidImageUrl(url));
+
+          if (validImages.length > 0) {
+            images.push(...validImages);
+            break; // Usar solo las imágenes de la primera variación válida
+          }
+        }
+      }
+    }
+
+    // 4. Si aún no hay imágenes, usar placeholder
+    if (images.length === 0) {
+      images.push("/images/placeholder-product.jpg");
+    }
+
+    // Eliminar duplicados
+    return Array.from(new Set(images));
+  }, [currentVariation, variationsData]);
+
+  // ✅ Obtener precios (regular y oferta)
+  const priceInfo = useMemo(() => {
+    if (!variationsData) return { regularPrice: 0, salePrice: 0 };
+
+    // Get the price object from current variation or base product
+    const priceObj = currentVariation
+      ? currentVariation.price
+      : variationsData.base?.price;
+
+    // Default fallback
+    if (!priceObj) return { regularPrice: 0, salePrice: 0 };
+
+    const currentPrice = priceObj.amountWithTax || 0;
+
+    // Case 1: Variable Product (Active Variation)
+    // Logic: priceImpact is Regular Price, price.amount is Sale Price
+    if (currentVariation && priceObj.priceImpact && priceObj.priceImpact > 0) {
+      return {
+        regularPrice: priceObj.priceImpact,
+        salePrice: currentPrice,
+      };
+    }
+
+    // Case 2: Simple Product
+    // Logic: discountPrice is the DISCOUNT AMOUNT (not final price)
+    // Regular Price = currentPrice + discountPrice
+    // Sale Price = currentPrice (price after discount)
+    if (priceObj.discountPrice && priceObj.discountPrice > 0) {
+      return {
+        regularPrice: currentPrice + priceObj.discountPrice,
+        salePrice: currentPrice,
+      };
+    }
+
+    // No discount case
+    return {
+      regularPrice: currentPrice,
+      salePrice: currentPrice,
+    };
+  }, [currentVariation, variationsData]);
+
+  // ✅ Obtener cantidad disponible
+  const getAvailableQuantity = useMemo(() => {
+    if (currentVariation) {
+      return currentVariation.stock?.quantity || 0;
+    }
+    return variationsData?.base?.stock?.quantity || 0;
+  }, [currentVariation, variationsData]);
+
+  // ✅ Resetear índice de imagen cuando cambia la variación
+  useEffect(() => {
+    setSelectedImageIndex(0);
+    setThumbnailScrollPosition(0);
+  }, [currentVariation]);
+
+  // ✅ Handlers para navegación de thumbnails
+  const THUMBNAILS_VISIBLE = 4;
+  const maxScroll = Math.max(0, currentGallery.length - THUMBNAILS_VISIBLE);
+
+  const handleScrollUp = () => {
+    setThumbnailScrollPosition((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleScrollDown = () => {
+    setThumbnailScrollPosition((prev) => Math.min(maxScroll, prev + 1));
+  };
+
+  // ✅ Obtener primera imagen válida de una variación
+  const getVariationPreviewImage = (variation: ProductVariation): string => {
+    if (variation.images && variation.images.length > 0) {
+      const validImage = variation.images.find(isValidImageUrl);
+      if (validImage) return getImageUrl(validImage);
+    }
+    // Updated to check variationsData.media.coverImage
+    if (
+      variationsData?.media?.coverImage &&
+      isValidImageUrl(variationsData.media.coverImage)
+    ) {
+      return getImageUrl(variationsData.media.coverImage);
+    }
+    return "/images/placeholder-product.jpg";
+  };
+
+  const handleIncrease = () => {
+    if (quantity + step <= getAvailableQuantity) {
+      setQuantity((q) => q + step);
+    } else if (quantity < getAvailableQuantity) {
+      setQuantity(getAvailableQuantity);
+    }
+  };
+
+  const handleDecrease = () => setQuantity((q) => Math.max(minQuantity, q - step));
+
+  const handleAddToCart = async () => {
+    if (!basicData || !variationsData) return;
+
+    // Validar compatibilidad con modo mayorista
+    if (isMayorista && !isProductMayorista) {
+      showToast('Este producto no está disponible para compra mayorista.', 'error');
+      return;
+    }
+
+    // Construct the product name with attributes if a variation is selected
+    let productName = basicData.name;
+    if (currentVariation) {
+      if (
+        currentVariation.attributes &&
+        currentVariation.attributes.length > 0
+      ) {
+        const attributesString = currentVariation.attributes
+          .map((attr) => `${attr.name}: ${attr.value}`)
+          .join(", ");
+        productName += ` (${attributesString})`;
+      } else if (currentVariation.name) {
+        // Fallback to variation name if no specific attributes are structured
+        productName += ` (${currentVariation.name})`;
+      }
+    }
+
+    // Create a unique ID for cart items
+    // IMPORTANT: Use productId (from URL) as base to match IDs from catalog/other components
+    let cartItemId: string | number = productId;
+
+    // Only add variation suffix if there's actually a variation selected
+    if (
+      currentVariation &&
+      currentVariation.attributes &&
+      currentVariation.attributes.length > 0
+    ) {
+      // Append variation attributes to create unique ID for this specific variation
+      const variantKey = currentVariation.attributes
+        .map((attr) => `${attr.type}-${attr.id}`)
+        .sort()
+        .join("_");
+      cartItemId = `${productId}_${variantKey}`;
+    }
+
+    // Create a product object with tax-inclusive price and simulated original price for savings calculation
+    const finalProduct: Product = {
+      id: cartItemId, // ✅ Use productId for base, or productId_variant for variations
+      productId: productId, // ✅ Use URL productId for correct cart links
+      linkRewrite: variationsData.linkRewrite || slug, // ✅ Store slug for URL generation
+      queryString: currentVariation?.queryString, // ✅ Store query string for variation-specific links
+      prestashopCombinationId: currentVariation
+        ? currentVariation.prestashopCombinationId
+        : null,
+      name: productName,
+      price: isWholesale && currentSpecificPrice
+        ? currentSpecificPrice.price
+        : priceInfo.salePrice, // Use specific price in wholesale mode, otherwise sale price
+      originalPrice:
+        priceInfo.regularPrice !== priceInfo.salePrice
+          ? priceInfo.regularPrice
+          : 0, // Set original price only if discounted
+      quantity: getAvailableQuantity,
+      reference: currentVariation ? currentVariation.reference : basicData.sku,
+      coverImage:
+        currentVariation?.images?.[0]?.url ||
+        variationsData.media?.coverImage?.url ||
+        "/images/placeholder-product.jpg",
+      associations: {
+        ...(basicData.defaultCategory
+          ? { categories: [{ id: basicData.defaultCategory.name }] }
+          : {}),
+      },
+      mayorista: isWholesale,
+    };
+
+    // Add to cart (works for both authenticated and guest users)
+    if (
+      !finalProduct.prestashopCombinationId &&
+      variationsData.variations?.length > 0
+    ) {
+      showToast(
+        "Por favor, selecciona todas las opciones del producto",
+        "error",
+      );
+      return;
+    }
+
+    try {
+      await addToCart(finalProduct, quantity, isWholesale);
+      setModalProduct(finalProduct);
+    } catch (error: any) {
+      console.error("Error adding to cart:", error);
+      showToast(error.message || "Error al agregar al carrito", "error");
+    }
+  };
+
+  const openLoginModal = () => {
+    router.push(
+      {
+        pathname: router.pathname,
+        query: { ...router.query, login: "true" },
+      },
+      undefined,
+      { shallow: true },
+    );
+  };
+
+  const handleToggleFavorite = async () => {
+    // Validar autenticación preliminar usando estado local
+    if (!isAuthenticated) {
+      openLoginModal();
+      return;
+    }
+
+    if (!productId) return;
+    setLoadingFavorite(true);
+
+    try {
+      const response = await toggleFavorite(parseInt(productId));
+      setIsFavorite(response.isFavorite);
+    } catch (error: any) {
+      // Si falla por sesión expirada o inexistente (y el estado local decía que sí),
+      // forzamos el modal de login
+      if (
+        error.message === "No hay sesión activa" ||
+        error.message === "Sesión expirada"
+      ) {
+        openLoginModal();
+      } else {
+        console.error("Error toggling favorite:", error);
+        showToast("Ocurrió un error al actualizar favoritos", "error");
+      }
+    } finally {
+      setLoadingFavorite(false);
+    }
+  };
+
+  const handleAttributeChange = (type: string, valueId: number) => {
+    if (!variationsData) return;
+    const newAttrs = { ...selectedAttributes, [type]: valueId };
+    setSelectedAttributes(newAttrs);
+
+    // 1. Intentar encontrar coincidencia EXACTA
+    const foundVariation = variationsData.variations.find((v) => {
+      if (!v.attributes || v.attributes.length !== Object.keys(newAttrs).length)
+        return false;
+      return v.attributes.every((attr) => newAttrs[attr.type] === attr.id);
+    });
+
+    if (foundVariation) {
+      setCurrentVariation(foundVariation);
+
+      // Update URL with variation query string (shallow routing)
+      if (foundVariation.queryString) {
+        router.push(
+          `/tienda/${slug}?${foundVariation.queryString}`,
+          undefined,
+          { shallow: true },
+        );
+      } else {
+        // If no queryString, just use the slug
+        router.push(`/tienda/${slug}`, undefined, { shallow: true });
+      }
+    } else {
+      // 2. Si no hay exacta, buscar la mejor coincidencia posible
+      // Priorizamos variaciones que tengan el atributo que acabamos de cambiar
+      const variationsWithClickedAttr = variationsData.variations.filter((v) =>
+        v.attributes?.some((a) => a.type === type && a.id === valueId),
+      );
+
+      const candidates =
+        variationsWithClickedAttr.length > 0
+          ? variationsWithClickedAttr
+          : variationsData.variations;
+
+      const bestMatch = candidates
+        .map((v) => {
+          let score = 0;
+          if (!v.attributes) return { variation: v, score: -1 };
+
+          // Puntos por coincidencias y penalización por diferencias
+          v.attributes.forEach((attr) => {
+            if (newAttrs[attr.type] === attr.id) {
+              // El atributo que acabamos de cambiar tiene mucho más peso
+              score += attr.type === type ? 100 : 10;
+            } else if (newAttrs[attr.type] !== undefined) {
+              score -= 20; // Penalización por valor distinto
+            }
+          });
+
+          // Penalización suave por atributos faltantes en la variación
+          Object.keys(newAttrs).forEach((key) => {
+            if (!v.attributes.find((a) => a.type === key)) {
+              score -= 5;
+            }
+          });
+
+          return { variation: v, score };
+        })
+        .sort((a, b) => b.score - a.score)[0];
+
+      if (bestMatch && bestMatch.score > -50) {
+        // Umbral mínimo de confianza
+        setCurrentVariation(bestMatch.variation);
+
+        // Actualizar la selección para que coincida con la nueva variación encontrada
+        const updatedAttrs: Record<string, number> = {};
+        bestMatch.variation.attributes.forEach((a) => {
+          updatedAttrs[a.type] = a.id;
+        });
+        setSelectedAttributes(updatedAttrs);
+
+        // Update URL with best match query string
+        if (bestMatch.variation.queryString) {
+          router.push(
+            `/tienda/${slug}?${bestMatch.variation.queryString}`,
+            undefined,
+            { shallow: true },
+          );
+        }
+      } else {
+        setCurrentVariation(null);
+        // Reset to base product URL
+        router.push(`/tienda/${slug}`, undefined, { shallow: true });
+      }
+    }
+
+    console.log("🔄 Attribute Changed:", type, valueId);
+    console.log("🎯 Current Selection:", newAttrs);
+  };
+
+  // ✅ Validar disponibilidad de atributos (si existe combinación con stock)
+  // Ahora valida de forma contextual: si selecciono Talla M, ¿qué colores están disponibles?
+  const checkAttributeAvailability = (
+    attributeType: string,
+    attributeValueId: number,
+  ) => {
+    if (!variationsData?.variations || variationsData.variations.length === 0)
+      return true;
+
+    return variationsData.variations.some((v) => {
+      // 1. Debe contener el valor objetivo
+      const hasTargetValue = v.attributes?.some(
+        (a) => a.type === attributeType && a.id === attributeValueId,
+      );
+      if (!hasTargetValue) return false;
+
+      // 2. Debe coincidir con el resto de selecciones actuales
+      const matchesOtherSelections = v.attributes?.every((a) => {
+        if (a.type === attributeType) return true; // Ignorar el atributo que estamos evaluando
+        if (!selectedAttributes[a.type]) return true; // Si no hay selección previa, es compatible
+        return selectedAttributes[a.type] === a.id;
+      });
+
+      // 3. Debe tener stock o ser la selección actual (aunque esté sin stock, mostrarla como seleccionada)
+      const isSelected = selectedAttributes[attributeType] === attributeValueId;
+      return (matchesOtherSelections && v.stock?.inStock) || isSelected;
+    });
+  };
+
+  // ✅ Ordenar atributos: los que contienen "tipo" van primero
+  const sortedAttributesList = useMemo(() => {
+    if (!variationsData?.attributes) return [];
+    return [...variationsData.attributes].sort((a, b) => {
+      const aType = (a.type || "").toLowerCase();
+      const aName = (a.name || "").toLowerCase();
+      const bType = (b.type || "").toLowerCase();
+      const bName = (b.name || "").toLowerCase();
+
+      const aIsTipo = aType.includes("tipo") || aName.includes("tipo");
+      const bIsTipo = bType.includes("tipo") || bName.includes("tipo");
+
+      if (aIsTipo && !bIsTipo) return -1;
+      if (!aIsTipo && bIsTipo) return 1;
+      return 0;
+    });
+  }, [variationsData?.attributes]);
+
+  const tabs = {
+    "Descripción del producto": (
+      <div className="space-y-6">
+        {basicData?.description && (
+          <div
+            className="richtext-content prose prose-sm max-w-none text-gray-600 space-y-4"
+            dangerouslySetInnerHTML={{
+              __html: xss(basicData.description),
+            }}
+          />
+        )}
+      </div>
+    ),
+    Especificaciones: (
+      <div className="overflow-x-auto">
+        {basicData?.features && basicData.features.length > 0 ? (
+          <table className="min-w-full border border-gray-200 rounded-md">
+            <tbody className="divide-y divide-gray-200">
+              {basicData.features.map((feature, idx) => (
+                <tr key={idx}>
+                  <td className="px-4 py-2 font-medium text-gray-700 w-1/3 bg-gray-50">
+                    {feature.name}:
+                  </td>
+                  <td className="px-4 py-2 text-gray-600">{feature.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-gray-500">No hay especificaciones disponibles.</p>
+        )}
+      </div>
+    ),
+    "Guía de tallas": (
+      <div className="space-y-6">
+        {basicData?.resume && (
+          <div
+            className="richtext-content prose prose-sm max-w-none text-gray-600"
+            dangerouslySetInnerHTML={{
+              __html: xss(basicData.resume),
+            }}
+          />
+        )}
+      </div>
+    ),
+  };
+
+  // ✅ Determinar si mostrar Guía de Tallas
+  const shouldShowSizeGuide = useMemo(() => {
+    // 1. Verificar atributos de Talla
+    if (
+      variationsData?.attributes?.some((attr) => {
+        const type = (attr.type || "").toLowerCase();
+        const name = (attr.name || "").toLowerCase();
+        return (
+          type === "talla" ||
+          name.includes("talla") ||
+          type === "size" ||
+          name.includes("size")
+        );
+      })
+    ) {
+      return true;
+    }
+
+    // 2. Verificar categoría (keywords básicas de ropa)
+    if (basicData?.defaultCategory?.name) {
+      const catName = basicData.defaultCategory.name.toLowerCase();
+      const clothingKeywords = [
+        "ropa",
+        "vestir",
+        "uniforme",
+        "polo",
+        "camisa",
+        "plusa",
+        "pantalón",
+        "pantalon",
+        "falda",
+        "casaca",
+        "short",
+        "polera",
+        "jacket",
+        "t-shirt",
+      ];
+      return clothingKeywords.some((k) => catName.includes(k));
+    }
+
+    return false;
+  }, [variationsData, basicData]);
+
+  const visibleTabs = Object.keys(tabs).filter((tab) => {
+    if (tab === "Guía de tallas") return shouldShowSizeGuide;
+    return true;
+  });
+
+  const averageRating = basicData?.averageRating ?? basicData?.rating?.average ?? 0;
+  const reviewCount = basicData?.reviewCount ?? basicData?.rating?.count ?? 0;
+
+  return (
+    <Layout
+      title={loading ? "Cargando... - Liwilu" : error ? "Error - Liwilu" : `${basicData!.name} - Liwilu`}
+      description={basicData?.metaDescription || "Detalle del producto"}
+    >
+      {loading ? (
+        <div className="max-w-7xl mx-auto px-6 py-12 flex justify-center items-center min-h-[50vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+        </div>
+      ) : (error || !basicData || !variationsData) ? (
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
+            <strong>Error:</strong> {error || "Producto no encontrado"}
+          </div>
+          <Link href="/productos" className="text-primary hover:underline mt-4 inline-block">
+            Volver a la tienda
+          </Link>
+        </div>
+      ) : (
+        <>
+          {/* Vectores decorativos */}
+          <div className="absolute md:right-[-15vw] md:top-80 w-auto md:w-auto z-0 pointer-events-none md:block hidden">
+            <Image
+              src="/images/vectores/liwilu_banner_productos_vector_04.png"
+              alt="Vector background"
+              width={408}
+              height={427}
+              quality={100}
+              className="h-auto"
+              priority
+            />
+          </div>
+          <div className="absolute -left-56 md:-left-40 bottom-10 md:bottom-1/3 w-auto md:w-auto z-0 pointer-events-none">
+            <Image
+              src="/images/vectores/liwilu_banner_productos_vector_05.png"
+              alt="Vector background"
+              width={408}
+              height={427}
+              quality={100}
+              className="h-auto"
+              priority
+            />
+          </div>
+          {/* Breadcrumb */}
+          <div className="md:mt-14 mt-10">
+            <div className="max-w-7xl mx-auto px-6 xl:px-0 py-4">
+              <div className="text-neutral-gray text-md font-semibold">
+                <Link href="/" className="hover:underline">
+                  Inicio
+                </Link>
+                <span className="mx-2">/</span>
+                <Link href="/productos" className="hover:underline">
+                  Tienda virtual
+                </Link>
+                {basicData.defaultCategory && (
+                  <>
+                    <span className="mx-2">/</span>
+                    <Link
+                      href={`/productos?category=${basicData.defaultCategory.linkRewrite}`}
+                      className="hover:underline"
+                    >
+                      {basicData.defaultCategory.name}
+                    </Link>
+                  </>
+                )}
+                <span className="mx-2">/</span>
+                <span className="text-primary-dark font-medium">
+                  {basicData.name}
+                </span>
+              </div>
+            </div>
+          </div>
+          {/* Contenido principal */}
+          <div className="px-6 py-2 md:py-8 relative overflow-hidden">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex flex-col lg:flex-row gap-8">
+                {/* Columna izquierda - Imágenes */}
+                <div className="w-full lg:w-2/3 flex flex-col lg:flex-row gap-6">
+                  {/* Columna de miniaturas - Slider vertical */}
+                  {currentGallery.length > 1 && (
+                    <div className="order-2 lg:order-1 w-full lg:w-24">
+                      <div className="flex lg:flex-col gap-4 lg:gap-0">
+                        {/* Botón scroll arriba (desktop) */}
+                        {currentGallery.length > THUMBNAILS_VISIBLE &&
+                          thumbnailScrollPosition > 0 && (
+                            <button
+                              onClick={handleScrollUp}
+                              className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-md mb-2 transition"
+                              aria-label="Scroll up thumbnails"
+                            >
+                              <svg
+                                className="w-5 h-5 text-gray-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 15l7-7 7 7"
+                                />
+                              </svg>
+                            </button>
+                          )}
+
+                        {/* Grid de miniaturas */}
+                        <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible scrollbar-hide w-full">
+                          {currentGallery
+                            .slice(
+                              thumbnailScrollPosition,
+                              thumbnailScrollPosition + THUMBNAILS_VISIBLE,
+                            )
+                            .map((img, idx) => {
+                              const actualIndex = idx + thumbnailScrollPosition;
+                              const isSelected = selectedImageIndex === actualIndex;
+
+                              return (
+                                <div
+                                  key={actualIndex}
+                                  onClick={() => setSelectedImageIndex(actualIndex)}
+                                  className={`relative my-2 ml-2 aspect-square bg-white rounded-sm shadow-md overflow-hidden cursor-pointer transition-all flex-shrink-0 w-20 lg:w-full
+																${isSelected
+                                      ? "ring-2 ring-primary scale-105"
+                                      : "hover:shadow-lg hover:scale-105"
+                                    }
+															`}
+                                >
+                                  <Image
+                                    src={img}
+                                    alt={`${basicData.name} - miniatura ${actualIndex + 1
+                                      }`}
+                                    fill
+                                    className="object-contain"
+                                    unoptimized
+                                  />
+                                </div>
+                              );
+                            })}
+                        </div>
+
+                        {/* Botón scroll abajo (desktop) */}
+                        {currentGallery.length > THUMBNAILS_VISIBLE &&
+                          thumbnailScrollPosition < maxScroll && (
+                            <button
+                              onClick={handleScrollDown}
+                              className="hidden lg:flex items-center justify-center w-full h-10 bg-gray-100 hover:bg-gray-200 rounded-md mt-2 transition"
+                              aria-label="Scroll down thumbnails"
+                            >
+                              <svg
+                                className="w-5 h-5 text-gray-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 9l-7 7-7-7"
+                                />
+                              </svg>
+                            </button>
+                          )}
+
+                        {/* Contador de imágenes */}
+                        {currentGallery.length > THUMBNAILS_VISIBLE && (
+                          <div className="hidden lg:flex items-center justify-center mt-2 text-xs text-gray-500">
+                            {thumbnailScrollPosition + 1}-
+                            {Math.min(
+                              thumbnailScrollPosition + THUMBNAILS_VISIBLE,
+                              currentGallery.length,
+                            )}{" "}
+                            de {currentGallery.length}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Imagen principal */}
+                  <div className="flex-1 order-1 lg:order-2">
+                    <div className="relative aspect-square bg-white rounded-sm shadow-md overflow-hidden">
+                      <Image
+                        src={
+                          currentGallery[selectedImageIndex] || currentGallery[0]
+                        }
+                        alt={basicData.name}
+                        fill
+                        className="object-contain"
+                        priority
+                        unoptimized
+                      />
+
+                      {/* Navegación de flechas en la imagen principal */}
+                      {currentGallery.length > 1 && (
+                        <>
+                          <button
+                            onClick={() =>
+                              setSelectedImageIndex((prev) => Math.max(0, prev - 1))
+                            }
+                            disabled={selectedImageIndex === 0}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition lg:hidden"
+                            aria-label="Imagen anterior"
+                          >
+                            <svg
+                              className="w-6 h-6 text-gray-800"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 19l-7-7 7-7"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() =>
+                              setSelectedImageIndex((prev) =>
+                                Math.min(currentGallery.length - 1, prev + 1),
+                              )
+                            }
+                            disabled={
+                              selectedImageIndex === currentGallery.length - 1
+                            }
+                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white md:p-3 p-2 rounded-full shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition lg:hidden"
+                            aria-label="Siguiente imagen"
+                          >
+                            <svg
+                              className="w-6 h-6 text-gray-800"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                              />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+
+                      {/* Indicador de posición */}
+                      {currentGallery.length > 1 && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+                          {selectedImageIndex + 1} / {currentGallery.length}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Columna derecha - Información */}
+                <div className="w-full lg:w-1/3">
+                  <div className="md:p-6">
+                    {/* Badge condición */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="bg-[#D3D3D3] text-greendark-500 px-3 py-1 rounded-full text-xs font-semibold uppercase">
+                        {basicData.condition === "new"
+                          ? "Nuevo"
+                          : basicData.condition === "used"
+                            ? "Usado"
+                            : basicData.condition === "refurbished"
+                              ? "Reacondicionado"
+                              : basicData.condition}
+                      </span>
+                    </div>
+
+                    {/* Título */}
+                    <h1 className="text-2xl md:text-4xl font-semibold mb-2 text-primary-dark">
+                      {basicData.name}
+                    </h1>
+
+                    {/* Nombre de la variación seleccionada */}
+                    {currentVariation &&
+                      currentVariation.name &&
+                      currentVariation.name !== basicData.name && (
+                        <div className="text-lg md:text-xl text-gray-500 mb-4 font-medium">
+                          {currentVariation.name}
+                        </div>
+                      )}
+
+                    {/* Rating y SKU */}
+                    <div className="flex items-center gap-5 mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="flex text-yellow-400">
+                          {[...Array(5)].map((_, i) => (
+                            <span key={i}>
+                              {i < Math.round(averageRating) ? "★" : "☆"}
+                            </span>
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-600">
+                          ({averageRating.toFixed(1)}/5)
+                          {reviewCount > 0 && (
+                            <span className="ml-1 text-xs text-gray-500">
+                              {reviewCount} {reviewCount === 1 ? "reseña" : "reseñas"}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      {basicData.sku && (
+                        <span className="text-gray-600 text-sm">
+                          SKU: {basicData.sku}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Precio */}
+                    <div className="flex items-center gap-4 mb-6">
+                      {isWholesale && currentSpecificPrice ? (
+                        <>
+                          {/* Precio total mayorista: specificPrice × cantidad */}
+                          {/*                           <span className="text-lg text-[#D3D3D3] line-through font-semibold">
+                            {formatPrice(priceInfo.salePrice)}
+                          </span> */}
+                          <span className="md:text-4xl text-2xl font-semibold text-primary-dark">
+                            {formatPrice(currentSpecificPrice.price * quantity)}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          {priceInfo.salePrice < priceInfo.regularPrice && (
+                            <span className="text-lg text-[#D3D3D3] line-through font-semibold">
+                              {formatPrice(priceInfo.regularPrice)}
+                            </span>
+                          )}
+                          <span className="md:text-4xl text-2xl font-semibold text-primary-dark">
+                            {formatPrice(priceInfo.salePrice)}
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Aviso: producto no disponible en modo mayorista */}
+                    {isMayorista && !isProductMayorista && (
+                      <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 text-sm mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Este producto <strong>no está disponible</strong> para compra mayorista.</span>
+                      </div>
+                    )}
+
+                    {/* Información de precio mayorista */}
+                    {isWholesale && currentSpecificPrice && (
+                      <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-sm mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {acfConfig?.opcionesMayorista?.botonActivo ? (
+                          <span dangerouslySetInnerHTML={{
+                            __html: xss(
+                              acfConfig.opcionesMayorista.botonActivo
+                                .replace('[precio]', formatPrice(priceInfo.salePrice))
+                                .replace('[unidades_mayorista]', String(quantity))
+                                .replace('[precio_mayorista]', formatPrice(currentSpecificPrice.price))
+                            )
+                          }} />
+                        ) : (
+                          <span>
+                            <strong>Precio de Unidad:</strong> {formatPrice(priceInfo.salePrice)} — Comprando <strong>{quantity} {quantity === 1 ? 'unidad' : 'unidades'}</strong> el precio mayorista es <strong>{formatPrice(currentSpecificPrice.price)}</strong> por unidad
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Botón para activar modo mayorista */}
+                    {!isMayorista && isProductMayorista && !!variationsData?.specificPrices?.length && (
+                      <button
+                        onClick={() => {
+                          enableMayorista();
+                          router.push({ pathname: router.pathname, query: { ...router.query, mayorista: 'true' } }, undefined, { scroll: false });
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.04)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                        style={{ transition: 'transform 0.18s ease' }}
+                        className="w-full flex items-center justify-center gap-2 bg-[#0c4848] hover:bg-[#0a3838] text-white text-sm font-medium px-4 py-2.5 rounded-full transition-colors duration-200 mb-4"
+                      >
+                        {(() => {
+                          const prices = variationsData!.specificPrices!;
+                          const minPrice = Math.min(...prices.map((p: any) => p.price));
+                          const template = acfConfig?.opcionesMayorista?.botonInactivo;
+                          return template
+                            ? template.replace('[precio_mayorista]', formatPrice(minPrice))
+                            : `Precio mayorista desde ${formatPrice(minPrice)} ¡Ingresa aquí!`;
+                        })()}
+                      </button>
+                    )}
+
+                    {/* Opciones de personalización (Atributos) */}
+                    {sortedAttributesList.length > 0 && (
+                      <div className="flex flex-col gap-6 mb-6">
+                        {sortedAttributesList.map((attr) => (
+                          <div key={attr.type}>
+                            <label className="block text-dark font-medium mb-3">
+                              {attr.name || attr.type}:
+                              {currentVariation &&
+                                currentVariation.attributes?.length > 0 && (
+                                  <span className="ml-2 text-primary-dark font-normal">
+                                    {
+                                      currentVariation.attributes.find(
+                                        (a) => a.type === attr.type,
+                                      )?.value
+                                    }
+                                  </span>
+                                )}
+                            </label>
+                            <div className="flex flex-wrap items-center gap-1 md:gap-3">
+                              {attr.values?.map((val) => {
+                                const isAvailableInContext =
+                                  checkAttributeAvailability(attr.type, val.id);
+
+                                const isSelected =
+                                  selectedAttributes[attr.type] === val.id;
+
+                                const previewVariation =
+                                  variationsData.variations.find((v) =>
+                                    v.attributes?.some(
+                                      (a) =>
+                                        a.type === attr.type && a.id === val.id,
+                                    ),
+                                  );
+
+                                return (
+                                  <div key={val.id} className="relative group">
+                                    <button
+                                      title={val.value}
+                                      onClick={() =>
+                                        isAvailableInContext &&
+                                        handleAttributeChange(attr.type, val.id)
+                                      }
+                                      disabled={!isAvailableInContext}
+                                      className={
+                                        attr.type === "color"
+                                          ? `w-10 h-10 rounded-full border-2 transition relative ${isSelected
+                                            ? "border-primary border-4 scale-110"
+                                            : !isAvailableInContext
+                                              ? "border-gray-100 opacity-30 cursor-not-allowed grayscale"
+                                              : "border-gray-300 hover:scale-105"
+                                          }`
+                                          : `px-5 py-2 border rounded-sm font-medium transition ${isSelected
+                                            ? "bg-primary-dark text-white border-gray-900"
+                                            : !isAvailableInContext
+                                              ? "border-gray-100 text-gray-300 cursor-not-allowed"
+                                              : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                          }`
+                                      }
+                                      style={
+                                        attr.type === "color" && val.colorHex
+                                          ? { backgroundColor: val.colorHex }
+                                          : {}
+                                      }
+                                    >
+                                      {attr.type !== "color" && val.value}
+                                    </button>
+                                    {attr.type === "color" &&
+                                      previewVariation &&
+                                      isAvailableInContext &&
+                                      !isSelected && (
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                          <div className="bg-white rounded-md shadow-xl border-2 border-gray-200 p-2">
+                                            <div className="relative w-24 h-24">
+                                              <Image
+                                                src={getImageUrl(
+                                                  previewVariation.images?.[0] ||
+                                                  variationsData.media
+                                                    ?.coverImage,
+                                                )}
+                                                alt={val.value}
+                                                fill
+                                                className="object-contain rounded"
+                                                unoptimized
+                                              />
+                                            </div>
+                                            <p className="text-[10px] text-center mt-1 text-gray-600 font-semibold uppercase truncate max-w-[90px]">
+                                              {val.value}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Variaciones Standalone (Sin atributos) */}
+                    {(() => {
+                      const standaloneVariations = variationsData.variations.filter(
+                        (v) => !v.attributes || v.attributes.length === 0,
+                      );
+
+                      if (standaloneVariations.length === 0) return null;
+
+                      return (
+                        <div className="flex flex-col gap-4 mb-6 pt-4 border-t border-gray-100">
+                          <label className="block text-primary-dark font-medium">
+                            {variationsData.attributes?.length > 0
+                              ? "Otras versiones:"
+                              : "Opciones disponibles:"}
+                          </label>
+                          <div className="flex flex-wrap gap-3">
+                            {standaloneVariations.map((v) => {
+                              const isSelected = currentVariation?.id === v.id;
+                              return (
+                                <button
+                                  key={v.id}
+                                  onClick={() => {
+                                    setCurrentVariation(v);
+                                    setSelectedAttributes({});
+                                  }}
+                                  className={`px-4 py-2 border rounded-md font-medium transition ${isSelected
+                                    ? "bg-primary-dark text-white border-gray-900 shadow-md scale-105"
+                                    : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                                    }`}
+                                >
+                                  <div className="flex flex-col items-center">
+                                    <span className="text-sm font-semibold">
+                                      {v.name && v.name !== basicData.name
+                                        ? v.name
+                                        : v.sku || v.reference || `Opción ${v.id}`}
+                                    </span>
+                                    {v.price?.amount > 0 && (
+                                      <span
+                                        className={`text-[10px] ${isSelected ? "text-white/80" : "text-gray-500"}`}
+                                      >
+                                        {formatPrice(
+                                          v.price.amountWithTax || v.price.amount,
+                                        )}
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Cantidad */}
+                    <div className="mb-6">
+                      <label className="text-gray-700 font-medium pb-2 block">
+                        Cantidad:
+                      </label>
+                      <div className="flex items-center border border-primary rounded-sm overflow-hidden w-fit">
+                        <button
+                          className="px-2 py-2 hover:bg-gray-100 transition text-lg disabled:opacity-50"
+                          onClick={handleDecrease}
+                          disabled={quantity <= 1}
+                        >
+                          <FaMinus className="w-3 h-3 text-primary transition" />
+                        </button>
+                        <span className="px-4 py-2 font-semibold">{quantity}</span>
+                        <button
+                          className="px-2 py-2 hover:bg-gray-100 transition disabled:opacity-50"
+                          onClick={handleIncrease}
+                          disabled={quantity >= getAvailableQuantity}
+                        >
+                          <FaPlus className="w-3 h-3 text-primary transition" />
+                        </button>
+                      </div>
+                      {/* <span className="text-sm text-gray-500 mt-2 block">
+                    {getAvailableQuantity > 0
+                      ? `${getAvailableQuantity} disponibles`
+                      : "Sin stock"}
+                  </span> */}
+                    </div>
+
+                    {/* Aviso: no disponible para delivery */}
+                    {variationsData?.base?.stock?.availableForOrder === false && (
+                      <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 text-xs mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Este producto no está disponible para delivery. Puede adquirirse con <strong>retiro en tienda</strong>.</span>
+                      </div>
+                    )}
+
+                    {/* Botones de acción */}
+                    <div className="flex gap-2 md:gap-4">
+                      <Button
+                        className="disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                        disabled={
+                          getAvailableQuantity === 0 ||
+                          (!currentVariation && variationsData.variations?.length > 0) ||
+                          (isMayorista && !isProductMayorista)
+                        }
+                        onClick={handleAddToCart}
+                      >
+                        {isMayorista && !isProductMayorista
+                          ? "No disponible mayorista"
+                          : !currentVariation && variationsData.variations?.length > 0
+                            ? "Selecciona opciones"
+                            : getAvailableQuantity > 0
+                              ? "Agregar al carrito"
+                              : "Sin stock"}
+                      </Button>
+                      <button
+                        onClick={handleToggleFavorite}
+                        disabled={loadingFavorite}
+                        className={`bg-white hover:bg-gray-50 border-2 border-primary font-semibold md:w-[56px] md:h-[56px] w-[46px] h-[46px] min-w-[56px] min-h-[56px] rounded-full transition flex items-center justify-center ${isFavorite ? "text-primary" : "text-primary"
+                          }`}
+                      >
+                        {loadingFavorite ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-6 w-6"
+                            fill={isFavorite ? "currentColor" : "none"}
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Pestañas de información */}
+          <div className="max-w-7xl mx-auto px-6 py-4 liwilu-tabs z-10 relative">
+            <div className="flex border-b border-gray-200 overflow-x-auto overflow-y-hidden">
+              {visibleTabs.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab as TabKey)}
+                  className={`px-5 py-2 -mb-[1px] font-medium border-b-2 transition-all h-15 min-w-[180px] whitespace-nowrap ${activeTab === tab
+                    ? "border-gray-900 text-primary-dark"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div className="mt-8">{tabs[activeTab]}</div>
+          </div>
+          {/* Productos relacionados */}
+          <ProductosRelacionados productId={productId} />
+          {/* Banner publicitario */}
+          <BannerPublicidad />
+          {/* Aptitudes */}
+          <Aptitudes />
+          {/* Modal de carrito */}
+          {modalProduct && (
+            <AddToCartModal
+              isOpen={!!modalProduct}
+              onClose={() => setModalProduct(null)}
+              product={modalProduct}
+              quantity={quantity}
+            />
+          )}
+        </>
+      )}
+    </Layout>
+  );
+}
