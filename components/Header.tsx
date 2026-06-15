@@ -628,6 +628,19 @@ interface MenuCategory {
   highlightBottom?: boolean;
   linkRewrite?: string;
   isTrimegistoGate?: boolean;
+  children?: MenuCategory[];
+}
+
+// Aplana el árbol de categorías del menú a una lista plana con la profundidad
+// de cada nodo, para renderizar las subcategorías con sangría.
+function flattenMenu(
+  cats: MenuCategory[],
+  depth = 0,
+): { cat: MenuCategory; depth: number }[] {
+  return cats.flatMap((cat) => [
+    { cat, depth },
+    ...flattenMenu(cat.children ?? [], depth + 1),
+  ]);
 }
 
 export default function Header() {
@@ -651,13 +664,15 @@ export default function Header() {
         const cats = await getLevelTwoCategories(isMayorista);
 
         const mayoristaQs = isMayorista ? '&mayorista=true' : '';
-        const formattedCats: MenuCategory[] = cats.map((c) => ({
+        const mapCat = (c: (typeof cats)[number]): MenuCategory => ({
           href: `/productos?categoryIds=${c.id}${mayoristaQs}`,
           label: c.name,
           isModal: false,
           highlight: false,
           linkRewrite: c.linkRewrite,
-        }));
+          children: (c.children ?? []).map(mapCat),
+        });
+        const formattedCats: MenuCategory[] = cats.map(mapCat);
 
         // Botón manual que abre el modal DNI — solo visible para usuarios NO Trimegisto
         const trimegistoGateItem: MenuCategory = {
@@ -769,6 +784,17 @@ export default function Header() {
     };
   }, [mobileCatsOpen]);
 
+  // Categorías visibles aplanadas con su profundidad (incluye subcategorías
+  // anidadas). El filtro Trimegisto se aplica a nivel raíz; al aplanar después,
+  // las subcategorías de una raíz oculta se omiten también.
+  const topLevelMenu = menuCategories.filter((c) => {
+    if (c.isTrimegistoGate) return !isTrimegistoUser;
+    if (c.linkRewrite === "trimegisto") return isTrimegistoUser;
+    return true;
+  });
+  // Versión aplanada (con sangría) para el acordeón móvil, donde no hay hover.
+  const visibleMenu = flattenMenu(topLevelMenu);
+
   return (
     <>
       <header
@@ -861,19 +887,18 @@ export default function Header() {
                 >
                   <nav className="px-2 py-3">
                     <ul className="space-y-1">
-                      {menuCategories.filter(c => {
-                        if (c.isTrimegistoGate) return !isTrimegistoUser;
-                        if (c.linkRewrite === "trimegisto") return isTrimegistoUser;
-                        return true;
-                      }).map((c) => (
-                        <li key={c.label}>
+                      {visibleMenu.map(({ cat: c, depth }) => (
+                        <li key={c.href}>
                           <Link
                             href={c.href}
-                            className={`block px-4 py-3 text-white transition-colors ${c.highlight
+                            style={depth > 0 ? { paddingLeft: `${16 + depth * 16}px` } : undefined}
+                            className={`block px-4 py-3 transition-colors ${c.highlight
                               ? "bg-primary hover:bg-primary-light rounded-xl font-medium text-[#0b2d2d]"
                               : c.highlightBottom
                                 ? "text-white hover:bg-white/10 rounded-xl font-semibold"
-                                : "text-white/90 hover:bg-white/10 rounded-lg"
+                                : depth > 0
+                                  ? "text-white/70 hover:bg-white/10 rounded-lg text-sm"
+                                  : "text-white/90 hover:bg-white/10 rounded-lg"
                               }`}
                             onClick={(e) => {
                               setMobileCatsOpen(false);
@@ -909,37 +934,56 @@ export default function Header() {
                   </button>
 
                   {mobileCatsOpen && (
-                    <div className="absolute left-0 top-full mt-3 w-72 z-50 rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] overflow-hidden">
+                    <div className="absolute left-0 top-full mt-3 w-72 z-50 rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
                       <ul className="divide-y divide-gray-200">
-                        {menuCategories.filter(c => {
-                          if (c.isTrimegistoGate) return !isTrimegistoUser;
-                          if (c.linkRewrite === "trimegisto") return isTrimegistoUser;
-                          return true;
-                        }).map((c) => (
-                          <li key={c.label}>
-                            <Link
-                              href={c.href}
-                              className={`group flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
-                                ? "bg-primary text-white font-medium hover:bg-primary-light"
-                                : c.highlightBottom
-                                  ? "bg-gray-100 font-semibold hover:bg-primary hover:text-white"
-                                  : "hover:bg-primary hover:text-white"
-                                }`}
-                              onClick={(e) => {
-                                setMobileCatsOpen(false);
-                                if (c.isModal) {
-                                  e.preventDefault();
-                                  if (c.label === "Trimegisto") {
-                                    setTrimegistoModalOpen(true);
+                        {topLevelMenu.map((c) => {
+                          const hasChildren = !!c.children && c.children.length > 0;
+                          return (
+                            <li key={c.href} className="relative group/cat first:rounded-t-2xl last:rounded-b-2xl">
+                              <Link
+                                href={c.href}
+                                className={`group flex items-center justify-between px-4 py-3 text-sm transition ${c.highlight
+                                  ? "bg-primary text-white font-medium hover:bg-primary-light"
+                                  : c.highlightBottom
+                                    ? "bg-gray-100 font-semibold hover:bg-primary hover:text-white"
+                                    : "hover:bg-primary hover:text-white"
+                                  }`}
+                                onClick={(e) => {
+                                  setMobileCatsOpen(false);
+                                  if (c.isModal) {
+                                    e.preventDefault();
+                                    if (c.label === "Trimegisto") {
+                                      setTrimegistoModalOpen(true);
+                                    }
                                   }
-                                }
-                              }}
-                            >
-                              <span className="truncate">{c.label}</span>
-                              <HiChevronRight className="text-gray-400 transition-colors group-hover:text-white" />
-                            </Link>
-                          </li>
-                        ))}
+                                }}
+                              >
+                                <span className="truncate">{c.label}</span>
+                                {hasChildren && (
+                                  <HiChevronRight className="text-gray-400 transition-colors group-hover:text-white" />
+                                )}
+                              </Link>
+
+                              {hasChildren && (
+                                <div className="invisible opacity-0 group-hover/cat:visible group-hover/cat:opacity-100 transition-opacity duration-150 absolute left-full top-0 pl-1 z-50">
+                                  <ul className="w-64 rounded-2xl bg-white text-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.12)] divide-y divide-gray-200 overflow-hidden">
+                                    {c.children!.map((sub) => (
+                                      <li key={sub.href}>
+                                        <Link
+                                          href={sub.href}
+                                          className="block px-4 py-3 text-sm transition hover:bg-primary hover:text-white"
+                                          onClick={() => setMobileCatsOpen(false)}
+                                        >
+                                          <span className="truncate">{sub.label}</span>
+                                        </Link>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   )}

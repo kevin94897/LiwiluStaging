@@ -250,6 +250,7 @@ export interface HierarchyItem {
     parentId?: number | null;
     type: 'category' | 'brand' | 'attribute';
     attributeType?: string;
+    children?: HierarchyItem[];
 }
 
 export interface HierarchyResponse {
@@ -272,6 +273,7 @@ export interface CategoryLevelTwo {
     position: number;
     coverImage: string | null;
     active: boolean;
+    children?: CategoryLevelTwo[];
 }
 
 export interface LevelTwoCategoriesResponse {

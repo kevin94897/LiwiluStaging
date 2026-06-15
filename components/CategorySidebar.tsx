@@ -2,7 +2,21 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FaPlus, FaMinus, FaXmark } from "react-icons/fa6"; // Updated to FaXmark for consistency
-import { HierarchyResponse } from "@/lib/catalog";
+import { HierarchyResponse, HierarchyItem } from "@/lib/catalog";
+
+// Aplana el árbol pre-anidado que entrega el backend (cada item trae su
+// array `children`) a una lista plana con la profundidad de cada nodo, para
+// renderizar la jerarquía con sangría. Los atributos (sin children) quedan
+// todos en profundidad 0.
+function flattenWithDepth(
+  items: HierarchyItem[],
+  depth = 0,
+): { item: HierarchyItem; depth: number }[] {
+  return items.flatMap((item) => [
+    { item, depth },
+    ...flattenWithDepth(item.children ?? [], depth + 1),
+  ]);
+}
 
 interface CategorySidebarProps {
   hierarchy: HierarchyResponse | null;
@@ -146,8 +160,10 @@ export default function CategorySidebar({
         .map((group) => {
           const groupName = group.name;
           const isOpen = openCategories.includes(groupName);
-          const items = hierarchy.hierarchy.items.filter(
-            (item) => item.nameParent === group.nameParent,
+          const items = flattenWithDepth(
+            hierarchy.hierarchy.items.filter(
+              (item) => item.nameParent === group.nameParent,
+            ),
           );
 
           return (
@@ -170,7 +186,7 @@ export default function CategorySidebar({
 
               {isOpen && (
                 <ul className="space-y-3 mt-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                  {items.map((item) => {
+                  {items.map(({ item, depth }) => {
                     const itemType = item.type;
                     const selectedIdsForType = getSelectedIds(itemType);
                     const isSelected = selectedIdsForType.includes(
@@ -182,6 +198,11 @@ export default function CategorySidebar({
                         <button
                           onClick={() =>
                             handleSelect(item.id.toString(), itemType)
+                          }
+                          style={
+                            depth > 0
+                              ? { paddingLeft: `${depth * 16}px` }
+                              : undefined
                           }
                           className="w-full text-left group flex items-start gap-3"
                         >
