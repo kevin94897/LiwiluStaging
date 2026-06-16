@@ -283,6 +283,27 @@ export interface LevelTwoCategoriesResponse {
 }
 
 /**
+ * Ordena una lista por el número inicial del nombre (p. ej. "1ro", "2do",
+ * "10mo") de forma numérica, para que "10" no quede antes que "2". Los items
+ * sin número inicial conservan su orden original y van después de los
+ * numerados. No muta el arreglo original.
+ */
+export function sortByLeadingNumber<T>(items: T[], getName: (item: T) => string): T[] {
+    return items
+        .map((item, index) => {
+            const match = getName(item).trim().match(/^(\d+)/);
+            return { item, index, num: match ? parseInt(match[1], 10) : null };
+        })
+        .sort((a, b) => {
+            if (a.num !== null && b.num !== null) return a.num - b.num || a.index - b.index;
+            if (a.num !== null) return -1;
+            if (b.num !== null) return 1;
+            return a.index - b.index;
+        })
+        .map((entry) => entry.item);
+}
+
+/**
  * Fetch catalog hierarchy (filters structure).
  */
 export async function getCatalogHierarchy(mayorista?: boolean): Promise<HierarchyResponse | null> {

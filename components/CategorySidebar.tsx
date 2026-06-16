@@ -2,17 +2,24 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FaPlus, FaMinus, FaXmark } from "react-icons/fa6"; // Updated to FaXmark for consistency
-import { HierarchyResponse, HierarchyItem } from "@/lib/catalog";
+import {
+  HierarchyResponse,
+  HierarchyItem,
+  sortByLeadingNumber,
+} from "@/lib/catalog";
 
 // Aplana el árbol pre-anidado que entrega el backend (cada item trae su
 // array `children`) a una lista plana con la profundidad de cada nodo, para
 // renderizar la jerarquía con sangría. Los atributos (sin children) quedan
-// todos en profundidad 0.
+// todos en profundidad 0. Las subcategorías (depth > 0) se ordenan por su
+// número inicial ("1ro", "2do", …); el nivel base conserva su orden original.
 function flattenWithDepth(
   items: HierarchyItem[],
   depth = 0,
 ): { item: HierarchyItem; depth: number }[] {
-  return items.flatMap((item) => [
+  const ordered =
+    depth === 0 ? items : sortByLeadingNumber(items, (i) => i.name);
+  return ordered.flatMap((item) => [
     { item, depth },
     ...flattenWithDepth(item.children ?? [], depth + 1),
   ]);

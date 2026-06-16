@@ -660,7 +660,7 @@ export default function Header() {
   useEffect(() => {
     async function fetchCategories() {
       try {
-        const { getLevelTwoCategories } = await import("@/lib/catalog");
+        const { getLevelTwoCategories, sortByLeadingNumber } = await import("@/lib/catalog");
         const cats = await getLevelTwoCategories(isMayorista);
 
         const mayoristaQs = isMayorista ? '&mayorista=true' : '';
@@ -670,7 +670,11 @@ export default function Header() {
           isModal: false,
           highlight: false,
           linkRewrite: c.linkRewrite,
-          children: (c.children ?? []).map(mapCat),
+          // Subcategorías ordenadas por su número inicial ("1ro", "2do", …).
+          children: sortByLeadingNumber(
+            (c.children ?? []).map(mapCat),
+            (x) => x.label,
+          ),
         });
         const formattedCats: MenuCategory[] = cats.map(mapCat);
 
