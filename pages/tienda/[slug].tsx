@@ -1,3 +1,4 @@
+import React from "react";
 import { GetServerSideProps } from "next";
 import { useState, useEffect, useMemo } from "react";
 import xss from "xss";
@@ -130,10 +131,51 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   type TabKey =
     | "Descripción del producto"
     | "Especificaciones"
-    | "Guía de tallas";
+    | "Guía de tallas"
+    | "Reseñas";
   const [activeTab, setActiveTab] = useState<TabKey>(
     "Descripción del producto",
   );
+
+  // Estado de reseñas
+  interface PublicReview {
+    id: string;
+    rating: number;
+    comment: string | null;
+    createdAt: string;
+    user: { firstName: string; lastName: string };
+  }
+  interface PublicReviewsMeta {
+    total: number; page: number; limit: number; totalPages: number; averageRating: number;
+  }
+  const [reviews, setReviews] = useState<PublicReview[]>([]);
+  const [reviewsMeta, setReviewsMeta] = useState<PublicReviewsMeta | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [reviewsLoaded, setReviewsLoaded] = useState(false);
+
+  const fetchReviews = async (pid: string, p = 1) => {
+    setReviewsLoading(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/reviews/product/${pid}?page=${p}&limit=10`
+      );
+      const json = await res.json();
+      if (json.success) {
+        setReviews((prev) => p === 1 ? json.data : [...prev, ...json.data]);
+        setReviewsMeta(json.meta);
+        setReviewsPage(p);
+        setReviewsLoaded(true);
+      }
+    } catch {}
+    finally { setReviewsLoading(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab === "Reseñas" && productId && !reviewsLoaded) {
+      fetchReviews(productId, 1);
+    }
+  }, [activeTab, productId, reviewsLoaded]);
 
   // Fetch product data client-side (sends token/sessionId via authenticatedFetch)
   useEffect(() => {
@@ -732,6 +774,82 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
         )}
       </div>
     ),
+    Reseñas: (
+      <div className="space-y-6">
+        {/* Resumen de rating */}
+        {reviewsMeta && reviewsMeta.total > 0 && (
+          <div className="flex items-center gap-4 pb-4 border-b border-gray-100">
+            <div className="text-center">
+              <p className="text-5xl font-bold text-primary-dark">{reviewsMeta.averageRating.toFixed(1)}</p>
+              <div className="flex text-yellow-400 justify-center mt-1 text-lg">
+                {[1,2,3,4,5].map((s) => (
+                  <span key={s}>{s <= Math.round(reviewsMeta.averageRating) ? "★" : "☆"}</span>
+                ))}
+              </div>
+              <p className="text-sm text-gray-500 mt-1">{reviewsMeta.total} {reviewsMeta.total === 1 ? "reseña" : "reseñas"}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Lista de reseñas */}
+        {reviewsLoading && reviews.length === 0 ? (
+          <div className="flex justify-center py-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          </div>
+        ) : reviews.length === 0 ? (
+          <div className="text-center py-10 text-gray-500">
+            <p className="text-lg font-medium">Aún no hay reseñas</p>
+            <p className="text-sm mt-1">Sé el primero en dejar una reseña de este producto.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {reviews.map((review) => (
+              <div key={review.id} className="border border-gray-100 rounded-xl p-4 space-y-2 bg-white shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    {/* Avatar con iniciales */}
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-primary font-bold text-xs">
+                        {review.user.firstName.charAt(0)}{review.user.lastName.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">
+                        {review.user.firstName} {review.user.lastName.charAt(0)}.
+                      </p>
+                      <div className="flex text-yellow-400 text-sm mt-0.5">
+                        {[1,2,3,4,5].map((s) => (
+                          <span key={s}>{s <= review.rating ? "★" : "☆"}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 shrink-0">
+                    {new Date(review.createdAt).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+                {review.comment && (
+                  <p className="text-sm text-gray-600 leading-relaxed pt-1 border-t border-gray-50">
+                    {review.comment}
+                  </p>
+                )}
+              </div>
+            ))}
+
+            {/* Ver más */}
+            {reviewsMeta && reviewsPage < reviewsMeta.totalPages && (
+              <button
+                onClick={() => fetchReviews(productId, reviewsPage + 1)}
+                disabled={reviewsLoading}
+                className="w-full py-3 border border-primary text-primary rounded-xl text-sm font-medium hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
+              >
+                {reviewsLoading ? "Cargando..." : "Ver más reseñas"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    ),
   };
 
   // ✅ Determinar si mostrar Guía de Tallas
@@ -780,7 +898,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const visibleTabs = Object.keys(tabs).filter((tab) => {
     if (tab === "Guía de tallas") return shouldShowSizeGuide;
     return true;
-  });
+  }) as TabKey[];
 
   const averageRating = basicData?.averageRating ?? basicData?.rating?.average ?? 0;
   const reviewCount = basicData?.reviewCount ?? basicData?.rating?.count ?? 0;
@@ -1440,7 +1558,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                 </button>
               ))}
             </div>
-            <div className="mt-8">{tabs[activeTab]}</div>
+            <div className="mt-8">{(tabs as Record<TabKey, React.ReactNode>)[activeTab]}</div>
           </div>
           {/* Productos relacionados */}
           <ProductosRelacionados productId={productId} />
