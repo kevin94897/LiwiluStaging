@@ -77,8 +77,8 @@ const MAX_HISTORY = 8;
 function normalizeSearch(text: string): string {
   return text
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')       // quitar tildes: á→a, é→e
-    .replace(/[Nº°#ª\.\,;:!\?¡¿\(\)\[\]\{\}'"@&\*\+=\$\\\/\|~`^<>]/g, ' ') // puntuación → espacio
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[º°#ª\.\,;:!\?¡¿\(\)\[\]\{\}'"@&\*\+=\$\\\/\|~`^<>]/g, ' ') // puntuación → espacio
     .replace(/\s+/g, ' ')
     .trim();
 }
