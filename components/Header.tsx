@@ -74,6 +74,15 @@ function Logo({ className = "", width = 120, height = 48, acfLogoUrl }: LogoProp
 const SEARCH_HISTORY_KEY = 'liwilu_search_history';
 const MAX_HISTORY = 8;
 
+function normalizeSearch(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')       // quitar tildes: á→a, é→e
+    .replace(/[Nº°#ª\.\,;:!\?¡¿\(\)\[\]\{\}'"@&\*\+=\$\\\/\|~`^<>]/g, ' ') // puntuación → espacio
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function getSearchHistory(): string[] {
   try { return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); } catch { return []; }
 }
@@ -104,7 +113,7 @@ function SearchBar({ isMobile = false }) {
   // Debounced live search — only fires on /productos
   useEffect(() => {
     if (skipDebounce.current) { skipDebounce.current = false; return; }
-    const q = searchQuery.trim();
+    const q = normalizeSearch(searchQuery);
     if (!q || router.pathname !== '/productos') return;
     const timer = setTimeout(() => {
       const qs = isMayorista ? `&mayorista=true` : '';
@@ -126,7 +135,7 @@ function SearchBar({ isMobile = false }) {
 
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
-    const q = searchQuery.trim();
+    const q = normalizeSearch(searchQuery);
     if (!q) return;
     setHistory(prev => saveSearchHistory(q, prev));
     setShowHistory(false);
@@ -135,11 +144,12 @@ function SearchBar({ isMobile = false }) {
   };
 
   const handleHistoryClick = (term: string) => {
-    setSearchQuery(term);
-    setHistory(prev => saveSearchHistory(term, prev));
+    const q = normalizeSearch(term);
+    setSearchQuery(q);
+    setHistory(prev => saveSearchHistory(q, prev));
     setShowHistory(false);
     const qs = isMayorista ? `&mayorista=true` : '';
-    router.push(`/productos?search=${encodeURIComponent(term)}${qs}`);
+    router.push(`/productos?search=${encodeURIComponent(q)}${qs}`);
   };
 
   const handleFocus = () => {
