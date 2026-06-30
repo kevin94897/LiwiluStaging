@@ -4,7 +4,7 @@ const onlyLetters = /^[A-Za-zÁÉÍÓÚáéíóúÑñÜüÏïÄäÖö\s,.-]+$/;
 
 
 export const trimegistoRegisterSchema = z.object({
-    dni: z.string().length(8, "El DNI debe tener 8 dígitos"),
+    dni: z.string().min(8, "El documento debe tener al menos 8 dígitos").max(12).regex(/^\d+$/, "Solo se permiten números"),
     firstName: z.string()
         .min(1, "El nombre es obligatorio")
         .regex(onlyLetters, "El nombre solo puede contener letras, puntos, comas y guiones"),

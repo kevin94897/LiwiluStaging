@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import logger from '@/lib/logger';
 import Link from "next/link";
 import Button from "./ui/Button";
-import { dniSchema } from "../lib/dniSchema";
+import { dniSchema, ceSchema } from "../lib/dniSchema";
 import { z } from "zod";
 import { trimegistoRegisterSchema } from "@/lib/trimegistoRegisterSchema";
 import { PiWarningCircleFill } from "react-icons/pi";
@@ -32,16 +32,18 @@ export function TrimegistoDNIModal({
   onNewUser,
   onLoginRequired,
 }: TrimegistoDNIModalProps) {
+  const [documentType, setDocumentType] = useState<"DNI" | "CE">("DNI");
   const [dni, setDni] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<
     Partial<Record<keyof DniFormType, string>>
   >({});
 
-  // ✅ Resetear formulario cuando se cierra el modal
+  // Resetear formulario cuando se cierra el modal
   useEffect(() => {
     if (!isOpen) {
       setDni("");
+      setDocumentType("DNI");
       setErrors({});
     }
   }, [isOpen]);
@@ -69,7 +71,8 @@ export function TrimegistoDNIModal({
     setIsLoading(true);
     setErrors({});
 
-    const parsed = dniSchema.safeParse({ dni });
+    const schema = documentType === "CE" ? ceSchema : dniSchema;
+    const parsed = schema.safeParse({ dni });
 
     if (!parsed.success) {
       setErrors({
@@ -82,7 +85,7 @@ export function TrimegistoDNIModal({
     try {
       const response = await apiPost("/so-tp/consultar-datos", {
         numero_documento: dni,
-        tipo_documento: "DNI",
+        tipo_documento: documentType,
       }, { skipAuth: true });
 
       const data = await response.json();
@@ -92,12 +95,10 @@ export function TrimegistoDNIModal({
         : (data.status === true || (data.status === false && data.message === "El usuario ya se encuentra registrado."));
 
       if (isExistingUser) {
-        // Ya está registrado → debe hacer login
         onClose();
         onLoginRequired();
       } else {
-        // Usuario nuevo → puede registrarse
-        onNewUser({ ...data, numero_documento: dni });
+        onNewUser({ ...data, numero_documento: dni, documentType });
       }
     } catch (error) {
       logger.error("Error al validar DNI:", error);
@@ -124,7 +125,7 @@ export function TrimegistoDNIModal({
           <div className="p-8">
             <div className="mb-8 text-center">
               <h2 className="text-3xl font-semibold text-gray-900 mb-2">
-                Ingresa tu DNI
+                Ingresa tu documento
               </h2>
               <p className="text-gray-600 text-sm">
                 Valida tu documento para continuar con tu compra
@@ -132,12 +133,31 @@ export function TrimegistoDNIModal({
             </div>
 
             <div className="space-y-4">
+              {/* Selector DNI / CE */}
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                {(["DNI", "CE"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => { setDocumentType(type); setDni(""); setErrors({}); }}
+                    className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+                      documentType === type
+                        ? "bg-primary text-white"
+                        : "bg-white text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    {type === "CE" ? "Carné de Extranjería" : "DNI"}
+                  </button>
+                ))}
+              </div>
+
               <div>
                 <input
                   name="dni"
                   value={dni}
+                  placeholder={documentType === "DNI" ? "12345678" : "123456789"}
                   className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  maxLength={8}
+                  maxLength={documentType === "DNI" ? 8 : 12}
                   onChange={(e) => {
                     setDni(e.target.value.replace(/\D/g, ""));
                     setErrors({});
@@ -155,7 +175,10 @@ export function TrimegistoDNIModal({
                 size="md"
                 className="w-full"
                 onClick={handleSubmit}
-                disabled={dni.length !== 8 || isLoading}
+                disabled={
+                  (documentType === "DNI" ? dni.length !== 8 : dni.length < 9) ||
+                  isLoading
+                }
               >
                 {isLoading ? "Validando..." : "Continuar"}
               </Button>
@@ -276,7 +299,7 @@ export function TrimegistoRegisterModal({
         try {
           const response = await apiPost(
             "/so-tp/consultar-datos",
-            { numero_documento: dniValue, tipo_documento: "DNI" },
+            { numero_documento: dniValue, tipo_documento: initialData?.documentType || "DNI" },
             { skipAuth: true }
           );
           const data = await response.json();
@@ -423,7 +446,7 @@ export function TrimegistoRegisterModal({
         : "";
 
       const payload = {
-        documentType: "DNI",
+        documentType: initialData?.documentType || "DNI",
         documentNumber: formData.dni,
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -549,10 +572,10 @@ export function TrimegistoRegisterModal({
             </div>
 
             <div className="space-y-4">
-              {/* DNI (Deshabilitado) */}
+              {/* Documento (Deshabilitado) */}
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  DNI
+                  {initialData?.documentType === "CE" ? "Carné de Extranjería" : "DNI"}
                 </label>
                 <input
                   name="dni"
