@@ -75,7 +75,18 @@ export default function CartItem({
   const regularPrice = getRegularPrice(item.product);
   const hasDiscountPrice = hasDiscount(item.product);
 
-  const precioUnitario = effectivePrice;
+  // Apply wholesale (mayorista) specific price if quantity meets the threshold
+  const applicableSpecificPrice = (() => {
+    const prices = (item.product as any).specificPrices;
+    if (!item.product.mayorista || !prices?.length) return null;
+    return [...prices]
+      .filter((sp: any) => item.quantity >= sp.from_quantity)
+      .sort((a: any, b: any) => b.from_quantity - a.from_quantity)[0] ?? null;
+  })();
+
+  const precioUnitario = applicableSpecificPrice
+    ? Number(applicableSpecificPrice.price)
+    : effectivePrice;
   const precioTotal = precioUnitario * item.quantity;
 
   const notAvailableForDelivery =
@@ -500,13 +511,22 @@ export default function CartItem({
 
                 {item.product.mayorista && (item.product as any).specificPrices?.length > 0 && (() => {
                   const prices = (item.product as any).specificPrices;
-                  const maxPriceObj = prices.reduce((prev: any, current: any) =>
-                    prev.from_quantity > current.from_quantity ? prev : current
-                  );
+                  const minThresholdObj = [...prices].sort((a: any, b: any) => a.from_quantity - b.from_quantity)[0];
+
+                  if (applicableSpecificPrice) {
+                    return (
+                      <div className="mt-1.5 flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[11px] max-w-xs">
+                        <span>
+                          ✓ Precio mayorista aplicado: <strong>{formatPrice(applicableSpecificPrice.price)}</strong> por unidad
+                        </span>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <div className="mt-1.5 flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[11px] max-w-xs">
+                    <div className="mt-1.5 flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 text-[11px] max-w-xs">
                       <span>
-                        <strong>Precio de Unidad:</strong> {formatPrice(precioUnitario.toString())} — Comprando <strong>{item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}</strong> el precio mayorista es <strong>{formatPrice(maxPriceObj.price)}</strong> por unidad
+                        Comprando <strong>{minThresholdObj.from_quantity} unidades</strong> el precio mayorista es <strong>{formatPrice(minThresholdObj.price)}</strong> por unidad
                       </span>
                     </div>
                   );
